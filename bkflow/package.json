@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "tsx --test \"lib/**/*.test.ts\" \"server/**/*.test.ts\" \"web/**/*.test.ts\"",
     "db:seed": "tsx prisma/seed.ts",
+    "db:rls": "tsx scripts/run-sql.ts prisma/sql/enable-rls.sql",
     "postinstall": "prisma generate",
     "gen:actions": "tsx scripts/gen-action-registry.ts",
     "dev:server": "tsx watch --env-file=.env --import ./server/register-aliases.mjs server/index.ts",
