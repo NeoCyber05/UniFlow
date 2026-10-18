@@ -15,7 +15,7 @@ datasource db {
 
 model Board {
   id            String @id @default(uuid())
-  orgId         String
+  userId        String
   title         String
   imageId       String
   imageThumbUrl String @db.Text
@@ -28,14 +28,13 @@ model Board {
   boardType  BoardType @default(TEAM_PROJECT)
 
   lists   List[]
-  members BoardMember[]
   labels  Label[]
   courses Course[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([orgId])
+  @@index([userId])
 }
 
 enum BoardType {
@@ -45,7 +44,7 @@ enum BoardType {
 
 model Semester {
   id        String   @id @default(uuid())
-  orgId     String
+  userId    String
   title     String
   startDate DateTime
   endDate   DateTime
@@ -55,7 +54,8 @@ model Semester {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([orgId])
+  @@unique([userId, title])
+  @@index([userId])
 }
 
 model Course {
@@ -112,7 +112,6 @@ model Card {
 
   listId                String
   list                  List             @relation(fields: [listId], references: [id], onDelete: Cascade)
-  assignees             CardAssignee[]
   comments              CardComment[]
   labels                CardLabel[]
   checklists            Checklist[]
@@ -147,7 +146,6 @@ model CardDependency {
 }
 
 // Trạng thái riêng từng người trên một thẻ: gắn sao, ghim "Hôm nay".
-// Thẻ nhóm dùng chung nên không lưu trên Card.
 model CardUserState {
   cardId      String
   card        Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
@@ -237,7 +235,6 @@ enum NOTIFICATION_TYPE {
 
 model Notification {
   id              String @id @default(uuid())
-  orgId           String
   recipientUserId String
 
   actorUserId String?
@@ -263,57 +260,12 @@ model Notification {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  @@index([recipientUserId, orgId, readAt, createdAt])
-  @@index([orgId])
+  @@index([recipientUserId, readAt, createdAt])
   @@index([boardId])
   @@index([cardId])
   @@index([commentId])
   @@index([dedupeKey])
   @@index([type])
-}
-
-model BoardMember {
-  id      String @id @default(uuid())
-  boardId String
-  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
-
-  userId    String
-  userName  String          @db.Text
-  userImage String          @db.Text
-  userEmail String?         @db.Text
-  role      BoardMemberRole @default(MEMBER)
-
-  assignees      CardAssignee[]
-  checklistItems ChecklistItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([boardId, userId])
-  @@index([boardId])
-  @@index([userId])
-}
-
-enum BoardMemberRole {
-  ADMIN
-  MEMBER
-  VIEWER
-}
-
-model CardAssignee {
-  id            String      @id @default(uuid())
-  cardId        String
-  card          Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  boardMemberId String
-  boardMember   BoardMember @relation(fields: [boardMemberId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([cardId, boardMemberId])
-  @@index([cardId])
-  @@index([cardId, createdAt])
-  @@index([boardMemberId])
 }
 
 enum ACTION {
@@ -346,7 +298,6 @@ enum ENTITY_TYPE {
 
 model AuditLog {
   id          String           @id @default(uuid())
-  orgId       String
   boardId     String?
   cardId      String?
   action      ACTION
@@ -362,10 +313,10 @@ model AuditLog {
   updatedAt DateTime @updatedAt
 
   @@index([cardId])
-  @@index([orgId, boardId, createdAt])
-  @@index([orgId, boardId, eventType, createdAt])
-  @@index([orgId, userId, createdAt])
-  @@index([orgId, createdAt])
+  @@index([boardId, createdAt])
+  @@index([boardId, eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Label {
@@ -413,22 +364,19 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id          String       @id @default(uuid())
+  id          String    @id @default(uuid())
   checklistId String
-  checklist   Checklist    @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   title       String
-  isCompleted Boolean      @default(false)
+  isCompleted Boolean   @default(false)
   order       Int
   dueDate     DateTime?
-  assigneeId  String?
-  assignee    BoardMember? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([checklistId])
   @@index([checklistId, isCompleted])
-  @@index([assigneeId])
 }
 
 model BoardAiChat {
@@ -448,9 +396,7 @@ model UserPreference {
   userId     String @id
   accent     String @default("blue")
   background String @default("glow")
-  /// Clerk org dùng làm Không gian cá nhân của user (mọi org khác là nhóm)
-  personalOrgId String?
-  pageStyle Json?
+  pageStyle  Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -459,7 +405,6 @@ model UserPreference {
 model NotePage {
   id        String   @id @default(uuid())
   userId    String
-  orgId     String
   title     String   @default("Trang mới")
   content   String   @default("") @db.Text
   style     Json?
@@ -468,13 +413,12 @@ model NotePage {
 
   aiEdits AiNoteEdit[]
 
-  @@index([userId, orgId, updatedAt])
+  @@index([userId, updatedAt])
 }
 
 model AiNoteEdit {
   id               String   @id @default(uuid())
   userId           String
-  orgId            String
   notePageId       String
   notePage         NotePage @relation(fields: [notePageId], references: [id], onDelete: Cascade)
   beforeContent    String   @db.Text
@@ -483,5 +427,5 @@ model AiNoteEdit {
   undoneAt         DateTime?
   createdAt        DateTime @default(now())
 
-  @@index([userId, orgId, notePageId, createdAt])
+  @@index([userId, notePageId, createdAt])
 }
