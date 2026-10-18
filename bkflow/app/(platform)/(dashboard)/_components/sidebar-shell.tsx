@@ -5,7 +5,7 @@ export const SidebarShell = ({ children }: { children: React.ReactNode }) => {
         <div className="workspace-shell min-h-screen w-full pt-14">
             <div className="flex">
                 <div className="hidden w-60 shrink-0 border-r border-border bg-sidebar md:block">
-                    <aside aria-label="Thanh điều hướng cá nhân" className="sticky top-14 max-h-[calc(100dvh-3.5rem)] min-h-[calc(100vh-3.5rem)] overflow-y-auto px-4 py-6">
+                    <aside aria-label="Thanh điều hướng cá nhân" className="sticky top-14 max-h-[calc(100dvh-3.5rem)] min-h-[calc(100vh-3.5rem)] overflow-y-auto px-2 py-3">
                         <Sidebar />
                     </aside>
                 </div>

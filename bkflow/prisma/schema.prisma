@@ -255,6 +255,7 @@ model Notification {
   triggerTime   DateTime?
   reminderLabel String?
   dedupeKey     String?
+  pageId        String?
 
   readAt    DateTime?
   createdAt DateTime  @default(now())
@@ -403,29 +404,54 @@ model UserPreference {
 }
 
 model NotePage {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String   @default("Trang mới")
-  content   String   @default("") @db.Text
-  style     Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String     @id @default(uuid())
+  userId     String
+  title      String     @default("Trang mới")
+  content    String     @default("") @db.Text
+  style      Json?
+  parentId   String?
+  parent     NotePage?  @relation("NotePageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children   NotePage[] @relation("NotePageTree")
+  icon       String?
+  isFavorite Boolean    @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
-  aiEdits AiNoteEdit[]
+  aiEdits   AiNoteEdit[]
+  deadlines NoteDeadline[]
 
   @@index([userId, updatedAt])
+  @@index([parentId])
+}
+
+// Deadline blocks inside note pages, mirrored from NotePage.content on every content write.
+model NoteDeadline {
+  id        String   @id @default(uuid())
+  userId    String
+  pageId    String
+  page      NotePage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  blockId   String
+  title     String   @db.Text
+  dueAt     DateTime
+  reminder  String   @default("none")
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([pageId, blockId])
+  @@index([userId, dueAt])
 }
 
 model AiNoteEdit {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   userId           String
   notePageId       String
-  notePage         NotePage @relation(fields: [notePageId], references: [id], onDelete: Cascade)
-  beforeContent    String   @db.Text
-  afterContent     String   @db.Text
+  notePage         NotePage  @relation(fields: [notePageId], references: [id], onDelete: Cascade)
+  beforeContent    String    @db.Text
+  afterContent     String    @db.Text
   appliedUpdatedAt DateTime
   undoneAt         DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   @@index([userId, notePageId, createdAt])
 }

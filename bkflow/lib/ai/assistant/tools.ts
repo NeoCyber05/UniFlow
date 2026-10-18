@@ -32,6 +32,8 @@ import {
   serializeCard,
 } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
+import { createChecklistItemTool } from "./checklist-tool";
+import { createWorkspaceTools } from "./workspace-tools";
 import {
   formatZonedDateTime,
   getWeekdayIndex,
@@ -97,6 +99,7 @@ export type AssistantActionCard = {
  * Dùng để đồng bộ trạng thái UI và thông báo cho người dùng.
  */
 export type AssistantMutationOutput =
+  | { ok: true; action: "checklist_item_updated"; card: { id: string; title: string }; item: { id: string; title: string; isCompleted: boolean; dueDate: string | null } }
   | { ok: true; action: "created" | "updated"; card: AssistantActionCard; changes?: string[] }
   | { ok: true; action: "batch_created"; cards: AssistantActionCard[]; summary: string }
   | { ok: true; action: "moved"; card: AssistantActionCard; fromList: string; toList: string }
@@ -259,6 +262,8 @@ export const createAssistantTools = (session: AssistantSession) => {
   };
 
   return {
+    ...createWorkspaceTools(session),
+    updateChecklistItem: createChecklistItemTool(session),
     /**
      * Công cụ: getDeadlines
      * Mục đích: Tra cứu danh sách thẻ/deadline theo các khoảng thời gian tương đối

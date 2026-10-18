@@ -40,6 +40,6 @@ export const PageStyleControls = ({ value, onChange }: { value: PageStyle; onCha
       <Button type="button" size="sm" variant="outline" onClick={() => onChange({ ...value, paperColor: "#171717", textColor: "#e5e7eb" })}>Tối</Button>
       <Button type="button" size="sm" variant="ghost" onClick={() => onChange(DEFAULT_PAGE_STYLE)}>Đặt lại</Button>
     </div>
-    <div className="overflow-hidden rounded-lg border" aria-label="Xem trước kiểu trang"><div style={{ ...pageStyleCss(value), maxWidth: "100%", padding: "1rem" }}>Ghi chú của mình<br /><span>Học từng chút, nhớ dài lâu.</span></div></div>
+    <div className="overflow-hidden rounded-lg border" aria-label="Xem trước kiểu trang"><div style={{ ...pageStyleCss(value), maxWidth: "100%", padding: "1rem" }}>Ghi chú của mình</div></div>
   </div>;
 };

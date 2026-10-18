@@ -9,6 +9,8 @@ export const NoteBlockSchema = z.discriminatedUnion("type", [
   textBlock.extend({ type: z.literal("callout") }),
   z.object({ id: z.string().min(1).max(80), type: z.literal("divider") }),
   z.object({ id: z.string().min(1).max(80), type: z.literal("task"), taskId: z.string().max(80) }),
+  // dueAt is an ISO datetime or "" while unset; reminder is a reminderLabels key or "none".
+  textBlock.extend({ type: z.literal("deadline"), dueAt: z.string().max(40), reminder: z.string().max(10), checked: z.boolean() }),
 ]);
 
 export const NoteBlocksDocumentSchema = z.object({ version: z.literal(1), blocks: z.array(NoteBlockSchema).min(1).max(100) }).superRefine((document, context) => {

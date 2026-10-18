@@ -9,6 +9,9 @@ export const NoteReadingView = ({ blocks, tasks }: { blocks: NoteBlock[]; tasks:
       const task = tasks.find(task => task.id === block.taskId);
       return <p key={block.id}>{task ? <a href={`/board/${encodeURIComponent(task.boardId)}?cardId=${encodeURIComponent(task.id)}`}>{task.title}</a> : "Công việc liên kết chưa có trong danh sách đã tải."}</p>;
     }
+    if (block.type === "deadline") {
+      return <p key={block.id} className={block.checked ? "line-through opacity-70" : ""}>⏰ <strong>{block.text || "Hạn chưa đặt tên"}</strong>{block.dueAt && ` · ${new Date(block.dueAt).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}`}</p>;
+    }
     if (block.type === "heading") {
       const Tag = `h${block.level}` as "h1" | "h2" | "h3";
       return <Tag key={block.id}>{block.text}</Tag>;

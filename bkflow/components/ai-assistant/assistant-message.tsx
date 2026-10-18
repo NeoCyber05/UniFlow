@@ -28,6 +28,10 @@ type MessagePart = BoardAssistantUIMessage["parts"][number];
  * thân thiện với người dùng trong quá trình Agent thực thi tool calls.
  */
 const TOOL_LABELS: Record<string, string> = {
+  searchWorkspace: "Đang tìm trong workspace",
+  getPage: "Đang đọc trang ghi chú",
+  getMyAgenda: "Đang tổng hợp lịch việc cá nhân",
+  updateChecklistItem: "Đang cập nhật mục checklist",
   getDeadlines: "Đang tra cứu deadline",
   getBoardProgress: "Đang thống kê tiến độ bảng",
   findCards: "Đang tìm thẻ",
@@ -47,6 +51,7 @@ const TOOL_LABELS: Record<string, string> = {
  * cần hiển thị thẻ hành động (Action Card) xem trước trên giao diện chat.
  */
 const MUTATION_TOOL_NAMES = new Set([
+  "updateChecklistItem",
   "createDeadlineCard",
   "createRecurringSchedule",
   "batchCreateCards",
@@ -133,6 +138,19 @@ const ActionCard = ({
             Mở thẻ <ExternalLink className="size-3" />
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (output.action === "checklist_item_updated") {
+    return (
+      <div className="space-y-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs">
+        <p className="flex items-center gap-2 font-medium"><ListChecks className="size-4 shrink-0" />Đã cập nhật mục checklist</p>
+        <p className="font-semibold">{output.item.title}</p>
+        <p className="text-muted-foreground">{output.item.isCompleted ? "Đã hoàn thành" : "Chưa hoàn thành"}{output.item.dueDate ? ` · Hạn: ${output.item.dueDate}` : " · Chưa có hạn"}</p>
+        <button type="button" onClick={() => onOpenCard(output.card.id)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+          Mở thẻ: {output.card.title}<ExternalLink className="size-3" />
+        </button>
       </div>
     );
   }

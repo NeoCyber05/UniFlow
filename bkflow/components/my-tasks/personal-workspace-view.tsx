@@ -37,7 +37,7 @@ export const PersonalWorkspaceView = ({ view, initialContext, initialData, initi
 
   return <div className="personal-workspace mx-auto w-full max-w-6xl">
     <header className="mb-7 flex items-start justify-between gap-4">
-      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{view === "today" ? now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" }) : semester?.title ?? "Học kỳ hiện tại"}</p><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{view === "today" ? "Một ngày, vừa đủ." : "Học phần của mình"}</h1><p className="mt-3 text-sm text-muted-foreground">{view === "today" ? "Việc cần làm, hạn cần nhớ. Cùng bắt đầu từng chút." : "Mỗi môn một góc. Mọi thứ ở đúng chỗ."}</p></div>
+      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{view === "today" ? now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" }) : semester?.title ?? "Học kỳ hiện tại"}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{view === "today" ? "Hôm nay" : "Học phần"}</h1></div>
       <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label="Làm mới công việc"><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button><AppearancePopover /></div>
     </header>
     {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}

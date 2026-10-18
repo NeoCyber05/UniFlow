@@ -26,7 +26,7 @@ export const CoursesOverview = ({ boardId, courses, tasks, canEdit }: { boardId:
         <div className={`mb-5 flex h-20 items-center justify-center rounded-lg ${color.chip}`}><BookOpen aria-hidden="true" className="size-7" strokeWidth={1.3} /></div>
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{course.code || "Học phần"}</p><h2 className="mt-2 text-base font-medium group-hover:text-violet-700">{course.name}</h2><p className="mt-3 text-xs text-muted-foreground">{count} việc chưa xong{course.credits !== null ? ` · ${course.credits} tín chỉ` : ""}</p>
       </Link>;
-    })}</div> : <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center"><BookOpen aria-hidden="true" className="mx-auto mb-4 size-8 text-muted-foreground" /><h2 className="font-medium">Mỗi môn, một góc học tập.</h2><p className="mt-2 text-sm text-muted-foreground">Thêm học phần để sắp xếp công việc theo môn.</p>{canEdit && <Button className="mt-5" onClick={() => setManageOpen(true)}>Thêm học phần đầu tiên</Button>}</div>}
+    })}</div> : <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center"><BookOpen aria-hidden="true" className="mx-auto mb-4 size-8 text-muted-foreground" /><h2 className="font-medium">Chưa có học phần</h2>{canEdit && <Button className="mt-5" onClick={() => setManageOpen(true)}>Thêm học phần đầu tiên</Button>}</div>}
     <CourseManagerDialog boardId={boardId} open={manageOpen} onOpenChange={open => { setManageOpen(open); if (!open) void queryClient.invalidateQueries({ queryKey: MY_TASKS_CONTEXT_KEY }); }} />
   </>;
 };

@@ -19,8 +19,7 @@ export const rememberSearchItem = (items: SearchReference[], item: SearchReferen
 
 const NAVIGATION = [
   { id: "today", title: "Hôm nay", href: "/my/today" },
-  { id: "tasks", title: "Công việc", href: "/my/tasks" },
-  { id: "calendar", title: "Lịch của mình", href: "/my/calendar" },
+  { id: "calendar", title: "Lịch", href: "/my/calendar" },
   { id: "courses", title: "Học phần", href: "/my/courses" },
   { id: "notes", title: "Trang của tôi", href: "/pages" },
 ] as const;

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
-import { ArrowLeft, Check, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronRight, Smile, Star, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +14,12 @@ import { pageStyleCss, type PageStyle } from "@/lib/notes/page-style";
 import { NoteReadingView } from "@/components/notes/note-reading-view";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { shouldResaveNote } from "@/lib/notes/save-state";
+import { NOTE_PAGES_KEY, useNotePages } from "@/components/notes/note-pages-list";
+import { getPagePath } from "@/lib/notes/page-tree";
+import { IconPicker, PageActionsMenu, rememberRecentPage, usePageActions } from "@/components/notes/page-actions";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-type Page = { id: string; title: string; content: string; style: PageStyle | null; updatedAt: string };
+type Page = { id: string; title: string; content: string; style: PageStyle | null; updatedAt: string; icon?: string | null; isFavorite?: boolean; parentId?: string | null; deletedAt?: Date | string | null };
 type UndoEntry = { id: string; createdAt: string; undoneAt: string | null };
 const initialDraft = (page: Page) => ({ title: page.title, blocks: parseNoteBlocks(page.content), style: page.style });
 const signature = (draft: { title: string; blocks: NoteBlock[]; style: PageStyle | null }) => JSON.stringify(draft);
@@ -22,12 +27,23 @@ const signature = (draft: { title: string; blocks: NoteBlock[]; style: PageStyle
 export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; tasks: { id: string; title: string; dueDate: string | null; boardId: string }[] }) => {
   const page = initialPage;
   const { pageStyle: defaultStyle } = useAppearance();
+  const queryClient = useQueryClient();
+  const { data: pages } = useNotePages();
+  const ancestors = useMemo(() => getPagePath(pages ?? [], page.id).slice(0, -1), [pages, page.id]);
+  const live = pages?.find(item => item.id === page.id);
+  const icon = live ? live.icon : page.icon;
+  const isFavorite = live ? Boolean(live.isFavorite) : Boolean(page.isFavorite);
+  const [trashed, setTrashed] = useState(Boolean(page.deletedAt));
+  const [iconOpen, setIconOpen] = useState(false);
+  const { updateMeta } = usePageActions();
+  useEffect(() => { if (!page.deletedAt) rememberRecentPage(page.id); }, [page.id, page.deletedAt]);
   const [reading, setReading] = useState(false);
   const initial = useMemo(() => initialDraft(page), [page]);
   const [title, setTitle] = useState(initial.title);
   const [blocks, setBlocks] = useState(initial.blocks);
   const [style, setStyle] = useState(initial.style);
   const [updatedAt, setUpdatedAt] = useState(page.updatedAt);
+  const summary = { id: page.id, title: title.trim() || "Trang chưa đặt tên", parentId: live?.parentId ?? page.parentId ?? null, updatedAt, icon, isFavorite };
   const [saved, setSaved] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -65,6 +81,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? "Không lưu được trang.");
       versionRef.current = result.page.updatedAt;
+      if (JSON.parse(savedSignatureRef.current).title !== draft.title) void queryClient.invalidateQueries({ queryKey: NOTE_PAGES_KEY });
       savedSignatureRef.current = currentSignature;
       setUpdatedAt(result.page.updatedAt);
       setSaved(signature(draftRef.current) === currentSignature);
@@ -81,7 +98,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
         resaveRef.current = setTimeout(() => { void saveChanges(); }, 250);
       }
     }
-  }, [page.id]);
+  }, [page.id, queryClient]);
 
   useEffect(() => {
     const timer = setTimeout(() => { void saveChanges(); }, 900);
@@ -149,12 +166,40 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
   return <main className="mx-auto w-full px-4 pb-24 pt-5 sm:px-8">
     <div className="mx-auto max-w-5xl">
       <header className="mb-7 flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm"><Link href="/pages"><ArrowLeft aria-hidden="true" /> Trang của tôi</Link></Button>
+        <nav aria-label="Đường dẫn" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+          <Link href="/pages" className="rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">Trang của tôi</Link>
+          {ancestors.map(ancestor => <span key={ancestor.id} className="flex min-w-0 items-center gap-1">
+            <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
+            <Link href={`/pages/${encodeURIComponent(ancestor.id)}`} className="max-w-40 truncate rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{ancestor.title || "Trang chưa đặt tên"}</Link>
+          </span>)}
+          <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
+          <span aria-current="page" className="flex min-w-0 items-center gap-1.5 px-1.5 text-foreground">{icon && <span aria-hidden="true">{icon}</span>}<span className="truncate">{title.trim() || "Trang chưa đặt tên"}</span></span>
+        </nav>
+        {!trashed && <div className="ml-auto flex items-center gap-1">
+          <Button type="button" variant="ghost" size="icon-sm" aria-pressed={isFavorite} aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"} onClick={() => void updateMeta(page.id, { isFavorite: !isFavorite })}>
+            <Star className={isFavorite ? "fill-amber-400 text-amber-400" : ""} />
+          </Button>
+          <PageActionsMenu page={summary} className="size-8" />
+        </div>}
         <Button type="button" variant="outline" aria-pressed={reading} onClick={() => setReading(value => !value)}>{reading ? "Quay lại viết" : "Chế độ đọc"}</Button>
         <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-live="polite">{saving ? <><LoaderCircle className="size-3.5 animate-spin" /> Đang lưu</> : saved ? <><Check className="size-3.5" /> Đã lưu</> : "Chưa lưu"}<span className="sr-only">Cập nhật lúc {new Date(updatedAt).toLocaleTimeString("vi-VN")}</span></div>
       </header>
+      {trashed && <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        Trang này đang ở thùng rác.
+        <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>Khôi phục</Button>
+      </div>}
       <article className="note-styled-page mx-auto rounded-2xl border border-border/70 bg-card shadow-sm" style={pageStyleCss(effectiveStyle)}>
         <fieldset disabled={aiBusy} className="mx-auto w-full min-w-0">
+          <Popover open={iconOpen} onOpenChange={setIconOpen}>
+            <PopoverTrigger asChild>
+              {icon
+                ? <button type="button" disabled={trashed} aria-label="Đổi icon trang" className="mb-2 rounded-lg p-1 text-5xl leading-none hover:bg-muted">{icon}</button>
+                : <Button type="button" variant="ghost" size="sm" disabled={trashed || reading} className="mb-1 -ml-2 text-muted-foreground"><Smile aria-hidden="true" /> Thêm icon</Button>}
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80">
+              <IconPicker value={icon} onSelect={next => { void updateMeta(page.id, { icon: next }); setIconOpen(false); }} />
+            </PopoverContent>
+          </Popover>
           <Input aria-label="Tên trang" readOnly={reading} value={title} onChange={event => setTitle(event.target.value)} onBlur={() => { if (!title.trim()) setTitle("Trang mới"); }} placeholder="Trang chưa đặt tên" className="mb-7 h-auto border-0 bg-transparent px-0 py-1 text-3xl font-semibold shadow-none focus-visible:ring-0 sm:text-4xl" />
           <div hidden={reading}>
           <BlockEditor blocks={blocks} onChange={setBlocks} tasks={tasks} />

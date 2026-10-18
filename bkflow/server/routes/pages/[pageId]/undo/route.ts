@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { canUndoAiNoteEdit } from "@/lib/notes/ai-undo";
-import { getPersonalNoteScope } from "@/lib/notes/server";
+import { getPersonalNoteScope, syncNoteDeadlines } from "@/lib/notes/server";
 
 const RequestBody = z.object({ changeId: z.string().uuid() });
 
@@ -25,6 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pag
       if (state === "conflict") return { error: "Trang đã có chỉnh sửa mới hơn. Bản mới được giữ nguyên, nên thay đổi AI này không thể hoàn tác tự động.", status: 409 as const };
       const updated = await tx.notePage.updateMany({ where: { id: pageId, ...scope, updatedAt: change.appliedUpdatedAt }, data: { content: change.beforeContent, updatedAt: new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1)) } });
       if (!updated.count) return { error: "Trang vừa thay đổi. Bản mới được giữ nguyên.", status: 409 as const };
+      await syncNoteDeadlines(tx, { userId: scope.userId, pageId, content: change.beforeContent });
       const marked = await tx.aiNoteEdit.updateMany({ where: { id: change.id, ...scope, undoneAt: null }, data: { undoneAt: new Date() } });
       if (!marked.count) throw new Error("Undo record changed concurrently.");
       return { page: await tx.notePage.findUniqueOrThrow({ where: { id: pageId } }) };

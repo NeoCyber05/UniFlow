@@ -7,7 +7,7 @@
     "build": "npm run gen:actions && npm run build:web && tsc --noEmit",
     "start": "cross-env NODE_ENV=production tsx --import ./server/register-aliases.mjs server/index.ts",
     "lint": "eslint",
-    "test": "tsx --test \"lib/**/*.test.ts\" \"server/**/*.test.ts\" \"web/**/*.test.ts\"",
+    "test": "tsx --import ./server/register-aliases.mjs --test \"lib/**/*.test.ts\" \"server/**/*.test.ts\" \"web/**/*.test.ts\"",
     "db:seed": "tsx prisma/seed.ts",
     "db:rls": "tsx scripts/run-sql.ts prisma/sql/enable-rls.sql",
     "postinstall": "prisma generate",

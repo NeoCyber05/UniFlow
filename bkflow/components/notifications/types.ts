@@ -20,6 +20,7 @@ export interface NotificationItem {
   triggerTime: string | null;
   reminderLabel: string | null;
   dedupeKey: string | null;
+  pageId?: string | null;
   readAt: string | null;
   createdAt: string;
   updatedAt: string;

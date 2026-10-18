@@ -27,6 +27,7 @@ type CreateNotificationInput = {
   triggerTime?: Date | null;
   reminderLabel?: string | null;
   dedupeKey?: string | null;
+  pageId?: string | null;
 };
 
 export const createNotification = async ({
@@ -45,6 +46,7 @@ export const createNotification = async ({
   triggerTime,
   reminderLabel,
   dedupeKey,
+  pageId,
 }: CreateNotificationInput) => {
   try {
     if (actor?.userId === recipientUserId) {
@@ -89,6 +91,7 @@ export const createNotification = async ({
           triggerTime,
           reminderLabel,
           dedupeKey,
+          pageId,
         },
       });
     } else {
@@ -111,6 +114,7 @@ export const createNotification = async ({
           triggerTime,
           reminderLabel,
           dedupeKey,
+          pageId,
         },
       });
     }

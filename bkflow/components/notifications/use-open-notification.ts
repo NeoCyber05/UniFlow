@@ -43,6 +43,11 @@ export const useOpenNotification = () => {
 
   return useCallback(
     async (notification: NotificationItem) => {
+      if (notification.pageId) {
+        router.push(`/pages/${encodeURIComponent(notification.pageId)}`);
+        return;
+      }
+
       if (notification.cardId) {
         try {
           const response = await fetch(`/api/cards/${notification.cardId}`);

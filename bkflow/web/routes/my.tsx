@@ -1,4 +1,8 @@
 import { Navigate, useParams, useSearchParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { getPersonalBoardDestination } from "@/lib/my-tasks/personal-navigation";
+import { MY_TASKS_CONTEXT_KEY, type MyTasksContext } from "@/lib/my-tasks/types";
 
 import type { loadMy } from "@/server/views/my";
 import { NoSemesterState } from "@/components/my-tasks/no-semester-state";
@@ -15,9 +19,13 @@ type View = Awaited<ReturnType<typeof loadMy>>;
 export default function MyRoute() {
   const { view = "" } = useParams<{ view: string }>();
   const error = useSearchParams()[0].get("error") ?? undefined;
-  const { data } = useView<View>(`/my/${view}${error ? `?error=${encodeURIComponent(error)}` : ""}`);
+  // Board views only redirect; skip the server round-trip when the sidebar already knows the board.
+  const cachedBoardId = useQueryClient().getQueryData<MyTasksContext>(MY_TASKS_CONTEXT_KEY)?.board?.id;
+  const fastRedirect = !error && cachedBoardId ? getPersonalBoardDestination(view, cachedBoardId) : null;
+  const { data } = useView<View>(`/my/${view}${error ? `?error=${encodeURIComponent(error)}` : ""}`, { enabled: !fastRedirect });
   useTitle("Không gian cá nhân");
 
+  if (fastRedirect) return <Navigate to={fastRedirect} replace />;
   return <SidebarShell>{render(data)}</SidebarShell>;
 }
 

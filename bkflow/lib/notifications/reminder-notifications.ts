@@ -138,3 +138,35 @@ export const ensureDueReminderNotifications = async ({
     }),
   );
 };
+
+// Deadline blocks in personal note pages reuse the card reminder notification.
+export const ensureNoteDeadlineNotifications = async ({ userId }: { userId: string }) => {
+  const now = new Date();
+  const deadlines = await db.noteDeadline.findMany({
+    // Largest offset is 2 weeks; deadlines over a day old are not announced late.
+    where: { userId, done: false, reminder: { not: "none" }, dueAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000), lte: new Date(now.getTime() + 20160 * 60 * 1000) }, page: { deletedAt: null } },
+    select: { pageId: true, blockId: true, title: true, dueAt: true, reminder: true, page: { select: { title: true } } },
+    take: 200,
+  });
+
+  await Promise.all(deadlines.map(async (deadline) => {
+    const offsetMinutes = parseInt(deadline.reminder, 10);
+    if (Number.isNaN(offsetMinutes)) return;
+    const triggerTime = new Date(deadline.dueAt.getTime() - offsetMinutes * 60 * 1000);
+    if (now < triggerTime) return;
+
+    await createNotification({
+      recipientUserId: userId,
+      type: NOTIFICATION_TYPE.CARD_REMINDER,
+      title: "Sap den han",
+      message: `Hạn "${deadline.title}" trong trang "${deadline.page.title}" sắp đến.`,
+      boardTitle: deadline.page.title,
+      cardTitle: deadline.title,
+      dueDate: deadline.dueAt,
+      triggerTime,
+      reminderLabel: reminderLabels[deadline.reminder] || "",
+      pageId: deadline.pageId,
+      dedupeKey: `note-reminder:${userId}:${deadline.pageId}:${deadline.blockId}:${deadline.dueAt.getTime()}:${deadline.reminder}`,
+    });
+  }));
+};

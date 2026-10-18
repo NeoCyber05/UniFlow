@@ -39,9 +39,9 @@ import { AssistantMessage } from "./assistant-message";
  */
 const SUGGESTIONS = [
   "Tạo lịch học 5h sáng mỗi ngày",
-  "Lên kế hoạch ôn thi tuần tới",
-  "Hôm nay có việc gì gấp cần làm?",
-  "Thêm checklist cho đồ án",
+  "Tìm ghi chú về đồ án trong workspace",
+  "Hôm nay có hạn nào từ công việc và ghi chú?",
+  "Đánh dấu xong một bước trong checklist đồ án",
 ];
 
 /**
@@ -49,6 +49,7 @@ const SUGGESTIONS = [
  * Dùng để phát hiện khi Agent thực thi xong công cụ nhằm tự động làm mới cache dữ liệu bảng.
  */
 const MUTATION_TOOLS = new Set([
+  "tool-updateChecklistItem",
   "tool-createDeadlineCard",
   "tool-createRecurringSchedule",
   "tool-batchCreateCards",

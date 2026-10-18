@@ -2,7 +2,7 @@ import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { ensureDueReminderNotifications } from "@/lib/notifications/reminder-notifications";
+import { ensureDueReminderNotifications, ensureNoteDeadlineNotifications } from "@/lib/notifications/reminder-notifications";
 
 export async function GET() {
   try {
@@ -12,7 +12,7 @@ export async function GET() {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    await ensureDueReminderNotifications({ userId });
+    await Promise.all([ensureDueReminderNotifications({ userId }), ensureNoteDeadlineNotifications({ userId })]);
 
     const notifications = await db.notification.findMany({
       where: {
