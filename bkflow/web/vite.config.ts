@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
     define: Object.fromEntries(PUBLIC_ENV.map((k) => [`process.env.${k}`, JSON.stringify(env[k] ?? "")])),
     resolve: {
       alias: [
+        // @prisma/client/index-browser requires ".prisma/client/index-browser", which Rollup leaves as a bare import (blank page in prod).
+        { find: /^\.prisma\/client\/index-browser$/, replacement: path.join(root, "node_modules/.prisma/client/index-browser.js") },
         { find: /^next\/font\/(google|local)$/, replacement: path.join(__dirname, "shims/next-font.ts") },
         { find: /^next\/image$/, replacement: path.join(__dirname, "shims/next-image.tsx") },
         { find: /^next\/link$/, replacement: path.join(__dirname, "shims/next-link.tsx") },
