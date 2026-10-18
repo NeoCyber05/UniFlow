@@ -1,0 +1,487 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id            String @id @default(uuid())
+  orgId         String
+  title         String
+  imageId       String
+  imageThumbUrl String @db.Text
+  imageFullUrl  String @db.Text
+  imageUserName String @db.Text
+  imageLinkHTML String @db.Text
+
+  semesterId String?   @unique
+  semester   Semester? @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  boardType  BoardType @default(TEAM_PROJECT)
+
+  lists   List[]
+  members BoardMember[]
+  labels  Label[]
+  courses Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
+}
+
+enum BoardType {
+  SEMESTER
+  TEAM_PROJECT
+}
+
+model Semester {
+  id        String   @id @default(uuid())
+  orgId     String
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  board     Board?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
+}
+
+model Course {
+  id      String  @id @default(uuid())
+  boardId String
+  board   Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name    String
+  code    String?
+  credits Int?
+  color   String
+  order   Int     @default(0)
+  cards   Card[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, name])
+  @@index([boardId])
+}
+
+model List {
+  id         String    @id @default(uuid())
+  title      String
+  order      Int
+  archivedAt DateTime?
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  cards Card[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+  @@index([boardId, archivedAt, order])
+}
+
+model Card {
+  id                   String    @id @default(uuid())
+  title                String
+  order                Int
+  description          String?   @db.Text
+  descriptionUpdatedAt DateTime  @default(now())
+  startDate            DateTime?
+  dueDate              DateTime?
+  isCompleted          Boolean   @default(false)
+  reminder             String?
+  reminderSetAt        DateTime?
+  archivedAt           DateTime?
+  archivedByListId     String?
+  courseId             String?
+  course               Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  listId                String
+  list                  List             @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignees             CardAssignee[]
+  comments              CardComment[]
+  labels                CardLabel[]
+  checklists            Checklist[]
+  attachments           CardAttachment[]
+  blockingDependencies  CardDependency[] @relation("BlockerRelation")
+  blockedByDependencies CardDependency[] @relation("BlockedRelation")
+  userStates            CardUserState[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listId])
+  @@index([listId, archivedAt, order])
+  @@index([courseId])
+}
+
+model CardDependency {
+  id String @id @default(uuid())
+
+  blockerCardId String
+  blockerCard   Card   @relation("BlockerRelation", fields: [blockerCardId], references: [id], onDelete: Cascade)
+
+  blockedCardId String
+  blockedCard   Card   @relation("BlockedRelation", fields: [blockedCardId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([blockerCardId, blockedCardId])
+  @@index([blockerCardId])
+  @@index([blockedCardId])
+}
+
+// Trạng thái riêng từng người trên một thẻ: gắn sao, ghim "Hôm nay".
+// Thẻ nhóm dùng chung nên không lưu trên Card.
+model CardUserState {
+  cardId      String
+  card        Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId      String
+  isImportant Boolean   @default(false)
+  myDayAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+model CardAttachment {
+  id String @id @default(uuid())
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  type     AttachmentType
+  order    Int            @default(0)
+  name     String
+  url      String         @db.Text
+  fileKey  String?
+  fileSize Int?
+  mimeType String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+}
+
+enum AttachmentType {
+  LINK
+  FILE
+}
+
+model CardComment {
+  id     String @id @default(uuid())
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  userId    String
+  userName  String @db.Text
+  userImage String @db.Text
+  content   String @db.Text
+
+  parentId String?
+  parent   CardComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  CardComment[] @relation("CommentReplies")
+
+  reactions CardCommentReaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+  @@index([parentId])
+  @@index([userId])
+}
+
+model CardCommentReaction {
+  id        String      @id @default(uuid())
+  commentId String
+  comment   CardComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  userId String
+  emoji  String
+
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
+  @@index([userId])
+}
+
+enum NOTIFICATION_TYPE {
+  CARD_ASSIGNED
+  CHECKLIST_ITEM_ASSIGNED
+  BOARD_INVITE
+  COMMENT_REPLY
+  COMMENT_MENTION
+  CARD_REMINDER
+}
+
+model Notification {
+  id              String @id @default(uuid())
+  orgId           String
+  recipientUserId String
+
+  actorUserId String?
+  actorName   String? @db.Text
+  actorImage  String? @db.Text
+
+  type    NOTIFICATION_TYPE
+  title   String
+  message String            @db.Text
+
+  boardId       String?
+  boardTitle    String?   @db.Text
+  cardId        String?
+  cardTitle     String?   @db.Text
+  listTitle     String?   @db.Text
+  commentId     String?
+  dueDate       DateTime?
+  triggerTime   DateTime?
+  reminderLabel String?
+  dedupeKey     String?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([recipientUserId, orgId, readAt, createdAt])
+  @@index([orgId])
+  @@index([boardId])
+  @@index([cardId])
+  @@index([commentId])
+  @@index([dedupeKey])
+  @@index([type])
+}
+
+model BoardMember {
+  id      String @id @default(uuid())
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  userId    String
+  userName  String          @db.Text
+  userImage String          @db.Text
+  userEmail String?         @db.Text
+  role      BoardMemberRole @default(MEMBER)
+
+  assignees      CardAssignee[]
+  checklistItems ChecklistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, userId])
+  @@index([boardId])
+  @@index([userId])
+}
+
+enum BoardMemberRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model CardAssignee {
+  id            String      @id @default(uuid())
+  cardId        String
+  card          Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  boardMemberId String
+  boardMember   BoardMember @relation(fields: [boardMemberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cardId, boardMemberId])
+  @@index([cardId])
+  @@index([cardId, createdAt])
+  @@index([boardMemberId])
+}
+
+enum ACTION {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AUDIT_EVENT_TYPE {
+  CREATE
+  UPDATE
+  DELETE
+  MOVE
+  ASSIGN_MEMBER
+  COMMENT
+  ATTACHMENT
+  CHECKLIST
+  DUE_DATE
+  DEPENDENCY
+  LABEL
+}
+
+enum ENTITY_TYPE {
+  BOARD
+  LIST
+  CARD
+  CHECKLIST
+  CHECKLIST_ITEM
+}
+
+model AuditLog {
+  id          String           @id @default(uuid())
+  orgId       String
+  boardId     String?
+  cardId      String?
+  action      ACTION
+  eventType   AUDIT_EVENT_TYPE @default(UPDATE)
+  entityId    String
+  entityType  ENTITY_TYPE
+  entityTitle String
+  userId      String
+  userImage   String           @db.Text
+  userName    String           @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+  @@index([orgId, boardId, createdAt])
+  @@index([orgId, boardId, eventType, createdAt])
+  @@index([orgId, userId, createdAt])
+  @@index([orgId, createdAt])
+}
+
+model Label {
+  id      String      @id @default(uuid())
+  boardId String
+  board   Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title   String
+  color   String
+  cards   CardLabel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
+}
+
+model CardLabel {
+  id      String @id @default(uuid())
+  cardId  String
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cardId, labelId])
+  @@index([cardId])
+  @@index([cardId, createdAt])
+  @@index([labelId])
+}
+
+model Checklist {
+  id     String          @id @default(uuid())
+  cardId String
+  card   Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  title  String
+  order  Int             @default(0)
+  items  ChecklistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String       @id @default(uuid())
+  checklistId String
+  checklist   Checklist    @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  title       String
+  isCompleted Boolean      @default(false)
+  order       Int
+  dueDate     DateTime?
+  assigneeId  String?
+  assignee    BoardMember? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([checklistId])
+  @@index([checklistId, isCompleted])
+  @@index([assigneeId])
+}
+
+model BoardAiChat {
+  id        String   @id @default(uuid())
+  boardId   String
+  userId    String
+  role      String // "user" | "assistant"
+  content   String   @db.Text
+  parts     Json?
+  createdAt DateTime @default(now())
+
+  @@index([boardId, userId])
+  @@index([boardId, userId, createdAt])
+}
+
+model UserPreference {
+  userId     String @id
+  accent     String @default("blue")
+  background String @default("glow")
+  /// Clerk org dùng làm Không gian cá nhân của user (mọi org khác là nhóm)
+  personalOrgId String?
+  pageStyle Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotePage {
+  id        String   @id @default(uuid())
+  userId    String
+  orgId     String
+  title     String   @default("Trang mới")
+  content   String   @default("") @db.Text
+  style     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  aiEdits AiNoteEdit[]
+
+  @@index([userId, orgId, updatedAt])
+}
+
+model AiNoteEdit {
+  id               String   @id @default(uuid())
+  userId           String
+  orgId            String
+  notePageId       String
+  notePage         NotePage @relation(fields: [notePageId], references: [id], onDelete: Cascade)
+  beforeContent    String   @db.Text
+  afterContent     String   @db.Text
+  appliedUpdatedAt DateTime
+  undoneAt         DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([userId, orgId, notePageId, createdAt])
+}
