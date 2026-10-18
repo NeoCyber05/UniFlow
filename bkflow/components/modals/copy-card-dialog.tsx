@@ -45,7 +45,7 @@ type CopyOptionsResponse = {
   boards: {
     id: string;
     title: string;
-    orgId: string;
+    orgId?: string; userId?: string;
     isCurrent: boolean;
     lists: {
       id: string;
@@ -237,9 +237,6 @@ export const CopyCardDialog = ({
     });
   };
 
-  const currentBoardOrganization = selectedBoard
-    ? organizationById.get(selectedBoard.orgId)
-    : null;
   const modalStyle = useMemo(() => {
     if (!triggerRect) return undefined;
 
@@ -383,7 +380,6 @@ export const CopyCardDialog = ({
                 >
                   <div className="flex flex-col gap-y-0.5">
                     {(options?.boards ?? []).map((board) => {
-                      const organization = organizationById.get(board.orgId);
                       const isSelected = board.id === selectedBoardId;
 
                       return (
@@ -396,10 +392,11 @@ export const CopyCardDialog = ({
                             )}
                           >
                             <div className="leading-snug">{board.title}</div>
-                            <div className="text-[11px] text-neutral-500 font-normal mt-0.5 leading-tight">
-                              {organization ? `${organization.name}` : ""}
-                              {board.isCurrent && " (hiện tại)"}
-                            </div>
+                            {board.isCurrent && (
+                              <div className="text-[11px] text-neutral-500 font-normal mt-0.5 leading-tight">
+                                (hiện tại)
+                              </div>
+                            )}
                           </button>
                         </PopoverClose>
                       );
@@ -407,11 +404,6 @@ export const CopyCardDialog = ({
                   </div>
                 </PopoverContent>
               </Popover>
-              {!selectedBoard?.isCurrent && currentBoardOrganization ? (
-                <p className="text-xs text-neutral-500 truncate" title={currentBoardOrganization.name}>
-                  {currentBoardOrganization.name}
-                </p>
-              ) : null}
             </div>
 
             <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">

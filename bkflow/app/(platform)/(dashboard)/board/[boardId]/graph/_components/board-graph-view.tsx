@@ -1,8 +1,9 @@
+import { BoardMemberRole } from "@/types";
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
-import { BoardMemberRole } from "@prisma/client";
+
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import { Info, Network, Sparkles, X } from "lucide-react";

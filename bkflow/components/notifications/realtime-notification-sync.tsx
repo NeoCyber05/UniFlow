@@ -19,7 +19,7 @@ const toNotificationItem = (
   payload: NotificationCreatedPayload,
 ): NotificationItem => ({
   id: payload.notificationId,
-  orgId: payload.orgId,
+  orgId: payload.orgId ?? "",
   recipientUserId: payload.recipientUserId,
   actorUserId: payload.actor?.userId ?? null,
   actorName: payload.actor?.name ?? null,

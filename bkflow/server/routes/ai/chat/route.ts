@@ -188,7 +188,6 @@ export async function POST(request: Request) {
   const { userId, membership } = result;
   const session: AssistantSession = {
     boardId,
-    orgId: membership.board.orgId,
     userId,
     boardMemberId: membership.id,
     role: membership.role,

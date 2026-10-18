@@ -30,7 +30,7 @@ import {
 type UpdateCardServiceInput = {
   data: UpdateCardInput;
   userId: string;
-  orgId: string;
+  orgId?: string;
 };
 
 export const DESCRIPTION_CONFLICT_ERROR_CODE = "DESCRIPTION_CONFLICT";
@@ -40,7 +40,6 @@ export const DESCRIPTION_CONFLICT_ERROR_MESSAGE =
 export const updateCardService = async ({
   data,
   userId,
-  orgId,
 }: UpdateCardServiceInput): Promise<UpdateCardResult> => {
   const {
     id,
@@ -56,7 +55,7 @@ export const updateCardService = async ({
   let card: Card;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -70,7 +69,7 @@ export const updateCardService = async ({
           archivedAt: null,
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },
@@ -167,7 +166,7 @@ export const updateCardService = async ({
         archivedAt: null,
         board: {
           id: boardId,
-          orgId,
+          userId,
         },
       },
     };
@@ -245,7 +244,6 @@ export const updateCardService = async ({
       }),
       boardId,
       cardId: card.id,
-      orgId,
     });
 
     await triggerCardUpdated({

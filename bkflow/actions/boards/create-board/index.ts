@@ -12,10 +12,10 @@ import { createAuditLog } from "@/lib/create-audit-log";
 import { ACTION, BoardType, ENTITY_TYPE } from "@prisma/client";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
   const user = await currentUser();
 
-  if (!userId || !orgId || !user) {
+  if (!userId || !user) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -42,14 +42,13 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   try {
     const userName =
       user.fullName ||
-      user.username ||
       user.primaryEmailAddress?.emailAddress ||
       "Quản trị viên";
 
     board = await db.board.create({
       data: {
         title,
-        orgId,
+        userId,
         imageId,
         imageThumbUrl,
         imageFullUrl,

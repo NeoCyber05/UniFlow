@@ -1,10 +1,10 @@
+import { BoardMember } from "@/types";
 "use client";
-
 import { useMemo, useState } from "react";
 import { AlignLeft, Bot, Calendar, CheckSquare, FileText, GraduationCap, LayoutGrid, Loader2, Plus, Sparkles, Tag, Trash2, Type, User, X } from "lucide-react";
 import { useRouter } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
-import type { BoardMember, Label, List } from "@prisma/client";
+import type { Label, List } from "@prisma/client";
 
 import { analyzeSmartCapture } from "@/actions/ai/analyze-smart-capture";
 import { SMART_CAPTURE_RAW_TEXT_MAX_LENGTH } from "@/actions/ai/analyze-smart-capture/schema";

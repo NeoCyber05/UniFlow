@@ -1,7 +1,7 @@
+import { BoardMemberRole } from "@/types";
 "use server";
-
 import { auth } from "@/server/auth";
-import { BoardMemberRole } from "@prisma/client";
+
 import { z } from "zod";
 
 import { generateAiText } from "@/lib/ai/client";
@@ -1077,16 +1077,16 @@ const multiCardSystemPrompt = [
 ].join("\n");
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
   const { boardId, rawText, timezoneOffsetMinutes, nowIso, timezoneLabel, localNowIso } = data;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -1102,7 +1102,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           boardId,
           archivedAt: null,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1118,7 +1118,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         where: {
           boardId,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1134,7 +1134,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         where: {
           boardId,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1184,7 +1184,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       logger.warn("[ANALYZE_SMART_CAPTURE_PARSE_FALLBACK]", {
         action: "analyze-smart-capture",
         aiFeature: "smart-capture",
-        orgId,
+        
         userId,
         boardId,
         rawLength: raw.length,
@@ -1332,7 +1332,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[ANALYZE_SMART_CAPTURE_ERROR]", error, {
       action: "analyze-smart-capture",
       aiFeature: "smart-capture",
-      orgId,
+      
       userId,
       boardId,
     });

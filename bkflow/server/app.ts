@@ -21,7 +21,7 @@ export const createApp = async () => {
 
   app.use("/api/*", async (c, next) => {
     // A malformed token must not 500 public routes such as /api/health.
-    const requestAuth = await authenticate(c.req.raw).catch(() => ({ userId: null, orgId: null, user: null }));
+    const requestAuth = await authenticate(c.req.raw).catch(() => ({ userId: null, user: null }));
     const isPublic = PUBLIC_API.some((re) => re.test(c.req.path));
     if (!requestAuth.userId && !isPublic) return c.text("Unauthorized", 401);
     return runWithAuth(requestAuth, next);

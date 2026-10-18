@@ -14,10 +14,10 @@ import { CreateCardComment } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
   const user = await currentUser();
 
-  if (!userId || !orgId || !user) {
+  if (!userId || !user) {
     return { error: "Không có quyền truy cập." };
   }
 
@@ -37,7 +37,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   }
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -49,7 +49,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         list: {
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },
@@ -83,7 +83,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             list: {
               board: {
                 id: boardId,
-                orgId,
+                userId,
               },
             },
           },
@@ -125,9 +125,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     if (parentComment && parentComment.userId !== userId) {
       recipientIds.add(parentComment.userId);
-      notifications.push({
-        orgId,
-        recipientUserId: parentComment.userId,
+      notifications.push({ recipientUserId: parentComment.userId,
         actor,
         type: NOTIFICATION_TYPE.COMMENT_REPLY,
         title: "Có phản hồi mới",

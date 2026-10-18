@@ -1,4 +1,4 @@
-import { BoardMemberRole, NOTIFICATION_TYPE } from "@prisma/client";
+import { NOTIFICATION_TYPE } from "@prisma/client";
 
 import { createNotification } from "@/lib/notifications/create-notification";
 import { db } from "@/lib/db";
@@ -46,10 +46,9 @@ export const deleteCardReminderNotifications = async (cardId: string) => {
 
 export const ensureDueReminderNotifications = async ({
   userId,
-  orgId,
 }: {
   userId: string;
-  orgId: string;
+  orgId?: string;
 }) => {
   const cards = await db.card.findMany({
     where: {
@@ -57,7 +56,7 @@ export const ensureDueReminderNotifications = async ({
       list: {
         archivedAt: null,
         board: {
-          orgId,
+          userId,
         },
       },
       dueDate: {
@@ -68,16 +67,6 @@ export const ensureDueReminderNotifications = async ({
         notIn: ["none"],
       },
       isCompleted: false,
-      assignees: {
-        some: {
-          boardMember: {
-            userId,
-            role: {
-              not: BoardMemberRole.VIEWER,
-            },
-          },
-        },
-      },
     },
     select: {
       id: true,
@@ -127,7 +116,6 @@ export const ensureDueReminderNotifications = async ({
       }
 
       await createNotification({
-        orgId,
         recipientUserId: userId,
         type: NOTIFICATION_TYPE.CARD_REMINDER,
         title: "Sap den han",

@@ -1,11 +1,11 @@
+import { BoardMemberRole } from "@/types";
 "use client";
-
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable } from "@hello-pangea/dnd";
-import { BoardMemberRole } from "@prisma/client";
+
 
 import { useAction } from "@/hooks/use-action";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";

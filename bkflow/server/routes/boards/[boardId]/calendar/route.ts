@@ -1,5 +1,4 @@
 import { auth } from "@/server/auth";
-import { BoardMemberRole } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { requireBoardMember } from "@/lib/permissions";
@@ -56,9 +55,9 @@ export async function GET(
 ) {
   try {
     const { boardId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -105,7 +104,7 @@ export async function GET(
       );
     }
 
-    const permission = await requireBoardMember({ boardId, orgId, userId });
+    const permission = await requireBoardMember({ boardId, userId });
 
     if (permission.error) {
       return new Response(permission.error, { status: 403 });
@@ -119,7 +118,7 @@ export async function GET(
             archivedAt: null,
             board: {
               id: boardId,
-              orgId,
+              userId,
             },
           },
           OR: [
@@ -191,29 +190,6 @@ export async function GET(
               createdAt: "asc",
             },
           },
-          assignees: {
-            where: {
-              boardMember: {
-                role: {
-                  not: BoardMemberRole.VIEWER,
-                },
-              },
-            },
-            select: {
-              id: true,
-              boardMemberId: true,
-              boardMember: {
-                select: {
-                  userId: true,
-                  userName: true,
-                  userImage: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
           _count: {
             select: {
               comments: true,
@@ -234,7 +210,7 @@ export async function GET(
                 archivedAt: null,
                 board: {
                   id: boardId,
-                  orgId,
+                  userId,
                 },
               },
             },
@@ -291,15 +267,6 @@ export async function GET(
               },
             },
           },
-          assignee: {
-            select: {
-              id: true,
-              userId: true,
-              userName: true,
-              userImage: true,
-              role: true,
-            },
-          },
         },
       }),
       includeUnscheduled
@@ -312,7 +279,7 @@ export async function GET(
                 archivedAt: null,
                 board: {
                   id: boardId,
-                  orgId,
+                  userId,
                 },
               },
             },
@@ -344,29 +311,6 @@ export async function GET(
                       id: true,
                       title: true,
                       color: true,
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
-                },
-              },
-              assignees: {
-                where: {
-                  boardMember: {
-                    role: {
-                      not: BoardMemberRole.VIEWER,
-                    },
-                  },
-                },
-                select: {
-                  id: true,
-                  boardMemberId: true,
-                  boardMember: {
-                    select: {
-                      userId: true,
-                      userName: true,
-                      userImage: true,
                     },
                   },
                 },
@@ -414,13 +358,7 @@ export async function GET(
           title: label.title,
           color: label.color,
         })),
-        assignees: card.assignees.map((assignee) => ({
-          id: assignee.id,
-          boardMemberId: assignee.boardMemberId,
-          userId: assignee.boardMember.userId,
-          userName: assignee.boardMember.userName,
-          userImage: assignee.boardMember.userImage,
-        })),
+        assignees: [],
         commentCount: card._count.comments,
       } satisfies BoardCalendarCardItem,
       listOrder: card.list.order,
@@ -451,15 +389,7 @@ export async function GET(
           title: item.title,
           dueDate: item.dueDate.toISOString(),
           isCompleted: item.isCompleted,
-          assignee: item.assignee && item.assignee.role !== BoardMemberRole.VIEWER
-            ? {
-                id: item.assignee.id,
-                boardMemberId: item.assignee.id,
-                userId: item.assignee.userId,
-                userName: item.assignee.userName,
-                userImage: item.assignee.userImage,
-              }
-            : null,
+          assignee: null,
           labels: item.checklist.card.labels.map(({ label }) => ({
             id: label.id,
             title: label.title,
@@ -514,13 +444,7 @@ export async function GET(
           title: label.title,
           color: label.color,
         })),
-        assignees: card.assignees.map((assignee) => ({
-          id: assignee.id,
-          boardMemberId: assignee.boardMemberId,
-          userId: assignee.boardMember.userId,
-          userName: assignee.boardMember.userName,
-          userImage: assignee.boardMember.userImage,
-        })),
+        assignees: [],
         commentCount: card._count.comments,
         order: card.order,
         listOrder: card.list.order,

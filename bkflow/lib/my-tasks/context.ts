@@ -19,7 +19,7 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
   const currentSemester = pickCurrentSemester(semesters);
   const boardId = currentSemester ? await resolveCurrentSemesterBoardId(userId) : null;
 
-  const [board, courses] = boardId
+  const [boardData, courses] = boardId
     ? await Promise.all([
         db.board.findUnique({
           where: { id: boardId },
@@ -30,10 +30,6 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
               orderBy: { order: "asc" },
               select: { id: true, title: true },
             },
-            members: {
-              orderBy: { createdAt: "asc" },
-              select: { id: true, userId: true, userName: true, userEmail: true, role: true },
-            },
             labels: {
               orderBy: { createdAt: "asc" },
               select: { id: true, title: true, color: true },
@@ -43,6 +39,13 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
         getBoardCourses(boardId),
       ])
     : [null, []];
+
+  const board = boardData
+    ? {
+        ...boardData,
+        members: [],
+      }
+    : null;
 
   return {
     personalOrgId,

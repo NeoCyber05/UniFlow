@@ -1,7 +1,8 @@
+import { BoardMemberRole } from "@/types";
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { BoardMemberRole } from "@prisma/client";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/web/shims/next-navigation";
 import { CalendarX2 } from "lucide-react";

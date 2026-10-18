@@ -1,5 +1,4 @@
 import ExcelJS from "exceljs";
-import { BoardMemberRole } from "@prisma/client";
 
 import { db } from "@/lib/db";
 
@@ -57,42 +56,29 @@ const getCardStatus = (card: BoardExportCard, now = new Date()) => {
   return "Open";
 };
 
-const getCardAssigneeNames = (card: BoardExportCard) =>
-  joinNames(card.assignees.map((assignee) => assignee.boardMember.userName));
+const getCardAssigneeNames = (_card: BoardExportCard) => "";
 
 const getCardLabelNames = (card: BoardExportCard) =>
   joinNames(card.labels.map(({ label }) => label.title));
 
 export const getBoardExportData = async ({
   boardId,
-  orgId,
+  userId,
 }: {
   boardId: string;
-  orgId: string;
+  userId?: string;
 }) => {
-  const [board, dependencies] = await Promise.all([
+  const [boardData, dependencies] = await Promise.all([
     db.board.findFirst({
       where: {
         id: boardId,
-        orgId,
+        ...(userId ? { userId } : {}),
       },
       select: {
         id: true,
         title: true,
         createdAt: true,
         updatedAt: true,
-        members: {
-          select: {
-            id: true,
-            userName: true,
-            userEmail: true,
-            role: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
         lists: {
           where: {
             archivedAt: null,
@@ -117,28 +103,6 @@ export const getBoardExportData = async ({
                 isCompleted: true,
                 createdAt: true,
                 updatedAt: true,
-                assignees: {
-                  where: {
-                    boardMember: {
-                      role: {
-                        not: BoardMemberRole.VIEWER,
-                      },
-                    },
-                  },
-                  select: {
-                    boardMember: {
-                      select: {
-                        id: true,
-                        userId: true,
-                        userName: true,
-                        userEmail: true,
-                      },
-                    },
-                  },
-                  orderBy: {
-                    createdAt: "asc",
-                  },
-                },
                 labels: {
                   select: {
                     label: {
@@ -165,14 +129,6 @@ export const getBoardExportData = async ({
                         isCompleted: true,
                         dueDate: true,
                         order: true,
-                        assignee: {
-                          select: {
-                            id: true,
-                            userName: true,
-                            userEmail: true,
-                            role: true,
-                          },
-                        },
                       },
                       orderBy: {
                         order: "asc",
@@ -218,20 +174,14 @@ export const getBoardExportData = async ({
           archivedAt: null,
           list: {
             archivedAt: null,
-            board: {
-              id: boardId,
-              orgId,
-            },
+            boardId,
           },
         },
         blockedCard: {
           archivedAt: null,
           list: {
             archivedAt: null,
-            board: {
-              id: boardId,
-              orgId,
-            },
+            boardId,
           },
         },
       },
@@ -268,12 +218,12 @@ export const getBoardExportData = async ({
     }),
   ]);
 
-  if (!board) {
+  if (!boardData) {
     return null;
   }
 
   return {
-    ...board,
+    ...boardData,
     dependencies,
   };
 };
@@ -462,55 +412,6 @@ export const buildBoardWorkbookBuffer = async (data: BoardExportData) => {
   }));
   styleWorksheet(listsSheet);
 
-  const memberRows = new Map<string, {
-    member: string;
-    email: string;
-    total: number;
-    completed: number;
-    overdue: number;
-  }>();
-
-  data.members.forEach((member) => {
-    memberRows.set(member.id, {
-      member: member.userName,
-      email: member.userEmail ?? "",
-      total: 0,
-      completed: 0,
-      overdue: 0,
-    });
-  });
-
-  data.lists.forEach((list) => {
-    list.cards.forEach((card) => {
-      card.assignees.forEach((assignee) => {
-        const member = assignee.boardMember;
-        const current = memberRows.get(member.id) ?? {
-          member: member.userName,
-          email: member.userEmail ?? "",
-          total: 0,
-          completed: 0,
-          overdue: 0,
-        };
-
-        current.total += 1;
-        current.completed += card.isCompleted ? 1 : 0;
-        current.overdue += getCardStatus(card, exportedAt) === "Overdue" ? 1 : 0;
-        memberRows.set(member.id, current);
-      });
-    });
-  });
-
-  const membersSheet = workbook.addWorksheet("Members");
-  membersSheet.columns = [
-    { header: "Member", key: "member" },
-    { header: "Email", key: "email" },
-    { header: "Assigned cards", key: "total" },
-    { header: "Completed cards", key: "completed" },
-    { header: "Overdue cards", key: "overdue" },
-  ];
-  membersSheet.addRows(Array.from(memberRows.values()));
-  styleWorksheet(membersSheet);
-
   const dependenciesSheet = workbook.addWorksheet("Dependencies");
   dependenciesSheet.columns = [
     { header: "Blocker card", key: "blocker" },
@@ -550,9 +451,7 @@ export const buildBoardWorkbookBuffer = async (data: BoardExportData) => {
           item: item.title,
           completed: item.isCompleted ? "Yes" : "No",
           dueDate: item.dueDate,
-          assignee: item.assignee?.role === BoardMemberRole.VIEWER
-            ? ""
-            : item.assignee?.userName ?? "",
+          assignee: "",
         })),
       ),
     ),

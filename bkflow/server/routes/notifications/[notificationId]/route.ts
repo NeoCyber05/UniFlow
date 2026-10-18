@@ -9,40 +9,18 @@ export async function PATCH(
 ) {
   try {
     const { notificationId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
     const body = await req.json();
     const read = Boolean(body.read);
-    const boardMemberships = await db.boardMember.findMany({
-      where: {
-        userId,
-        board: {
-          orgId,
-        },
-      },
-      select: {
-        boardId: true,
-      },
-    });
-    const boardIds = boardMemberships.map((membership) => membership.boardId);
-
     const notification = await db.notification.findFirst({
       where: {
         id: notificationId,
-        orgId,
         recipientUserId: userId,
-        OR: [
-          { boardId: null },
-          {
-            boardId: {
-              in: boardIds,
-            },
-          },
-        ],
       },
       select: {
         id: true,

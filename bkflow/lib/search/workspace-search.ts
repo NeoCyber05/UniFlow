@@ -29,4 +29,4 @@ export const getNavigationItems = (query: string): WorkspaceSearchItem[] => NAVI
   .filter(item => toSearchKey(item.title).includes(toSearchKey(query)))
   .map(item => ({ ...item, type: "page", subtitle: "Đi đến" }));
 
-export const workspaceBoardScope = (userId: string, orgId: string) => ({ orgId, members: { some: { userId } } });
+export const workspaceBoardScope = (userId: string, _orgId?: string) => ({ userId });

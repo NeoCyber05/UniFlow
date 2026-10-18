@@ -11,17 +11,17 @@ import { SeedDefaultSemesters } from "./schema";
 
 const handler = async (_data: InputType): Promise<ReturnType> => {
   void _data;
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
   }
 
   try {
-    const semesters = await seedDefaultHustSemesters(orgId);
-    revalidatePath(`/organization/${orgId}`);
+    const semesters = await seedDefaultHustSemesters(userId);
+    revalidatePath("/dashboard");
     return { data: semesters };
   } catch {
     return {

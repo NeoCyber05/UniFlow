@@ -25,7 +25,7 @@ import { SmartCaptureDialog } from "./smart-capture-dialog";
 interface BoardOptionsProps {
   id: string;
   title: string;
-  orgId: string;
+  orgId?: string;
   currentUserId: string;
   currentMemberRole?: string;
   canDelete?: boolean;

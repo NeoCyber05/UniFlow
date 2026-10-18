@@ -1,8 +1,8 @@
+import { CardAssignee } from "@/types";
 import "server-only";
-
 import { randomUUID } from "crypto";
 
-import type { AttachmentType, Card, CardAssignee, CardAttachment } from "@prisma/client";
+import type { AttachmentType, Card, CardAttachment } from "@prisma/client";
 
 import type { CardUpdatedField } from "@/lib/realtime/types";
 import { realtimeChannels } from "@/lib/realtime/channels";
@@ -143,12 +143,12 @@ export const triggerRelatedDependencyCardsUpdated = async ({
 
 export const getRelatedDependencyCardIds = async ({
   boardId,
-  orgId,
   sourceCardIds,
 }: {
   boardId: string;
-  orgId: string;
   sourceCardIds: string[];
+  userId?: string;
+  orgId?: string;
 }) => {
   const uniqueSourceCardIds = Array.from(new Set(sourceCardIds)).filter(Boolean);
 
@@ -173,18 +173,12 @@ export const getRelatedDependencyCardIds = async ({
       ],
       blockerCard: {
         list: {
-          board: {
-            id: boardId,
-            orgId,
-          },
+          boardId,
         },
       },
       blockedCard: {
         list: {
-          board: {
-            id: boardId,
-            orgId,
-          },
+          boardId,
         },
       },
     },

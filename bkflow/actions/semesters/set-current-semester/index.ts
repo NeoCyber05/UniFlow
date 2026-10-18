@@ -10,9 +10,9 @@ import { InputType, ReturnType } from "./types";
 import { SetCurrentSemester } from "./schema";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -24,13 +24,13 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   try {
     const existing = await db.semester.findUnique({ where: { id } });
 
-    if (!existing || existing.orgId !== orgId) {
+    if (!existing || existing.userId !== userId) {
       return { error: "Không tìm thấy học kỳ." };
     }
 
     [, semester] = await db.$transaction([
       db.semester.updateMany({
-        where: { orgId, isCurrent: true },
+        where: { userId, isCurrent: true },
         data: { isCurrent: false },
       }),
       db.semester.update({
@@ -44,7 +44,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     };
   }
 
-  revalidatePath(`/organization/${orgId}`);
+  revalidatePath("/dashboard");
   return { data: semester };
 };
 

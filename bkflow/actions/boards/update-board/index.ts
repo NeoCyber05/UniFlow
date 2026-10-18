@@ -14,9 +14,9 @@ import { requireBoardAdmin } from "@/lib/permissions";
 import { triggerBoardUpdated } from "@/lib/boards/realtime";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -26,7 +26,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let board;
 
   try {
-    const permission = await requireBoardAdmin({ boardId: id, orgId, userId });
+    const permission = await requireBoardAdmin({ boardId: id, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -35,7 +35,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const currentBoard = await db.board.findUnique({
       where: {
         id,
-        orgId,
+        userId,
       },
     });
 
@@ -50,7 +50,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     board = await db.board.update({
       where: {
         id,
-        orgId,
+        userId,
       },
       data: {
         title,
@@ -63,11 +63,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       entityType: ENTITY_TYPE.BOARD,
       action: ACTION.UPDATE,
       boardId: board.id,
-    })
+    });
 
     await triggerBoardUpdated({
       boardId: board.id,
-      orgId,
       actorUserId: userId,
       title: board.title,
       changedFields: ["title"],

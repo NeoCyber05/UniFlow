@@ -20,9 +20,9 @@ const getChecklistDueDateRangeError = (cardDueDate: Date) =>
   `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${formatDueDateForLog(cardDueDate)}).`;
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
@@ -33,7 +33,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       boardId,
       cardId,
       itemId: id,
-      orgId,
+      
       userId,
     });
 

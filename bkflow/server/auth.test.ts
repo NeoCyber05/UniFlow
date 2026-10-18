@@ -39,7 +39,7 @@ test("missing, malformed, wrong-issuer and expired tokens are signed out", async
 });
 
 test("auth() reads the request-bound value and is signed out outside a request", async () => {
-  const bound = await runWithAuth({ userId: "u9", orgId: "u9", user: null }, () => auth());
+  const bound = await runWithAuth({ userId: "u9", user: null }, () => auth());
   assert.equal(bound.userId, "u9");
   assert.equal((await auth()).userId, null);
 });

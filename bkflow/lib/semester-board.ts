@@ -17,21 +17,26 @@ export type SemesterBoardUser = {
 };
 
 type GetOrCreateSemesterBoardInput = {
-  orgId: string;
+  userId?: string;
+  orgId?: string;
   semesterId: string;
-  user: SemesterBoardUser;
+  user?: SemesterBoardUser;
 };
 
 /**
  * Mỗi học kỳ có đúng 1 bảng. Tạo lười ở lần mở đầu tiên.
- * Trả về null khi học kỳ không thuộc org hiện tại.
+ * Trả về null khi học kỳ không thuộc user hiện tại.
  */
-export const getOrCreateSemesterBoard = async ({
-  orgId,
-  semesterId,
-}: GetOrCreateSemesterBoardInput) => {
+export const getOrCreateSemesterBoard = async (input: GetOrCreateSemesterBoardInput) => {
+  const userId = input.userId ?? input.orgId;
+  const { semesterId } = input;
+
+  if (!userId) {
+    return null;
+  }
+
   const semester = await db.semester.findFirst({
-    where: { id: semesterId, orgId },
+    where: { id: semesterId, userId },
     select: { id: true, title: true },
   });
 
@@ -53,7 +58,7 @@ export const getOrCreateSemesterBoard = async ({
   try {
     return await db.board.create({
       data: {
-        orgId,
+        userId,
         title: `Học kỳ ${semester.title}`,
         semesterId,
         boardType: BoardType.SEMESTER,

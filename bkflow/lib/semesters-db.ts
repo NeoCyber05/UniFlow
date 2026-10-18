@@ -28,14 +28,14 @@ export const DEFAULT_HUST_SEMESTER_CODES = [
 ];
 
 /**
- * Khởi tạo tự động danh sách học kỳ chuẩn Bách Khoa cho một tổ chức / không gian làm việc
+ * Khởi tạo tự động danh sách học kỳ chuẩn Bách Khoa cho một người dùng
  */
-export const seedDefaultHustSemesters = async (orgId: string): Promise<Semester[]> => {
+export const seedDefaultHustSemesters = async (userId: string): Promise<Semester[]> => {
   const currentCode = getCurrentHustSemesterCode();
 
   // Kiểm tra các học kỳ đã tồn tại
   const existing = await db.semester.findMany({
-    where: { orgId },
+    where: { userId },
     select: { title: true },
   });
   const existingTitles = new Set(existing.map((s) => s.title));
@@ -44,7 +44,7 @@ export const seedDefaultHustSemesters = async (orgId: string): Promise<Semester[
 
   if (toCreate.length > 0) {
     const hasCurrent = await db.semester.count({
-      where: { orgId, isCurrent: true },
+      where: { userId, isCurrent: true },
     });
 
     for (const code of toCreate) {
@@ -56,7 +56,7 @@ export const seedDefaultHustSemesters = async (orgId: string): Promise<Semester[
 
       await db.semester.create({
         data: {
-          orgId,
+          userId,
           title: code,
           startDate: dates.startDate,
           endDate: dates.endDate,
@@ -67,24 +67,24 @@ export const seedDefaultHustSemesters = async (orgId: string): Promise<Semester[
   }
 
   const allSemesters = await db.semester.findMany({
-    where: { orgId },
+    where: { userId },
   });
 
   return allSemesters.sort(compareHustSemesters);
 };
 
 /**
- * Lấy danh sách học kỳ của org, nếu chưa có thì tự động khởi tạo bộ học kỳ HUST
+ * Lấy danh sách học kỳ của user, nếu chưa có thì tự động khởi tạo bộ học kỳ HUST
  */
-export const getOrSeedSemesters = cache(async (orgId: string): Promise<Semester[]> => {
+export const getOrSeedSemesters = cache(async (userId: string): Promise<Semester[]> => {
   const semesters = await db.semester.findMany({
-    where: { orgId },
+    where: { userId },
     orderBy: { startDate: "desc" },
   });
 
   if (semesters.length === 0) {
     try {
-      return await seedDefaultHustSemesters(orgId);
+      return await seedDefaultHustSemesters(userId);
     } catch (error) {
       console.error("[GET_OR_SEED_SEMESTERS]", error);
       return [];

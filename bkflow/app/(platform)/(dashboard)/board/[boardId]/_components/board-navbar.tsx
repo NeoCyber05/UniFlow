@@ -50,7 +50,7 @@ export const BoardNavbar = ({
         <BoardOptions
           id={data.id}
           title={data.title}
-          orgId={data.orgId}
+          orgId={data.userId ?? data.id}
           currentUserId={currentUserId}
           canDelete={isAdmin}
           canEdit={canEdit}

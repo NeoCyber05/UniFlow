@@ -1,6 +1,7 @@
+import { BoardMemberRole } from "@/types";
 import "server-only";
 
-import { ACTION, AUDIT_EVENT_TYPE, BoardMemberRole, ENTITY_TYPE } from "@prisma/client";
+import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 import { tool } from "ai";
 import { z } from "zod";
 
@@ -15,7 +16,6 @@ import {
 import { validateCardDateRange } from "@/lib/cards/card-date-rules";
 import { updateCardService } from "@/lib/cards/card-update-service";
 import {
-  triggerCardMemberAssigned,
   triggerCardUpdated,
   triggerRelatedDependencyCardsUpdated,
 } from "@/lib/cards/realtime";
@@ -239,7 +239,7 @@ const normalize = (value: string): string =>
  * @returns Đối tượng chứa các tool tuân thủ giao thức Vercel AI SDK Core.
  */
 export const createAssistantTools = (session: AssistantSession) => {
-  const { boardId, orgId, userId, timeZone } = session;
+  const { boardId, userId, timeZone } = session;
   const canEdit = session.role !== BoardMemberRole.VIEWER;
 
   /**
@@ -253,7 +253,7 @@ export const createAssistantTools = (session: AssistantSession) => {
       return BOARD_EDITOR_REQUIRED_ERROR;
     }
 
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     return permission.error;
   };
@@ -480,9 +480,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           include: {
             list: { select: { id: true, title: true } },
             course: { select: { id: true, name: true, code: true } },
-            assignees: {
-              select: { boardMemberId: true, boardMember: { select: { id: true, userId: true, userName: true } } },
-            },
             labels: { select: { label: { select: { id: true, title: true, color: true } } } },
             checklists: {
               orderBy: { order: "asc" },
@@ -516,7 +513,7 @@ export const createAssistantTools = (session: AssistantSession) => {
             startDate: formatZonedDateTime(card.startDate, timeZone),
             isCompleted: card.isCompleted,
             isOverdue: Boolean(card.dueDate && !card.isCompleted && card.dueDate < now),
-            assignees: card.assignees.map((a) => a.boardMember.userName),
+            assignees: [],
             labels: card.labels.map((l) => l.label.title),
             checklists: card.checklists.map((cl) => ({
               id: cl.id,
@@ -645,25 +642,6 @@ export const createAssistantTools = (session: AssistantSession) => {
 
         const assignedNames: string[] = [];
 
-        if (assignee === "me" && isAssignableBoardMemberRole(session.role)) {
-          const cardAssignee = await db.cardAssignee.create({
-            data: { cardId: card.id, boardMemberId: session.boardMemberId },
-            include: { boardMember: true },
-          });
-
-          const me = snapshot.members.find((m) => m.id === session.boardMemberId);
-
-          if (me) {
-            assignedNames.push(me.userName);
-          }
-
-          triggerCardMemberAssigned({
-            boardId,
-            cardId: card.id,
-            actorUserId: session.userId,
-            assignee: cardAssignee,
-          }).catch((error) => logger.warn("assistant:triggerCardMemberAssigned", { error }));
-        }
 
         await createAuditLog({
           entityId: card.id,
@@ -742,9 +720,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId } },
           include: {
             list: { select: { title: true } },
-            assignees: {
-              select: { boardMember: { select: { userName: true } } },
-            },
           },
         });
 
@@ -782,7 +757,6 @@ export const createAssistantTools = (session: AssistantSession) => {
 
         const result = await updateCardService({
           userId,
-          orgId,
           data: {
             id: cardId,
             boardId,
@@ -823,7 +797,7 @@ export const createAssistantTools = (session: AssistantSession) => {
             {
               boardId,
               list: existing.list.title,
-              assignees: existing.assignees.map((a) => a.boardMember.userName),
+              assignees: [],
             },
             timeZone,
           ),
@@ -979,19 +953,6 @@ export const createAssistantTools = (session: AssistantSession) => {
             },
           });
 
-          if (assignee === "me" && isAssignableBoardMemberRole(session.role)) {
-            const cardAssignee = await db.cardAssignee.create({
-              data: { cardId: card.id, boardMemberId: session.boardMemberId },
-              include: { boardMember: true },
-            });
-
-            triggerCardMemberAssigned({
-              boardId,
-              cardId: card.id,
-              actorUserId: session.userId,
-              assignee: cardAssignee,
-            }).catch((error) => logger.warn("assistant:triggerCardMemberAssigned", { error }));
-          }
 
           await createAuditLog({
             entityId: card.id,
@@ -1122,21 +1083,6 @@ export const createAssistantTools = (session: AssistantSession) => {
 
           const assignedNames: string[] = [];
 
-          if (cardItem.assignee === "me" && isAssignableBoardMemberRole(session.role) && me) {
-            const cardAssignee = await db.cardAssignee.create({
-              data: { cardId: card.id, boardMemberId: session.boardMemberId },
-              include: { boardMember: true },
-            });
-
-            assignedNames.push(me.userName);
-
-            triggerCardMemberAssigned({
-              boardId,
-              cardId: card.id,
-              actorUserId: session.userId,
-              assignee: cardAssignee,
-            }).catch((error) => logger.warn("assistant:triggerCardMemberAssigned", { error }));
-          }
 
           await createAuditLog({
             entityId: card.id,
@@ -1209,7 +1155,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { title: true } },
-            assignees: { select: { boardMember: { select: { userName: true } } } },
+            
           },
         });
 
@@ -1277,7 +1223,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           items: checklist.items.map((i) => i.title),
           card: toActionCard(
             card,
-            { boardId, list: card.list.title, assignees: card.assignees.map((a) => a.boardMember.userName) },
+            { boardId, list: card.list.title, assignees: [], },
             timeZone,
           ),
         };
@@ -1327,7 +1273,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { id: true, title: true } },
-            assignees: { select: { boardMember: { select: { userName: true } } } },
+            
           },
         });
 
@@ -1396,7 +1342,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           toList: targetList.title,
           card: toActionCard(
             updated,
-            { boardId, list: targetList.title, assignees: card.assignees.map((a) => a.boardMember.userName) },
+            { boardId, list: targetList.title, assignees: [], },
             timeZone,
           ),
         };
@@ -1442,7 +1388,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { title: true } },
-            assignees: { select: { boardMember: { select: { userName: true } } } },
+            
           },
         });
 
@@ -1508,7 +1454,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           changes,
           card: toActionCard(
             updated,
-            { boardId, list: existing.list.title, assignees: existing.assignees.map((a) => a.boardMember.userName) },
+            { boardId, list: existing.list.title, assignees: [], },
             timeZone,
           ),
         };

@@ -1,4 +1,4 @@
-import { BoardMemberRole, BoardType } from "@prisma/client";
+import { BoardType } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { getBoardTaskGroups } from "@/lib/my-tasks/board-tasks";
@@ -6,27 +6,23 @@ import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/list/page.tsx.
-export const loadBoardList = async ({ boardId }: { boardId: string }, userId: string, orgId: string | null) => {
+export const loadBoardList = async ({ boardId }: { boardId: string }, userId: string) => {
   const permission = await requireBoardMemberForUser({ boardId, userId });
 
   if (permission.error || !permission.membership) {
     const message = permission.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/organization/${orgId ?? ""}?error=${encodeURIComponent(message)}` } as const;
+    return { redirect: `/my/today?error=${encodeURIComponent(message)}` } as const;
   }
 
   const board = await db.board.findUnique({
     where: { id: boardId },
     select: {
       boardType: true,
-      orgId: true,
+      userId: true,
       lists: {
         where: { archivedAt: null },
         orderBy: { order: "asc" },
         select: { id: true, title: true },
-      },
-      members: {
-        orderBy: { createdAt: "asc" },
-        select: { id: true, userName: true, userEmail: true, role: true },
       },
       labels: {
         orderBy: { createdAt: "asc" },
@@ -36,30 +32,26 @@ export const loadBoardList = async ({ boardId }: { boardId: string }, userId: st
   });
 
   if (!board) {
-    return { redirect: `/organization/${orgId ?? ""}` } as const;
+    return { redirect: "/my/today" } as const;
   }
 
   const isSemesterBoard = board.boardType === BoardType.SEMESTER;
 
-  const [assignableMembers, initialListData, initialAgendaData] = await Promise.all([
-    db.boardMember.findMany({
-      where: { boardId, role: { not: BoardMemberRole.VIEWER } },
-      orderBy: { createdAt: "asc" },
-      select: { userId: true, userName: true },
-    }),
+  const [initialListData, initialAgendaData] = await Promise.all([
     getBoardTaskGroups({ boardId, userId }),
     isSemesterBoard ? getTodoTasks({ userId, boardId }) : Promise.resolve(undefined),
   ]);
 
   return {
     boardId,
-    boardOrgId: board.orgId,
-    isTeamBoard: board.boardType === BoardType.TEAM_PROJECT,
+    boardOrgId: board.userId,
+    boardUserId: board.userId,
+    isTeamBoard: false,
     canEdit: true,
     currentBoardMemberId: permission.membership.id,
-    assignableMembers,
+    assignableMembers: [] as { userId: string; userName: string }[],
     lists: board.lists,
-    members: board.members,
+    members: [] as any[],
     labels: board.labels,
     initialData: initialListData,
     initialAgendaData,

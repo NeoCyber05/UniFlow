@@ -1,7 +1,5 @@
 import "server-only";
 
-import { BoardMemberRole } from "@prisma/client";
-
 import { db } from "@/lib/db";
 import { getCourseColor } from "@/lib/courses/course-colors";
 
@@ -11,7 +9,8 @@ export type BoardAnalyticsData = Awaited<ReturnType<typeof getBoardAnalyticsData
 
 type GetBoardAnalyticsDataInput = {
   boardId: string;
-  orgId: string;
+  userId?: string;
+  orgId?: string;
   range?: BoardReportRange;
   includeReportContext?: boolean;
 };
@@ -40,11 +39,10 @@ export const getBoardAnalyticsData = async ({
   const rangeStart = getRangeStart(range);
   const now = new Date();
 
-  const [board, lists, boardMembers, auditLogs] = await Promise.all([
+  const [board, lists, auditLogs] = await Promise.all([
     db.board.findFirst({
       where: {
         id: boardId,
-        orgId,
       },
       select: {
         id: true,
@@ -60,9 +58,6 @@ export const getBoardAnalyticsData = async ({
       where: {
         boardId,
         archivedAt: null,
-        board: {
-          orgId,
-        },
       },
       select: {
         id: true,
@@ -83,28 +78,6 @@ export const getBoardAnalyticsData = async ({
             isCompleted: true,
             createdAt: true,
             updatedAt: true,
-            assignees: {
-              where: {
-                boardMember: {
-                  role: {
-                    not: BoardMemberRole.VIEWER,
-                  },
-                },
-              },
-              select: {
-                id: true,
-                boardMember: {
-                  select: {
-                    id: true,
-                    userName: true,
-                    userImage: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
             labels: {
               select: {
                 label: {
@@ -146,26 +119,9 @@ export const getBoardAnalyticsData = async ({
         order: "asc",
       },
     }),
-    db.boardMember.findMany({
-      where: {
-        boardId,
-        board: {
-          orgId,
-        },
-      },
-      select: {
-        id: true,
-        userName: true,
-        userImage: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    }),
     includeReportContext
       ? db.auditLog.findMany({
           where: {
-            orgId,
             boardId,
             createdAt: {
               gte: rangeStart,
@@ -203,40 +159,11 @@ export const getBoardAnalyticsData = async ({
   const unscheduledCards = cards.filter((card) => !card.startDate && !card.dueDate).length;
   const completionRate = totalCards === 0 ? 0 : Math.round((completedCards / totalCards) * 100);
 
-  const workloadMap = new Map(
-    boardMembers.map((member) => [
-      member.id,
-      {
-        id: member.id,
-        name: member.userName,
-        count: 0,
-      },
-    ]),
-  );
-
-  let unassignedCount = 0;
-
-  for (const card of cards) {
-    if (card.assignees.length === 0) {
-      unassignedCount += 1;
-      continue;
-    }
-
-    for (const assignee of card.assignees) {
-      const memberWorkload = workloadMap.get(assignee.boardMember.id);
-
-      if (memberWorkload) {
-        memberWorkload.count += 1;
-      }
-    }
-  }
-
   const workloadData = [
-    ...Array.from(workloadMap.values()),
     {
-      id: "unassigned",
-      name: "Chưa giao",
-      count: unassignedCount,
+      id: "personal",
+      name: "Cá nhân",
+      count: totalCards,
     },
   ];
 
@@ -335,9 +262,7 @@ export const getBoardAnalyticsData = async ({
         rangeStart: rangeStart.toISOString(),
         kpis: {
           totalCards,
-          completedCards,
-          overdueCards,
-          unassignedCards: unassignedCount,
+          unassignedCards: 0,
           unscheduledCards,
           completionRate,
         },
@@ -370,14 +295,7 @@ export const getBoardAnalyticsData = async ({
           listTitle: card.listTitle,
           dueDate: card.dueDate,
         })),
-        unassignedCards: cards
-          .filter((card) => card.assignees.length === 0 && !card.isCompleted)
-          .slice(0, 12)
-          .map((card) => ({
-            title: trimToLength(card.title, 120),
-            listTitle: card.listTitle,
-            dueDate: card.dueDate?.toISOString() ?? null,
-          })),
+        unassignedCards: [],
         heavyLists,
         checklistProgress: {
           totalItems: checklistTotals.totalItems,

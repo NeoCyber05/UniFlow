@@ -299,7 +299,6 @@ export const copyCardService = async ({
 
       await tx.auditLog.create({
         data: {
-          orgId: targetPermission.membership!.board.orgId,
           boardId: targetBoardId,
           cardId: createdCard.id,
           entityId: createdCard.id,

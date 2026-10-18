@@ -23,7 +23,7 @@ export type BoardOwnershipMembership = {
   board: {
     id: string;
     title: string;
-    orgId: string;
+    userId: string;
   };
 };
 
@@ -35,12 +35,12 @@ export const checkBoardOwnership = async (
   const board = await (database as typeof db).board.findFirst({
     where: {
       id: boardId,
-      orgId: userId,
+      userId,
     },
     select: {
       id: true,
       title: true,
-      orgId: true,
+      userId: true,
     },
   });
 

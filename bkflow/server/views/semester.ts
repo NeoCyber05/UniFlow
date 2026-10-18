@@ -6,7 +6,6 @@ import { getOrCreateSemesterBoard } from "@/lib/semester-board";
 export const loadSemester = async (
   { semesterId }: { semesterId: string },
   userId: string | null,
-  orgId: string | null,
 ) => {
   const user = await currentUser();
 
@@ -14,23 +13,19 @@ export const loadSemester = async (
     return { redirect: "/sign-in" } as const;
   }
 
-  const semester = await db.semester.findUnique({ where: { id: semesterId }, select: { orgId: true } });
+  const semester = await db.semester.findUnique({ where: { id: semesterId }, select: { userId: true } });
 
-  if (!semester || (semester.orgId !== userId && semester.orgId !== orgId)) {
+  if (!semester || semester.userId !== userId) {
     return { notFound: true } as const;
   }
 
   const board = await getOrCreateSemesterBoard({
-    orgId: semester.orgId,
+    userId,
     semesterId,
     user: {
       userId,
-      userName:
-        user.fullName ||
-        user.username ||
-        user.primaryEmailAddress?.emailAddress ||
-        "Sinh viên",
-      userImage: user.imageUrl,
+      userName: user.fullName || user.primaryEmailAddress?.emailAddress || "Người dùng",
+      userImage: user.imageUrl ?? "",
       userEmail: user.primaryEmailAddress?.emailAddress ?? null,
     },
   });

@@ -1,7 +1,7 @@
+import { BoardMember } from "@/types";
 "use client";
-
 import { useMemo, useRef, useState } from "react";
-import type { BoardMember } from "@prisma/client";
+
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

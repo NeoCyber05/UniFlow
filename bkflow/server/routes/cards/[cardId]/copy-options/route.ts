@@ -28,7 +28,6 @@ export async function GET(
         listId: true,
         _count: {
           select: {
-            assignees: true,
             labels: true,
             attachments: true,
             checklists: true,
@@ -58,15 +57,12 @@ export async function GET(
 
     const boards = await db.board.findMany({
       where: {
-        OR: [
-          { orgId: userId },
-          { members: { some: { userId } } },
-        ],
+        userId,
       },
       select: {
         id: true,
         title: true,
-        orgId: true,
+        userId: true,
         lists: {
           where: {
             archivedAt: null,
@@ -117,7 +113,7 @@ export async function GET(
       boards: boards.map((board) => ({
         id: board.id,
         title: board.title,
-        orgId: board.orgId,
+        userId: board.userId,
         isCurrent: board.id === card.list.boardId,
         lists: board.lists.map((list) => ({
           id: list.id,

@@ -111,7 +111,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       action: ACTION.CREATE,
       boardId,
       cardId: card.id,
-      orgId: permission.membership.board.orgId,
     });
 
     await triggerCardCreated({

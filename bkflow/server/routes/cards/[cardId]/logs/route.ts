@@ -8,9 +8,9 @@ export async function GET(
 ) {
   try {
     const { cardId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -19,7 +19,7 @@ export async function GET(
         id: cardId,
         list: {
           board: {
-            orgId,
+            userId,
           },
         },
       },
@@ -38,7 +38,6 @@ export async function GET(
 
     const permission = await requireBoardMember({
       boardId: card.list.boardId,
-      orgId,
       userId,
     });
 
@@ -48,7 +47,6 @@ export async function GET(
 
     const auditLogs = await db.auditLog.findMany({
       where: {
-        orgId,
         OR: [
           {
             cardId,

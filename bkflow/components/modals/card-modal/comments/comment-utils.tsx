@@ -1,7 +1,6 @@
+import { BoardMember } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
-import type { BoardMember } from "@prisma/client";
-
 import type { CardCommentWithReplies } from "@/types";
 
 import { getCanonicalMention } from "./mention-utils";

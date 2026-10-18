@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       const board = await db.board.findFirst({
         where: {
           id: channelScope.boardId,
-          orgId: userId,
+          
         },
         select: {
           id: true,
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
           list: {
             archivedAt: null,
             board: {
-              orgId: userId,
+              
             },
           },
         },

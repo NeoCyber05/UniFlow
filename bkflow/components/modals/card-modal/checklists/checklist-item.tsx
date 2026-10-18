@@ -1,8 +1,9 @@
+import { type BoardMember } from "@/types";
 "use client";
 
 import { useId, useState, type KeyboardEvent } from "react";
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
-import { type BoardMember } from "@prisma/client";
+
 import { GripVertical } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";

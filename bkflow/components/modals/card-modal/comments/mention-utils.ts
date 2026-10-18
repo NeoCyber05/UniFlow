@@ -1,4 +1,4 @@
-import type { BoardMember } from "@prisma/client";
+import { BoardMember } from "@/types";
 
 export type MentionSuggestionOption = {
   id: string;

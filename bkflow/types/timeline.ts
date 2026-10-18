@@ -1,12 +1,10 @@
-import type { BoardMemberRole } from "@prisma/client";
-
 export type BoardTimelineBoardMember = {
   id: string;
   userId: string;
   userName: string;
   userImage: string;
   userEmail: string | null;
-  role: BoardMemberRole;
+  role: string;
 };
 
 export type BoardTimelineDependency = {

@@ -14,9 +14,9 @@ import { requireBoardAdmin } from "@/lib/permissions";
 import { triggerBoardDeleted } from "@/lib/boards/realtime";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -26,7 +26,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let board;
 
   try {
-    const permission = await requireBoardAdmin({ boardId: id, orgId, userId });
+    const permission = await requireBoardAdmin({ boardId: id, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -35,7 +35,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     board = await db.board.delete({
       where: {
         id,
-        orgId,
+        userId,
       },
     });
 
@@ -45,11 +45,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       entityType: ENTITY_TYPE.BOARD,
       action: ACTION.DELETE,
       boardId: board.id,
-    })
+    });
 
     await triggerBoardDeleted({
       boardId: board.id,
-      orgId,
       actorUserId: userId,
     });
   } catch {
@@ -58,7 +57,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     }
   }
 
-  revalidatePath(`/organization/${orgId}`);
+  revalidatePath("/dashboard");
   return { data: board };
 };
 

@@ -3,10 +3,9 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 import { toAppUser, type AppUser, type AuthClaims } from "@/lib/auth/app-user";
 
-// `orgId` mirrors `userId` until Phase C removes it from every call site.
-export type RequestAuth = { userId: string | null; orgId: string | null; user: AppUser | null };
+export type RequestAuth = { userId: string | null; user: AppUser | null };
 
-const SIGNED_OUT: RequestAuth = { userId: null, orgId: null, user: null };
+const SIGNED_OUT: RequestAuth = { userId: null, user: null };
 const storage = new AsyncLocalStorage<RequestAuth>();
 
 export const runWithAuth = <T>(value: RequestAuth, fn: () => T) => storage.run(value, fn);
@@ -24,7 +23,7 @@ export const createAuthenticator = ({ keys, issuer }: { keys: JWTVerifyGetKey; i
       const { payload } = await jwtVerify(token, keys, { issuer, audience: "authenticated" });
       if (!payload.sub) return SIGNED_OUT;
       const user = toAppUser(payload as unknown as AuthClaims);
-      return { userId: payload.sub, orgId: payload.sub, user };
+      return { userId: payload.sub, user };
     } catch {
       return SIGNED_OUT;
     }

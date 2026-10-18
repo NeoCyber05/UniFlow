@@ -11,7 +11,7 @@ type NotificationActor = {
 };
 
 type CreateNotificationInput = {
-  orgId: string;
+  orgId?: string;
   recipientUserId: string;
   actor?: NotificationActor | null;
   type: NOTIFICATION_TYPE;
@@ -30,7 +30,6 @@ type CreateNotificationInput = {
 };
 
 export const createNotification = async ({
-  orgId,
   recipientUserId,
   actor,
   type,
@@ -73,7 +72,6 @@ export const createNotification = async ({
 
       notification = await db.notification.create({
         data: {
-          orgId,
           recipientUserId,
           actorUserId: actor?.userId,
           actorName: actor?.name,
@@ -96,7 +94,6 @@ export const createNotification = async ({
     } else {
       notification = await db.notification.create({
         data: {
-          orgId,
           recipientUserId,
           actorUserId: actor?.userId,
           actorName: actor?.name,
@@ -123,7 +120,6 @@ export const createNotification = async ({
     logger.error("[CREATE_NOTIFICATION_ERROR]", error, {
       action: "create-notification",
       eventType: type,
-      orgId,
       boardId,
       cardId,
       commentId,

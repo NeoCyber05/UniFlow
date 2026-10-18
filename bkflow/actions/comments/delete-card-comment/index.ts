@@ -1,7 +1,7 @@
+import { BoardMemberRole } from "@/types";
 "use server";
-
 import { auth, currentUser } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, BoardMemberRole, ENTITY_TYPE } from "@prisma/client";
+import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
@@ -13,10 +13,10 @@ import { DeleteCardComment } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
   const user = await currentUser();
 
-  if (!userId || !orgId || !user) {
+  if (!userId || !user) {
     return { error: "Không có quyền truy cập." };
   }
 
@@ -24,7 +24,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let comment;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -38,7 +38,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           list: {
             board: {
               id: boardId,
-              orgId,
+              userId,
             },
           },
         },

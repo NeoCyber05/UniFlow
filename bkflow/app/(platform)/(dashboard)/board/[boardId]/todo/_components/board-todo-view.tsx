@@ -1,8 +1,9 @@
+import { BoardMember } from "@/types";
 "use client";
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { BoardMember, Label, List } from "@prisma/client";
+import type { Label, List } from "@prisma/client";
 import { AlertCircle, ListTodo, Sparkles } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 

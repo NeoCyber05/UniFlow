@@ -5,8 +5,7 @@ import { getBoardCourses } from "@/lib/courses/board-courses";
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
-// Data of app/(platform)/(dashboard)/board/[boardId]/layout.tsx (incl. generateMetadata title).
-export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: string, _orgId?: string | null) => {
+export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: string) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
 
   if (currentMembership.error || !currentMembership.membership) {
@@ -14,7 +13,7 @@ export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: 
     return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
   }
 
-  const boardOrgId = currentMembership.membership.board.orgId;
+  const boardUserId = currentMembership.membership.board.userId;
 
   const board = await db.board.findUnique({
     where: {
@@ -43,14 +42,15 @@ export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: 
 
   const isSemesterBoard = board.boardType === BoardType.SEMESTER;
   const [semesters, courses] = isSemesterBoard
-    ? await Promise.all([getOrSeedSemesters(boardOrgId), getBoardCourses(boardId)])
+    ? await Promise.all([getOrSeedSemesters(boardUserId), getBoardCourses(boardId)])
     : [[], []];
 
   return {
     title: board.title || "Bảng",
     boardId,
     board,
-    boardOrgId,
+    boardOrgId: boardUserId,
+    boardUserId,
     semesters,
     courses,
     canEdit: true,

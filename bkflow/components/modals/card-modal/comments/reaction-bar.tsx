@@ -1,6 +1,5 @@
+import { BoardMember } from "@/types";
 "use client";
-
-import type { BoardMember } from "@prisma/client";
 import { SmilePlus } from "lucide-react";
 
 import { Hint } from "@/components/hint";

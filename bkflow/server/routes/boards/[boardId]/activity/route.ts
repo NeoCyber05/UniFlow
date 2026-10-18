@@ -16,13 +16,13 @@ export async function GET(
 ) {
   try {
     const { boardId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const permission = await requireBoardMember({ boardId, orgId, userId });
+    const permission = await requireBoardMember({ boardId, userId });
 
     if (permission.error) {
       return new Response(permission.error, { status: 403 });
@@ -32,7 +32,7 @@ export async function GET(
 
     const logs = await db.auditLog.findMany({
       where: {
-        orgId,
+        userId,
         boardId,
       },
       orderBy: {
@@ -76,7 +76,7 @@ export async function GET(
               list: {
                 board: {
                   id: boardId,
-                  orgId,
+                  userId,
                 },
               },
             },
@@ -91,24 +91,14 @@ export async function GET(
               },
             },
           })
-        : Promise.resolve([]),
-      db.boardMember.findMany({
-        where: {
-          boardId,
-          board: {
-            orgId,
-          },
-        },
-        select: {
-          userName: true,
-        },
-      }),
+        : Promise.resolve([] as { id: string; title: string; archivedAt: Date | null; list: { archivedAt: Date | null } }[]),
+      Promise.resolve([] as { userName: string }[]),
       db.list.findMany({
         where: {
           archivedAt: null,
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
         select: {
@@ -125,7 +115,7 @@ export async function GET(
                 list: {
                   board: {
                     id: boardId,
-                    orgId,
+                    userId,
                   },
                 },
               },
@@ -134,7 +124,7 @@ export async function GET(
               id: true,
             },
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as { id: string }[]),
       checklistItemIds.length > 0
         ? db.checklistItem.findMany({
             where: {
@@ -146,7 +136,7 @@ export async function GET(
                   list: {
                     board: {
                       id: boardId,
-                      orgId,
+                      userId,
                     },
                   },
                 },
@@ -156,7 +146,7 @@ export async function GET(
               id: true,
             },
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as { id: string }[]),
     ]);
 
     const cardMap = new Map(

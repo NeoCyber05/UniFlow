@@ -1,6 +1,6 @@
 import "server-only";
 
-import { BoardMemberRole, BoardType, Prisma } from "@prisma/client";
+import { BoardType, Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { pickCurrentSemester } from "@/lib/semesters";
@@ -12,31 +12,19 @@ import { getEndOfVNDay, getStartOfVNDay, getVNDay } from "./vn-day";
 
 const MAX_TASKS = 300;
 
-/** Thẻ của một bảng kỳ; kèm thẻ bảng nhóm được giao cho user khi `includeTeam`. */
+/** Thẻ của một bảng kỳ. */
 export const buildTodoBaseWhere = ({
-  userId,
   boardId,
-  includeTeam,
 }: {
-  userId: string;
+  userId?: string;
   boardId: string;
-  includeTeam: boolean;
+  includeTeam?: boolean;
 }): Prisma.CardWhereInput => ({
   archivedAt: null,
-  AND: [
-    { list: { archivedAt: null } },
-    {
-      OR: [
-        { list: { boardId } },
-        ...(includeTeam
-          ? [{
-              list: { board: { boardType: BoardType.TEAM_PROJECT } },
-              assignees: { some: { boardMember: { userId } } },
-            }]
-          : []),
-      ],
-    },
-  ],
+  list: {
+    archivedAt: null,
+    boardId,
+  },
 });
 
 export const getTodayWindow = (now: Date) => {
@@ -48,16 +36,16 @@ export const getTodayWindow = (now: Date) => {
   };
 };
 
-/** Bảng có thuộc học kỳ hiện tại của org không — quyết định có gộp việc nhóm. */
+/** Bảng có thuộc học kỳ hiện tại của user không. */
 const isCurrentSemesterBoard = async (boardId: string) => {
   const board = await db.board.findUnique({
     where: { id: boardId },
-    select: { orgId: true, semesterId: true },
+    select: { userId: true, semesterId: true },
   });
 
   if (!board?.semesterId) return false;
 
-  return pickCurrentSemester(await getOrSeedSemesters(board.orgId))?.id === board.semesterId;
+  return pickCurrentSemester(await getOrSeedSemesters(board.userId))?.id === board.semesterId;
 };
 
 export const myTaskSelect = (userId: string) => ({
@@ -73,11 +61,6 @@ export const myTaskSelect = (userId: string) => ({
     select: {
       board: { select: { id: true, title: true, boardType: true } },
     },
-  },
-  assignees: {
-    where: { boardMember: { role: { not: BoardMemberRole.VIEWER } } },
-    select: { boardMember: { select: { id: true, userId: true, userName: true, userImage: true } } },
-    orderBy: { createdAt: "asc" as const },
   },
   userStates: { where: { userId }, select: { isImportant: true, myDayAt: true } },
   checklists: { select: { items: { select: { isCompleted: true } } } },
@@ -112,12 +95,7 @@ const toBucketRow = (row: MyTaskRow): BucketRow => {
       listId: row.listId,
       labelIds: row.labels.map((label) => label.labelId),
       course: row.course,
-      assignees: row.assignees.map(({ boardMember }) => ({
-        boardMemberId: boardMember.id,
-        userId: boardMember.userId,
-        userName: boardMember.userName,
-        userImage: boardMember.userImage,
-      })),
+      assignees: [],
       checklist: {
         total: checklistItems.length,
         completed: checklistItems.filter((item) => item.isCompleted).length,
@@ -135,7 +113,7 @@ const toGroupDTO = (group: TaskGroup<BucketRow>) => ({
   tasks: group.tasks.map((task) => task.dto),
 });
 
-/** Dữ liệu tab Việc cần làm. Gọi sau khi đã kiểm tra user là thành viên bảng. */
+/** Dữ liệu tab Việc cần làm. Gọi sau khi đã kiểm tra user là chủ bảng. */
 export const getTodoTasks = async ({
   userId,
   boardId,

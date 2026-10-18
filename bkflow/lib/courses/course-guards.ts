@@ -9,20 +9,20 @@ export const DUPLICATE_COURSE_ERROR = "Môn này đã có trong học kỳ.";
 
 type GuardInput = {
   boardId: string;
-  orgId: string;
   userId: string;
+  orgId?: string;
 };
 
 /** Người sửa được bảng + bảng phải là bảng học kỳ. */
 export const requireSemesterBoardEditor = async (input: GuardInput) => {
-  const permission = await requireBoardEditor(input);
+  const permission = await requireBoardEditor({ boardId: input.boardId, userId: input.userId });
 
   if (permission.error) {
     return { error: permission.error };
   }
 
   const board = await db.board.findFirst({
-    where: { id: input.boardId, orgId: input.orgId },
+    where: { id: input.boardId, userId: input.userId },
     select: { boardType: true },
   });
 

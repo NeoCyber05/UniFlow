@@ -22,39 +22,39 @@ export const viewsRoute = new Hono()
     return json(await loadDashboard(userId));
   })
   .get("/board/:boardId/layout", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardLayout({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardLayout({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/calendar", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardCalendar({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardCalendar({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/list", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardList({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardList({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/split", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardSplit({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardSplit({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/timeline", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardTimeline({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardTimeline({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/graph", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardGraph({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardGraph({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/analytics", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardAnalytics({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardAnalytics({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/todo", async (c) => {
     const { userId } = await auth();
@@ -62,9 +62,9 @@ export const viewsRoute = new Hono()
     return json(await loadBoardTodo({ boardId: c.req.param("boardId"), error: c.req.query("error") }));
   })
   .get("/board/:boardId", async (c) => {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardKanban({ boardId: c.req.param("boardId") }, userId, orgId));
+    return json(await loadBoardKanban({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/my/:view", async (c) => {
     const { userId } = await auth();
@@ -75,6 +75,6 @@ export const viewsRoute = new Hono()
     return json(await loadPage({ pageId: c.req.param("pageId") }, userId));
   })
   .get("/semester/:semesterId", async (c) => {
-    const { userId, orgId } = await auth();
-    return json(await loadSemester({ semesterId: c.req.param("semesterId") }, userId, orgId));
+    const { userId } = await auth();
+    return json(await loadSemester({ semesterId: c.req.param("semesterId") }, userId));
   });

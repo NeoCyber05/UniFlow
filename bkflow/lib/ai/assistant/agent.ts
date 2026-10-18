@@ -1,6 +1,6 @@
+import { BoardMemberRole } from "@/types";
 import "server-only";
 
-import { BoardMemberRole } from "@prisma/client";
 import { type InferAgentUIMessage, isStepCount, ToolLoopAgent } from "ai";
 
 import { type BoardSnapshot, buildBoardContext, type AssistantSession } from "./board-data";

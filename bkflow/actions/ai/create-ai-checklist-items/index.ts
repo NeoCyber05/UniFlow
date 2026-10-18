@@ -41,9 +41,9 @@ const normalizeItems = (items: string[]) => {
 };
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
@@ -55,7 +55,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   }
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -69,7 +69,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           archivedAt: null,
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },
@@ -95,7 +95,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
                   archivedAt: null,
                   board: {
                     id: boardId,
-                    orgId,
+                    userId,
                   },
                 },
               },
@@ -218,7 +218,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[CREATE_AI_CHECKLIST_ITEMS_ERROR]", error, {
       action: "create-ai-checklist-items",
       aiFeature: "checklist-generation",
-      orgId,
+      
       userId,
       boardId,
       cardId,
