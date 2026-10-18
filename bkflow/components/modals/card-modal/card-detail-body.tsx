@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuditLog } from "@prisma/client";
 
 import { CardCommentWithReplies, CardWithList } from "@/types";
 import { fetcher } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import { Header } from "./header";
@@ -19,40 +19,20 @@ import { ChecklistsSection as Checklists } from "./checklists/checklists-section
 import { AttachmentsSection as Attachments } from "./attachments/attachments-section";
 import { AiCardQualityAssistant } from "./ai/ai-card-quality-assistant";
 import { DependenciesSection as CardDependencies } from "./dependencies/dependencies-section";
-
-const toTimestampString = (value: Date | string | null | undefined) => {
-  if (!value) {
-    return null;
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
+import type { BeforeCloseRef } from "./close-guard";
 
 const CardMainContent = ({
   cardData,
   canEdit,
+  beforeCloseRef,
 }: {
   cardData: CardWithList;
   canEdit: boolean;
+  beforeCloseRef: BeforeCloseRef;
 }) => {
-  const [descriptionBaseUpdatedAt, setDescriptionBaseUpdatedAt] = useState(
-    () => toTimestampString(cardData.descriptionUpdatedAt),
-  );
-  const getDescriptionBaseUpdatedAt = useCallback(
-    () => descriptionBaseUpdatedAt,
-    [descriptionBaseUpdatedAt],
-  );
-
   return (
     <>
-      <Description
-        data={cardData}
-        canEdit={canEdit}
-        getDescriptionBaseUpdatedAt={getDescriptionBaseUpdatedAt}
-        onDescriptionBaseUpdatedAtChange={setDescriptionBaseUpdatedAt}
-      />
+      <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
       <CardDependencies data={cardData} canEdit={canEdit} />
       {canEdit && (
         <AiCardQualityAssistant
@@ -96,31 +76,35 @@ const LAYOUT_CLASSES = {
 type CardDetailBodyProps = {
   cardId: string;
   layout: keyof typeof LAYOUT_CLASSES;
+  /** Close without any unsaved-changes check (used only on dead-end error screens). */
   onClose: () => void;
+  /** Filled with the unsaved-changes guard; containers must call it before closing or switching. */
+  beforeCloseRef: BeforeCloseRef;
 };
 
 /** Nội dung chi tiết thẻ, dùng chung cho modal (dialog) và panel bên phải. */
-export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps) => {
+export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: CardDetailBodyProps) => {
   const classes = LAYOUT_CLASSES[layout];
 
-  const { data: cardData, error, isError } = useQuery<CardWithList>({
+  const queryClient = useQueryClient();
+  const { data: cachedCard, error, isError, refetch, isFetching } = useQuery<CardWithList>({
     queryKey: ["card", cardId],
     queryFn: () => fetcher(`/api/cards/${cardId}`),
+    retry: (count, err) => {
+      const status = (err as Error & { status?: number }).status;
+      return status !== 403 && status !== 404 && count < 2;
+    },
   });
+  const status = isError ? (error as Error & { status?: number }).status : undefined;
+  const isGone = status === 403 || status === 404;
+  // After 403/404 the cached copy is no longer trustworthy, so it is not shown.
+  const cardData = isGone ? undefined : cachedCard;
 
   useEffect(() => {
-    if (isError && error) {
-      const err = error as Error & { status?: number };
-      if (err.status === 403) {
-        toast.error("Bạn không còn quyền truy cập bảng này.");
-      } else if (err.status === 404) {
-        toast.error("Thẻ không tồn tại hoặc đã bị xóa.");
-      } else {
-        toast.error("Có lỗi xảy ra khi tải dữ liệu thẻ.");
-      }
-      onClose();
+    if (isGone) {
+      queryClient.removeQueries({ queryKey: ["card", cardId], exact: true });
     }
-  }, [isError, error, onClose]);
+  }, [isGone, queryClient, cardId]);
 
   const { data: auditLogsData } = useQuery<AuditLog[]>({
     queryKey: ["card-logs", cardId],
@@ -145,6 +129,27 @@ export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps)
           </DialogDescription>
         </>
       )}
+      {isError && (isGone || !cachedCard) ? (
+        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-sm font-medium text-neutral-700">
+            {status === 403
+              ? "Bạn không còn quyền truy cập việc này."
+              : status === 404
+                ? "Việc không tồn tại hoặc đã bị xóa."
+                : "Không tải được dữ liệu. Kiểm tra kết nối rồi thử lại."}
+          </p>
+          <div className="flex gap-2">
+            {!isGone && (
+              <Button type="button" size="sm" disabled={isFetching} onClick={() => void refetch()}>
+                Thử lại
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={onClose}>
+              Đóng
+            </Button>
+          </div>
+        </div>
+      ) : (
       <div className={cn(classes.root)}>
         <div className={classes.main}>
           {!cardData
@@ -157,7 +162,7 @@ export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps)
           }
           {!cardData
             ? <Description.Skeleton />
-            : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} />
+            : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
           }
         </div>
         <div className={classes.side}>
@@ -176,6 +181,7 @@ export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps)
           />
         </div>
       </div>
+      )}
     </>
   );
 };

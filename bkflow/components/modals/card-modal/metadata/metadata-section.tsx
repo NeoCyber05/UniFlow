@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CardWithList } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDueDateStatus } from "@/components/due-date-badge";
-import { formatDateTimeLocalInput } from "@/lib/date-utils";
+import { taskDatesToForm } from "@/lib/cards/task-dates-form";
+import { getTaskDeadlineStatus } from "@/lib/cards/task-deadline";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 
 import { CardCourseSelect } from "./card-course-select";
 import { CardDateStatusColumn } from "./card-date-status-column";
 import { CardLabelSummary } from "./card-label-summary";
 import { MetadataActionRow } from "./metadata-action-row";
-import { getDateSummary } from "./metadata-utils";
+import { getDateLines } from "./metadata-utils";
 import { useCardMetadataActions } from "./use-card-metadata-actions";
 
 interface MetadataProps {
@@ -29,46 +29,29 @@ export const MetadataSection = ({
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
 
-  const [startDateValue, setStartDateValue] = useState(formatDateTimeLocalInput(data.startDate));
-  const [dueDateValue, setDueDateValue] = useState(formatDateTimeLocalInput(data.dueDate));
-  const [reminderValue, setReminderValue] = useState(data.reminder || "none");
-
   const [isDateOpen, setIsDateOpen] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStartDateValue(formatDateTimeLocalInput(data.startDate));
-    setDueDateValue(formatDateTimeLocalInput(data.dueDate));
-    setReminderValue(data.reminder || "none");
-  }, [data.startDate, data.dueDate, data.reminder]);
 
   const {
     isLoadingUpdate,
-    updateDueDate,
-    updateStartDate,
-    onDateSubmit,
+    saveTaskDates,
+    clearSchedule,
+    clearLegacyStart,
   } = useCardMetadataActions({
     data,
     boardId,
     queryClient,
     invalidateBoardCalendar,
-    reminderValue,
     setIsDateOpen,
   });
 
-  const hasStartDate = !!data.startDate;
-  const hasDueDate = !!data.dueDate;
-  const hasDateRange = hasStartDate || hasDueDate;
+  const hasDeadline = Boolean(data.dueDate || data.deadlineOn);
+  const hasDateRange = hasDeadline || Boolean(data.startDate || data.scheduledOn || data.scheduledStartAt);
   const hasLabels = data.labels && data.labels.length > 0;
-  const canSetReminder = !!dueDateValue;
-
-  const status = data.dueDate ? getDueDateStatus(data.dueDate) : "normal";
-  const dateSummary = getDateSummary({
-    startDate: data.startDate,
-    dueDate: data.dueDate,
-    hasStartDate,
-    hasDueDate,
-  });
+  const status = getTaskDeadlineStatus(
+    { dueDate: data.dueDate, deadlineOn: data.dueDate ? null : taskDatesToForm(data).deadlineDate || null },
+    new Date(),
+  );
+  const dateLines = getDateLines(data);
 
   const showActionButtonRow = canEdit;
 
@@ -83,19 +66,10 @@ export const MetadataSection = ({
           hasLabels={hasLabels}
           isDateOpen={isDateOpen}
           onDateOpenChange={setIsDateOpen}
-          startDateValue={startDateValue}
-          dueDateValue={dueDateValue}
-          reminderValue={reminderValue}
-          canSetReminder={canSetReminder}
-          hasStartDate={hasStartDate}
-          hasDueDate={hasDueDate}
           isLoadingUpdate={isLoadingUpdate}
-          onStartDateValueChange={setStartDateValue}
-          onDueDateValueChange={setDueDateValue}
-          onReminderValueChange={setReminderValue}
-          onDateSubmit={onDateSubmit}
-          onClearStartDate={() => updateStartDate(null)}
-          onClearDueDate={() => updateDueDate(null)}
+          onSave={saveTaskDates}
+          onClearSchedule={clearSchedule}
+          onClearLegacyStart={clearLegacyStart}
         />
       )}
 
@@ -123,24 +97,14 @@ export const MetadataSection = ({
         <CardDateStatusColumn
           data={data}
           hasDateRange={hasDateRange}
-          hasStartDate={hasStartDate}
-          hasDueDate={hasDueDate}
-          dateSummary={dateSummary}
-          status={status}
+          dateLines={dateLines}
+          status={data.isCompleted ? "completed" : status === "overdue" ? "overdue" : "normal"}
           isLoadingUpdate={isLoadingUpdate}
-          onToggleComplete={() => {}}
           isDateOpen={isDateOpen}
           onDateOpenChange={setIsDateOpen}
-          startDateValue={startDateValue}
-          dueDateValue={dueDateValue}
-          reminderValue={reminderValue}
-          canSetReminder={canSetReminder}
-          onStartDateValueChange={setStartDateValue}
-          onDueDateValueChange={setDueDateValue}
-          onReminderValueChange={setReminderValue}
-          onDateSubmit={onDateSubmit}
-          onClearStartDate={() => updateStartDate(null)}
-          onClearDueDate={() => updateDueDate(null)}
+          onSave={saveTaskDates}
+          onClearSchedule={clearSchedule}
+          onClearLegacyStart={clearLegacyStart}
           canEdit={canEdit}
         />
       </div>

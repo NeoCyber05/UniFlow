@@ -4,6 +4,7 @@ import { auth } from "@/server/auth";
 import { ACTION, ENTITY_TYPE } from "@prisma/client";
 import { revalidatePath } from "@/server/cache";
 
+import { syncCardReminders } from "@/lib/notifications/reminder-deliveries";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
@@ -86,6 +87,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           archivedByListId: null,
         },
       });
+
+      await syncCardReminders(tx, { cardIds: affectedCardIds, now: new Date() });
 
       return restoredList;
     });

@@ -115,8 +115,11 @@ test("personal agenda merges both sources, sorts deadlines and applies local mid
     assert.equal(where.list.archivedAt, null);
     assert.equal(where.archivedAt, null);
     assert.equal(where.isCompleted, false);
-    assert.equal(where.dueDate.gte.toISOString(), "2026-10-17T17:00:00.000Z");
-    assert.equal(where.dueDate.lt.toISOString(), "2026-10-18T17:00:00.000Z");
+    assert.equal(where.OR[0].dueDate.gte.toISOString(), "2026-10-17T17:00:00.000Z");
+    assert.equal(where.OR[0].dueDate.lt.toISOString(), "2026-10-18T17:00:00.000Z");
+    // Hạn chỉ-ngày so theo cột DATE (ngày VN), không so với timestamp UTC.
+    assert.equal(where.OR[1].deadlineOn.gte.toISOString(), "2026-10-18T00:00:00.000Z");
+    assert.equal(where.OR[1].deadlineOn.lt.toISOString(), "2026-10-19T00:00:00.000Z");
     assert.equal(take, 26);
     return [{ id: "c1", title: "Report", dueDate: new Date("2026-10-18T15:00:00Z"), list: { boardId: "b1", board: { title: "Board" } } }];
   };
@@ -143,7 +146,8 @@ test("personal agenda merges both sources, sorts deadlines and applies local mid
 test("agenda includes overdue work by default and signals bounded results", async () => {
   database.card.findMany = async ({ where }: any) => {
     assert.ok(where.OR[0].dueDate.lt instanceof Date);
-    assert.ok(where.OR[1].dueDate.gte instanceof Date);
+    assert.ok(where.OR[1].deadlineOn.lt instanceof Date);
+    assert.ok(where.OR[2].dueDate.gte instanceof Date);
     return Array.from({ length: 26 }, (_, index) => ({ id: `c${index}`, title: `Task ${index}`, dueDate: new Date("2020-01-01Z"), list: { boardId: "b1", board: { title: "Board" } } }));
   };
   const result = await execute("getMyAgenda", {});
@@ -156,8 +160,8 @@ test("tomorrow's agenda includes overdue work without including today's future d
   context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-18T01:00:00Z") });
   database.card.findMany = async ({ where }: any) => {
     assert.equal(where.OR[0].dueDate.lt.toISOString(), "2026-10-18T01:00:00.000Z");
-    assert.equal(where.OR[1].dueDate.gte.toISOString(), "2026-10-18T17:00:00.000Z");
-    assert.equal(where.OR[1].dueDate.lt.toISOString(), "2026-10-19T17:00:00.000Z");
+    assert.equal(where.OR[2].dueDate.gte.toISOString(), "2026-10-18T17:00:00.000Z");
+    assert.equal(where.OR[2].dueDate.lt.toISOString(), "2026-10-19T17:00:00.000Z");
     return [];
   };
   assert.equal((await execute("getMyAgenda", { range: "tomorrow" })).ok, true);
@@ -166,8 +170,8 @@ test("tomorrow's agenda includes overdue work without including today's future d
 test("weekly agenda ends on next Monday in the session timezone", async context => {
   context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-18T01:00:00Z") });
   database.card.findMany = async ({ where }: any) => {
-    assert.equal(where.dueDate.gte.toISOString(), "2026-10-17T04:00:00.000Z");
-    assert.equal(where.dueDate.lt.toISOString(), "2026-10-19T04:00:00.000Z");
+    assert.equal(where.OR[0].dueDate.gte.toISOString(), "2026-10-17T04:00:00.000Z");
+    assert.equal(where.OR[0].dueDate.lt.toISOString(), "2026-10-19T04:00:00.000Z");
     return [];
   };
   assert.equal((await execute("getMyAgenda", { range: "this_week", includeOverdue: false }, { ...session, timeZone: "America/New_York" })).ok, true);

@@ -48,6 +48,8 @@ export const buildUpdateCardAuditMessage = ({
   currentCard,
   startDateChanged,
   dueDateChanged,
+  deadlineOnChanged = false,
+  scheduleChanged = false,
 }: {
   input: Pick<
     UpdateCardInput,
@@ -58,15 +60,25 @@ export const buildUpdateCardAuditMessage = ({
     | "dueDateTimezoneOffset"
     | "isCompleted"
   >;
-  card: Pick<Card, "title" | "startDate" | "dueDate">;
+  card: Pick<Card, "title" | "startDate" | "dueDate" | "deadlineOn" | "scheduledOn" | "scheduledStartAt">;
   currentCard: Pick<Card, "title" | "description" | "isCompleted">;
   startDateChanged: boolean;
   dueDateChanged: boolean;
+  deadlineOnChanged?: boolean;
+  scheduleChanged?: boolean;
 }) => {
   let auditLogMessage = card.title;
   const { dueDateTimezoneOffset } = input;
 
-  if (startDateChanged && dueDateChanged) {
+  if (scheduleChanged && !deadlineOnChanged && !dueDateChanged) {
+    auditLogMessage = card.scheduledOn || card.scheduledStartAt
+      ? `detail:đã cập nhật lịch làm của thẻ "${card.title}"`
+      : `detail:đã bỏ lịch làm của thẻ "${card.title}"`;
+  } else if (deadlineOnChanged) {
+    auditLogMessage = card.deadlineOn
+      ? `detail:đã đặt hạn nộp cho thẻ "${card.title}" là ${card.deadlineOn.toISOString().slice(8, 10)}/${card.deadlineOn.toISOString().slice(5, 7)}/${card.deadlineOn.toISOString().slice(0, 4)}`
+      : `detail:đã bỏ hạn nộp của thẻ "${card.title}"`;
+  } else if (startDateChanged && dueDateChanged) {
     const startText = card.startDate
       ? formatFriendlyDate(card.startDate, dueDateTimezoneOffset)
       : "không có ngày bắt đầu";
@@ -126,14 +138,17 @@ export const getUpdateCardAuditEventType = ({
   dueDateChanged,
   reminderConfigChanged,
   isCompleted,
+  scheduleChanged = false,
 }: {
   startDateChanged: boolean;
   dueDateChanged: boolean;
   reminderConfigChanged: boolean;
   isCompleted?: boolean;
+  scheduleChanged?: boolean;
 }) => (
   startDateChanged ||
   dueDateChanged ||
+  scheduleChanged ||
   reminderConfigChanged ||
   isCompleted !== undefined
 )

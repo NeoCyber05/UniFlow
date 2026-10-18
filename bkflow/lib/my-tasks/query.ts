@@ -1,3 +1,4 @@
+import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import "server-only";
 
 import { BoardType, Prisma } from "@prisma/client";
@@ -53,10 +54,17 @@ export const myTaskSelect = (userId: string) => ({
   title: true,
   isCompleted: true,
   dueDate: true,
+  deadlineOn: true,
+  scheduledOn: true,
+  scheduledStartAt: true,
+  scheduledEndAt: true,
   updatedAt: true,
   listId: true,
   course: { select: { id: true, name: true, code: true, color: true } },
-  labels: { select: { labelId: true }, orderBy: { createdAt: "asc" as const } },
+  labels: {
+    select: { labelId: true, label: { select: { id: true, title: true, color: true } } },
+    orderBy: { createdAt: "asc" as const },
+  },
   list: {
     select: {
       board: { select: { id: true, title: true, boardType: true } },
@@ -78,6 +86,7 @@ const toBucketRow = (row: MyTaskRow): BucketRow => {
   return {
     id: row.id,
     dueDate: row.dueDate,
+    deadlineOn: serializeTaskDates(row).deadlineOn,
     isCompleted: row.isCompleted,
     updatedAt: row.updatedAt,
     myDayAt: state?.myDayAt ?? null,
@@ -85,7 +94,7 @@ const toBucketRow = (row: MyTaskRow): BucketRow => {
       id: row.id,
       title: row.title,
       isCompleted: row.isCompleted,
-      dueDate: row.dueDate?.toISOString() ?? null,
+      ...serializeTaskDates(row),
       updatedAt: row.updatedAt.toISOString(),
       myDayAt: state?.myDayAt?.toISOString() ?? null,
       isImportant: state?.isImportant ?? false,
@@ -94,6 +103,7 @@ const toBucketRow = (row: MyTaskRow): BucketRow => {
       boardType: board.boardType,
       listId: row.listId,
       labelIds: row.labels.map((label) => label.labelId),
+      labels: row.labels.map(({ label }) => label),
       course: row.course,
       assignees: [],
       checklist: {
@@ -138,7 +148,7 @@ export const getTodoTasks = async ({
       ],
     },
     select: myTaskSelect(userId),
-    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ dueDate: "asc" }, { deadlineOn: "asc" }, { createdAt: "asc" }],
     take: MAX_TASKS,
   });
 

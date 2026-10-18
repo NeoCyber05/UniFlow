@@ -1,7 +1,6 @@
 "use client";
 
 import type { DragEvent, MouseEvent } from "react";
-import { format, isSameMonth, isToday } from "date-fns";
 import { Plus } from "lucide-react";
 
 import { Hint } from "@/components/hint";
@@ -15,7 +14,7 @@ import {
   WEEK_DAYS,
   WEEK_RANGE_LANES,
 } from "../../_lib/constants";
-import { getDayKey } from "../../_lib/date-utils";
+import { getDayKey, isSameCalendarMonth, isCalendarToday, formatCalendarDate, getGmt7Parts } from "../../_lib/date-utils";
 import type {
   CalendarMarkerListStyle,
   CalendarOccurrence,
@@ -45,8 +44,8 @@ type CalendarDayCellProps = {
   occurrencesByDay: Record<string, CalendarOccurrence[]>;
   rangeOccurrencesByDay: Record<string, CalendarOccurrence[]>;
   rangeSegmentsByWeek: Record<number, CalendarRangeSegment[]>;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onOpenCard: (
     cardId: string,
     event?: MouseEvent<HTMLElement>,
@@ -66,8 +65,8 @@ type CalendarDayCellProps = {
     action: () => void,
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
   onOpenCreateDialog: (day: Date, event: MouseEvent<HTMLButtonElement>) => void;
   onSetExpandedDayKey: (dayKey: string) => void;
   onDayDragOver: (event: DragEvent<HTMLDivElement>, dayKey: string) => void;
@@ -96,16 +95,16 @@ export const CalendarDayCell = ({
   occurrencesByDay,
   rangeOccurrencesByDay,
   rangeSegmentsByWeek,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onOpenCard,
   onOpenCardDirect,
   onOccurrenceDragStart,
   onOccurrenceDragEnd,
   onQuickActionClick,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
   onOpenCreateDialog,
   onSetExpandedDayKey,
   onDayDragOver,
@@ -158,7 +157,7 @@ export const CalendarDayCell = ({
         viewMode === "month" && index % 7 === 6 && "border-r-0",
         viewMode === "week" && "min-h-[132px] rounded-lg border md:min-h-[360px]",
         viewMode === "week" && index > 0 && "mt-2 md:mt-0",
-        viewMode === "month" && !isSameMonth(day, currentMonth) && "bg-neutral-50/80 text-neutral-400",
+        viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "bg-neutral-50/80 text-neutral-400",
         (draggingOccurrenceId || draggingUnscheduledCardId || draggingBoardCardId || draggingDayViewBlockId) && "ring-inset ring-violet-100",
         resizingRange && "cursor-ew-resize ring-inset ring-violet-100",
         dragOverDayKey === dayKey && "bg-violet-50 ring-2 ring-inset ring-violet-300",
@@ -174,14 +173,14 @@ export const CalendarDayCell = ({
           <span
             className={cn(
               "flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-neutral-600",
-              viewMode === "month" && !isSameMonth(day, currentMonth) && "text-neutral-400",
-              isToday(day) && "bg-violet-600 text-white",
+              viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "text-neutral-400",
+              isCalendarToday(day) && "bg-violet-600 text-white",
             )}
           >
-            {viewMode === "week" ? format(day, "dd/MM") : format(day, "d")}
+            {viewMode === "week" ? formatCalendarDate(day).slice(0, 5) : getGmt7Parts(day).date}
           </span>
         </div>
-        <Hint description={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${format(day, "dd/MM/yyyy")}`} side="top">
+        <Hint description={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${formatCalendarDate(day)}`} side="top">
           <button
             type="button"
             onClick={(event) => onOpenCreateDialog(day, event)}
@@ -192,10 +191,10 @@ export const CalendarDayCell = ({
               isUpdatingCardDate ||
               isUpdatingChecklistItemDueDate
             }
-            aria-label={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${format(day, "dd/MM/yyyy")}`}
+            aria-label={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${formatCalendarDate(day)}`}
             className={cn(
               "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-100 transition hover:bg-violet-50 hover:text-violet-700 focus-visible:bg-violet-50 focus-visible:text-violet-700 disabled:cursor-not-allowed disabled:opacity-30 md:opacity-0 md:group-hover/day:opacity-100 md:focus-visible:opacity-100",
-              isToday(day) && "text-violet-700",
+              isCalendarToday(day) && "text-violet-700",
             )}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -219,16 +218,16 @@ export const CalendarDayCell = ({
             draggingOccurrenceId={draggingOccurrenceId}
             isUpdatingCardDate={isUpdatingCardDate}
             isUpdatingChecklistItemDueDate={isUpdatingChecklistItemDueDate}
-            canClearStartDate={canClearStartDate}
-            canClearDueDate={canClearDueDate}
+            canPlanSchedule={canPlanSchedule}
+            canClearSchedule={canClearSchedule}
             onOpenCard={onOpenCard}
             onOpenCardDirect={onOpenCardDirect}
             onDragStart={onOccurrenceDragStart}
             onDragEnd={onOccurrenceDragEnd}
             onQuickActionClick={onQuickActionClick}
             onToggleComplete={onToggleComplete}
-            onClearStartDate={onClearStartDate}
-            onClearDueDate={onClearDueDate}
+            onPlanSchedule={onPlanSchedule}
+            onClearSchedule={onClearSchedule}
           />,
         )}
         {dayOccurrences.slice(0, maxVisibleDesktop).map((occurrence, occurrenceIndex) =>
@@ -240,23 +239,23 @@ export const CalendarDayCell = ({
             draggingOccurrenceId={draggingOccurrenceId}
             isUpdatingCardDate={isUpdatingCardDate}
             isUpdatingChecklistItemDueDate={isUpdatingChecklistItemDueDate}
-            canClearStartDate={canClearStartDate}
-            canClearDueDate={canClearDueDate}
+            canPlanSchedule={canPlanSchedule}
+            canClearSchedule={canClearSchedule}
             onOpenCard={onOpenCard}
             onOpenCardDirect={onOpenCardDirect}
             onDragStart={onOccurrenceDragStart}
             onDragEnd={onOccurrenceDragEnd}
             onQuickActionClick={onQuickActionClick}
             onToggleComplete={onToggleComplete}
-            onClearStartDate={onClearStartDate}
-            onClearDueDate={onClearDueDate}
+            onPlanSchedule={onPlanSchedule}
+            onClearSchedule={onClearSchedule}
           />,
         )}
         {mobileOverflow > 0 && (
           <button
             type="button"
             onClick={() => onSetExpandedDayKey(dayKey)}
-            aria-label={`Xem thêm ${mobileOverflow} thẻ trong ngày ${format(day, "dd/MM/yyyy")}`}
+            aria-label={`Xem thêm ${mobileOverflow} thẻ trong ngày ${formatCalendarDate(day)}`}
             className="flex h-6 w-full items-center rounded-md px-1.5 text-left text-[11px] font-semibold text-neutral-500 transition hover:bg-neutral-100 sm:hidden"
           >
             +{mobileOverflow} thẻ
@@ -266,7 +265,7 @@ export const CalendarDayCell = ({
           <button
             type="button"
             onClick={() => onSetExpandedDayKey(dayKey)}
-            aria-label={`Xem thêm ${desktopOverflow} thẻ trong ngày ${format(day, "dd/MM/yyyy")}`}
+            aria-label={`Xem thêm ${desktopOverflow} thẻ trong ngày ${formatCalendarDate(day)}`}
             className="hidden h-6 w-full items-center rounded-md px-1.5 text-left text-[11px] font-semibold text-neutral-500 transition hover:bg-neutral-100 sm:flex"
           >
             +{desktopOverflow} thẻ

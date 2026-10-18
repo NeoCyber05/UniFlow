@@ -1,8 +1,7 @@
 "use client";
+import { formatDayTitle } from "../_lib/date-utils";
 
 import type { ComponentProps } from "react";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 
 import { ExpandedOccurrence } from "./board-calendar/expanded-occurrence";
 
@@ -30,7 +29,7 @@ export const ExpandedDayPanel = ({
     <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-x-2 border-b border-neutral-100 pb-2">
         <p className="text-sm font-semibold text-neutral-800">
-          {format(new Date(`${dayKey}T00:00:00`), "EEEE, dd/MM/yyyy", { locale: vi })}
+          {formatDayTitle(new Date(`${dayKey}T12:00:00+07:00`))}
         </p>
         <button
           type="button"

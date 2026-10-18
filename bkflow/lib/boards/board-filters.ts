@@ -1,3 +1,4 @@
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import type { BoardFilterState } from "@/hooks/use-board-filters";
 import type {
   BoardCalendarItem,
@@ -266,10 +267,10 @@ export const calendarItemMatchesBoardFilters = (
     matchesMemberFilters(assignees, filters, currentBoardMemberId) &&
     matchesStatusFilters(item.isCompleted, filters) &&
     matchesDueDateFilters({
-      dueDate: item.dueDate,
+      dueDate: item.type === "card" ? (item.deadlineAt !== undefined ? item.deadlineAt : getTaskDeadlineAt(item)) : item.dueDate,
       isCompleted: item.isCompleted,
       filters,
-      allowNoDue: false,
+      allowNoDue: true,
     }) &&
     matchesLabelFilters(labels, filters) &&
     courseMatchesFilters(item.courseId, filters) &&
@@ -282,17 +283,9 @@ export const unscheduledCardMatchesBoardFilters = (
   filters: BoardFilterState,
   currentBoardMemberId?: string,
 ) => {
-  if (hasActiveDueDateFilters(filters)) {
-    const hasNoDueOnly = filters.selectedDueDateFilters.every(
-      (filterType) => filterType === "no-due",
-    );
-
-    if (!hasNoDueOnly) {
-      return false;
-    }
-  }
 
   return (
+    matchesDueDateFilters({ dueDate: getTaskDeadlineAt({ dueDate: card.dueDate ?? null, deadlineOn: card.deadlineOn ?? null }), isCompleted: card.isCompleted, filters, allowNoDue: true }) &&
     matchesListFilters(card.listId, filters) &&
     matchesMemberFilters(card.assignees, filters, currentBoardMemberId) &&
     matchesStatusFilters(card.isCompleted, filters) &&

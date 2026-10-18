@@ -3,6 +3,10 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { projectCalendarEntries, projectChecklistEntries } from "@/lib/calendar/calendar-entries";
+import { getCalendarRange, getTodayKey } from "@/lib/calendar/calendar-navigation";
+import { buildDayTimeline } from "@/lib/calendar/day-timeline";
+import { toCalendarDisplayItems } from "@/lib/calendar/schedule-adapter";
 import { fetcher } from "@/lib/fetcher";
 import {
   boardFiltersAreActive,
@@ -10,7 +14,11 @@ import {
   unscheduledCardMatchesBoardFilters,
 } from "@/lib/boards/board-filters";
 import type { BoardFilterState } from "@/hooks/use-board-filters";
-import type { BoardCalendarResponse } from "@/types";
+import type {
+  BoardCalendarCardItem,
+  BoardCalendarChecklistItem,
+  BoardCalendarResponse,
+} from "@/types";
 
 import {
   MAX_DAY_LANES,
@@ -19,6 +27,7 @@ import {
 import {
   getDayGridRange,
   getDayKey,
+  getGmt7DayKey,
   getMonthGridRange,
   getWeekGridRange,
 } from "../_lib/date-utils";
@@ -54,17 +63,17 @@ export const useCalendarQuery = ({
   filters,
   currentBoardMemberId,
 }: UseCalendarQueryOptions) => {
+  // Range theo ngày VN, `toIso` là biên mở; `days` chỉ để dựng lưới.
   const { fromIso, toIso, days } = useMemo(
     () => {
-      if (viewMode === "month") {
-        return getMonthGridRange(anchorDate);
-      }
+      const grid = viewMode === "month"
+        ? getMonthGridRange(anchorDate)
+        : viewMode === "week"
+          ? getWeekGridRange(anchorDate)
+          : getDayGridRange(anchorDate);
+      const range = getCalendarRange(getTodayKey(anchorDate), viewMode);
 
-      if (viewMode === "week") {
-        return getWeekGridRange(anchorDate);
-      }
-
-      return getDayGridRange(anchorDate);
+      return { fromIso: range.from, toIso: range.to, days: grid.days };
     },
     [anchorDate, viewMode],
   );
@@ -78,7 +87,10 @@ export const useCalendarQuery = ({
   });
 
   const responseItems = query.data?.items;
-  const unfilteredItems = useMemo(() => responseItems ?? [], [responseItems]);
+  const unfilteredItems = useMemo(
+    () => (responseItems ?? []).flatMap(toCalendarDisplayItems),
+    [responseItems],
+  );
   const unscheduledCards = useMemo(
     () => query.data?.unscheduledCards ?? [],
     [query.data?.unscheduledCards],
@@ -116,6 +128,26 @@ export const useCalendarQuery = ({
     () => getOverlappingDayBlockLayout(dayViewBlocks, MAX_MOBILE_DAY_LANES),
     [dayViewBlocks],
   );
+  // Timeline ngày dựng từ entry gốc của các thẻ còn hiện sau khi lọc; hạn nộp không chiếm thời gian.
+  const { dayTimeline, dayCardMeta } = useMemo(() => {
+    const visibleCardIds = new Set(items.map((item) => item.cardId));
+    const visibleIds = new Set(items.map((item) => item.id));
+    const raw = responseItems ?? [];
+    const cards = raw.filter(
+      (item): item is BoardCalendarCardItem => item.type === "card" && visibleCardIds.has(item.cardId),
+    );
+    const checklists = raw.filter(
+      (item): item is BoardCalendarChecklistItem => item.type === "checklist-item" && visibleIds.has(item.id),
+    );
+    const entries = [...projectCalendarEntries(cards), ...projectChecklistEntries(checklists)];
+
+    return {
+      dayTimeline: buildDayTimeline(entries, getGmt7DayKey(anchorDate)),
+      dayCardMeta: Object.fromEntries(
+        cards.map((card) => [card.cardId, { title: card.title, isCompleted: card.isCompleted }]),
+      ) as Record<string, { title: string; isCompleted: boolean }>,
+    };
+  }, [anchorDate, items, responseItems]);
   const weekRows = useMemo(() => getWeekRows(days), [days]);
   const daysByKey = useMemo(() => {
     return days.reduce<Record<string, Date>>((acc, day) => {
@@ -174,6 +206,8 @@ export const useCalendarQuery = ({
     occurrences,
     ranges,
     dayViewBlocks,
+    dayTimeline,
+    dayCardMeta,
     dayViewBlocksById,
     desktopDayViewLayout,
     mobileDayViewLayout,

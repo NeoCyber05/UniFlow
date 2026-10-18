@@ -5,6 +5,7 @@ import type {
   CopyCardResult,
 } from "@/lib/cards/copy-card-contract";
 import { db } from "@/lib/db";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import { requireBoardEditorForUser, requireBoardMemberForUser } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
 import { copyCardLabels } from "@/lib/cards/copy-card-labels";
@@ -186,6 +187,10 @@ export const copyCardService = async ({
           description: cardToCopy.description,
           startDate: cardToCopy.startDate,
           dueDate: cardToCopy.dueDate,
+          deadlineOn: cardToCopy.deadlineOn,
+          scheduledOn: cardToCopy.scheduledOn,
+          scheduledStartAt: cardToCopy.scheduledStartAt,
+          scheduledEndAt: cardToCopy.scheduledEndAt,
           isCompleted: cardToCopy.isCompleted,
           reminder: cardToCopy.reminder,
           reminderSetAt: cardToCopy.reminderSetAt,
@@ -193,6 +198,10 @@ export const copyCardService = async ({
           listId: targetListId,
         },
       });
+
+      if (createdCard.reminder) {
+        await syncCardReminder(tx, { cardId: createdCard.id, now: new Date() });
+      }
 
       if (keepLabels && cardToCopy.labels.length > 0) {
         await copyCardLabels({

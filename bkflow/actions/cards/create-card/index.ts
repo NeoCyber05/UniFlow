@@ -9,6 +9,8 @@ import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
 import { validateCardDateRange } from "@/lib/cards/card-date-rules";
+import { validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { toTaskDeadlineStorage, toTaskScheduleStorage } from "@/lib/cards/task-schedule-storage";
 import { isCourseInBoard } from "@/lib/courses/course-guards";
 
 import { CreateCard } from "./schema";
@@ -23,7 +25,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     };
   }
 
-  const { title, boardId, listId, startDate, dueDate, courseId } = data;
+  const {
+    title, boardId, listId, startDate, dueDate, courseId,
+    deadlineOn, scheduledOn, scheduledStartAt, scheduledEndAt,
+  } = data;
   let card;
 
   try {
@@ -78,6 +83,21 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       };
     }
 
+    if (dueDate && deadlineOn) {
+      return { error: "Hạn nộp chỉ có ngày hoặc có giờ, không đồng thời." };
+    }
+
+    const schedule = {
+      scheduledOn: scheduledOn ?? null,
+      scheduledStartAt: scheduledStartAt ?? null,
+      scheduledEndAt: scheduledEndAt ?? null,
+    };
+    const scheduleError = validateTaskSchedule(schedule);
+
+    if (scheduleError) {
+      return { error: scheduleError };
+    }
+
     card = await db.card.create({
       data: {
         title,
@@ -86,6 +106,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         ...(courseId ? { courseId } : {}),
         ...(startDate !== undefined ? { startDate } : {}),
         ...(dueDate !== undefined ? { dueDate } : {}),
+        ...(deadlineOn ? { deadlineOn: toTaskDeadlineStorage({ dueDate: null, deadlineOn }).deadlineOn } : {}),
+        ...(scheduledOn || scheduledStartAt ? toTaskScheduleStorage(schedule) : {}),
       },
     });
 

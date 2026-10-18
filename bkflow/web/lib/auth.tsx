@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session } from "@supabase/supabase-js";
 
 import { toAppUser, type AppUser } from "@/lib/auth/app-user";
+import { disableDesktopReminders, reconcileDesktopReminders } from "./desktop-notifications";
 import { supabase } from "./supabase";
 
 type AuthState = { isLoaded: boolean; session: Session | null };
@@ -11,8 +12,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({ isLoaded: false, session: null });
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => setState({ isLoaded: true, session: data.session }));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setState({ isLoaded: true, session }));
+    // A reminder binding of another/no account must not survive a sign-out or account switch (also from another tab).
+    const reconcile = (userId: string | null) => void reconcileDesktopReminders(userId).catch(() => {});
+    void supabase.auth.getSession().then(({ data }) => {
+      setState({ isLoaded: true, session: data.session });
+      reconcile(data.session?.user.id ?? null);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setState({ isLoaded: true, session });
+      reconcile(session?.user.id ?? null);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -34,4 +43,8 @@ export const useUser = (): { isLoaded: boolean; user: AppUser | null } => {
   return { isLoaded, user };
 };
 
-export const signOut = () => supabase.auth.signOut();
+/** Tắt nhắc nền trước (còn phiên để revoke), rồi mới đăng xuất; lỗi mạng không chặn đăng xuất. */
+export const signOut = async () => {
+  await disableDesktopReminders().catch(() => {});
+  return supabase.auth.signOut();
+};

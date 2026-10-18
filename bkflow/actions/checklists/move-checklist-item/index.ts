@@ -10,6 +10,7 @@ import { validateChecklistItemMove } from "@/lib/checklists/checklist-access";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { CHECKLIST_MESSAGES } from "@/lib/checklists/checklist-messages";
+import { moveItems, toChecklistActionError } from "@/lib/checklists/checklist-mutations";
 import {
   hasContiguousOrders,
   sortItemIds,
@@ -33,6 +34,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     destinationChecklistId,
     sourceItems,
     destinationItems,
+    expectedSourceOrderVersion,
+    expectedDestinationOrderVersion,
   } = data;
 
   try {
@@ -59,30 +62,17 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: access.error || CHECKLIST_MESSAGES.moveItemGeneric };
     }
 
-    const updatedItems = await db.$transaction([
-      ...sourceItems.map((item) =>
-        db.checklistItem.update({
-          where: {
-            id: item.id,
-          },
-          data: {
-            checklistId: sourceChecklistId,
-            order: item.order,
-          },
+    const { items: updatedItems, sourceOrderVersion, destinationOrderVersion } =
+      await db.$transaction((tx) =>
+        moveItems(tx, {
+          sourceChecklistId,
+          destinationChecklistId,
+          expectedSourceOrderVersion,
+          expectedDestinationOrderVersion,
+          sourceItems,
+          destinationItems,
         }),
-      ),
-      ...destinationItems.map((item) =>
-        db.checklistItem.update({
-          where: {
-            id: item.id,
-          },
-          data: {
-            checklistId: destinationChecklistId,
-            order: item.order,
-          },
-        }),
-      ),
-    ]);
+      );
 
     const verifiedCard = access.sourceChecklist.card;
     const verifiedBoardId = verifiedCard.list.boardId;
@@ -112,8 +102,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     });
 
     revalidatePath(`/board/${verifiedBoardId}`);
-    return { data: updatedItems };
+    return { data: { items: updatedItems, sourceOrderVersion, destinationOrderVersion } };
   } catch (error) {
+    const known = toChecklistActionError(error);
+    if (known) return known;
     console.error("[MOVE_CHECKLIST_ITEM_ERROR]", error);
     return { error: CHECKLIST_MESSAGES.moveItemFailed };
   }

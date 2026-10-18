@@ -1,3 +1,4 @@
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { BoardMemberRole } from "@/types";
 import "server-only";
 
@@ -92,6 +93,7 @@ export const loadBoardSnapshot = async (boardId: string) => {
               title: true,
               startDate: true,
               dueDate: true,
+              deadlineOn: true,
               isCompleted: true,
               course: { select: { name: true, code: true } },
               labels: { select: { label: { select: { title: true } } } },
@@ -123,7 +125,8 @@ export const loadBoardSnapshot = async (boardId: string) => {
           ? card.course.code ? `${card.course.code} ${card.course.name}` : card.course.name
           : null,
         startDate: card.startDate,
-        dueDate: card.dueDate,
+        // shortcut: hạn chỉ-ngày hiện ra như 23:59 VN cuối ngày hạn, đủ cho lọc/quá hạn; hiển thị giờ chỉ mang tính xấp xỉ
+        dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
         isCompleted: card.isCompleted,
         assignees: [],
         labels: card.labels.map(({ label }) => label.title).filter(Boolean),

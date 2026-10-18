@@ -1,33 +1,39 @@
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
-
+import { taskDatesToForm } from "@/lib/cards/task-dates-form";
 import type { CardWithList } from "@/types";
 
-export const getDateSummary = ({
-  startDate,
-  dueDate,
-  hasStartDate,
-  hasDueDate,
-}: {
-  startDate: CardWithList["startDate"];
-  dueDate: CardWithList["dueDate"];
-  hasStartDate: boolean;
-  hasDueDate: boolean;
-}) => {
-  const formattedDate = dueDate
-    ? format(new Date(dueDate), "H:mm d 'thg' M", { locale: vi })
-    : "";
-  const formattedStartDate = startDate
-    ? format(new Date(startDate), "H:mm d 'thg' M", { locale: vi })
-    : "";
+const day = (value: string) => {
+  const [, month, date] = value.split("-");
 
-  return hasStartDate && hasDueDate
-    ? `Bắt đầu ${formattedStartDate} - Hết hạn ${formattedDate}`
-    : hasStartDate
-      ? `Bắt đầu ${formattedStartDate}`
-      : hasDueDate
-        ? `Hết hạn ${formattedDate}`
-        : "";
+  return `${Number(date)}/${Number(month)}`;
+};
+
+/** Các dòng ngày hiển thị tách bạch: hạn nộp, lịch làm, mốc bắt đầu cũ (legacy). */
+export const getDateLines = (data: CardWithList) => {
+  const form = taskDatesToForm(data);
+  const lines: string[] = [];
+
+  if (form.deadlineDate) {
+    lines.push(`Hạn nộp ${form.deadlineTime ? `${form.deadlineTime} ` : ""}${day(form.deadlineDate)}`);
+  }
+
+  if (form.scheduleStartDate) {
+    if (form.scheduleStartTime) {
+      const endsOtherDay = form.scheduleEndDate && form.scheduleEndDate !== form.scheduleStartDate;
+
+      lines.push(`Lịch làm ${form.scheduleStartTime}–${form.scheduleEndTime}${endsOtherDay ? ` (${day(form.scheduleEndDate)})` : ""} ${day(form.scheduleStartDate)}`);
+    } else {
+      lines.push(`Lịch làm ${day(form.scheduleStartDate)}`);
+    }
+  }
+
+  if (data.startDate) {
+    // Tái dùng bộ đổi VN-time: coi startDate như một mốc có giờ.
+    const legacy = taskDatesToForm({ ...data, dueDate: data.startDate, deadlineOn: null });
+
+    lines.push(`Mốc bắt đầu cũ ${legacy.deadlineTime} ${day(legacy.deadlineDate)}${form.scheduleStartDate ? "" : " — chưa xếp lịch làm"}`);
+  }
+
+  return lines;
 };
 
 export const humanizeReminderMinutes = (mins: number) => {

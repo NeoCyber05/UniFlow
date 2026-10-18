@@ -1,3 +1,6 @@
+import { deadlineWhere } from "@/lib/cards/task-deadline";
+import { getVNDay, getVNDayKey } from "@/lib/my-tasks/vn-day";
+import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
@@ -43,7 +46,7 @@ const parseRequiredDateParam = (
 
 const getEffectiveStartTime = (item: BoardCalendarItem) => {
   const effectiveDate = item.type === "card"
-    ? item.startDate ?? item.dueDate
+    ? item.scheduledStartAt ?? item.scheduledOn ?? item.startDate ?? item.dueDate ?? item.deadlineOn
     : item.dueDate;
 
   return effectiveDate ? new Date(effectiveDate).getTime() : 0;
@@ -110,6 +113,12 @@ export async function GET(
       return new Response(permission.error, { status: 403 });
     }
 
+    const dayColumn = (date: Date) => new Date(`${getVNDayKey(getVNDay(date))}T00:00:00.000Z`);
+    // `to` là biên mở: timestamp so `< to`, ngày (SQL DATE) so theo ngày VN của mili-giây cuối.
+    const lastMoment = new Date(to.getTime() - 1);
+    const fromDay = dayColumn(from);
+    const toDay = dayColumn(lastMoment);
+
     const [cards, checklistItems, unscheduledCards] = await Promise.all([
       db.card.findMany({
         where: {
@@ -122,16 +131,23 @@ export async function GET(
             },
           },
           OR: [
+            // Hạn nộp (cả dueDate lẫn deadlineOn) nằm trong khoảng.
+            deadlineWhere({ gte: from, lte: lastMoment }),
+            // Lịch làm: khoảng giờ giao khoảng xem, hoặc ngày làm chỉ-ngày trong khoảng.
             {
-              dueDate: {
-                gte: from,
-                lte: to,
+              scheduledStartAt: { lt: to },
+              scheduledEndAt: { gt: from },
+            },
+            {
+              scheduledOn: {
+                gte: fromDay,
+                lte: toDay,
               },
             },
             {
               startDate: {
                 gte: from,
-                lte: to,
+                lt: to,
               },
             },
             {
@@ -139,7 +155,7 @@ export async function GET(
                 {
                   startDate: {
                     not: null,
-                    lte: to,
+                    lt: to,
                   },
                 },
                 {
@@ -158,6 +174,11 @@ export async function GET(
           order: true,
           startDate: true,
           dueDate: true,
+          deadlineOn: true,
+          scheduledOn: true,
+          scheduledStartAt: true,
+          scheduledEndAt: true,
+          updatedAt: true,
           isCompleted: true,
           reminder: true,
           listId: true,
@@ -201,7 +222,7 @@ export async function GET(
         where: {
           dueDate: {
             gte: from,
-            lte: to,
+            lt: to,
           },
           checklist: {
             card: {
@@ -273,8 +294,9 @@ export async function GET(
         ? db.card.findMany({
             where: {
               archivedAt: null,
-              startDate: null,
-              dueDate: null,
+              // Khay chưa xếp = chưa có lịch làm (hạn nộp không tính).
+              scheduledOn: null,
+              scheduledStartAt: null,
               list: {
                 archivedAt: null,
                 board: {
@@ -288,6 +310,9 @@ export async function GET(
               title: true,
               order: true,
               isCompleted: true,
+              updatedAt: true,
+              dueDate: true,
+              deadlineOn: true,
               listId: true,
               courseId: true,
               userStates: {
@@ -350,7 +375,8 @@ export async function GET(
         isImportant: card.userStates[0]?.isImportant ?? false,
         title: card.title,
         startDate: card.startDate?.toISOString() ?? null,
-        dueDate: card.dueDate?.toISOString() ?? null,
+        ...serializeTaskDates(card),
+        updatedAt: card.updatedAt.toISOString(),
         isCompleted: card.isCompleted,
         reminder: card.reminder,
         labels: card.labels.map(({ label }) => ({
@@ -430,6 +456,8 @@ export async function GET(
     const mappedUnscheduledCards: BoardCalendarUnscheduledCard[] = unscheduledCards
       .map((card) => ({
         type: "unscheduled-card" as const,
+        dueDate: card.dueDate?.toISOString() ?? null,
+        deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null,
         id: `unscheduled-card:${card.id}`,
         cardId: card.id,
         boardId,
@@ -438,6 +466,7 @@ export async function GET(
         courseId: card.courseId,
         isImportant: card.userStates[0]?.isImportant ?? false,
         title: card.title,
+        updatedAt: card.updatedAt.toISOString(),
         isCompleted: card.isCompleted,
         labels: card.labels.map(({ label }) => ({
           id: label.id,

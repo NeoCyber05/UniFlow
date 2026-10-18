@@ -24,6 +24,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOnClickOutside } from "usehooks-ts";
+import { useBlocker } from "react-router";
 
 import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
@@ -31,9 +32,14 @@ import { generateAiCardQuality } from "@/actions/ai/generate-ai-card-quality";
 import { CardWithList } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { FormErrors } from "@/components/form/form-errors";
 import { Hint } from "@/components/hint";
 import { cn } from "@/lib/utils";
+import {
+  createDescriptionSaveState,
+  descriptionSaveReducer,
+  type DescriptionSaveEvent,
+  type DescriptionSaveState,
+} from "@/lib/cards/description-save-state";
 import {
   Popover,
   PopoverAnchor,
@@ -41,16 +47,19 @@ import {
   PopoverDescription,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 
+import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { patchBoardCardPreview, patchCardQueryData } from "./card-cache-utils";
 import { MarkdownPreview } from "./markdown-preview";
 import { DescriptionEditor } from "./description-editor";
+import type { BeforeCloseRef } from "./close-guard";
 
 interface DescriptionProps {
   data: CardWithList;
   canEdit?: boolean;
-  getDescriptionBaseUpdatedAt: () => string | null;
-  onDescriptionBaseUpdatedAtChange: (value: string) => void;
+  /** Detail containers call this before closing or switching task. */
+  beforeCloseRef: BeforeCloseRef;
 }
 
 type MarkdownToolbarAction = "bold" | "italic" | "underline" | "bullet" | "link";
@@ -58,6 +67,7 @@ type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 type HeadingOption = HeadingLevel | "normal";
 type PreviewMode = "edit" | "preview";
 
+const AUTOSAVE_DELAY_MS = 800;
 const DESCRIPTION_CONFLICT_ERROR_CODE = "DESCRIPTION_CONFLICT";
 const DESCRIPTION_CONFLICT_MESSAGE =
   "Dữ liệu đã được cập nhật bởi một thành viên khác. Vui lòng reload thẻ để xem bản mới nhất.";
@@ -71,8 +81,6 @@ const toTimestampString = (value: Date | string | null | undefined) => {
 
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
-
-const normalizeDescription = (value: string | null | undefined) => value ?? "";
 
 const HEADING_OPTIONS: Array<{
   value: HeadingOption;
@@ -152,46 +160,246 @@ const getOutdentSize = (line: string) => {
 
 const stripHeadingPrefix = (line: string) => line.replace(/^(\s*)#{1,6}\s+/, "$1");
 
-export const Description = ({
-  data,
-  canEdit = true,
-  getDescriptionBaseUpdatedAt,
-  onDescriptionBaseUpdatedAtChange,
-}: DescriptionProps) => {
+export const Description = ({ data, canEdit = true, beforeCloseRef }: DescriptionProps) => {
   const queryClient = useQueryClient();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isConflictOpen, setIsConflictOpen] = useState(false);
-  const [draftDescription, setDraftDescription] = useState(() =>
-    normalizeDescription(data.description),
+  const [save, setSave] = useState(() =>
+    createDescriptionSaveState(data.description, toTimestampString(data.descriptionUpdatedAt)),
   );
   const [previewMode, setPreviewMode] = useState<PreviewMode>("edit");
   const [isSelectionAiBusy, setIsSelectionAiBusy] = useState(false);
+  const [decision, setDecision] = useState<{ conflict: boolean } | null>(null);
 
   const formRef = useRef<HTMLFormElement>(null!);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Mirror of `save` that async code can read right after a dispatch.
+  const saveRef = useRef<DescriptionSaveState>(save);
+  const saveChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const decisionRef = useRef<((choice: "stay" | "retry" | "discard") => void) | null>(null);
+  const guardRef = useRef<Promise<boolean> | null>(null);
+
+  const dispatch = (event: DescriptionSaveEvent) => {
+    saveRef.current = descriptionSaveReducer(saveRef.current, event);
+    setSave(saveRef.current);
+  };
+  const draftDescription = save.draft;
+  const isDirty = save.draft !== save.base;
+
+  const setDraftDescription = (value: string) => {
+    dispatch({ type: "edit", value });
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+
+      if (saveRef.current.status !== "conflict") {
+        void saveDraft();
+      }
+    }, AUTOSAVE_DELAY_MS);
+  };
+
+  // Server data (refetch, realtime) only replaces the text while nothing is unsaved.
+  useEffect(() => {
+    dispatch({
+      type: "external",
+      value: data.description ?? "",
+      updatedAt: toTimestampString(data.descriptionUpdatedAt),
+    });
+  }, [data.description, data.descriptionUpdatedAt]);
 
   useEffect(() => {
-    if (!isEditing) {
-      const nextTimestamp = toTimestampString(data.descriptionUpdatedAt);
-
-      setDraftDescription(normalizeDescription(data.description));
-
-      if (nextTimestamp && nextTimestamp !== getDescriptionBaseUpdatedAt()) {
-        onDescriptionBaseUpdatedAtChange(nextTimestamp);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
-    }
-  }, [
-    data.description,
-    data.descriptionUpdatedAt,
-    isEditing,
-    getDescriptionBaseUpdatedAt,
-    onDescriptionBaseUpdatedAtChange,
-  ]);
 
-  const descriptionRequestRef = useRef<{
-    previous: string | null;
-  } | null>(null);
+      decisionRef.current?.("stay");
+    };
+  }, []);
+
+  /** Sends the current draft; requests run one at a time so a later one always uses the newest base. */
+  const saveDraft = (): Promise<boolean> => {
+    const run = async () => {
+      const current = saveRef.current;
+
+      if (current.draft === current.base) {
+        return true;
+      }
+
+      dispatch({ type: "saveStart" });
+      const seq = saveRef.current.saveSeq;
+      const snapshot = saveRef.current.draft;
+
+      if (!current.baseUpdatedAt) {
+        dispatch({ type: "saveFailure", seq, conflict: false });
+        toast.error("Không thể xác định mốc cập nhật nội dung. Hãy tải lại thẻ.");
+        return false;
+      }
+
+      try {
+        const result = await updateCard({
+          id: data.id,
+          description: snapshot,
+          descriptionBaseUpdatedAt: current.baseUpdatedAt,
+          boardId: data.list.boardId,
+        });
+
+        if (result?.data) {
+          const updatedCard = result.data;
+          const patch = {
+            description: updatedCard.description,
+            descriptionUpdatedAt: updatedCard.descriptionUpdatedAt,
+            updatedAt: updatedCard.updatedAt,
+          };
+
+          dispatch({
+            type: "saveSuccess",
+            seq,
+            snapshot,
+            updatedAt: toTimestampString(updatedCard.descriptionUpdatedAt),
+          });
+          patchCardQueryData(queryClient, updatedCard.id, patch);
+          patchBoardCardPreview(data.list.boardId, updatedCard.id, patch);
+          void queryClient.invalidateQueries({ queryKey: ["card-logs", updatedCard.id] });
+          void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+          void queryClient.invalidateQueries({ queryKey: ["board-calendar", data.list.boardId] });
+          return true;
+        }
+
+        const conflict = result?.errorCode === DESCRIPTION_CONFLICT_ERROR_CODE;
+
+        dispatch({ type: "saveFailure", seq, conflict });
+
+        if (conflict) {
+          setIsConflictOpen(true);
+        } else {
+          toast.error(result?.error ?? "Không lưu được nội dung. Bản nháp vẫn được giữ.");
+        }
+
+        return false;
+      } catch {
+        dispatch({ type: "saveFailure", seq, conflict: false });
+        toast.error("Mất kết nối khi lưu. Bản nháp vẫn được giữ.");
+        return false;
+      }
+    };
+
+    saveChainRef.current = saveChainRef.current.then(run);
+
+    return saveChainRef.current;
+  };
+
+  const flush = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    return saveDraft();
+  };
+
+  const askUser = (conflict: boolean) =>
+    new Promise<"stay" | "retry" | "discard">((resolve) => {
+      decisionRef.current = (choice) => {
+        decisionRef.current = null;
+        setDecision(null);
+        resolve(choice);
+      };
+      setDecision({ conflict });
+    });
+
+  const beforeClose = () => {
+    guardRef.current ??= (async () => {
+      try {
+        for (;;) {
+          if (await flush()) {
+            return true;
+          }
+
+          const choice = await askUser(saveRef.current.status === "conflict");
+
+          if (choice === "stay") {
+            return false;
+          }
+
+          if (choice === "discard") {
+            dispatch({ type: "discard" });
+            setIsEditing(false);
+            setIsConflictOpen(false);
+            return true;
+          }
+        }
+      } finally {
+        guardRef.current = null;
+      }
+    })();
+
+    return guardRef.current;
+  };
+
+  const beforeCloseLatest = useRef(beforeClose);
+  useEffect(() => {
+    beforeCloseLatest.current = beforeClose;
+  });
+
+  useEffect(() => {
+    const ref = beforeCloseRef;
+    const guard = () => beforeCloseLatest.current();
+
+    ref.current = guard;
+
+    return () => {
+      if (ref.current === guard) {
+        ref.current = null;
+      }
+    };
+  }, [beforeCloseRef]);
+
+  // Hard reload / tab close cannot await a save, so only warn.
+  useEffect(() => {
+    if (!isDirty) {
+      return;
+    }
+
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warn);
+
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
+  // In-app navigation to another page (including browser back) goes through the same guard.
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    dirtyRef.current = isDirty;
+  }, [isDirty]);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirtyRef.current && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    if (blocker.state !== "blocked") {
+      return;
+    }
+
+    void beforeCloseLatest.current().then((ok) => {
+      if (ok) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    });
+  }, [blocker]);
 
   const enableEditing = () => {
     if (!canEdit) {
@@ -199,7 +407,6 @@ export const Description = ({
     }
 
     setIsConflictOpen(false);
-    setDraftDescription(normalizeDescription(data.description));
     setPreviewMode("edit");
     setIsEditing(true);
     setTimeout(() => {
@@ -207,16 +414,30 @@ export const Description = ({
     });
   };
 
-  const disableEditing = () => {
+  /** Leaves edit mode only once the text is stored; on failure stay so nothing is lost. */
+  const finishEditing = async () => {
+    if (await flush()) {
+      setIsEditing(false);
+      setPreviewMode("edit");
+    }
+  };
+
+  const discardDraft = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    dispatch({ type: "discard" });
+    setIsConflictOpen(false);
     setIsEditing(false);
-    setDraftDescription(normalizeDescription(data.description));
     setPreviewMode("edit");
   };
 
   const onFormKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      disableEditing();
+      void finishEditing();
     }
   };
 
@@ -379,7 +600,7 @@ export const Description = ({
   };
 
   const insertMarkdown = (action: MarkdownToolbarAction) => {
-    if (!textareaRef.current || isLoading) {
+    if (!textareaRef.current) {
       return;
     }
 
@@ -440,62 +661,15 @@ export const Description = ({
   useOnClickOutside(formRef, (event) => {
     const target = event.target as HTMLElement;
 
-    if (target.closest(".description-conflict-popover")) {
+    if (
+      target.closest(".description-conflict-popover") ||
+      target.closest(".description-toolbar-popover") ||
+      target.closest(".description-guard-dialog")
+    ) {
       return;
     }
 
-    if (target.closest(".description-toolbar-popover")) {
-      return;
-    }
-
-    disableEditing();
-  });
-
-  const { execute, fieldErrors, isLoading } = useAction(updateCard, {
-    onSuccess: (updatedCard) => {
-      const nextDescriptionUpdatedAt = toTimestampString(
-        updatedCard.descriptionUpdatedAt,
-      );
-
-      descriptionRequestRef.current = null;
-      disableEditing();
-      patchCardQueryData(queryClient, updatedCard.id, {
-        description: updatedCard.description,
-        descriptionUpdatedAt: updatedCard.descriptionUpdatedAt,
-      });
-      patchBoardCardPreview(data.list.boardId, updatedCard.id, {
-        description: updatedCard.description,
-        descriptionUpdatedAt: updatedCard.descriptionUpdatedAt,
-      });
-
-      if (nextDescriptionUpdatedAt) {
-        onDescriptionBaseUpdatedAtChange(nextDescriptionUpdatedAt);
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: ["card-logs", updatedCard.id],
-      });
-    },
-    onError: (error, errorCode) => {
-      const request = descriptionRequestRef.current;
-
-      if (request) {
-        patchCardQueryData(queryClient, data.id, {
-          description: request.previous,
-        });
-        patchBoardCardPreview(data.list.boardId, data.id, {
-          description: request.previous,
-        });
-        descriptionRequestRef.current = null;
-      }
-
-      if (errorCode === DESCRIPTION_CONFLICT_ERROR_CODE) {
-        setIsConflictOpen(true);
-        return;
-      }
-
-      toast.error(error);
-    },
+    void finishEditing();
   });
 
   const [activeAiTask, setActiveAiTask] = useState<"create_description" | "rewrite_description" | null>(null);
@@ -535,52 +709,26 @@ export const Description = ({
   };
 
   const reloadCard = async () => {
-    setIsConflictOpen(false);
-    disableEditing();
+    discardDraft();
     await queryClient.invalidateQueries({ queryKey: ["card", data.id] });
   };
 
   const onSubmit = () => {
-    if (!canEdit || isLoading || isGeneratingAi || isSelectionAiBusy || descriptionRequestRef.current) {
+    if (!canEdit || isGeneratingAi || isSelectionAiBusy) {
       return;
     }
 
-    const description = draftDescription;
-    const boardId = data.list.boardId;
-    const baseUpdatedAt =
-      getDescriptionBaseUpdatedAt() ?? toTimestampString(data.descriptionUpdatedAt);
-
-    if (description === normalizeDescription(data.description)) {
-      disableEditing();
-      return;
-    }
-
-    if (!baseUpdatedAt) {
-      toast.error("Không thể xác định mốc cập nhật mô tả.");
-      return;
-    }
-
-    descriptionRequestRef.current = {
-      previous: data.description,
-    };
-
-    patchCardQueryData(queryClient, data.id, {
-      description,
-    });
-    patchBoardCardPreview(boardId, data.id, {
-      description,
-    });
-
-    execute({
-      id: data.id,
-      description,
-      descriptionBaseUpdatedAt: baseUpdatedAt,
-      boardId,
-    });
+    void finishEditing();
   };
 
-  const hasDescription = !!data.description?.trim();
-  const isDraftChanged = draftDescription !== normalizeDescription(data.description);
+  const hasDescription = !!draftDescription.trim();
+  const statusLabel = {
+    saved: "Đã lưu",
+    dirty: "Chưa lưu",
+    saving: "Đang lưu…",
+    error: "Lưu lỗi, bản nháp vẫn được giữ",
+    conflict: "Nội dung đã đổi ở nơi khác",
+  }[save.status];
   const toolbarItems: Array<{
     action: MarkdownToolbarAction;
     label: string;
@@ -603,7 +751,7 @@ export const Description = ({
           <div className="w-full min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2.5">
               <p className="font-semibold text-base text-neutral-800">
-                Mô tả
+                Nội dung
               </p>
               {canEdit && (
                 <div className="flex items-center gap-x-1.5 ml-1">
@@ -611,7 +759,7 @@ export const Description = ({
                     type="button"
                     variant="outline"
                     onClick={() => handleGenerateAi("create_description")}
-                    disabled={isGeneratingAi || isLoading || isSelectionAiBusy}
+                    disabled={isGeneratingAi || isSelectionAiBusy}
                     className="h-7 rounded-lg border-sky-100 bg-sky-50/50 px-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors shadow-xs"
                   >
                     {isGeneratingAi && activeAiTask === "create_description" ? (
@@ -626,7 +774,7 @@ export const Description = ({
                       type="button"
                       variant="outline"
                       onClick={() => handleGenerateAi("rewrite_description")}
-                      disabled={isGeneratingAi || isLoading || isSelectionAiBusy}
+                      disabled={isGeneratingAi || isSelectionAiBusy}
                       className="h-7 rounded-lg border-sky-100 bg-sky-50/50 px-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors shadow-xs"
                     >
                       {isGeneratingAi && activeAiTask === "rewrite_description" ? (
@@ -658,7 +806,6 @@ export const Description = ({
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={isLoading}
                           className="h-7 rounded-lg px-2 text-neutral-600 hover:bg-white hover:text-neutral-900"
                         >
                           <Type className="h-3.5 w-3.5" />
@@ -676,7 +823,6 @@ export const Description = ({
                           <button
                             key={option.value}
                             type="button"
-                            disabled={isLoading}
                             onClick={() => applyHeading(option.value)}
                             className={cn(
                               "flex w-full items-center rounded-md px-3 py-2 text-left text-neutral-700 transition hover:bg-violet-50 hover:text-violet-700 disabled:opacity-50",
@@ -695,7 +841,6 @@ export const Description = ({
                           type="button"
                           size="icon-sm"
                           variant="ghost"
-                          disabled={isLoading}
                           onClick={() => insertMarkdown(item.action)}
                           className="h-7 w-7 rounded-lg text-neutral-600 hover:bg-white hover:text-neutral-900"
                         >
@@ -711,7 +856,6 @@ export const Description = ({
                         key={mode}
                         type="button"
                         onClick={() => setPreviewMode(mode)}
-                        disabled={isLoading}
                         className={cn(
                           "inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition disabled:opacity-50",
                           previewMode === mode
@@ -756,12 +900,11 @@ export const Description = ({
                             formRef.current?.requestSubmit();
                           }
                         }}
-                        disabled={isLoading || isGeneratingAi}
-                        placeholder="Thêm mô tả chi tiết hơn..."
+                        disabled={isGeneratingAi}
+                        placeholder="Viết nội dung hoặc gõ / để chèn tiêu đề, danh sách…"
                         aria-describedby="description-error"
                         className="min-h-[260px] w-full resize-y rounded-xl border-neutral-200 bg-white px-4 py-3.5 text-base leading-relaxed shadow-sm focus-visible:border-violet-400 focus-visible:ring-1 focus-visible:ring-violet-200"
                       />
-                      <FormErrors id="description" errors={fieldErrors} />
                     </div>
                   {previewMode === "preview" && (
                     <div className="min-h-[260px] rounded-xl border border-neutral-200 bg-white px-4 py-3.5 text-base leading-relaxed shadow-sm">
@@ -772,26 +915,45 @@ export const Description = ({
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-x-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <Button
                     type="submit"
-                    disabled={isLoading || isGeneratingAi || isSelectionAiBusy || !isDraftChanged}
+                    disabled={isGeneratingAi || isSelectionAiBusy}
                     size="sm"
                     className="h-9 rounded-lg bg-violet-600 px-5 text-sm text-white hover:bg-violet-700"
                   >
-                    Lưu
+                    {save.status === "error" || save.status === "conflict"
+                      ? "Thử lại"
+                      : save.status === "saved"
+                        ? "Xong"
+                        : "Lưu"}
                   </Button>
                   <Button
                     type="button"
-                    onClick={disableEditing}
-                    disabled={isLoading}
+                    onClick={discardDraft}
+                    disabled={!isDirty}
                     size="sm"
                     variant="ghost"
                     className="h-9 text-sm text-neutral-500 rounded-lg px-4"
                   >
-                    Hủy
+                    Bỏ thay đổi
                   </Button>
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                      "text-xs",
+                      save.status === "error" || save.status === "conflict"
+                        ? "text-red-600"
+                        : "text-neutral-500",
+                    )}
+                  >
+                    {statusLabel}
+                  </p>
                 </div>
+                <p className="text-xs text-neutral-500">
+                  Ghi chú bằng Markdown. Ô &quot;- [ ]&quot; ở đây chỉ là ghi chú; để theo dõi tiến độ, dùng mục Checklist bên dưới.
+                </p>
               </form>
             ) : (
               <div
@@ -825,8 +987,8 @@ export const Description = ({
                 )}
               >
                 <MarkdownPreview
-                  value={data.description}
-                  emptyText={canEdit ? "Nhập để thêm mô tả..." : "Chưa có mô tả."}
+                  value={draftDescription}
+                  emptyText={canEdit ? "Thêm nội dung" : "Chưa có nội dung."}
                 />
               </div>
             )}
@@ -846,6 +1008,36 @@ export const Description = ({
           </Button>
         </PopoverContent>
       </Popover>
+      <Dialog
+        open={decision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            decisionRef.current?.("stay");
+          }
+        }}
+      >
+        <DialogContent className="description-guard-dialog sm:max-w-md" showCloseButton={false}>
+          <DialogTitle>Chưa lưu được nội dung</DialogTitle>
+          <DialogDescription>
+            {decision?.conflict
+              ? "Nội dung đã được cập nhật ở nơi khác nên bản của bạn chưa thể ghi đè. Bạn có thể ở lại để sao chép bản nháp, hoặc bỏ thay đổi."
+              : "Kết nối hoặc máy chủ đang lỗi. Bản nháp vẫn được giữ cho tới khi bạn chọn."}
+          </DialogDescription>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => decisionRef.current?.("stay")}>
+              Ở lại
+            </Button>
+            {!decision?.conflict && (
+              <Button type="button" variant="outline" onClick={() => decisionRef.current?.("retry")}>
+                Thử lại
+              </Button>
+            )}
+            <Button type="button" variant="destructive" onClick={() => decisionRef.current?.("discard")}>
+              Bỏ thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

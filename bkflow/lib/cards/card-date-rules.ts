@@ -1,5 +1,6 @@
 import type { Card, Prisma } from "@prisma/client";
 
+import { getTaskReminderAt } from "@/lib/cards/task-deadline";
 import type { UpdateCardInput } from "@/lib/cards/update-card-contract";
 import type { CardUpdatedField } from "@/lib/realtime/types";
 
@@ -67,12 +68,15 @@ export const validateCardDateRange = (
 
 export const validateReminderConfig = ({
   dueDate,
+  deadlineOn = null,
   reminder,
 }: {
   dueDate: Date | null;
+  /** Hạn chỉ-ngày YYYY-MM-DD: nhắc tính từ 09:00 VN ngày hạn. */
+  deadlineOn?: string | null;
   reminder: string | null;
 }) => {
-  if (!dueDate || !reminder || reminder === "none") {
+  if ((!dueDate && !deadlineOn) || !reminder || reminder === "none") {
     return null;
   }
 
@@ -82,7 +86,10 @@ export const validateReminderConfig = ({
     return "Mốc nhắc nhở không hợp lệ.";
   }
 
-  const triggerTime = new Date(dueDate).getTime() - offsetMinutes * 60_000;
+  const triggerTime = getTaskReminderAt(
+    { dueDate: dueDate?.toISOString() ?? null, deadlineOn },
+    offsetMinutes,
+  )!.getTime();
 
   if (triggerTime < Date.now()) {
     return "Thời gian nhắc nhở đã ở trong quá khứ. Hãy chọn mốc nhắc ngắn hơn hoặc đổi ngày hết hạn.";
@@ -98,6 +105,7 @@ export const getChangedCardFields = ({
   dueDateChanged,
   reminderChanged,
   reminderConfigChanged,
+  deadlineCleared = false,
 }: {
   input: CardDateInput;
   currentCard: Pick<Card, "title" | "description" | "isCompleted">;
@@ -105,6 +113,8 @@ export const getChangedCardFields = ({
   dueDateChanged: boolean;
   reminderChanged: boolean;
   reminderConfigChanged: boolean;
+  /** Hạn (cả dạng giờ lẫn chỉ-ngày) vừa bị xóa hẳn. */
+  deadlineCleared?: boolean;
 }) => {
   const changedFields: CardUpdatedField[] = [];
 
@@ -138,7 +148,7 @@ export const getChangedCardFields = ({
     changedFields.push("reminder");
   }
 
-  if (reminderConfigChanged || input.dueDate === null) {
+  if (reminderConfigChanged || deadlineCleared) {
     changedFields.push("reminderSetAt");
   }
 
@@ -149,10 +159,15 @@ export const buildCardUpdateData = ({
   input,
   reminderConfigChanged,
   descriptionChanged,
+  deadlineCleared = false,
+  extra = {},
 }: {
   input: CardDateInput;
   reminderConfigChanged: boolean;
   descriptionChanged: boolean;
+  deadlineCleared?: boolean;
+  /** deadlineOn / scheduled* đã chuyển sang dạng lưu trữ (chỉ gồm trường được gửi). */
+  extra?: Prisma.CardUpdateInput;
 }): Prisma.CardUpdateInput => {
   const { startDate, dueDate, isCompleted, reminder, ...values } = input;
 
@@ -160,20 +175,21 @@ export const buildCardUpdateData = ({
     ...values,
     ...(startDate !== undefined ? { startDate } : {}),
     ...(dueDate !== undefined ? { dueDate } : {}),
+    ...extra,
     ...(isCompleted !== undefined ? { isCompleted } : {}),
     ...(reminder !== undefined ? { reminder } : {}),
     ...(descriptionChanged ? { descriptionUpdatedAt: new Date() } : {}),
     ...(reminderConfigChanged ? { reminderSetAt: new Date() } : {}),
-    ...(dueDate === null ? { reminderSetAt: null } : {}),
+    ...(deadlineCleared ? { reminderSetAt: null } : {}),
   };
 };
 
 export const shouldDeleteReminderNotifications = ({
   reminderConfigChanged,
-  dueDate,
+  deadlineCleared = false,
   isCompleted,
 }: {
   reminderConfigChanged: boolean;
-  dueDate?: Date | null;
+  deadlineCleared?: boolean;
   isCompleted?: boolean;
-}) => reminderConfigChanged || dueDate === null || isCompleted === true;
+}) => reminderConfigChanged || deadlineCleared || isCompleted === true;

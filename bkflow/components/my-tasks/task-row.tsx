@@ -2,11 +2,14 @@
 
 import { CalendarDays, Check, ListChecks, Star, Sun, Users } from "lucide-react";
 
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { useMyTaskMutations } from "@/hooks/use-my-task-mutations";
 import { getCourseColor, getCourseShortLabel } from "@/lib/courses/course-colors";
 import type { MyTask } from "@/lib/my-tasks/types";
 import { formatVNShortDate, isSameVNDay } from "@/lib/my-tasks/vn-day";
 import { cn } from "@/lib/utils";
+
+import { TaskLabels } from "@/components/tasks/task-labels";
 
 import { AssigneeStack } from "./assignee-stack";
 
@@ -29,18 +32,16 @@ export const TaskRow = ({
 }: TaskRowProps) => {
   const { setCompleted, setImportant, setMyDay } = useMyTaskMutations();
   const now = new Date();
-  const due = task.dueDate ? new Date(task.dueDate) : null;
+  const due = getTaskDeadlineAt(task);
   const isOverdue = !task.isCompleted && due !== null && due < now;
   const isPinned = task.myDayAt !== null && isSameVNDay(new Date(task.myDayAt), now);
   const courseColor = task.course ? getCourseColor(task.course.color) : null;
 
   return (
+    // Cả hàng bấm chuột để mở, nhưng bàn phím chỉ qua nút tiêu đề; control con độc lập (không lồng button).
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(task.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") onOpen(task.id);
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest("button,a,input,[role=dialog]")) onOpen(task.id);
       }}
       className={cn(
         "group flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-3 py-2.5 transition hover:border-violet-200 hover:shadow-sm",
@@ -65,9 +66,16 @@ export const TaskRow = ({
       </button>
 
       <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-sm font-medium text-neutral-800", task.isCompleted && "text-neutral-400 line-through")}>
+        <button
+          type="button"
+          onClick={() => onOpen(task.id)}
+          className={cn(
+            "block max-w-full truncate rounded text-left text-sm font-medium text-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-400",
+            task.isCompleted && "text-neutral-400 line-through",
+          )}
+        >
           {task.title}
-        </p>
+        </button>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-neutral-500">
           {task.course && courseColor && (
             <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1", courseColor.chip)}>
@@ -93,6 +101,7 @@ export const TaskRow = ({
               {task.checklist.completed}/{task.checklist.total}
             </span>
           )}
+          <TaskLabels labels={task.labels} mode="compact" />
           {isPinned && (
             <span className="inline-flex items-center gap-1 text-amber-600">
               <Sun className="h-3 w-3" />

@@ -14,6 +14,7 @@ before(() => {
   fs.mkdirSync(`${dist}/assets`, { recursive: true });
   fs.writeFileSync(`${dist}/index.html`, "<html>spa-shell</html>");
   fs.writeFileSync(`${dist}/assets/app.js`, "console.log(1)");
+  fs.writeFileSync(`${dist}/sw.js`, "self.addEventListener('push',()=>{})");
   app.get("/api/ping", (c) => c.text("pong"));
   mountSpa(app, dist);
 });
@@ -37,5 +38,12 @@ test("keeps api routes and 404s unknown api paths without html", async () => {
   assert.equal(await (await app.request("/api/ping")).text(), "pong");
   const res = await app.request("/api/unknown");
   assert.equal(res.status, 404);
+  assert.ok(!(await res.text()).includes("spa-shell"));
+});
+
+test("serves the service worker as javascript, not the SPA shell", async () => {
+  const res = await app.request("/sw.js");
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type") ?? "", /javascript/);
   assert.ok(!(await res.text()).includes("spa-shell"));
 });

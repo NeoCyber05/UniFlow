@@ -229,7 +229,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
 
     <article className={cn("note-styled-page mx-auto w-full", hasCustomPaper(effectiveStyle) && "my-6 rounded-2xl shadow-sm")} style={pageStyleCss(effectiveStyle)}>
       <fieldset disabled={aiBusy} className="min-w-0">
-        <div className="group/cover pl-12 pt-8">
+        <div className="group/cover pl-12 pt-8 sm:pt-12">
           <Popover open={iconOpen} onOpenChange={setIconOpen}>
             <PopoverTrigger asChild>
               {icon
@@ -253,7 +253,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
               document.querySelector<HTMLElement>("[data-block-input]")?.focus();
             }}
             placeholder="Trang chưa đặt tên"
-            className="text-[2.5em] font-bold leading-tight tracking-tight placeholder:text-muted-foreground/40"
+            className="text-[2.5em] font-bold leading-tight tracking-tight placeholder:text-muted-foreground"
           />
         </div>
         <div className="mt-4">

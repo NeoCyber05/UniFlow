@@ -88,4 +88,14 @@ describe("getStartOfVNDay", () => {
       new Date("2026-10-05T17:00:00.000Z"),
     );
   });
+
+  it("hạn chỉ-ngày: hôm nay chưa quá hạn, hôm qua quá hạn", () => {
+    const groups = byKey(groupAgendaTasks([
+      task("d-today", { deadlineOn: "2026-10-06" }),
+      task("d-yesterday", { deadlineOn: "2026-10-05" }),
+    ], NOW));
+
+    assert.deepEqual(groups.today, ["d-today"]);
+    assert.deepEqual(groups.overdue, ["d-yesterday"]);
+  });
 });

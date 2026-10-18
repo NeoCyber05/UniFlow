@@ -1,19 +1,17 @@
 "use client";
 
-import { FormEvent, useRef } from "react";
+import { useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type { CardWithList } from "@/types";
 import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
-import {
-  getDateTimezoneOffset,
-  parseDateTimeLocalInput,
-} from "@/lib/date-utils";
+import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
+import { taskDatesToForm, type TaskDatesPatch } from "@/lib/cards/task-dates-form";
 
-import { humanizeReminderMinutes } from "./metadata-utils";
 import {
+  getCardRevision,
   patchBoardCardPreview,
   patchCardQueryData,
 } from "../card-cache-utils";
@@ -23,7 +21,6 @@ interface UseCardMetadataActionsProps {
   boardId: string;
   queryClient: QueryClient;
   invalidateBoardCalendar: () => void;
-  reminderValue: string;
   setIsDateOpen: (open: boolean) => void;
 }
 
@@ -32,15 +29,9 @@ export const useCardMetadataActions = ({
   boardId,
   queryClient,
   invalidateBoardCalendar,
-  reminderValue,
   setIsDateOpen,
 }: UseCardMetadataActionsProps) => {
-  const dateRequestRef = useRef<{
-    previousStartDate: CardWithList["startDate"];
-    previousDueDate: CardWithList["dueDate"];
-    previousReminder: CardWithList["reminder"];
-    previousIsCompleted: CardWithList["isCompleted"];
-  } | null>(null);
+  const dateRequestRef = useRef<Partial<CardWithList> | null>(null);
 
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
     onSuccess: (updatedCard) => {
@@ -48,16 +39,26 @@ export const useCardMetadataActions = ({
       patchCardQueryData(queryClient, updatedCard.id, {
         startDate: updatedCard.startDate,
         dueDate: updatedCard.dueDate,
+        deadlineOn: updatedCard.deadlineOn,
+        scheduledOn: updatedCard.scheduledOn,
+        scheduledStartAt: updatedCard.scheduledStartAt,
+        scheduledEndAt: updatedCard.scheduledEndAt,
         isCompleted: updatedCard.isCompleted,
         reminder: updatedCard.reminder,
         reminderSetAt: updatedCard.reminderSetAt,
+        updatedAt: updatedCard.updatedAt,
       });
       patchBoardCardPreview(boardId, updatedCard.id, {
         startDate: updatedCard.startDate,
         dueDate: updatedCard.dueDate,
+        deadlineOn: updatedCard.deadlineOn,
+        scheduledOn: updatedCard.scheduledOn,
+        scheduledStartAt: updatedCard.scheduledStartAt,
+        scheduledEndAt: updatedCard.scheduledEndAt,
         isCompleted: updatedCard.isCompleted,
         reminder: updatedCard.reminder,
         reminderSetAt: updatedCard.reminderSetAt,
+        updatedAt: updatedCard.updatedAt,
       });
       queryClient.invalidateQueries({
         queryKey: ["card-logs", updatedCard.id],
@@ -78,189 +79,112 @@ export const useCardMetadataActions = ({
       }
       setIsDateOpen(false);
     },
-    onError: (error) => {
+    onError: (error, errorCode) => {
       const request = dateRequestRef.current;
       if (request) {
-        patchCardQueryData(queryClient, data.id, {
-          startDate: request.previousStartDate,
-          dueDate: request.previousDueDate,
-          reminder: request.previousReminder,
-          isCompleted: request.previousIsCompleted,
-        });
-        patchBoardCardPreview(boardId, data.id, {
-          startDate: request.previousStartDate,
-          dueDate: request.previousDueDate,
-          reminder: request.previousReminder,
-          isCompleted: request.previousIsCompleted,
-        });
+        patchCardQueryData(queryClient, data.id, request);
+        patchBoardCardPreview(boardId, data.id, request);
         dateRequestRef.current = null;
       }
       toast.error(error);
+
+      if (errorCode === "CARD_CONFLICT") {
+        void queryClient.invalidateQueries({ queryKey: ["card", data.id] });
+      }
     },
   });
 
-  const updateDateRange = ({
-    startDate,
-    dueDate,
-    isCompleted,
-    reminder,
-  }: {
-    startDate?: Date | null;
-    dueDate?: Date | null;
-    isCompleted?: boolean;
-    reminder?: string | null;
-  }) => {
+  const revision = () => getCardRevision(queryClient, data.id, data.updatedAt);
+
+  const submit = (changes: Partial<CardWithList>, input: Omit<UpdateCardInput, "id" | "boardId" | "expectedUpdatedAt">) => {
     if (isLoadingUpdate || dateRequestRef.current) {
       return;
     }
 
-    if (
-      startDate === undefined &&
-      dueDate === undefined &&
-      (isCompleted === undefined || isCompleted === data.isCompleted) &&
-      (reminder === undefined || reminder === (data.reminder || "none"))
-    ) {
-      return;
-    }
-
-    const nextIsCompleted = dueDate === undefined
-      ? isCompleted
-      : (dueDate ? (isCompleted ?? data.isCompleted) : false);
-    const nextReminder = dueDate === undefined
-      ? reminder
-      : (dueDate ? (reminder ?? reminderValue) : null);
-
-    dateRequestRef.current = {
-      previousStartDate: data.startDate,
-      previousDueDate: data.dueDate,
-      previousReminder: data.reminder,
-      previousIsCompleted: data.isCompleted,
-    };
-
-    const patchObj: Partial<CardWithList> = {};
-    if (startDate !== undefined) patchObj.startDate = startDate;
-    if (dueDate !== undefined) patchObj.dueDate = dueDate;
-    if (nextIsCompleted !== undefined) patchObj.isCompleted = nextIsCompleted;
-    if (nextReminder !== undefined) patchObj.reminder = nextReminder === "none" ? null : nextReminder;
-
-    patchCardQueryData(queryClient, data.id, patchObj);
-    patchBoardCardPreview(boardId, data.id, patchObj);
-
-    executeUpdateCard({
-      id: data.id,
-      boardId,
-      ...(startDate !== undefined ? { startDate } : {}),
-      ...(dueDate !== undefined ? { dueDate } : {}),
-      dueDateTimezoneOffset: dueDate
-        ? getDateTimezoneOffset(dueDate)
-        : startDate
-          ? getDateTimezoneOffset(startDate)
-          : undefined,
-      ...(nextIsCompleted !== undefined ? { isCompleted: nextIsCompleted } : {}),
-      ...(nextReminder !== undefined ? { reminder: nextReminder } : {}),
-    });
+    // Snapshot đúng các trường sắp đổi để hoàn tác nếu server từ chối.
+    dateRequestRef.current = Object.fromEntries(
+      (Object.keys(changes) as (keyof CardWithList)[]).map((key) => [key, data[key]]),
+    ) as Partial<CardWithList>;
+    patchCardQueryData(queryClient, data.id, changes);
+    patchBoardCardPreview(boardId, data.id, changes);
+    executeUpdateCard({ id: data.id, boardId, expectedUpdatedAt: revision(), ...input });
   };
 
-  const updateDueDate = (
-    nextDueDate: Date | null,
-    nextReminder?: string | null,
-    nextIsCompleted?: boolean,
-  ) => {
-    updateDateRange({
-      dueDate: nextDueDate,
-      reminder: nextReminder,
-      isCompleted: nextIsCompleted,
-    });
-  };
+  const sameTime = (left: unknown, right: unknown) =>
+    (left ? new Date(left as string).getTime() : null) === (right ? new Date(right as string).getTime() : null);
 
-  const updateStartDate = (nextStartDate: Date | null) => {
-    updateDateRange({
-      startDate: nextStartDate,
-    });
-  };
+  /** Chỉ gửi trường thật sự đổi: tránh kích hoạt kiểm tra legacy hoặc đặt lại nhắc không cần. */
+  const saveTaskDates = (patch: TaskDatesPatch) => {
+    const stored = taskDatesToForm(data);
+    const dueChanged = !sameTime(patch.dueDate, data.dueDate);
+    const deadlineOnChanged = (patch.deadlineOn ?? "") !== (data.dueDate ? "" : stored.deadlineDate);
+    const scheduleSignature = (on: unknown, start: unknown, end: unknown) =>
+      [on ? String(on).slice(0, 10) : "", start ? new Date(start as string).getTime() : "", end ? new Date(end as string).getTime() : ""].join("|");
+    const scheduleChanged =
+      scheduleSignature(patch.scheduledOn, patch.scheduledStartAt, patch.scheduledEndAt) !==
+      scheduleSignature(data.scheduledOn, data.scheduledStartAt, data.scheduledEndAt);
+    const reminderChanged = patch.reminder !== (data.reminder || "none");
+    const dateOnly = (value: string | null) => (value ? new Date(`${value}T00:00:00.000Z`) : null);
 
-  const onDateSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const startDateString = formData.get("startDate") as string;
-    const dueDateString = formData.get("dueDate") as string;
-    const reminder = formData.get("reminder") as string;
-
-    const parsedStartDate = parseDateTimeLocalInput(startDateString);
-    const parsedDueDate = parseDateTimeLocalInput(dueDateString);
-
-    if (startDateString && !parsedStartDate) {
-      toast.error("Thời gian bắt đầu không hợp lệ.");
+    if (!dueChanged && !deadlineOnChanged && !scheduleChanged && !reminderChanged) {
+      setIsDateOpen(false);
       return;
     }
 
-    if (dueDateString && !parsedDueDate) {
-      toast.error("Hạn chót không hợp lệ.");
-      return;
-    }
-
-    if (parsedStartDate && parsedDueDate && parsedStartDate > parsedDueDate) {
-      toast.error("Thời gian bắt đầu phải trước hạn chót.");
-      return;
-    }
-
-    if (reminder && reminder !== "none") {
-      if (!parsedDueDate) {
-        toast.error("Phải đặt hạn chót mới có thể đặt nhắc nhở.");
-        return;
-      }
-
-      const reminderMinutesMap: Record<string, number> = {
-        at_due: 0,
-        "5m_before": 5,
-        "10m_before": 10,
-        "15m_before": 15,
-        "1h_before": 60,
-        "2h_before": 120,
-        "1d_before": 1440,
-        "2d_before": 2880,
-      };
-
-      const minutesBefore = reminderMinutesMap[reminder];
-      if (minutesBefore !== undefined) {
-        const now = new Date();
-        const reminderTime = new Date(parsedDueDate.getTime() - minutesBefore * 60 * 1000);
-        if (reminderTime <= now) {
-          const minutesUntilDue = Math.floor((parsedDueDate.getTime() - now.getTime()) / (60 * 1000));
-          if (minutesUntilDue <= 0) {
-            toast.error("Hạn chót đã qua, không thể đặt nhắc nhở.");
-          } else {
-            toast.error(
-              `Thời gian nhắc nhở không hợp lệ. Thẻ chỉ còn ${humanizeReminderMinutes(minutesUntilDue)} — hãy chọn mốc nhắc ngắn hơn.`
-            );
+    submit(
+      {
+        ...(dueChanged || deadlineOnChanged ? { dueDate: patch.dueDate, deadlineOn: dateOnly(patch.deadlineOn) } : {}),
+        ...(scheduleChanged
+          ? {
+            scheduledOn: dateOnly(patch.scheduledOn),
+            scheduledStartAt: patch.scheduledStartAt ? new Date(patch.scheduledStartAt) : null,
+            scheduledEndAt: patch.scheduledEndAt ? new Date(patch.scheduledEndAt) : null,
           }
-          return;
-        }
-      }
-    }
-
-    updateDateRange({
-      startDate: parsedStartDate,
-      dueDate: parsedDueDate,
-      isCompleted: data.isCompleted,
-      reminder,
-    });
+          : {}),
+        ...(reminderChanged ? { reminder: patch.reminder === "none" ? null : patch.reminder } : {}),
+      },
+      {
+        ...(dueChanged || deadlineOnChanged
+          ? {
+            dueDate: patch.dueDate,
+            deadlineOn: patch.deadlineOn,
+            dueDateTimezoneOffset: patch.dueDate ? -7 * 60 : undefined,
+          }
+          : {}),
+        ...(scheduleChanged
+          ? {
+            scheduledOn: patch.scheduledOn,
+            scheduledStartAt: patch.scheduledStartAt,
+            scheduledEndAt: patch.scheduledEndAt,
+          }
+          : {}),
+        ...(reminderChanged || dueChanged || deadlineOnChanged ? { reminder: patch.reminder } : {}),
+      },
+    );
   };
+
+  /** Bỏ lịch làm nhưng giữ hạn nộp. */
+  const clearSchedule = () => submit(
+    { scheduledOn: null, scheduledStartAt: null, scheduledEndAt: null },
+    { scheduledOn: null, scheduledStartAt: null, scheduledEndAt: null },
+  );
+
+  const clearLegacyStart = () => submit({ startDate: null }, { startDate: null });
 
   const updateCompletion = (checked: boolean) => {
     executeUpdateCard({
       id: data.id,
       boardId,
+      expectedUpdatedAt: revision(),
       isCompleted: checked,
     });
   };
 
   return {
     isLoadingUpdate,
-    updateDateRange,
-    updateDueDate,
-    updateStartDate,
-    onDateSubmit,
+    saveTaskDates,
+    clearSchedule,
+    clearLegacyStart,
     updateCompletion,
   };
 };

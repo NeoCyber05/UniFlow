@@ -70,7 +70,7 @@ const getViewOrderSnapshot = (boardId: string): string => {
 
 const getViewOrderServerSnapshot = () => JSON.stringify(DEFAULT_VIEW_IDS);
 
-export const BoardViewSwitcher = ({ boardId }: BoardViewSwitcherProps) => {
+export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps) => {
   const pathname = usePathname();
   const calendarHref = `/board/${boardId}/calendar`;
   const timelineHref = `/board/${boardId}/timeline`;
@@ -250,6 +250,7 @@ export const BoardViewSwitcher = ({ boardId }: BoardViewSwitcherProps) => {
         {orderedViewIds.map((viewId) => {
           const view = viewsMap[viewId];
           if (!view) return null;
+          if (boardType === "SEMESTER" && (viewId === "list" || viewId === "calendar")) return null;
           const Icon = view.icon;
 
           const tooltip = view.splitTooltip

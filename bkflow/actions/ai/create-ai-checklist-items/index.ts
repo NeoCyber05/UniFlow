@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { appendChecklistItems } from "@/lib/checklists/checklist-mutations";
 import { requireBoardEditor } from "@/lib/permissions";
 import {
   triggerChecklistCreated,
@@ -150,21 +151,11 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         throw new Error("Các mục AI gợi ý đã tồn tại trong checklist.");
       }
 
-      const startOrder = existingItems[0] ? existingItems[0].order + 1 : 0;
-      const createdItems = [];
-
-      for (const [index, title] of filteredItems.entries()) {
-        const createdItem = await tx.checklistItem.create({
-          data: {
-            checklistId: checklist.id,
-            title,
-            order: startOrder + index,
-            isCompleted: false,
-          },
-        });
-
-        createdItems.push(createdItem);
-      }
+      const { items: createdItems, orderVersion } = await appendChecklistItems(tx, {
+        checklistId: checklist.id,
+        titles: filteredItems,
+      });
+      checklist = { ...checklist, orderVersion };
 
       return {
         checklist,

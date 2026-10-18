@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { DragStart, DropResult } from "@hello-pangea/dnd";
 
 
-import { getDateTimezoneOffset } from "@/lib/date-utils";
+import { toCardRevision } from "@/lib/cards/card-revision";
 import {
   boardFiltersAreActive,
   cardMatchesBoardFilters,
@@ -13,6 +13,7 @@ import {
 import type { BoardFilterState } from "@/hooks/use-board-filters";
 import type { CardWithAssignees, ListWithCards } from "@/types";
 
+import { toScheduleFields } from "@/lib/calendar/schedule-adapter";
 import { getDefaultCalendarDueDate, type CalendarDropTarget } from "../_lib/calendar-drop-bridge";
 import { getDestinationIndex, reorder } from "../_lib/dnd-utils";
 
@@ -25,10 +26,11 @@ type CalendarBridgeApi = {
 type ScheduleCardDateInput = {
   id: string;
   boardId: string;
-  startDate?: Date;
-  dueDate: Date;
-  dueDateTimezoneOffset: number;
-  isCompleted: boolean;
+  expectedUpdatedAt?: string;
+  // Chỉ lịch làm; hạn nộp (dueDate/deadlineOn) giữ nguyên.
+  scheduledOn: string | null;
+  scheduledStartAt: string | null;
+  scheduledEndAt: string | null;
 };
 
 type UseListCardDndOptions = {
@@ -143,10 +145,8 @@ export const useListCardDnd = ({
     executeScheduleCardDate({
       id: card.id,
       boardId,
-      ...(startDate ? { startDate } : {}),
-      dueDate,
-      dueDateTimezoneOffset: startDate ? -7 * 60 : getDateTimezoneOffset(dueDate),
-      isCompleted: card.isCompleted,
+      expectedUpdatedAt: toCardRevision(card.updatedAt),
+      ...toScheduleFields(startDate ?? null, dueDate),
     });
 
     return true;

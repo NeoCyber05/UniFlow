@@ -1,7 +1,6 @@
 import type { BoardCalendarItem } from "@/types";
 
 import {
-  DAY_FLOATING_CARD_BLOCK_MINUTES,
   DAY_LANE_GAP_PX,
   MINUTES_IN_DAY,
 } from "./constants";
@@ -12,7 +11,7 @@ import {
   getGmt7DayKey,
   parseCalendarDate,
 } from "./date-utils";
-import { isOverdue, parseDayViewItemDates } from "./item-utils";
+import { isOverdue } from "./item-utils";
 import type {
   DayViewBlock,
   DayViewBlockLayout,
@@ -77,34 +76,14 @@ export const getDayViewBlocks = (
   anchorDate: Date,
 ) =>
   items.reduce<DayViewBlock[]>((acc, item) => {
-    const { startDate, dueDate } = parseDayViewItemDates(item);
-    const durationMinutes = item.type === "checklist-item"
-      ? 15
-      : DAY_FLOATING_CARD_BLOCK_MINUTES;
-    let rangeStart: Date | null = null;
-    let rangeEnd: Date | null = null;
-
-    if (item.type === "checklist-item") {
-      rangeStart = dueDate
-        ? new Date(dueDate.getTime() - durationMinutes * 60_000)
-        : null;
-      rangeEnd = dueDate;
-    } else if (startDate && dueDate) {
-      rangeStart = startDate;
-      rangeEnd = dueDate;
-    } else if (dueDate) {
-      rangeStart = new Date(dueDate.getTime() - durationMinutes * 60_000);
-      rangeEnd = dueDate;
-    } else {
-      rangeStart = startDate;
-      rangeEnd = startDate
-        ? new Date(startDate.getTime() + durationMinutes * 60_000)
-        : null;
-    }
-
-    if (!rangeStart || !rangeEnd) {
+    // Chỉ buổi làm có giờ chiếm khoảng thời gian; hạn nộp/ngày-only/mốc cũ không thành khối giả.
+    if (item.type !== "card" || !(item.displayKind === "work" && item.scheduledStartAt && item.scheduledEndAt)) {
       return acc;
     }
+
+    const rangeStart = parseCalendarDate(item.scheduledStartAt);
+    const rangeEnd = parseCalendarDate(item.scheduledEndAt);
+    if (!rangeStart || !rangeEnd) return acc;
 
     const clippedRange = clampRangeToGmt7Day(rangeStart, rangeEnd, anchorDate);
 

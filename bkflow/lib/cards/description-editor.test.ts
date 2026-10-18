@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getSlashContext, filterSlashCommands, insertSlashCommand, applySelectionResult } from "./description-editor";
+import { getSlashContext, filterSlashCommands, insertSlashCommand, applySelectionResult, openSlashAtCursor } from "./description-editor";
 import { GenerateAiSelection } from "../ai/selection-contract";
 
 test("slash opens only at a line start, outside code and selected text", () => {
@@ -43,4 +43,12 @@ test("selection AI validates task, nonempty text and length at the boundary", ()
   for (const patch of [{ text: "  " }, { text: "a".repeat(8001) }, { task: "delete" }, { boardId: "" }]) {
     assert.equal(GenerateAiSelection.safeParse({ ...input, ...patch }).success, false);
   }
+});
+
+test("Thêm nội dung opens the shared command list on its own line", () => {
+  assert.deepEqual(openSlashAtCursor("", 0), { value: "/", caret: 1 });
+  assert.deepEqual(openSlashAtCursor("Đoạn", 4), { value: "Đoạn\n/", caret: 6 });
+  assert.deepEqual(openSlashAtCursor("a\n", 2), { value: "a\n/", caret: 3 });
+  const opened = openSlashAtCursor("Đoạn", 4);
+  assert.equal(getSlashContext(opened.value, opened.caret, opened.caret)?.query, "");
 });

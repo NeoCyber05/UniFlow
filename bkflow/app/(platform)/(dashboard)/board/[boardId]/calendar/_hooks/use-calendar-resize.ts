@@ -3,17 +3,16 @@
 import { useState, type PointerEvent } from "react";
 import { toast } from "sonner";
 
-import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
-import { getDateTimezoneOffset } from "@/lib/date-utils";
+import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
 import { DAY_VIEW_SLOT_HEIGHT } from "@/lib/calendar/calendar-day-view";
 
-import { GMT7_OFFSET_MINUTES, MINUTES_IN_DAY } from "../_lib/constants";
+import { MINUTES_IN_DAY } from "../_lib/constants";
 import {
   getDateWithPreservedTime,
+  copyRangeEndToDay,
   getDayKey,
   getGmt7DayBoundary,
   getGmt7DayKey,
-  getReminderError,
   parseCalendarDate,
   roundDayViewEndMinute,
   roundDayViewStartMinute,
@@ -33,10 +32,9 @@ type BooleanRef = {
 };
 
 type UseCalendarResizeOptions = {
-  boardId: string;
   anchorDate: Date;
   daysByKey: Record<string, Date>;
-  executeUpdateCard: (input: UpdateCardInput) => void;
+  scheduleCard: (cardId: string, intent: ScheduleIntent, message?: string) => void;
   setUpdateSuccessToast: (message: string | null) => void;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
@@ -53,10 +51,9 @@ type UseCalendarResizeOptions = {
 };
 
 export const useCalendarResize = ({
-  boardId,
   anchorDate,
   daysByKey,
-  executeUpdateCard,
+  scheduleCard,
   setUpdateSuccessToast,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
@@ -215,18 +212,13 @@ export const useCalendarResize = ({
 
       const nextDurationMs = currentDueDate.getTime() - targetDate.getTime();
 
-      if (targetDate.getTime() >= currentDueDate.getTime() || nextDurationMs < 15 * 60_000) {
-        failDayViewBlockResize("Khoảng thời gian tối thiểu là 15 phút.");
+      if (targetDate.getTime() >= currentDueDate.getTime() || nextDurationMs <= 0) {
+        failDayViewBlockResize("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
         return;
       }
 
       setUpdateSuccessToast("Đã resize thẻ");
-      executeUpdateCard({
-        id: block.item.cardId,
-        boardId,
-        startDate: targetDate,
-        dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-      });
+      scheduleCard(block.item.cardId, { type: "resize", edge: "start", at: targetDate.toISOString() });
       return;
     }
 
@@ -240,27 +232,13 @@ export const useCalendarResize = ({
 
     const nextDurationMs = targetDate.getTime() - currentStartDate.getTime();
 
-    if (targetDate.getTime() <= currentStartDate.getTime() || nextDurationMs < 15 * 60_000) {
-      failDayViewBlockResize("Khoảng thời gian tối thiểu là 15 phút.");
-      return;
-    }
-
-    const reminderError = getReminderError(targetDate, block.item.reminder);
-
-    if (reminderError) {
-      failDayViewBlockResize(reminderError);
+    if (targetDate.getTime() <= currentStartDate.getTime() || nextDurationMs <= 0) {
+      failDayViewBlockResize("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
       return;
     }
 
     setUpdateSuccessToast("Đã resize thẻ");
-    executeUpdateCard({
-      id: block.item.cardId,
-      boardId,
-      dueDate: targetDate,
-      dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-      isCompleted: block.item.isCompleted,
-      ...(block.item.reminder !== null ? { reminder: block.item.reminder } : {}),
-    });
+    scheduleCard(block.item.cardId, { type: "resize", edge: "end", at: targetDate.toISOString() });
   };
 
   const handleDayViewBlockResizeEnd = (
@@ -382,16 +360,11 @@ export const useCalendarResize = ({
       }
 
       setUpdateSuccessToast("Đã cập nhật khoảng thời gian");
-      executeUpdateCard({
-        id: range.item.cardId,
-        boardId,
-        startDate: nextStartDate,
-        dueDateTimezoneOffset: getDateTimezoneOffset(nextStartDate),
-      });
+      scheduleCard(range.item.cardId, { type: "resize", edge: "start", at: nextStartDate.toISOString() });
       return;
     }
 
-    const nextDueDate = getDateWithPreservedTime(dueDate, targetDay);
+    const nextDueDate = copyRangeEndToDay(dueDate, targetDay);
 
     if (nextDueDate.getTime() < startDate.getTime()) {
       toast.error("Ngày hết hạn phải sau hoặc bằng ngày bắt đầu.");
@@ -404,24 +377,8 @@ export const useCalendarResize = ({
       return;
     }
 
-    const reminderError = getReminderError(nextDueDate, range.item.reminder);
-
-    if (reminderError) {
-      toast.error(reminderError);
-      invalidateBoardCalendar();
-      resetRangeResize();
-      return;
-    }
-
     setUpdateSuccessToast("Đã cập nhật khoảng thời gian");
-    executeUpdateCard({
-      id: range.item.cardId,
-      boardId,
-      dueDate: nextDueDate,
-      dueDateTimezoneOffset: getDateTimezoneOffset(nextDueDate),
-      isCompleted: range.item.isCompleted,
-      ...(range.item.reminder !== null ? { reminder: range.item.reminder } : {}),
-    });
+    scheduleCard(range.item.cardId, { type: "resize", edge: "end", at: nextDueDate.toISOString() });
   };
 
   const handleRangeResizeEnd = (event: PointerEvent<HTMLButtonElement>) => {

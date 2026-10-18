@@ -5,30 +5,10 @@ import { CheckSquare, LockKeyhole, MessageSquare, Paperclip } from "lucide-react
 
 import { DueDateBadge } from "@/components/due-date-badge";
 import { Hint } from "@/components/hint";
+import { TaskLabels } from "@/components/tasks/task-labels";
+import { safeLabelColor } from "@/lib/cards/task-labels";
 import { cn, getColorName } from "@/lib/utils";
 import type { CardBadgesProps } from "../_types";
-
-const getContrastColor = (hexColor: string): string => {
-  let hex = hexColor.replace("#", "");
-  if (hex.length === 3) {
-    hex = hex.split("").map((c) => c + c).join("");
-  }
-  if (hex.length !== 6) {
-    return "text-neutral-900";
-  }
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  
-  const a = [r, g, b].map((v) => {
-    v /= 255;
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  });
-  
-  const luminance = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
-  
-  return luminance > 0.4 ? "text-neutral-900" : "text-white";
-};
 
 const LABELS_STORAGE_KEY = "uniflow:labels-expanded";
 let cachedSnapshot: boolean | null = null;
@@ -103,35 +83,23 @@ export const CardLabels = ({
       onClick={onToggle}
       className="flex flex-wrap gap-1 mb-1.5 transition-all duration-300"
     >
-      {card.labels.map((cardLabel) => {
-        const textClass = getContrastColor(cardLabel.label.color);
-        
-        return (
+      {isExpanded ? (
+        <TaskLabels labels={card.labels.map((cardLabel) => cardLabel.label)} mode="full" />
+      ) : (
+        card.labels.map((cardLabel) => (
           <Hint
             key={cardLabel.id}
             description={`Màu: ${getColorName(cardLabel.label.color)}, Tiêu đề: ${cardLabel.label.title || "Không"}`}
             side="top"
             sideOffset={4}
           >
-            {isExpanded ? (
-              <div
-                className={cn(
-                  "h-5 min-w-8 max-w-[140px] px-2 rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs border border-black/5 hover:opacity-90 transition-all duration-150 cursor-pointer select-none",
-                  textClass
-                )}
-                style={{ backgroundColor: cardLabel.label.color }}
-              >
-                <span className="truncate">{cardLabel.label.title || " "}</span>
-              </div>
-            ) : (
-              <div
-                className="h-2 w-10 rounded-full shadow-xs border border-black/5 hover:brightness-95 cursor-pointer"
-                style={{ backgroundColor: cardLabel.label.color }}
-              />
-            )}
+            <div
+              className="h-2 w-10 rounded-full shadow-xs border border-black/5 hover:brightness-95 cursor-pointer"
+              style={{ backgroundColor: safeLabelColor(cardLabel.label.color) }}
+            />
           </Hint>
-        );
-      })}
+        ))
+      )}
     </div>
   );
 };

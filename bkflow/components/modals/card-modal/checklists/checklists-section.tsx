@@ -23,6 +23,7 @@ import { updateChecklist } from "@/actions/checklists/update-checklist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAction } from "@/hooks/use-action";
+import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { ChecklistItemWithAssignee } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,8 @@ export const ChecklistsSection = ({
 
   const invalidateCard = (includeLogs: boolean) => {
     queryClient.invalidateQueries({ queryKey: ["card", cardId] });
+    // Todo progress is shown in My Tasks rows; the board preview is patched from localChecklists.
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
 
     if (includeLogs) {
       queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
@@ -138,6 +141,24 @@ export const ChecklistsSection = ({
     });
   };
 
+  const setLocalOrderVersion = (checklistId: string, orderVersion: number) => {
+    setLocalChecklists((current) =>
+      current.map((checklist) =>
+        checklist.id === checklistId ? { ...checklist, orderVersion } : checklist,
+      ),
+    );
+  };
+
+  const onOrderError = (error: string, errorCode?: string) => {
+    rollbackLocalChecklists();
+    toast.error(
+      errorCode === "CHECKLIST_CONFLICT"
+        ? "Danh sách đã thay đổi ở nơi khác, đã tải lại. Hãy sắp xếp lại."
+        : error,
+    );
+    invalidateCard(false);
+  };
+
   const updateLocalItem = (
     itemId: string,
     updater: (item: ChecklistItemWithAssignee) => ChecklistItemWithAssignee,
@@ -161,8 +182,9 @@ export const ChecklistsSection = ({
   });
 
   const { execute: executeCreateItem, isLoading: isCreatingItem } = useAction(createChecklistItem, {
-    onSuccess: (item) => {
+    onSuccess: ({ orderVersion, ...item }) => {
       const temporaryItemId = temporaryItemIdRef.current;
+      setLocalOrderVersion(item.checklistId, orderVersion);
 
       if (temporaryItemId) {
         setLocalChecklists((current) =>
@@ -287,8 +309,9 @@ export const ChecklistsSection = ({
   });
 
   const { execute: executeDeleteItem } = useAction(deleteChecklistItem, {
-    onSuccess: () => {
+    onSuccess: (item) => {
       mutationRollbackRef.current = null;
+      setLocalOrderVersion(item.checklistId, item.orderVersion);
       invalidateCard(true);
     },
     onError: (error) => {
@@ -297,27 +320,29 @@ export const ChecklistsSection = ({
     },
   });
 
+  const reorderChecklistIdRef = useRef<string | null>(null);
+
   const { execute: executeReorderItems } = useAction(reorderChecklistItems, {
-    onSuccess: () => {
+    onSuccess: ({ orderVersion }) => {
       mutationRollbackRef.current = null;
+      if (reorderChecklistIdRef.current) {
+        setLocalOrderVersion(reorderChecklistIdRef.current, orderVersion);
+      }
     },
-    onError: (error) => {
-      rollbackLocalChecklists();
-      toast.error(error);
-      // Revert optimistic state on failure by re-syncing with server
-      invalidateCard(false);
-    },
+    onError: onOrderError,
   });
 
   const { execute: executeMoveItem } = useAction(moveChecklistItem, {
-    onSuccess: () => {
+    onSuccess: ({ sourceOrderVersion, destinationOrderVersion }) => {
       mutationRollbackRef.current = null;
-    },
-    onError: (error) => {
-      rollbackLocalChecklists();
-      toast.error(error);
+      const ids = reorderChecklistIdRef.current?.split("|");
+      if (ids?.length === 2) {
+        setLocalOrderVersion(ids[0], sourceOrderVersion);
+        setLocalOrderVersion(ids[1], destinationOrderVersion);
+      }
       invalidateCard(false);
     },
+    onError: onOrderError,
   });
 
 
@@ -551,10 +576,12 @@ export const ChecklistsSection = ({
         ),
       );
 
+      reorderChecklistIdRef.current = sourceChecklistId;
       executeReorderItems({
         boardId,
         cardId,
         checklistId: sourceChecklistId,
+        expectedOrderVersion: sourceChecklist.orderVersion,
         items: reorderedItems.map((item) => ({
           id: item.id,
           order: item.order,
@@ -590,12 +617,15 @@ export const ChecklistsSection = ({
       ),
     );
 
+    reorderChecklistIdRef.current = `${sourceChecklistId}|${destinationChecklistId}`;
     executeMoveItem({
       boardId,
       cardId,
       itemId: sourceItem.id,
       sourceChecklistId,
       destinationChecklistId,
+      expectedSourceOrderVersion: sourceChecklist.orderVersion,
+      expectedDestinationOrderVersion: destinationChecklist.orderVersion,
       sourceItems: nextSourceItems.map((item) => ({
         id: item.id,
         order: item.order,
@@ -638,10 +668,12 @@ export const ChecklistsSection = ({
                   }))
                 }
               />
-              <ChecklistProgress
-                completedCount={completedCount}
-                totalCount={checklist.items.length}
-              />
+              {checklist.items.length > 0 && (
+                <ChecklistProgress
+                  completedCount={completedCount}
+                  totalCount={checklist.items.length}
+                />
+              )}
               <Droppable droppableId={`checklist:${checklist.id}`} type="checklist-item">
                 {(provided, snapshot) => (
                   <div

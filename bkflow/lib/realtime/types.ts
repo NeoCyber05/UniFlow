@@ -26,6 +26,10 @@ export type CardUpdatedField =
   | "description"
   | "startDate"
   | "dueDate"
+  | "deadlineOn"
+  | "scheduledOn"
+  | "scheduledStartAt"
+  | "scheduledEndAt"
   | "isCompleted"
   | "reminder"
   | "reminderSetAt"
@@ -179,6 +183,10 @@ export type CardUpdatedPayload = {
     descriptionUpdatedAt: string;
     startDate: string | null;
     dueDate: string | null;
+    deadlineOn: string | null;
+    scheduledOn: string | null;
+    scheduledStartAt: string | null;
+    scheduledEndAt: string | null;
     isCompleted: boolean;
     reminder: string | null;
     reminderSetAt: string | null;

@@ -1,3 +1,5 @@
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
+
 import {
   addVNDays,
   getEndOfVNDay,
@@ -9,6 +11,8 @@ import {
 export type BucketTask = {
   id: string;
   dueDate: Date | null;
+  /** Hạn chỉ-ngày YYYY-MM-DD (loại trừ dueDate) */
+  deadlineOn?: string | null;
   isCompleted: boolean;
   updatedAt: Date;
   /** CardUserState.myDayAt của user hiện tại */
@@ -34,12 +38,12 @@ export const AGENDA_GROUPS: { key: AgendaGroupKey; label: string; collapsed: boo
   { key: "done", label: "Đã xong hôm nay", collapsed: true },
 ];
 
-export const byDueAsc = <T extends { dueDate: Date | null }>(tasks: T[]): T[] =>
+export const byDueAsc = <T extends { dueDate: Date | null; deadlineOn?: string | null }>(tasks: T[]): T[] =>
   tasks
     .map((item, index) => ({ item, index }))
     .sort((a, b) => {
-      const aDue = a.item.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
-      const bDue = b.item.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
+      const aDue = getTaskDeadlineAt(a.item)?.getTime() ?? Number.POSITIVE_INFINITY;
+      const bDue = getTaskDeadlineAt(b.item)?.getTime() ?? Number.POSITIVE_INFINITY;
 
       if (aDue !== bDue) return aDue < bDue ? -1 : 1;
 
@@ -57,7 +61,7 @@ export const getAgendaGroupKey = (task: BucketTask, now: Date): AgendaGroupKey |
   }
 
   const today = getVNDay(now);
-  const due = task.dueDate;
+  const due = getTaskDeadlineAt(task);
 
   if (due && due < now) return "overdue";
   if ((due && due <= getEndOfVNDay(today)) || isPinnedToday(task, now)) return "today";

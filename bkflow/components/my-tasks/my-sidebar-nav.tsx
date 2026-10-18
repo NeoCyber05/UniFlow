@@ -38,13 +38,14 @@ import { getCourseColor } from "@/lib/courses/course-colors";
 import { MY_TASKS_CONTEXT_KEY } from "@/lib/my-tasks/types";
 import { formatSemesterLabel } from "@/lib/semesters";
 import { cn } from "@/lib/utils";
+import { viewQueryOptions } from "@/web/lib/use-view";
 
 const EMPTY_COURSE_IDS: string[] = [];
 
 const itemClassName = (isActive: boolean) =>
   cn(
-    "flex h-8 w-full items-center gap-x-2.5 rounded-md px-2.5 text-sm text-foreground/75 hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500",
-    isActive && "bg-violet-100 font-medium text-violet-800 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-200",
+    "flex h-8 w-full items-center gap-x-2.5 rounded-md px-2.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+    isActive && "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
   );
 
 const Count = ({ value }: { value: number | undefined }) =>
@@ -186,6 +187,11 @@ export const MySidebarNav = () => {
     (isAtSemesterBoard && !isCalendarActive && selectedCourseIds.length === 0) ||
     (context?.currentSemesterId ? pathname === `/semester/${context.currentSemesterId}` : false);
   const clearBoardFilters = () => { if (boardId) useBoardFilters.getState().clearFilters(boardId); };
+  const prefetchBoard = (view: "list" | "calendar") => {
+    if (!boardId) return;
+    void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/layout`));
+    void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/${view}`));
+  };
 
   const courseHref = (courseKey: string) =>
     board
@@ -241,14 +247,14 @@ export const MySidebarNav = () => {
       </DropdownMenu>
 
       {semesterBoardHref && (
-        <Link href={semesterBoardHref} onClick={clearBoardFilters} aria-current={isSemesterBoardActive ? "page" : undefined} className={itemClassName(isSemesterBoardActive)}>
+        <Link href={semesterBoardHref} onMouseEnter={() => prefetchBoard("list")} onFocus={() => prefetchBoard("list")} onClick={clearBoardFilters} aria-current={isSemesterBoardActive ? "page" : undefined} className={itemClassName(isSemesterBoardActive)}>
           <ListTodo className="h-4 w-4" />
           Bảng học kỳ
           <Count value={counts?.today} />
         </Link>
       )}
       {calendarHref && (
-        <Link href={calendarHref} onClick={clearBoardFilters} aria-current={isCalendarActive ? "page" : undefined} className={itemClassName(isCalendarActive)}>
+        <Link href={calendarHref} onMouseEnter={() => prefetchBoard("calendar")} onFocus={() => prefetchBoard("calendar")} onClick={clearBoardFilters} aria-current={isCalendarActive ? "page" : undefined} className={itemClassName(isCalendarActive)}>
           <CalendarDays className="h-4 w-4" />
           Lịch
         </Link>

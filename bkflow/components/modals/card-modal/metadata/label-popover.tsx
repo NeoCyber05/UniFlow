@@ -14,6 +14,7 @@ import {
 
 import { Label, CardLabel } from "@prisma/client";
 import { useAction } from "@/hooks/use-action";
+import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { createLabel } from "@/actions/labels/create-label";
 import { updateLabel } from "@/actions/labels/update-label";
 import { deleteLabel } from "@/actions/labels/delete-label";
@@ -110,12 +111,12 @@ export const LabelPopover = ({
       queryKey: ["card-logs", cardId],
     });
     invalidateBoardCalendar();
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
   };
 
   const invalidateFullCardQueries = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["card", cardId],
-    });
+    // Đổi tên/màu/xóa nhãn ảnh hưởng mọi thẻ của bảng, không chỉ thẻ đang mở.
+    queryClient.invalidateQueries({ queryKey: ["card"] });
     invalidateCardMetadataQueries();
   };
 

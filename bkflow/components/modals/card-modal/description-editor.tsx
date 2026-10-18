@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ComponentProps, type RefObject
 import { toast } from "sonner";
 import { generateAiSelection } from "@/actions/ai/generate-ai-selection";
 import { SELECTION_TASKS, type SelectionTask } from "@/lib/ai/selection-contract";
-import { applySelectionResult, filterSlashCommands, getSlashContext, insertSlashCommand } from "@/lib/cards/description-editor";
+import { applySelectionResult, filterSlashCommands, getSlashContext, insertSlashCommand, openSlashAtCursor } from "@/lib/cards/description-editor";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -102,14 +102,12 @@ export const DescriptionEditor = ({ value, onValueChange, textareaRef, boardId, 
   }}>
     <div className="flex flex-wrap gap-1" role="group" aria-label="Khối nội dung và AI cho đoạn được chọn">
       <Button type="button" size="sm" variant="outline" disabled={disabled || Boolean(busy)} onClick={() => {
-        const start = selection.start;
-        const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-        const prefix = value.slice(lineStart, start).trim() ? "\n/" : "/";
-        onValueChange(value.slice(0, start) + prefix + value.slice(start));
+        const next = openSlashAtCursor(value, selection.start);
+        onValueChange(next.value);
         setDismissed(null);
         setActiveIndex(0);
-        moveCaret(start + prefix.length);
-      }}>Thêm khối /</Button>
+        moveCaret(next.caret);
+      }}>Thêm nội dung</Button>
       {(Object.keys(SELECTION_TASKS) as SelectionTask[]).map(task => <Button
         key={task} type="button" size="sm" variant="ghost" disabled={!canUseAi}
         title="Bôi đen đoạn văn bản để dùng AI" onClick={() => void runAi(task)}

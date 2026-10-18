@@ -102,9 +102,14 @@ model Card {
   descriptionUpdatedAt DateTime  @default(now())
   startDate            DateTime?
   dueDate              DateTime?
+  deadlineOn           DateTime? @db.Date
+  scheduledOn          DateTime? @db.Date
+  scheduledStartAt     DateTime?
+  scheduledEndAt       DateTime?
   isCompleted          Boolean   @default(false)
   reminder             String?
   reminderSetAt        DateTime?
+  reminderGeneration   String?
   archivedAt           DateTime?
   archivedByListId     String?
   courseId             String?
@@ -119,6 +124,7 @@ model Card {
   blockingDependencies  CardDependency[] @relation("BlockerRelation")
   blockedByDependencies CardDependency[] @relation("BlockedRelation")
   userStates            CardUserState[]
+  reminderDeliveries    ReminderDelivery[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,6 +132,50 @@ model Card {
   @@index([listId])
   @@index([listId, archivedAt, order])
   @@index([courseId])
+}
+
+// Thiết bị nhận Web Push của một tài khoản; endpoint là duy nhất để nhiều tab không tạo thêm bản ghi.
+model WebPushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique @db.Text
+  p256dh    String
+  auth      String
+  bindingId String   @default(uuid())
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries ReminderDelivery[]
+
+  @@index([userId, active])
+}
+
+// Một lần nhắc của một task (theo phiên `generation`) tới một thiết bị. status: pending|sending|accepted|retry|unknown|failed|cancelled.
+model ReminderDelivery {
+  id              String    @id @default(uuid())
+  cardId          String
+  card            Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  recipientUserId String
+  subscriptionId  String
+  subscription    WebPushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  generation      String
+  dueAt           DateTime
+  nextAttemptAt   DateTime
+  expiresAt       DateTime
+  status          String    @default("pending")
+  attempts        Int       @default(0)
+  claimToken      String?
+  leaseUntil      DateTime?
+  displayTokenHash String?
+  acceptedAt      DateTime?
+  errorCode       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([cardId, generation, subscriptionId])
+  @@index([status, nextAttemptAt])
+  @@index([subscriptionId])
 }
 
 model CardDependency {
@@ -356,6 +406,7 @@ model Checklist {
   card   Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
   title  String
   order  Int             @default(0)
+  orderVersion Int        @default(0)
   items  ChecklistItem[]
 
   createdAt DateTime @default(now())

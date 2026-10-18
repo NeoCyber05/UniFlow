@@ -7,6 +7,7 @@ import type {
 } from "react";
 import {
   AlertCircle,
+  CalendarPlus,
   CalendarX2,
   CheckCircle2,
   ChevronDown,
@@ -42,6 +43,8 @@ type UnscheduledPanelProps = {
   draggingUnscheduledCardId: string | null;
   onSelectedListIdsChange: (listIds: string[]) => void;
   onCardClick: (card: BoardCalendarUnscheduledCard) => void;
+  /** Mở bộ chọn ngày/giờ làm (đường bàn phím thay cho kéo thả). */
+  onPlanCard: (card: BoardCalendarUnscheduledCard) => void;
   onCardDragStart: (
     event: DragEvent<HTMLButtonElement>,
     card: BoardCalendarUnscheduledCard,
@@ -55,6 +58,7 @@ type UnscheduledCardProps = {
   isUpdatingChecklistItemDueDate: boolean;
   draggingUnscheduledCardId: string | null;
   onClick: (card: BoardCalendarUnscheduledCard) => void;
+  onPlan: (card: BoardCalendarUnscheduledCard) => void;
   onDragStart: (
     event: DragEvent<HTMLButtonElement>,
     card: BoardCalendarUnscheduledCard,
@@ -68,9 +72,11 @@ const UnscheduledCard = ({
   isUpdatingChecklistItemDueDate,
   draggingUnscheduledCardId,
   onClick,
+  onPlan,
   onDragStart,
   onDragEnd,
 }: UnscheduledCardProps) => (
+  <div className="space-y-1">
   <button
     key={card.id}
     type="button"
@@ -154,6 +160,17 @@ const UnscheduledCard = ({
       </div>
     )}
   </button>
+  <button
+    type="button"
+    disabled={isUpdatingCardDate || isUpdatingChecklistItemDueDate}
+    onClick={() => onPlan(card)}
+    aria-label={`Xếp lịch làm cho thẻ ${card.title}`}
+    className="flex h-7 w-full items-center justify-center gap-x-1 rounded-md border border-neutral-200 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-60"
+  >
+    <CalendarPlus className="h-3.5 w-3.5" />
+    Xếp lịch
+  </button>
+  </div>
 );
 
 export const UnscheduledPanel = ({
@@ -173,6 +190,7 @@ export const UnscheduledPanel = ({
   draggingUnscheduledCardId,
   onSelectedListIdsChange,
   onCardClick,
+  onPlanCard,
   onCardDragStart,
   onCardDragEnd,
 }: UnscheduledPanelProps) => {
@@ -197,7 +215,7 @@ export const UnscheduledPanel = ({
         <div className="min-w-0">
           <div className="flex items-center gap-x-2">
             <h2 className="truncate text-sm font-semibold text-neutral-900">
-              Chưa lên lịch
+              Chưa xếp lịch làm
             </h2>
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
               {countLabel}
@@ -270,6 +288,7 @@ export const UnscheduledPanel = ({
                     isUpdatingChecklistItemDueDate={isUpdatingChecklistItemDueDate}
                     draggingUnscheduledCardId={draggingUnscheduledCardId}
                     onClick={onCardClick}
+                    onPlan={onPlanCard}
                     onDragStart={onCardDragStart}
                     onDragEnd={onCardDragEnd}
                   />

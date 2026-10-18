@@ -26,8 +26,8 @@ type CalendarOccurrenceItemProps = {
   draggingOccurrenceId: string | null;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onOpenCard: (
     cardId: string,
     event?: MouseEvent<HTMLElement>,
@@ -47,8 +47,8 @@ type CalendarOccurrenceItemProps = {
     action: () => void,
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
 export const CalendarOccurrenceItem = ({
@@ -58,16 +58,16 @@ export const CalendarOccurrenceItem = ({
   draggingOccurrenceId,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onOpenCard,
   onOpenCardDirect,
   onDragStart,
   onDragEnd,
   onQuickActionClick,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
 }: CalendarOccurrenceItemProps) => {
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
@@ -77,6 +77,7 @@ export const CalendarOccurrenceItem = ({
   const isChecklistItem = isCalendarChecklistItem(occurrence.item);
   const canDragOccurrence =
     occurrence.kind !== "range" &&
+    !(cardItem && cardItem.displayKind && cardItem.displayKind !== "work") &&
     (!!cardItem || isChecklistItem) &&
     !isUpdatingCardDate &&
     !isUpdatingChecklistItemDueDate;
@@ -149,13 +150,13 @@ export const CalendarOccurrenceItem = ({
           <QuickActionsMenu
             occurrence={occurrence}
             isUpdatingCardDate={isUpdatingCardDate}
-            canClearStartDate={canClearStartDate}
-            canClearDueDate={canClearDueDate}
+            canPlanSchedule={canPlanSchedule}
+            canClearSchedule={canClearSchedule}
             onQuickActionClick={onQuickActionClick}
             onOpenCardDirect={onOpenCardDirect}
             onToggleComplete={onToggleComplete}
-            onClearStartDate={onClearStartDate}
-            onClearDueDate={onClearDueDate}
+            onPlanSchedule={onPlanSchedule}
+            onClearSchedule={onClearSchedule}
           />
         )}
       </div>

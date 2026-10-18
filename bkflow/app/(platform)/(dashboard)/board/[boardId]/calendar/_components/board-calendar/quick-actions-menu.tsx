@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from "react";
 import {
+  CalendarPlus,
   CalendarX2,
   CheckCircle2,
   Circle,
@@ -22,8 +23,8 @@ import type { CalendarOccurrence } from "../../_types";
 type QuickActionsMenuProps = {
   occurrence: CalendarOccurrence;
   isUpdatingCardDate: boolean;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onQuickActionClick: (
     event: MouseEvent<HTMLButtonElement>,
     action: () => void,
@@ -33,20 +34,20 @@ type QuickActionsMenuProps = {
     options?: { checklistItemId?: string },
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
 export const QuickActionsMenu = ({
   occurrence,
   isUpdatingCardDate,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onQuickActionClick,
   onOpenCardDirect,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
 }: QuickActionsMenuProps) => {
   const isCardItem = isCalendarCardItem(occurrence.item);
 
@@ -140,26 +141,26 @@ export const QuickActionsMenu = ({
           )}
           {occurrence.item.isCompleted ? "Bỏ hoàn thành" : "Đánh dấu hoàn thành"}
         </button>
-        {isCardItem && canClearStartDate(occurrence) && (
+        {isCardItem && canPlanSchedule(occurrence) && (
           <button
             type="button"
             disabled={isUpdatingCardDate}
-            onClick={(event) => onQuickActionClick(event, () => onClearStartDate(occurrence))}
+            onClick={(event) => onQuickActionClick(event, () => onPlanSchedule(occurrence))}
             className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
           >
-            <CalendarX2 className="h-3.5 w-3.5 text-sky-600" />
-            Xóa ngày bắt đầu
+            <CalendarPlus className="h-3.5 w-3.5 text-sky-600" />
+            Xếp lịch
           </button>
         )}
-        {isCardItem && canClearDueDate(occurrence) && (
+        {isCardItem && canClearSchedule(occurrence) && (
           <button
             type="button"
             disabled={isUpdatingCardDate}
-            onClick={(event) => onQuickActionClick(event, () => onClearDueDate(occurrence))}
+            onClick={(event) => onQuickActionClick(event, () => onClearSchedule(occurrence))}
             className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
           >
             <CalendarX2 className="h-3.5 w-3.5 text-violet-600" />
-            Xóa ngày hết hạn
+            Bỏ lịch làm
           </button>
         )}
       </PopoverContent>

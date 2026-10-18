@@ -1,7 +1,11 @@
 import type { BoardCourse } from "@/lib/courses/board-courses";
+import type { TaskLabel } from "@/lib/cards/task-labels";
+import type { TaskSchedule } from "@/lib/cards/task-schedule";
 
 /** Thẻ đã serialize để gửi xuống client (ngày là ISO string). */
-export type MyTask = {
+export type MyTask = TaskSchedule & {
+  /** Hạn nộp chỉ-ngày (YYYY-MM-DD); loại trừ với dueDate */
+  deadlineOn: string | null;
   id: string;
   title: string;
   isCompleted: boolean;
@@ -14,6 +18,7 @@ export type MyTask = {
   boardType: "SEMESTER" | "TEAM_PROJECT";
   listId: string;
   labelIds: string[];
+  labels: TaskLabel[];
   course: { id: string; name: string; code: string | null; color: string } | null;
   assignees: { boardMemberId: string; userId: string; userName: string; userImage: string }[];
   checklist: { total: number; completed: number };

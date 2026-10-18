@@ -1,7 +1,7 @@
 import { BoardMemberRole } from "@/types";
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/web/shims/next-navigation";
@@ -11,6 +11,7 @@ import { toPng } from "html-to-image";
 
 import { updateCard } from "@/actions/cards/update-card";
 import { useAction } from "@/hooks/use-action";
+import { getCardRevision } from "@/components/modals/card-modal/card-cache-utils";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { courseMatchesFilters, importantMatchesFilters } from "@/lib/boards/board-filters";
@@ -92,7 +93,7 @@ export const BoardTimelineView = ({
     setIsUnscheduledPanelOpen,
     derived,
   } = useTimelineState(visibleLists);
-  const { execute: executeUpdateCard } = useAction(updateCard, {
+  const { execute: executeUpdateCardAction } = useAction(updateCard, {
     onSuccess: (data) => {
       setDateOverrides((current) => {
         return {
@@ -124,6 +125,18 @@ export const BoardTimelineView = ({
       toast.error(error);
     },
   });
+  // Gắn revision mới nhất (cache chi tiết hoặc dữ liệu timeline) vào mọi lần dời mốc.
+  const executeUpdateCard = useCallback(
+    (input: Parameters<typeof executeUpdateCardAction>[0]) => {
+      const card = lists.flatMap((list) => list.cards).find((item) => item.id === input.id);
+
+      executeUpdateCardAction({
+        ...input,
+        expectedUpdatedAt: getCardRevision(queryClient, input.id, card?.updatedAt),
+      });
+    },
+    [executeUpdateCardAction, lists, queryClient],
+  );
   const {
     interaction,
     interactionRef,

@@ -324,7 +324,7 @@ export const BlockEditor = ({ blocks, onChange, tasks }: { blocks: NoteBlock[]; 
         role="listbox"
         aria-label="Chọn loại khối"
         onMouseDown={event => event.preventDefault()}
-        className="absolute left-12 top-full z-30 mt-1 max-h-80 w-72 overflow-y-auto rounded-lg border bg-popover p-1 text-sm text-popover-foreground shadow-lg"
+        className="absolute left-12 top-full z-30 mt-1 max-h-80 w-72 max-w-[calc(100vw-7rem)] overflow-y-auto rounded-xl border border-border bg-popover p-1.5 text-sm text-popover-foreground shadow-xl"
       >
         <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Khối cơ bản</p>
         {slashItems.length === 0 && <p className="px-2 py-2 text-muted-foreground">Không có khối phù hợp</p>}

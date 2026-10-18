@@ -6,6 +6,8 @@ import { ACTION, ENTITY_TYPE } from "@prisma/client";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
+import { deleteCardReminderNotifications } from "@/lib/notifications/reminder-notifications";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCardDeleted } from "@/lib/boards/realtime";
 import {
@@ -62,7 +64,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         throw new Error("CARD_NOT_FOUND");
       }
 
-      return tx.card.update({
+      const archived = await tx.card.update({
         where: {
           id: existingCard.id,
         },
@@ -78,7 +80,11 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           },
         },
       });
+      await syncCardReminder(tx, { cardId: archived.id, now: new Date() });
+
+      return archived;
     });
+    await deleteCardReminderNotifications(card.id);
     relatedDependencyCardIds = await getRelatedDependencyCardIds({
       boardId,
       

@@ -115,7 +115,7 @@ export const CreateCardDialog = ({
 
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-start" className="text-xs font-semibold text-neutral-600">
-            Bắt đầu
+            Bắt đầu buổi làm (không bắt buộc)
           </label>
           <input
             id="calendar-card-start"
@@ -130,7 +130,7 @@ export const CreateCardDialog = ({
 
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-due" className="text-xs font-semibold text-neutral-600">
-            Kết thúc
+            Kết thúc buổi làm (không bắt buộc)
           </label>
           <input
             id="calendar-card-due"

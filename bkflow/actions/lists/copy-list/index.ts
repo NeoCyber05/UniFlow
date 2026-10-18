@@ -5,6 +5,7 @@ import { revalidatePath } from "@/server/cache";
 import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -138,12 +139,20 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             description: cardToCopy.description,
             startDate: cardToCopy.startDate,
             dueDate: cardToCopy.dueDate,
+            deadlineOn: cardToCopy.deadlineOn,
+            scheduledOn: cardToCopy.scheduledOn,
+            scheduledStartAt: cardToCopy.scheduledStartAt,
+            scheduledEndAt: cardToCopy.scheduledEndAt,
             isCompleted: cardToCopy.isCompleted,
             reminder: cardToCopy.reminder,
             reminderSetAt: cardToCopy.reminderSetAt,
             order: cardToCopy.order,
           },
         });
+
+        if (createdCard.reminder) {
+          await syncCardReminder(tx, { cardId: createdCard.id, now: new Date() });
+        }
 
         if (cardToCopy.labels.length > 0) {
           await tx.cardLabel.createMany({

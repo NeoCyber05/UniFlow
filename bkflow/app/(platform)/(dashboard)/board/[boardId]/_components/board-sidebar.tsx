@@ -25,11 +25,12 @@ export const BoardSidebar = () => {
           : "w-0 border-r-0"
       )}
       aria-label="Thanh điều hướng cá nhân"
+      inert={!effectiveIsOpen}
     >
       <div className="w-60 flex flex-col h-full overflow-hidden">
         {/* Header của Sidebar */}
-        <div className="flex h-12 items-center justify-between px-3 border-b border-neutral-200/60 shrink-0">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+        <div className="flex h-12 items-center justify-between px-3 border-b border-sidebar-border shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             <SidebarIcon className="h-3.5 w-3.5 text-violet-600" />
             <span>Điều hướng</span>
           </div>
@@ -38,7 +39,7 @@ export const BoardSidebar = () => {
             variant="ghost"
             size="icon"
             onClick={close}
-            className="h-7 w-7 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-md transition-colors"
+            className="h-7 w-7 text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
             title="Thu gọn thanh bên"
             aria-label="Thu gọn thanh bên"
           >

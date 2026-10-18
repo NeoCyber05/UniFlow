@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { withDetailParam } from "@/web/lib/task-detail-navigation";
 import { usePathname, useRouter, useSearchParams } from "@/web/shims/next-navigation";
 
 export const TASK_PANEL_PARAM = "task";
@@ -14,15 +15,7 @@ export const useTaskPanelParam = () => {
 
   const setTask = useCallback(
     (id: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      if (id) {
-        params.set(TASK_PANEL_PARAM, id);
-      } else {
-        params.delete(TASK_PANEL_PARAM);
-      }
-
-      const query = params.toString();
+      const query = withDetailParam(searchParams.toString(), TASK_PANEL_PARAM, id);
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
     [pathname, router, searchParams],

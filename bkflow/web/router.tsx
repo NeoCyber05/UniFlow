@@ -18,6 +18,7 @@ import BoardLayoutRoute from "./routes/board-layout";
 import MyRoute from "./routes/my";
 import PagesRoute, { PagesLayoutRoute } from "./routes/pages";
 import NotePageRoute from "./routes/page";
+import ReminderDeliveryRoute from "./routes/reminder-delivery";
 import SemesterRoute from "./routes/semester";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
+          { path: "reminders/:deliveryId", element: centered(<ReminderDeliveryRoute />) },
           {
             element: <DashboardLayoutRoute />,
             children: [

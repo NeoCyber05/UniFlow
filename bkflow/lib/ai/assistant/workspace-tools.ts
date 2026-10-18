@@ -3,6 +3,7 @@ import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
 
+import { deadlineConditions, getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { parseNoteBlocks } from "@/lib/notes/blocks";
@@ -81,9 +82,12 @@ export const createWorkspaceTools = ({ userId, timeZone }: AssistantSession) => 
             where: {
               archivedAt: null, isCompleted: false,
               list: { archivedAt: null, board: workspaceBoardScope(userId) },
-              ...(includeOverdue ? { OR: [{ dueDate: { lt: now } }, { dueDate: window }] } : { dueDate: window }),
+              OR: [
+                ...(includeOverdue ? deadlineConditions({ lt: now }) : []),
+                ...deadlineConditions({ gte: start, lt: end }),
+              ],
             },
-            select: { id: true, title: true, dueDate: true, list: { select: { boardId: true, board: { select: { title: true } } } } },
+            select: { id: true, title: true, dueDate: true, deadlineOn: true, list: { select: { boardId: true, board: { select: { title: true } } } } },
             orderBy: [{ dueDate: "asc" }, { id: "asc" }], take: limit + 1,
           }),
           db.noteDeadline.findMany({
@@ -96,11 +100,14 @@ export const createWorkspaceTools = ({ userId, timeZone }: AssistantSession) => 
           }),
         ]);
         const items = [
-          ...cards.flatMap(card => card.dueDate ? [{
+          ...cards.flatMap(card => {
+            const due = getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) });
+            return due ? [{
             type: "card" as const, id: card.id, title: card.title, source: card.list.board.title,
-            dueAt: card.dueDate.toISOString(), dueDate: formatZonedDateTime(card.dueDate, timeZone), isOverdue: card.dueDate < now,
+            dueAt: due.toISOString(), dueDate: formatZonedDateTime(due, timeZone), isOverdue: due < now,
             href: `/board/${encodeURIComponent(card.list.boardId)}?cardId=${encodeURIComponent(card.id)}`,
-          }] : []),
+          }] : [];
+          }),
           ...deadlines.map(deadline => ({
             type: "note" as const, id: deadline.blockId, pageId: deadline.pageId, title: deadline.title, source: deadline.page.title,
             dueAt: deadline.dueAt.toISOString(), dueDate: formatZonedDateTime(deadline.dueAt, timeZone), isOverdue: deadline.dueAt < now,

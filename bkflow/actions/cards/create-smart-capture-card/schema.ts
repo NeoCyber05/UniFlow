@@ -3,6 +3,8 @@ import { z } from "zod";
 const DueDateValue = z.union([z.date(), z.string().datetime(), z.null()]);
 
 const SmartCaptureCardDraft = z.object({
+  // Stable per submit; becomes Card.id so a retry maps to the same card.
+  creationId: z.string().uuid(),
   listId: z.string().min(1),
   courseId: z.optional(z.union([z.string().min(1), z.null()])),
   title: z.string()
@@ -36,4 +38,7 @@ const SmartCaptureCardDraft = z.object({
 export const CreateSmartCaptureCards = z.object({
   boardId: z.string().min(1),
   drafts: z.array(SmartCaptureCardDraft).min(1).max(5),
-});
+}).refine(
+  (value) => new Set(value.drafts.map((draft) => draft.creationId)).size === value.drafts.length,
+  { message: "Mã tạo thẻ bị trùng trong cùng yêu cầu." },
+);

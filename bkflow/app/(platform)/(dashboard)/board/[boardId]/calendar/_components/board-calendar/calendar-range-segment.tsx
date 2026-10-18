@@ -41,8 +41,8 @@ type CalendarRangeSegmentItemProps = {
   draggingBoardCardId: string | null;
   draggingDayViewBlockId: string | null;
   isUpdatingCardDate: boolean;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onOpenCard: (
     cardId: string,
     event?: MouseEvent<HTMLElement>,
@@ -65,8 +65,8 @@ type CalendarRangeSegmentItemProps = {
     action: () => void,
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
 export const CalendarRangeSegmentItem = ({
@@ -80,8 +80,8 @@ export const CalendarRangeSegmentItem = ({
   draggingBoardCardId,
   draggingDayViewBlockId,
   isUpdatingCardDate,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onOpenCard,
   onOpenCardDirect,
   onRangeResizeStart,
@@ -90,8 +90,8 @@ export const CalendarRangeSegmentItem = ({
   onRangeResizeCancel,
   onQuickActionClick,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
 }: CalendarRangeSegmentItemProps) => {
   const course = useBoardCourse(segment.range.item.boardId, segment.range.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
@@ -206,13 +206,13 @@ export const CalendarRangeSegmentItem = ({
             <QuickActionsMenu
               occurrence={occurrence}
               isUpdatingCardDate={isUpdatingCardDate}
-              canClearStartDate={canClearStartDate}
-              canClearDueDate={canClearDueDate}
+              canPlanSchedule={canPlanSchedule}
+              canClearSchedule={canClearSchedule}
               onQuickActionClick={onQuickActionClick}
               onOpenCardDirect={onOpenCardDirect}
               onToggleComplete={onToggleComplete}
-              onClearStartDate={onClearStartDate}
-              onClearDueDate={onClearDueDate}
+              onPlanSchedule={onPlanSchedule}
+              onClearSchedule={onClearSchedule}
             />
           )}
           {segment.isRangeEnd && (

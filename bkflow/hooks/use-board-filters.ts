@@ -35,6 +35,7 @@ type BoardFiltersStore = {
   toggleImportant: (boardId: string) => void;
   setImportantOnly: (boardId: string, value: boolean) => void;
   clearFilters: (boardId: string) => void;
+  setFilters: (boardId: string, filters: BoardFilterState) => void;
 };
 
 export const emptyBoardFilters: BoardFilterState = {
@@ -58,6 +59,7 @@ const getBoardFilters = (
 
 export const useBoardFilters = create<BoardFiltersStore>((set) => ({
   filtersByBoardId: {},
+  setFilters: (boardId, filters) => set((state) => ({ filtersByBoardId: { ...state.filtersByBoardId, [boardId]: filters } })),
   toggleMyWork: (boardId) =>
     set((state) => {
       const currentFilters = getBoardFilters(state.filtersByBoardId, boardId);

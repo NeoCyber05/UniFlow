@@ -2,6 +2,7 @@ import { BoardMemberRole } from "@/types";
 import "server-only";
 
 import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+import { createHash } from "node:crypto";
 import { tool } from "ai";
 import { z } from "zod";
 
@@ -14,7 +15,13 @@ import {
   triggerChecklistItemCreated,
 } from "@/lib/boards/realtime";
 import { validateCardDateRange } from "@/lib/cards/card-date-rules";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
+import { deleteCardReminderNotifications } from "@/lib/notifications/reminder-notifications";
+import { getTaskDeadlineStatus } from "@/lib/cards/task-deadline";
+import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import { updateCardService } from "@/lib/cards/card-update-service";
+import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
+import { CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import {
   triggerCardUpdated,
   triggerRelatedDependencyCardsUpdated,
@@ -189,6 +196,12 @@ const sortByDueDate = (cards: AssistantCard[]): AssistantCard[] =>
  * @param timeZone - Múi giờ IANA của client.
  * @returns Đối tượng {@link AssistantActionCard}.
  */
+/** Stable UUID (v4-shaped) from a string, so a repeated tool call id yields the same Card.id. */
+const toDeterministicUuid = (seed: string) => {
+  const h = createHash("sha256").update(seed).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+};
+
 const toActionCard = (
   card: {
     id: string;
@@ -515,9 +528,13 @@ export const createAssistantTools = (session: AssistantSession) => {
               ? `${card.course.code ? `${card.course.code} ` : ""}${card.course.name}`
               : null,
             dueDate: formatZonedDateTime(card.dueDate, timeZone),
+            deadlineOn: serializeTaskDates(card).deadlineOn,
+            scheduledOn: serializeTaskDates(card).scheduledOn,
+            scheduledStart: formatZonedDateTime(card.scheduledStartAt, timeZone),
+            scheduledEnd: formatZonedDateTime(card.scheduledEndAt, timeZone),
             startDate: formatZonedDateTime(card.startDate, timeZone),
             isCompleted: card.isCompleted,
-            isOverdue: Boolean(card.dueDate && !card.isCompleted && card.dueDate < now),
+            isOverdue: getTaskDeadlineStatus({ dueDate: card.dueDate, deadlineOn: serializeTaskDates(card).deadlineOn }, now) === "overdue" && !card.isCompleted,
             assignees: [],
             labels: card.labels.map((l) => l.label.title),
             checklists: card.checklists.map((cl) => ({
@@ -578,8 +595,13 @@ export const createAssistantTools = (session: AssistantSession) => {
           .enum(["me", "none"])
           .default("none")
           .describe("'me' = tự động giao thẻ cho người đang chat, 'none' = không giao"),
+        checklistItems: z
+          .array(z.string().min(1).max(120))
+          .max(20)
+          .optional()
+          .describe("Các việc con (todo) tạo cùng thẻ trong một thao tác; không dùng startDate cùng lúc"),
       }),
-      execute: async ({ title, dueDate, startDate, listId, listTitle, courseId, description, assignee }): Promise<AssistantMutationOutput> => {
+      execute: async ({ title, dueDate, startDate, listId, listTitle, courseId, description, assignee, checklistItems }, options): Promise<AssistantMutationOutput> => {
         const permissionError = await ensureEditor();
 
         if (permissionError) {
@@ -620,6 +642,48 @@ export const createAssistantTools = (session: AssistantSession) => {
 
         if (dateRangeError) {
           return { ok: false, error: dateRangeError };
+        }
+
+        if (checklistItems && checklistItems.length > 0) {
+          if (parsedStart) {
+            return { ok: false, error: "Không đặt startDate cùng checklistItems; hãy bỏ startDate." };
+          }
+
+          try {
+            // Same atomic, idempotent path as Smart Capture; a repeated tool call id maps to the same card.
+            const { cards, createdIds } = await createCapturedCardsWithStatus({
+              userId,
+              boardId,
+              drafts: [{
+                creationId: toDeterministicUuid(`${boardId}:${options?.toolCallId ?? crypto.randomUUID()}`),
+                listId: targetList.id,
+                courseId: courseId ?? null,
+                title,
+                description: description ?? "",
+                dueDate: parsedDue,
+                checklistItems,
+              }],
+            });
+
+            await announceCapturedCards({
+              cards,
+              createdIds,
+              boardId,
+              userId,
+              listTitles: new Map([[targetList.id, targetList.title]]),
+            });
+
+            return {
+              ok: true,
+              action: "created",
+              card: toActionCard(cards[0], { boardId, list: targetList.title, assignees: [] }, timeZone),
+            };
+          } catch (error) {
+            if (error instanceof CapturedCardsError) {
+              return { ok: false, error: error.message };
+            }
+            throw error;
+          }
         }
 
         const lastCard = await db.card.findFirst({
@@ -765,6 +829,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           data: {
             id: cardId,
             boardId,
+            expectedUpdatedAt: existing.updatedAt.toISOString(),
             ...(dueDate !== undefined ? { dueDate: nextDue } : {}),
             ...(startDate !== undefined ? { startDate: nextStart } : {}),
             ...(isCompleted !== undefined ? { isCompleted } : {}),
@@ -1503,13 +1568,17 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: `Không tìm thấy thẻ có ID "${cardId}".` };
         }
 
-        await db.card.update({
-          where: { id: cardId },
-          data: {
-            archivedAt: new Date(),
-            archivedByListId: card.listId,
-          },
+        await db.$transaction(async (tx) => {
+          await tx.card.update({
+            where: { id: cardId },
+            data: {
+              archivedAt: new Date(),
+              archivedByListId: card.listId,
+            },
+          });
+          await syncCardReminder(tx, { cardId, now: new Date() });
         });
+        await deleteCardReminderNotifications(cardId);
 
         await createAuditLog({
           entityId: card.id,

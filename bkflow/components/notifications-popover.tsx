@@ -33,6 +33,7 @@ import {
   formatNotificationDateTime,
   getReminderNotificationDisplay,
 } from "@/components/notifications/notification-display";
+import { DesktopReminderControl } from "@/components/notifications/desktop-reminder-control";
 import { useOpenNotification } from "@/components/notifications/use-open-notification";
 
 const getNotificationIcon = (type: NotificationItem["type"]) => {
@@ -184,6 +185,10 @@ export const NotificationsPopover = () => {
               </button>
             </label>
           </div>
+        </div>
+
+        <div className="shrink-0 border-b border-neutral-100 px-5 py-3">
+          <DesktopReminderControl />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col p-4">

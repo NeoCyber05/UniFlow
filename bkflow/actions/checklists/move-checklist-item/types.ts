@@ -6,4 +6,11 @@ import { ActionState } from "@/lib/create-safe-action";
 import { MoveChecklistItem } from "./schema";
 
 export type InputType = z.infer<typeof MoveChecklistItem>;
-export type ReturnType = ActionState<InputType, ChecklistItem[]>;
+export type ReturnType = ActionState<
+  InputType,
+  {
+    items: ChecklistItem[];
+    sourceOrderVersion: number;
+    destinationOrderVersion: number;
+  }
+>;

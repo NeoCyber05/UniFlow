@@ -6,9 +6,10 @@ import { buildTodayOverview } from "./today-overview";
 
 const now = new Date("2026-10-17T17:05:00Z"); // 00:05 October 18 in Vietnam
 const task = (id: string, patch: Partial<MyTask> = {}): MyTask => ({
-  id, title: id, isCompleted: false, dueDate: null, updatedAt: now.toISOString(),
+  id, title: id, isCompleted: false, dueDate: null, deadlineOn: null, scheduledOn: null,
+  scheduledStartAt: null, scheduledEndAt: null, updatedAt: now.toISOString(),
   myDayAt: null, isImportant: false, boardId: "b", boardTitle: "Semester",
-  boardType: "SEMESTER", listId: "l", labelIds: [], course: null,
+  boardType: "SEMESTER", listId: "l", labelIds: [], labels: [], course: null,
   assignees: [], checklist: { total: 0, completed: 0 }, ...patch,
 });
 
@@ -42,6 +43,16 @@ describe("buildTodayOverview", () => {
       task("later", { dueDate: "2026-10-20T10:00:00Z" }),
       task("soon", { dueDate: "2026-10-19T10:00:00Z" })], now);
     assert.equal(result.focus?.id, "soon");
+  });
+
+  it("treats a date-only deadline as due until the end of that VN day", () => {
+    const result = buildTodayOverview([
+      task("today", { deadlineOn: "2026-10-18" }),
+      task("yesterday", { deadlineOn: "2026-10-17" }),
+    ], now);
+    assert.equal(result.overdue, 1);
+    assert.equal(result.dueToday, 1);
+    assert.equal(result.focus?.id, "yesterday");
   });
 
   it("returns an honest empty state", () => {

@@ -4,53 +4,35 @@ import { ChevronDown } from "lucide-react";
 
 import type { CardWithList } from "@/types";
 
+import type { TaskDatesPatch } from "@/lib/cards/task-dates-form";
+
 import { CardDatePopover } from "./card-date-popover";
 
 interface CardDateStatusColumnProps {
   data: CardWithList;
   hasDateRange: boolean;
-  hasStartDate: boolean;
-  hasDueDate: boolean;
-  dateSummary: string;
+  dateLines: string[];
   status: string;
   isLoadingUpdate: boolean;
-  onToggleComplete: (event: React.ChangeEvent<HTMLInputElement>) => void;
   isDateOpen: boolean;
   onDateOpenChange: (open: boolean) => void;
-  startDateValue: string;
-  dueDateValue: string;
-  reminderValue: string;
-  canSetReminder: boolean;
-  onStartDateValueChange: (value: string) => void;
-  onDueDateValueChange: (value: string) => void;
-  onReminderValueChange: (value: string) => void;
-  onDateSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  onClearStartDate: () => void;
-  onClearDueDate: () => void;
+  onSave: (patch: TaskDatesPatch) => void;
+  onClearSchedule: () => void;
+  onClearLegacyStart: () => void;
   canEdit?: boolean;
 }
 
 export const CardDateStatusColumn = ({
   data,
   hasDateRange,
-  hasStartDate,
-  hasDueDate,
-  dateSummary,
+  dateLines,
   status,
   isLoadingUpdate,
-  onToggleComplete,
   isDateOpen,
   onDateOpenChange,
-  startDateValue,
-  dueDateValue,
-  reminderValue,
-  canSetReminder,
-  onStartDateValueChange,
-  onDueDateValueChange,
-  onReminderValueChange,
-  onDateSubmit,
-  onClearStartDate,
-  onClearDueDate,
+  onSave,
+  onClearSchedule,
+  onClearLegacyStart,
   canEdit = true,
 }: CardDateStatusColumnProps) => {
   if (!hasDateRange) {
@@ -60,32 +42,24 @@ export const CardDateStatusColumn = ({
   return (
     <div className="flex flex-col gap-y-1.5">
       <span className="text-xs font-semibold text-neutral-600 pl-0.5">
-        Ngày
+        Hạn và lịch
       </span>
       <div className="flex items-center gap-x-2">
         {canEdit ? (
           <CardDatePopover
             open={isDateOpen}
             onOpenChange={onDateOpenChange}
-            startDateValue={startDateValue}
-            dueDateValue={dueDateValue}
-            reminderValue={reminderValue}
-            canSetReminder={canSetReminder}
-            hasStartDate={hasStartDate}
-            hasDueDate={hasDueDate}
+            data={data}
             isLoadingUpdate={isLoadingUpdate}
-            onStartDateValueChange={onStartDateValueChange}
-            onDueDateValueChange={onDueDateValueChange}
-            onReminderValueChange={onReminderValueChange}
-            onSubmit={onDateSubmit}
-            onClearStartDate={onClearStartDate}
-            onClearDueDate={onClearDueDate}
+            onSave={onSave}
+            onClearSchedule={onClearSchedule}
+            onClearLegacyStart={onClearLegacyStart}
             trigger={(
               <button
                 type="button"
-                className="inline-flex h-8 max-w-full items-center gap-x-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 active:bg-neutral-100 px-3 text-xs font-medium text-neutral-700 cursor-pointer transition-colors shadow-xs"
+                className="inline-flex min-h-8 max-w-full items-center gap-x-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 hover:bg-neutral-50 active:bg-neutral-100 px-3 text-xs font-medium text-neutral-700 cursor-pointer transition-colors shadow-xs"
               >
-                <span className="truncate">{dateSummary}</span>
+                <span className="flex flex-col items-start text-left">{dateLines.map((line) => <span key={line} className="truncate">{line}</span>)}</span>
 
                 {data.isCompleted ? (
                   <span className="shrink-0 bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
@@ -109,9 +83,9 @@ export const CardDateStatusColumn = ({
           <button
             type="button"
             disabled
-            className="inline-flex h-8 max-w-full items-center gap-x-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 px-3 text-xs font-medium text-neutral-700 shadow-xs"
+            className="inline-flex min-h-8 max-w-full items-center gap-x-1.5 rounded-lg border border-neutral-200 bg-neutral-50/50 px-3 text-xs font-medium text-neutral-700 shadow-xs"
           >
-            <span className="truncate">{dateSummary}</span>
+            <span className="flex flex-col items-start text-left">{dateLines.map((line) => <span key={line} className="truncate">{line}</span>)}</span>
           </button>
         )}
       </div>

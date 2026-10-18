@@ -10,6 +10,7 @@ import { REALTIME_EVENTS } from "@/lib/realtime/events";
 import { triggerRealtimeEvent } from "@/lib/realtime/server";
 import type { RealtimeQueryInvalidation } from "@/lib/realtime/types";
 import { db } from "@/lib/db";
+import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 
 type CardRealtimeInput = {
   boardId: string;
@@ -43,6 +44,10 @@ export const triggerCardUpdated = async ({
     | "descriptionUpdatedAt"
     | "startDate"
     | "dueDate"
+    | "deadlineOn"
+    | "scheduledOn"
+    | "scheduledStartAt"
+    | "scheduledEndAt"
     | "isCompleted"
     | "reminder"
     | "reminderSetAt"
@@ -68,7 +73,7 @@ export const triggerCardUpdated = async ({
               description: card.description,
               descriptionUpdatedAt: card.descriptionUpdatedAt.toISOString(),
               startDate: card.startDate?.toISOString() ?? null,
-              dueDate: card.dueDate?.toISOString() ?? null,
+              ...serializeTaskDates(card),
               isCompleted: card.isCompleted,
               reminder: card.reminder,
               reminderSetAt: card.reminderSetAt?.toISOString() ?? null,

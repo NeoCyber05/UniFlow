@@ -1,3 +1,4 @@
+import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
@@ -159,6 +160,7 @@ export async function GET(
 
     return Response.json({
       ...card,
+      ...serializeTaskDates(card),
       assignees: [],
       boardMembers: [],
       boardLabels,

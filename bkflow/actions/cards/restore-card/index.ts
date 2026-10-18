@@ -7,6 +7,7 @@ import { revalidatePath } from "@/server/cache";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
 import {
@@ -69,7 +70,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         throw new Error("LIST_ARCHIVED");
       }
 
-      return tx.card.update({
+      const restored = await tx.card.update({
         where: {
           id: existingCard.id,
         },
@@ -86,6 +87,9 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           },
         },
       });
+      await syncCardReminder(tx, { cardId: restored.id, now: new Date() });
+
+      return restored;
     });
     relatedDependencyCardIds = await getRelatedDependencyCardIds({
       boardId,

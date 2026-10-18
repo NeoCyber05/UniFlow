@@ -3,18 +3,15 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@/web/shims/next-navigation";
-import {
-  format,
-  startOfMonth,
-} from "date-fns";
-import { vi } from "date-fns/locale";
-
 import { useCardModal } from "@/hooks/use-card-modal";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
+import { getTodayKey } from "@/lib/calendar/calendar-navigation";
+import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
 import {
   MONTH_VISIBLE_DESKTOP,
   MONTH_VISIBLE_MOBILE,
@@ -24,10 +21,15 @@ import {
 } from "../_lib/constants";
 import {
   formatDayTitle,
+  formatCalendarDate,
+  getGmt7Parts,
+  formatGmt7Time,
+  getGmt7DayKey,
 } from "../_lib/date-utils";
 import { isOverdue } from "../_lib/item-utils";
 import { BoardCalendarRealtimeSubscriptions } from "./board-calendar/realtime-subscriptions";
 import { CreateCardDialog } from "./board-calendar/create-card-dialog";
+import { ScheduleDialog, type ScheduleDialogState } from "./board-calendar/schedule-dialog";
 import { UnscheduledPanel } from "./board-calendar/unscheduled-panel";
 import type { BoardCalendarViewProps } from "../_types";
 import { useCalendarQuery } from "../_hooks/use-calendar-query";
@@ -37,6 +39,7 @@ import { useCalendarCreateCard } from "../_hooks/use-calendar-create-card";
 import { useCalendarDayViewCreate } from "../_hooks/use-calendar-day-view-create";
 import { useCalendarRealtime } from "../_hooks/use-calendar-realtime";
 import { useCalendarState } from "../_hooks/use-calendar-state";
+import { CalendarDayTimeline } from "./calendar-day-timeline";
 import { CalendarDayView } from "./calendar-day-view";
 import { CalendarEmptyState } from "./calendar-empty-state";
 import { CalendarErrorState } from "./calendar-error-state";
@@ -63,6 +66,7 @@ export const BoardCalendarView = ({
   const {
     viewMode,
     anchorDate,
+    setAnchorDate,
     currentTime,
     expandedDayKey,
     setExpandedDayKey,
@@ -84,7 +88,7 @@ export const BoardCalendarView = ({
     goToNext,
     goToToday,
     changeViewMode,
-  } = useCalendarState({ defaultUnscheduledCollapsed, lists });
+  } = useCalendarState({ boardId, defaultUnscheduledCollapsed, lists });
   const suppressClickRef = useRef(false);
   const filters = useBoardFilters((state) =>
     state.filtersByBoardId[boardId] ?? emptyBoardFilters,
@@ -100,6 +104,8 @@ export const BoardCalendarView = ({
     items,
     filteredUnscheduledCards,
     dayViewBlocks,
+    dayTimeline,
+    dayCardMeta,
     dayViewBlocksById,
     desktopDayViewLayout,
     mobileDayViewLayout,
@@ -163,10 +169,11 @@ export const BoardCalendarView = ({
     ]
     : [];
 
-  const monthLabel = format(anchorDate, "'Tháng' M, yyyy", { locale: vi });
-  const weekLabel = `Tuần ${format(new Date(fromIso), "dd/MM/yyyy", { locale: vi })} - ${format(new Date(toIso), "dd/MM/yyyy", { locale: vi })}`;
+  const monthParts = getGmt7Parts(anchorDate);
+  const monthLabel = `Tháng ${monthParts.month + 1}, ${monthParts.year}`;
+  const weekLabel = `Tuần ${formatCalendarDate(new Date(fromIso))} - ${formatCalendarDate(new Date(Date.parse(toIso) - 1))}`;
   const dayLabel = formatDayTitle(anchorDate);
-  const rangeLabel = `${format(new Date(fromIso), "dd/MM/yyyy", { locale: vi })} - ${format(new Date(toIso), "dd/MM/yyyy", { locale: vi })}`;
+  const rangeLabel = `${formatCalendarDate(new Date(fromIso))} - ${formatCalendarDate(new Date(Date.parse(toIso) - 1))}`;
   const titleLabel = viewMode === "month"
     ? monthLabel
     : viewMode === "week"
@@ -182,18 +189,59 @@ export const BoardCalendarView = ({
     : viewMode === "week"
       ? "Tuần sau"
       : "Ngày sau";
-  const currentMonth = startOfMonth(anchorDate);
+  const currentMonth = anchorDate;
   const maxVisibleDesktop = viewMode === "month" ? MONTH_VISIBLE_DESKTOP : WEEK_VISIBLE_DESKTOP;
   const maxVisibleMobile = viewMode === "month" ? MONTH_VISIBLE_MOBILE : WEEK_VISIBLE_MOBILE;
   const selectedCreateDayLabel = createDialogDay
-    ? format(createDialogDay, "EEEE, dd/MM/yyyy", { locale: vi })
+    ? formatDayTitle(createDialogDay)
     : "";
-  const scheduledItemsCount = items.length;
-  const completedItemsCount = items.filter((item) => item.isCompleted).length;
-  const overdueItemsCount = items.filter(isOverdue).length;
+  const countCards = (list: typeof items) => new Set(list.map((item) => item.cardId)).size;
+  const scheduledItemsCount = countCards(items);
+  const completedItemsCount = countCards(items.filter((item) => item.isCompleted));
+  const overdueItemsCount = countCards(items.filter(isOverdue));
+  const [scheduleDialog, setScheduleDialog] = useState<ScheduleDialogState | null>(null);
+  const cardTitleOf = (cardId: string) =>
+    query.data?.items.find((item) => item.cardId === cardId)?.title ??
+    query.data?.unscheduledCards.find((card) => card.cardId === cardId)?.title ??
+    "";
+  const openScheduleDialog = (cardId: string) => {
+    const card = query.data?.items.find(
+      (item) => item.type === "card" && item.cardId === cardId,
+    );
+    const raw = card?.type === "card" ? card : null;
+    const startAt = raw?.scheduledStartAt ? new Date(raw.scheduledStartAt) : null;
+    const endAt = raw?.scheduledEndAt ? new Date(raw.scheduledEndAt) : null;
+
+    setScheduleDialog({
+      cardId,
+      cardTitle: cardTitleOf(cardId),
+      mode: "plan",
+      day: raw?.scheduledOn ?? (startAt ? getGmt7DayKey(startAt) : getGmt7DayKey(anchorDate)),
+      start: startAt ? formatGmt7Time(startAt) : "",
+      endDay: endAt ? getGmt7DayKey(endAt) : getGmt7DayKey(anchorDate),
+      end: endAt ? formatGmt7Time(endAt) : "",
+      hasSchedule: !!(raw?.scheduledOn || startAt),
+    });
+  };
+  const openNeedsEndDialog = (draft: { cardId: string; startsAt: string }) => {
+    const startsAt = new Date(draft.startsAt);
+
+    setScheduleDialog({
+      cardId: draft.cardId,
+      cardTitle: cardTitleOf(draft.cardId),
+      mode: "needs-end",
+      day: getGmt7DayKey(startsAt),
+      start: formatGmt7Time(startsAt),
+      endDay: getGmt7DayKey(startsAt),
+      end: "",
+      hasSchedule: false,
+    });
+  };
 
   const {
     executeUpdateCard,
+    scheduleCard,
+    saveError,
     executeSetChecklistItemDueDate,
     isUpdatingCardDate,
     isUpdatingChecklistItemDueDate,
@@ -213,6 +261,8 @@ export const BoardCalendarView = ({
     onChecklistComplete: () => {
       handleOccurrenceDragEnd();
     },
+    onNeedsEnd: openNeedsEndDialog,
+    onUpdateSuccess: () => setScheduleDialog(null),
   });
   const {
     resizingRange,
@@ -226,10 +276,9 @@ export const BoardCalendarView = ({
     handleRangeResizeMove,
     handleRangeResizeEnd,
   } = useCalendarResize({
-    boardId,
     anchorDate,
     daysByKey,
-    executeUpdateCard,
+    scheduleCard,
     setUpdateSuccessToast,
     isUpdatingCardDate,
     isUpdatingChecklistItemDueDate,
@@ -272,14 +321,13 @@ export const BoardCalendarView = ({
     anchorDate,
     occurrencesById,
     dayViewBlocksById,
-    executeUpdateCard,
+    scheduleCard,
     executeSetChecklistItemDueDate,
     isUpdatingCardDate,
     isUpdatingChecklistItemDueDate,
     invalidateBoardCalendar,
     suppressClickRef,
     setExpandedDayKey,
-    setUpdateSuccessToast,
     setUpdatingChecklistItemCardId,
     resetDayViewBlockResize,
     resetDayViewCreateSelection: () => resetDayViewCreateSelection(),
@@ -313,6 +361,7 @@ export const BoardCalendarView = ({
     canOpenCreateDialog,
     setExpandedDayKey,
     setCreateDialogDay,
+    createDialogDay,
     createTitle,
     setCreateTitle,
     createStartValue,
@@ -353,11 +402,11 @@ export const BoardCalendarView = ({
   const {
     openCalendarCard,
     openCalendarCardDirect,
-    canClearStartDate,
-    canClearDueDate,
+    canPlanSchedule,
+    canClearSchedule,
     toggleCalendarCardComplete,
-    clearCalendarStartDate,
-    clearCalendarDueDate,
+    planCalendarSchedule,
+    clearCalendarSchedule,
     handleQuickActionClick,
     handleUnscheduledCardClick,
   } = useCalendarCardInteractions({
@@ -367,6 +416,7 @@ export const BoardCalendarView = ({
     setExpandedDayKey,
     executeUpdateCard,
     setUpdateSuccessToast,
+    onPlanSchedule: openScheduleDialog,
   });
   const renderCalendarDayTimeGrid = (isSkeleton = false) => (
     <CalendarDayView
@@ -423,16 +473,16 @@ export const BoardCalendarView = ({
     occurrencesByDay,
     rangeOccurrencesByDay,
     rangeSegmentsByWeek,
-    canClearStartDate,
-    canClearDueDate,
+    canPlanSchedule,
+    canClearSchedule,
     onOpenCard: openCalendarCard,
     onOpenCardDirect: openCalendarCardDirect,
     onOccurrenceDragStart: handleOccurrenceDragStart,
     onOccurrenceDragEnd: handleOccurrenceDragEnd,
     onQuickActionClick: handleQuickActionClick,
     onToggleComplete: toggleCalendarCardComplete,
-    onClearStartDate: clearCalendarStartDate,
-    onClearDueDate: clearCalendarDueDate,
+    onPlanSchedule: planCalendarSchedule,
+    onClearSchedule: clearCalendarSchedule,
     onOpenCreateDialog: openCreateDialog,
     onSetExpandedDayKey: setExpandedDayKey,
     onDayDragOver: handleDayDragOver,
@@ -515,9 +565,24 @@ export const BoardCalendarView = ({
                 rowProps={calendarWeekRowProps}
               />
             ) : (
-              renderCalendarDayTimeGrid()
+              <div className="space-y-3">
+                <CalendarDayTimeline
+                  day={getGmt7DayKey(anchorDate)}
+                  today={getTodayKey(currentTime)}
+                  timeline={dayTimeline}
+                  cardMeta={dayCardMeta}
+                  onOpenTask={(cardId) => openCalendarCardDirect(cardId)}
+                  onSelectDay={(day) => setAnchorDate(new Date(`${day}T12:00:00+07:00`))}
+                  onPlanTask={openScheduleDialog}
+                  onCreateInGap={(gap) => openCreateDialogWithRange(new Date(gap.startsAt), new Date(gap.endsAt))}
+                />
+                <details className="rounded-lg border border-neutral-200 bg-white p-3">
+                  <summary className="cursor-pointer text-sm font-medium text-neutral-700">Lưới giờ — kéo, đổi độ dài hoặc thêm buổi làm</summary>
+                  <div className="mt-3">{renderCalendarDayTimeGrid()}</div>
+                </details>
+              </div>
             )}
-            {items.length === 0 && (
+            {viewMode !== "day" && items.length === 0 && (
               <CalendarEmptyState
                 viewMode={viewMode}
                 filtersAreActive={filtersAreActive}
@@ -529,14 +594,14 @@ export const BoardCalendarView = ({
                 dayKey={expandedDayKey}
                 occurrences={expandedDayItems}
                 isUpdatingCardDate={isUpdatingCardDate}
-                canClearStartDate={canClearStartDate}
-                canClearDueDate={canClearDueDate}
+                canPlanSchedule={canPlanSchedule}
+                canClearSchedule={canClearSchedule}
                 onOpenCard={openCalendarCard}
                 onOpenCardDirect={openCalendarCardDirect}
                 onQuickActionClick={handleQuickActionClick}
                 onToggleComplete={toggleCalendarCardComplete}
-                onClearStartDate={clearCalendarStartDate}
-                onClearDueDate={clearCalendarDueDate}
+                onPlanSchedule={planCalendarSchedule}
+                onClearSchedule={clearCalendarSchedule}
                 onClose={() => setExpandedDayKey(null)}
               />
             )}
@@ -561,10 +626,20 @@ export const BoardCalendarView = ({
       draggingUnscheduledCardId={draggingUnscheduledCardId}
       onSelectedListIdsChange={(listIds) => setSelectedLists(boardId, listIds)}
       onCardClick={(card) => handleUnscheduledCardClick(card.cardId)}
+      onPlanCard={(card) => openScheduleDialog(card.cardId)}
       onCardDragStart={handleUnscheduledCardDragStart}
       onCardDragEnd={handleUnscheduledCardDragEnd}
     />
     </div>
+    <ScheduleDialog
+      state={scheduleDialog}
+      saveError={saveError}
+      isLoading={isUpdatingCardDate}
+      onClose={() => setScheduleDialog(null)}
+      onSubmit={(cardId: string, intent: ScheduleIntent) => {
+        scheduleCard(cardId, intent, "Đã cập nhật lịch làm");
+      }}
+    />
     <CreateCardDialog
       open={!!createDialogDay}
       selectedDayLabel={selectedCreateDayLabel}

@@ -6,15 +6,13 @@ import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { createCard } from "@/actions/cards/create-card";
+import { runCalendarAction } from "@/lib/calendar/calendar-action";
 import { useAction } from "@/hooks/use-action";
 import type { BoardCalendarResponse } from "@/types";
 
 import {
-  MIN_CREATE_DURATION_MS,
-} from "../_lib/constants";
-import {
   formatGmt7DateTimeInput,
-  getDefaultCreateRangeForDay,
+  getGmt7DayKey,
   parseGmt7DateTimeInput,
 } from "../_lib/date-utils";
 import type { BoardCalendarList } from "../_types";
@@ -38,6 +36,7 @@ type UseCalendarCreateCardOptions = {
   canOpenCreateDialog: boolean;
   setExpandedDayKey: (dayKey: string | null) => void;
   setCreateDialogDay: (day: Date | null) => void;
+  createDialogDay: Date | null;
   createTitle: string;
   setCreateTitle: (title: string) => void;
   createStartValue: string;
@@ -61,6 +60,7 @@ export const useCalendarCreateCard = ({
   canOpenCreateDialog,
   setExpandedDayKey,
   setCreateDialogDay,
+  createDialogDay,
   createTitle,
   setCreateTitle,
   createStartValue,
@@ -81,7 +81,7 @@ export const useCalendarCreateCard = ({
     suppressClickRef.current = false;
   };
 
-  const { execute: executeCreateCard, fieldErrors: createFieldErrors, isLoading: isCreatingCard } = useAction(createCard, {
+  const { execute: executeCreateCard, fieldErrors: createFieldErrors, isLoading: isCreatingCard } = useAction((input: Parameters<typeof createCard>[0]) => runCalendarAction(() => createCard(input)), {
     onSuccess: (data) => {
       resetCreateDialogState();
       invalidateBoardCalendar();
@@ -91,7 +91,6 @@ export const useCalendarCreateCard = ({
     },
     onError: (error) => {
       toast.error(error);
-      resetCreateDialogState();
       invalidateBoardCalendar();
       void query.refetch();
     },
@@ -114,9 +113,9 @@ export const useCalendarCreateCard = ({
 
   const openCreateDialog = (day: Date, event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    const range = getDefaultCreateRangeForDay(day);
-
-    openCreateDialogWithRange(range.startDate, range.dueDate);
+    openCreateDialogWithRange(day, day);
+    setCreateStartValue("");
+    setCreateDueValue("");
   };
 
   const closeCreateDialog = (open: boolean) => {
@@ -140,6 +139,10 @@ export const useCalendarCreateCard = ({
       return;
     }
 
+    if (!createStartValue && !createDueValue && createDialogDay) {
+      executeCreateCard({ title, boardId, listId: createListId, scheduledOn: getGmt7DayKey(createDialogDay) });
+      return;
+    }
     const startDate = parseGmt7DateTimeInput(createStartValue);
     const dueDate = parseGmt7DateTimeInput(createDueValue);
 
@@ -153,17 +156,12 @@ export const useCalendarCreateCard = ({
       return;
     }
 
-    if (dueDate.getTime() - startDate.getTime() < MIN_CREATE_DURATION_MS) {
-      toast.error("Khoảng thời gian tối thiểu là 15 phút.");
-      return;
-    }
-
     executeCreateCard({
       title,
       boardId,
       listId: createListId,
-      startDate,
-      dueDate,
+      scheduledStartAt: startDate.toISOString(),
+      scheduledEndAt: dueDate.toISOString(),
     });
   };
 

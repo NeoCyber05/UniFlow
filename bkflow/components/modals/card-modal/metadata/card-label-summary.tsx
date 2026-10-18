@@ -4,6 +4,8 @@ import { Plus } from "lucide-react";
 
 import type { CardWithList } from "@/types";
 import { Hint } from "@/components/hint";
+import { TaskLabels } from "@/components/tasks/task-labels";
+import { getLabelTextColor, safeLabelColor } from "@/lib/cards/task-labels";
 import { getColorName } from "@/lib/utils";
 import { LabelPopover } from "./label-popover";
 
@@ -22,6 +24,17 @@ export const CardLabelSummary = ({
   boardLabels,
   canEdit = true,
 }: CardLabelSummaryProps) => {
+  if (!canEdit) {
+    // Chỉ đọc: badge dùng chung, không bọc control chỉnh nhãn.
+    if (labels.length === 0) return null;
+    return (
+      <div className="flex flex-col gap-y-1.5">
+        <span className="text-xs font-semibold text-neutral-600 pl-0.5">Nhãn</span>
+        <TaskLabels labels={labels.map((cardLabel) => cardLabel.label)} mode="full" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-y-1.5">
       <span className="text-xs font-semibold text-neutral-600 pl-0.5">
@@ -43,8 +56,8 @@ export const CardLabelSummary = ({
               >
                 <button
                   type="button"
-                  style={{ backgroundColor: cardLabel.label.color }}
-                  className="h-8 min-w-[32px] max-w-[140px] px-3 rounded-md flex items-center font-bold text-neutral-900/90 text-xs shadow-xs border border-black/5 hover:opacity-85 transition cursor-pointer"
+                  style={{ backgroundColor: safeLabelColor(cardLabel.label.color), color: getLabelTextColor(cardLabel.label.color) }}
+                  className="h-8 min-w-[32px] max-w-[140px] px-3 rounded-md flex items-center font-bold text-xs shadow-xs border border-black/5 hover:opacity-85 transition cursor-pointer"
                 >
                   <span className="truncate">{cardLabel.label.title}</span>
                 </button>

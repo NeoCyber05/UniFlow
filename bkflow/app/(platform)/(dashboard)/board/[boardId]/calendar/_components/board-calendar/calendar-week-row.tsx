@@ -43,8 +43,8 @@ type CalendarWeekRowProps = {
   occurrencesByDay: Record<string, CalendarOccurrence[]>;
   rangeOccurrencesByDay: Record<string, CalendarOccurrence[]>;
   rangeSegmentsByWeek: Record<number, CalendarRangeSegment[]>;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onOpenCard: (
     cardId: string,
     event?: MouseEvent<HTMLElement>,
@@ -64,8 +64,8 @@ type CalendarWeekRowProps = {
     action: () => void,
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
   onOpenCreateDialog: (day: Date, event: MouseEvent<HTMLButtonElement>) => void;
   onSetExpandedDayKey: (dayKey: string) => void;
   onDayDragOver: (event: DragEvent<HTMLDivElement>, dayKey: string) => void;
@@ -104,16 +104,16 @@ export const CalendarWeekRow = ({
   occurrencesByDay,
   rangeOccurrencesByDay,
   rangeSegmentsByWeek,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onOpenCard,
   onOpenCardDirect,
   onOccurrenceDragStart,
   onOccurrenceDragEnd,
   onQuickActionClick,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
   onOpenCreateDialog,
   onSetExpandedDayKey,
   onDayDragOver,
@@ -159,16 +159,16 @@ export const CalendarWeekRow = ({
           occurrencesByDay={occurrencesByDay}
           rangeOccurrencesByDay={rangeOccurrencesByDay}
           rangeSegmentsByWeek={rangeSegmentsByWeek}
-          canClearStartDate={canClearStartDate}
-          canClearDueDate={canClearDueDate}
+          canPlanSchedule={canPlanSchedule}
+          canClearSchedule={canClearSchedule}
           onOpenCard={onOpenCard}
           onOpenCardDirect={onOpenCardDirect}
           onOccurrenceDragStart={onOccurrenceDragStart}
           onOccurrenceDragEnd={onOccurrenceDragEnd}
           onQuickActionClick={onQuickActionClick}
           onToggleComplete={onToggleComplete}
-          onClearStartDate={onClearStartDate}
-          onClearDueDate={onClearDueDate}
+          onPlanSchedule={onPlanSchedule}
+          onClearSchedule={onClearSchedule}
           onOpenCreateDialog={onOpenCreateDialog}
           onSetExpandedDayKey={onSetExpandedDayKey}
           onDayDragOver={onDayDragOver}
@@ -189,8 +189,8 @@ export const CalendarWeekRow = ({
           draggingBoardCardId={draggingBoardCardId}
           draggingDayViewBlockId={draggingDayViewBlockId}
           isUpdatingCardDate={isUpdatingCardDate}
-          canClearStartDate={canClearStartDate}
-          canClearDueDate={canClearDueDate}
+          canPlanSchedule={canPlanSchedule}
+          canClearSchedule={canClearSchedule}
           onOpenCard={onOpenCard}
           onOpenCardDirect={onOpenCardDirect}
           onRangeResizeStart={onRangeResizeStart}
@@ -199,8 +199,8 @@ export const CalendarWeekRow = ({
           onRangeResizeCancel={onRangeResizeCancel}
           onQuickActionClick={onQuickActionClick}
           onToggleComplete={onToggleComplete}
-          onClearStartDate={onClearStartDate}
-          onClearDueDate={onClearDueDate}
+          onPlanSchedule={onPlanSchedule}
+          onClearSchedule={onClearSchedule}
         />
       ))}
       <CalendarRangeOverflows

@@ -11,6 +11,16 @@ export type BoardCalendarCardItem = {
   title: string;
   startDate: string | null;
   dueDate: string | null;
+  deadlineOn: string | null;
+  scheduledOn: string | null;
+  scheduledStartAt: string | null;
+  scheduledEndAt: string | null;
+  /** Chỉ client: hạn nộp dạng thời điểm (dueDate hoặc cuối ngày hạn); startDate/dueDate sau khi qua adapter là mốc hiển thị. */
+  deadlineAt?: string | null;
+  /** Chỉ client: hiển thị này là buổi làm, hạn nộp hay mốc bắt đầu cũ (một card có thể sinh nhiều hiển thị). */
+  displayKind?: "work" | "deadline" | "legacy-start";
+  /** Card.updatedAt (ISO), dùng làm expectedUpdatedAt khi sửa metadata. */
+  updatedAt: string;
   isCompleted: boolean;
   reminder: string | null;
   labels: {
@@ -73,7 +83,10 @@ export type BoardCalendarUnscheduledCard = {
   courseId?: string | null;
   /** ⭐ của user hiện tại */
   isImportant?: boolean;
+  dueDate?: string | null;
+  deadlineOn?: string | null;
   title: string;
+  updatedAt: string;
   isCompleted: boolean;
   labels: {
     id: string;

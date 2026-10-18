@@ -1,4 +1,3 @@
-import { isSameDay } from "date-fns";
 
 import type { BoardCalendarItem } from "@/types";
 
@@ -25,7 +24,7 @@ export const getOccurrences = (items: BoardCalendarItem[]) =>
     const dueDate = parseCalendarDate(getCalendarItemDueDate(item));
 
     if (startDate && dueDate) {
-      if (isSameDay(startDate, dueDate)) {
+      if (getDayKey(startDate) === getDayKey(new Date(dueDate.getTime() - 1))) {
         acc.push({
           id: `${item.id}:single:${getDayKey(startDate)}`,
           kind: "single",
@@ -63,12 +62,12 @@ export const getRanges = (items: BoardCalendarItem[]) =>
     const startDate = parseCalendarDate(item.startDate);
     const dueDate = parseCalendarDate(item.dueDate);
 
-    if (!startDate || !dueDate || isSameDay(startDate, dueDate)) {
+    if (!startDate || !dueDate || getDayKey(startDate) === getDayKey(new Date(dueDate.getTime() - 1))) {
       return acc;
     }
 
     const orderedStart = compareDay(startDate, dueDate) <= 0 ? startDate : dueDate;
-    const orderedEnd = compareDay(startDate, dueDate) <= 0 ? dueDate : startDate;
+    const orderedEnd = new Date(dueDate.getTime() - 1);
 
     acc.push({
       id: `${item.cardId}:range:${getDayKey(orderedStart)}:${getDayKey(orderedEnd)}`,

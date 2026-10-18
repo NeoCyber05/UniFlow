@@ -48,13 +48,15 @@ export const NotePagesList = () => {
   const { data, isPending, isError, refetch } = useNotePages();
   const { create, creating } = useCreateNotePage();
   const titleOf = (id: string | null) => data?.find(page => page.id === id)?.title;
-  return <div className="mx-auto max-w-3xl">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+  return <div className="mx-auto max-w-3xl pb-16 pt-6 sm:pt-12">
+    <div className="mb-5 flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground"><FileText aria-hidden="true" className="size-7" /></div>
+    <header className="mb-2 flex flex-wrap items-center justify-between gap-4">
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Trang của tôi</h1>
-      <Button disabled={creating || !userId} onClick={() => void create()}><Plus aria-hidden="true" />{creating ? "Đang tạo…" : "Trang mới"}</Button>
+      <Button variant="outline" size="sm" disabled={creating || !userId} onClick={() => void create()}><Plus aria-hidden="true" />{creating ? "Đang tạo…" : "Trang mới"}</Button>
     </header>
+    <p className="mb-8 text-sm text-muted-foreground">Ghi chép, tài liệu và ý tưởng của bạn. Mở một trang để bắt đầu viết.</p>
     {!userId ? <p role="status">Đăng nhập để mở ghi chú.</p> : isPending ? <p role="status" className="text-sm text-muted-foreground">Đang tải trang…</p> : isError ? <div role="alert">Chưa tải được ghi chú. <Button variant="link" onClick={() => void refetch()}>Thử lại</Button></div> : data?.length ? <>
-      <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">Sửa gần đây</p>
+      <div className="mb-2 flex items-center justify-between border-b border-border px-3 pb-2 text-xs font-medium text-muted-foreground"><span>Trang</span><span>Sửa gần đây</span></div>
       <ul className="space-y-0.5">{data.map(page => <li key={page.id}>
         <Link href={`/pages/${encodeURIComponent(page.id)}`} className="flex h-11 items-center gap-3 rounded-md px-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
           <span aria-hidden="true" className="flex w-5 shrink-0 justify-center text-base">{page.icon ?? <FileText className="size-4 text-muted-foreground" />}</span>

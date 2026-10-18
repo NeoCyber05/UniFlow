@@ -7,6 +7,8 @@ import { ChecklistPopover } from "../checklists/checklist-popover";
 import { LabelPopover } from "./label-popover";
 import { AttachmentAddPopover } from "../attachments/attachment-add-popover";
 
+import type { TaskDatesPatch } from "@/lib/cards/task-dates-form";
+
 import { CardDatePopover } from "./card-date-popover";
 
 interface MetadataActionRowProps {
@@ -16,19 +18,10 @@ interface MetadataActionRowProps {
   hasLabels: boolean;
   isDateOpen: boolean;
   onDateOpenChange: (open: boolean) => void;
-  startDateValue: string;
-  dueDateValue: string;
-  reminderValue: string;
-  canSetReminder: boolean;
-  hasStartDate: boolean;
-  hasDueDate: boolean;
   isLoadingUpdate: boolean;
-  onStartDateValueChange: (value: string) => void;
-  onDueDateValueChange: (value: string) => void;
-  onReminderValueChange: (value: string) => void;
-  onDateSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  onClearStartDate: () => void;
-  onClearDueDate: () => void;
+  onSave: (patch: TaskDatesPatch) => void;
+  onClearSchedule: () => void;
+  onClearLegacyStart: () => void;
 }
 
 export const MetadataActionRow = ({
@@ -38,19 +31,10 @@ export const MetadataActionRow = ({
   hasLabels,
   isDateOpen,
   onDateOpenChange,
-  startDateValue,
-  dueDateValue,
-  reminderValue,
-  canSetReminder,
-  hasStartDate,
-  hasDueDate,
   isLoadingUpdate,
-  onStartDateValueChange,
-  onDueDateValueChange,
-  onReminderValueChange,
-  onDateSubmit,
-  onClearStartDate,
-  onClearDueDate,
+  onSave,
+  onClearSchedule,
+  onClearLegacyStart,
 }: MetadataActionRowProps) => {
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -59,26 +43,18 @@ export const MetadataActionRow = ({
         <CardDatePopover
           open={isDateOpen}
           onOpenChange={onDateOpenChange}
-          startDateValue={startDateValue}
-          dueDateValue={dueDateValue}
-          reminderValue={reminderValue}
-          canSetReminder={canSetReminder}
-          hasStartDate={hasStartDate}
-          hasDueDate={hasDueDate}
+          data={data}
           isLoadingUpdate={isLoadingUpdate}
-          onStartDateValueChange={onStartDateValueChange}
-          onDueDateValueChange={onDueDateValueChange}
-          onReminderValueChange={onReminderValueChange}
-          onSubmit={onDateSubmit}
-          onClearStartDate={onClearStartDate}
-          onClearDueDate={onClearDueDate}
+          onSave={onSave}
+          onClearSchedule={onClearSchedule}
+          onClearLegacyStart={onClearLegacyStart}
           trigger={(
             <button
               type="button"
               className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
             >
               <Clock className="h-3.5 w-3.5 text-neutral-500" />
-              Ngày
+              Hạn và lịch
             </button>
           )}
         />

@@ -8,7 +8,7 @@ import { authenticate, runWithAuth } from "./auth";
 import { mountRoutes } from "./mount-routes";
 import { viewsRoute } from "./views";
 
-const PUBLIC_API = [/^\/api\/health$/, /^\/api\/webhook$/, /^\/api\/uploadthing(\/.*)?$/];
+export const PUBLIC_API = [/^\/api\/health$/, /^\/api\/webhook$/, /^\/api\/uploadthing(\/.*)?$/, /^\/api\/push\/display$/];
 
 export const createApp = async () => {
   const app = new Hono();

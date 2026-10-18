@@ -23,7 +23,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   try {
     const card = await db.card.findUnique({
       where: { id: data.cardId },
-      select: { list: { select: { boardId: true } } },
+      select: { updatedAt: true, list: { select: { boardId: true } } },
     });
 
     if (!card) {
@@ -31,7 +31,13 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     }
 
     const result = await updateCardService({
-      data: { id: data.cardId, boardId: card.list.boardId, isCompleted: data.value },
+      data: {
+        id: data.cardId,
+        boardId: card.list.boardId,
+        isCompleted: data.value,
+        // Tick xong là ý định tường minh trên giá trị đích: dùng revision vừa đọc.
+        expectedUpdatedAt: card.updatedAt.toISOString(),
+      },
       userId,
     });
 

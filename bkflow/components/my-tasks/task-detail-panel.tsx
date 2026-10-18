@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
 import { ExternalLink, Star, Sun, X } from "lucide-react";
-import { toast } from "sonner";
 import { useMediaQuery } from "usehooks-ts";
 
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardDetailBody } from "@/components/modals/card-modal/card-detail-body";
 import { CardRealtimeSync } from "@/components/modals/card-modal/card-realtime-sync";
+import { runBeforeClose, type BeforeCloseRef } from "@/components/modals/card-modal/close-guard";
+import { Button } from "@/components/ui/button";
 import { useCardContext } from "@/hooks/use-my-tasks";
 import { useMyTaskMutations } from "@/hooks/use-my-task-mutations";
 import { isSameVNDay } from "@/lib/my-tasks/vn-day";
@@ -25,18 +26,18 @@ type TaskDetailPanelOuterProps = TaskDetailPanelProps & {
   desktopClassName?: string;
 };
 
-const PanelContent = ({ taskId, onClose }: TaskDetailPanelProps) => {
-  const { data: context, isError } = useCardContext(taskId);
-  const { setImportant, setMyDay } = useMyTaskMutations();
-  const isReady = Boolean(context);
-  const isPinned = Boolean(context?.myDayAt && isSameVNDay(new Date(context.myDayAt), new Date()));
+type PanelContentProps = TaskDetailPanelProps & { beforeCloseRef: BeforeCloseRef };
 
-  useEffect(() => {
-    if (isError) {
-      toast.error("Không tìm thấy việc.");
-      onClose();
-    }
-  }, [isError, onClose]);
+const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) => {
+  const { data: context, isError, error, refetch, isFetching } = useCardContext(taskId);
+  const errorStatus = isError ? (error as Error & { status?: number }).status : undefined;
+  const isGone = errorStatus === 403 || errorStatus === 404;
+  const requestClose = () => {
+    void runBeforeClose(beforeCloseRef).then((ok) => ok && onClose());
+  };
+  const { setImportant, setMyDay } = useMyTaskMutations();
+  const isReady = Boolean(context) && !isGone;
+  const isPinned = Boolean(context?.myDayAt && isSameVNDay(new Date(context.myDayAt), new Date()));
 
   return (
     <div className="flex h-full flex-col">
@@ -73,7 +74,7 @@ const PanelContent = ({ taskId, onClose }: TaskDetailPanelProps) => {
         )}
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           aria-label="Đóng"
           className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
         >
@@ -83,8 +84,28 @@ const PanelContent = ({ taskId, onClose }: TaskDetailPanelProps) => {
       {isReady ? (
         <>
           <CardRealtimeSync cardId={taskId} isOpen />
-          <CardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} />
+          <CardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} beforeCloseRef={beforeCloseRef} />
         </>
+      ) : isError ? (
+        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-sm font-medium text-neutral-700">
+            {errorStatus === 403
+              ? "Bạn không còn quyền truy cập việc này."
+              : errorStatus === 404
+                ? "Việc không tồn tại hoặc đã bị xóa."
+                : "Không tải được việc. Kiểm tra kết nối rồi thử lại."}
+          </p>
+          <div className="flex gap-2">
+            {!isGone && (
+              <Button type="button" size="sm" disabled={isFetching} onClick={() => void refetch()}>
+                Thử lại
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={onClose}>
+              Đóng
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-4 p-5">
           <Skeleton className="h-7 w-3/4" />
@@ -99,25 +120,55 @@ const PanelContent = ({ taskId, onClose }: TaskDetailPanelProps) => {
 /** Panel chi tiết bên phải (≥ lg) hoặc Sheet toàn màn (< lg). */
 export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetailPanelOuterProps) => {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const beforeCloseRef: BeforeCloseRef = useRef(null);
+  // The task actually on screen; it only follows `taskId` once unsaved edits are dealt with.
+  const [shownId, setShownId] = useState(taskId);
+
+  useEffect(() => {
+    if (shownId === taskId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void runBeforeClose(beforeCloseRef).then((ok) => {
+      if (ok && !cancelled) {
+        setShownId(taskId);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId, shownId]);
+
+  const requestClose = () => {
+    void runBeforeClose(beforeCloseRef).then((ok) => ok && onClose());
+  };
 
   if (isDesktop) {
     return (
       <aside
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !event.defaultPrevented) {
+            requestClose();
+          }
+        }}
         className={cn(
-          "sticky top-20 h-[calc(100vh-6rem)] w-[420px] shrink-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm",
+          "sticky top-20 h-[calc(100vh-6rem)] w-[420px] shrink-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm xl:w-[500px] 2xl:w-[560px]",
           desktopClassName,
         )}
       >
-        <PanelContent taskId={taskId} onClose={onClose} />
+        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} />
       </aside>
     );
   }
 
   return (
-    <Sheet open onOpenChange={(open) => !open && onClose()}>
+    <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent side="right" showCloseButton={false} className="w-full gap-0 p-0 sm:max-w-full">
         <SheetTitle className="sr-only">Chi tiết việc</SheetTitle>
-        <PanelContent taskId={taskId} onClose={onClose} />
+        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} />
       </SheetContent>
     </Sheet>
   );

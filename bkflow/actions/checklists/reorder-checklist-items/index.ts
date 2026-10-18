@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { validateChecklistItemsForReorder } from "@/lib/checklists/checklist-access";
 import { triggerChecklistItemReordered } from "@/lib/boards/realtime";
 import { CHECKLIST_MESSAGES } from "@/lib/checklists/checklist-messages";
+import { reorderItems, toChecklistActionError } from "@/lib/checklists/checklist-mutations";
 
 import { ReorderChecklistItems } from "./schema";
 import { InputType, ReturnType } from "./types";
@@ -21,7 +22,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const { boardId, cardId, checklistId, items } = data;
+  const { boardId, cardId, checklistId, items, expectedOrderVersion } = data;
 
   try {
     const uniqueIds = new Set(items.map((item) => item.id));
@@ -43,17 +44,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: access.error || CHECKLIST_MESSAGES.checklistNotFound };
     }
 
-    const updatedItems = await db.$transaction(
-      items.map((item) =>
-        db.checklistItem.update({
-          where: {
-            id: item.id,
-          },
-          data: {
-            order: item.order,
-          },
-        }),
-      ),
+    const { items: updatedItems, orderVersion } = await db.$transaction((tx) =>
+      reorderItems(tx, { checklistId, expectedOrderVersion, items }),
     );
     const orderedItemIds = [...updatedItems]
       .sort((a, b) => a.order - b.order)
@@ -80,8 +72,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     });
 
     revalidatePath(`/board/${verifiedBoardId}`);
-    return { data: updatedItems };
+    return { data: { items: updatedItems, orderVersion } };
   } catch (error) {
+    const known = toChecklistActionError(error);
+    if (known) return known;
     console.error("[REORDER_CHECKLIST_ITEMS_ERROR]", error);
     return { error: CHECKLIST_MESSAGES.reorderItemFailed };
   }

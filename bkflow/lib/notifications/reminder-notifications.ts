@@ -1,7 +1,9 @@
 import { NOTIFICATION_TYPE } from "@prisma/client";
 
+import { getTaskDeadlineAt, hasDeadlineWhere } from "@/lib/cards/task-deadline";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { db } from "@/lib/db";
+import { getReminderTime, syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 
 export const reminderLabels: Record<string, string> = {
   "0": "Vao ngay thoi diem het han",
@@ -35,6 +37,53 @@ const getReminderDedupeKey = ({
   return `card-reminder:${recipientUserId}:${cardId}:${reminder}:${reminderSetAtKey}`;
 };
 
+export const getCardReminderKey = ({
+  recipientUserId,
+  cardId,
+  generation,
+}: {
+  recipientUserId: string;
+  cardId: string;
+  generation: string;
+}) => `card-reminder:${recipientUserId}:${cardId}:${generation}`;
+
+type ReminderNotificationCard = {
+  id: string;
+  title: string;
+  reminder: string | null;
+  list: { title: string; board: { id: string; title: string } };
+};
+
+/** Dùng chung cho GET (fallback khi mở app) và worker: cùng dedupeKey nên không tạo hai thông báo. */
+export const notifyCardReminder = ({
+  card,
+  recipientUserId,
+  triggerTime,
+  dueDate,
+  dedupeKey,
+}: {
+  card: ReminderNotificationCard;
+  recipientUserId: string;
+  triggerTime: Date;
+  dueDate: Date;
+  dedupeKey: string;
+}) =>
+  createNotification({
+    recipientUserId,
+    type: NOTIFICATION_TYPE.CARD_REMINDER,
+    title: "Sap den han",
+    message: `Task "${card.title}" se het han theo moc nhac nho da thiet lap.`,
+    boardId: card.list.board.id,
+    boardTitle: card.list.board.title,
+    cardId: card.id,
+    cardTitle: card.title,
+    listTitle: card.list.title,
+    dueDate,
+    triggerTime,
+    reminderLabel: reminderLabels[card.reminder ?? ""] || "",
+    dedupeKey,
+  });
+
 export const deleteCardReminderNotifications = async (cardId: string) => {
   await db.notification.deleteMany({
     where: {
@@ -59,9 +108,7 @@ export const ensureDueReminderNotifications = async ({
           userId,
         },
       },
-      dueDate: {
-        not: null,
-      },
+      ...hasDeadlineWhere,
       reminder: {
         not: null,
         notIn: ["none"],
@@ -72,11 +119,16 @@ export const ensureDueReminderNotifications = async ({
       id: true,
       title: true,
       dueDate: true,
+      deadlineOn: true,
       reminder: true,
       reminderSetAt: true,
+      reminderGeneration: true,
+      isCompleted: true,
+      archivedAt: true,
       list: {
         select: {
           title: true,
+          archivedAt: true,
           board: {
             select: {
               id: true,
@@ -92,48 +144,52 @@ export const ensureDueReminderNotifications = async ({
 
   await Promise.all(
     cards.map(async (card) => {
-      if (!card.dueDate || !card.reminder) {
+      const at = getReminderTime(card);
+
+      if (!at) {
         return;
       }
 
-      const offsetMinutes = parseInt(card.reminder, 10);
-      if (Number.isNaN(offsetMinutes)) {
+      const dueDate = getTaskDeadlineAt({
+        dueDate: card.dueDate?.toISOString() ?? null,
+        deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null,
+      });
+
+      if (!dueDate) {
         return;
       }
 
-      const dueDate = new Date(card.dueDate);
-      const triggerTime = new Date(dueDate.getTime() - offsetMinutes * 60 * 1000);
+      const generation = String(at.getTime());
 
-      if (
-        card.reminderSetAt &&
-        triggerTime.getTime() < new Date(card.reminderSetAt).getTime()
-      ) {
+      if (card.reminderGeneration !== generation) {
+        // Chưa có phiên (task cũ trước khi có push): mốc tương lai thì lập phiên, mốc đã qua theo luật cũ bên dưới.
+        if (at.getTime() > now) {
+          await db.$transaction((tx) => syncCardReminder(tx, { cardId: card.id, now: new Date(now) }));
+          return;
+        }
+
+        if (card.reminderSetAt && at.getTime() < new Date(card.reminderSetAt).getTime()) {
+          return;
+        }
+      }
+
+      if (now < at.getTime()) {
         return;
       }
 
-      if (now < triggerTime.getTime()) {
-        return;
-      }
-
-      await createNotification({
+      await notifyCardReminder({
+        card,
         recipientUserId: userId,
-        type: NOTIFICATION_TYPE.CARD_REMINDER,
-        title: "Sap den han",
-        message: `Task "${card.title}" se het han theo moc nhac nho da thiet lap.`,
-        boardId: card.list.board.id,
-        boardTitle: card.list.board.title,
-        cardId: card.id,
-        cardTitle: card.title,
-        listTitle: card.list.title,
+        triggerTime: at,
         dueDate,
-        triggerTime,
-        reminderLabel: reminderLabels[card.reminder] || "",
-        dedupeKey: getReminderDedupeKey({
-          recipientUserId: userId,
-          cardId: card.id,
-          reminder: card.reminder,
-          reminderSetAt: card.reminderSetAt,
-        }),
+        dedupeKey: card.reminderGeneration === generation
+          ? getCardReminderKey({ recipientUserId: userId, cardId: card.id, generation })
+          : getReminderDedupeKey({
+            recipientUserId: userId,
+            cardId: card.id,
+            reminder: card.reminder!,
+            reminderSetAt: card.reminderSetAt,
+          }),
       });
     }),
   );

@@ -22,6 +22,8 @@ type UseCalendarCardInteractionsOptions = {
   setExpandedDayKey: (dayKey: string | null) => void;
   executeUpdateCard: (input: UpdateCardInput) => void;
   setUpdateSuccessToast: (message: string | null) => void;
+  /** Mở bộ chọn ngày/giờ làm của thẻ. */
+  onPlanSchedule: (cardId: string) => void;
 };
 
 export const useCalendarCardInteractions = ({
@@ -31,6 +33,7 @@ export const useCalendarCardInteractions = ({
   setExpandedDayKey,
   executeUpdateCard,
   setUpdateSuccessToast,
+  onPlanSchedule,
 }: UseCalendarCardInteractionsOptions) => {
   const openCalendarCard = useCallback((
     cardId: string,
@@ -53,22 +56,11 @@ export const useCalendarCardInteractions = ({
     cardModal.onOpen(cardId, options);
   }, [cardModal]);
 
-  const canClearStartDate = (occurrence: CalendarOccurrence) => (
-    isCalendarCardItem(occurrence.item) &&
-    (
-      occurrence.kind === "start" ||
-      occurrence.kind === "range" ||
-      (occurrence.kind === "single" && !!occurrence.item.startDate)
-    )
-  );
+  // Mọi thẻ đều có thể xếp lại lịch làm; chỉ buổi làm mới có lịch để bỏ. Không thao tác nào chạm hạn nộp.
+  const canPlanSchedule = (occurrence: CalendarOccurrence) => isCalendarCardItem(occurrence.item);
 
-  const canClearDueDate = (occurrence: CalendarOccurrence) => (
-    isCalendarCardItem(occurrence.item) &&
-    (
-      occurrence.kind === "due" ||
-      occurrence.kind === "range" ||
-      (occurrence.kind === "single" && !!occurrence.item.dueDate)
-    )
+  const canClearSchedule = (occurrence: CalendarOccurrence) => (
+    isCalendarCardItem(occurrence.item) && occurrence.item.displayKind === "work"
   );
 
   const toggleCalendarCardComplete = (occurrence: CalendarOccurrence) => {
@@ -87,33 +79,27 @@ export const useCalendarCardInteractions = ({
     });
   };
 
-  const clearCalendarStartDate = (occurrence: CalendarOccurrence) => {
+  const planCalendarSchedule = (occurrence: CalendarOccurrence) => {
     if (!isCalendarCardItem(occurrence.item)) {
       return;
     }
 
-    setUpdateSuccessToast("Đã xóa ngày bắt đầu");
-
-    executeUpdateCard({
-      id: occurrence.item.cardId,
-      boardId,
-      startDate: null,
-    });
+    onPlanSchedule(occurrence.item.cardId);
   };
 
-  const clearCalendarDueDate = (occurrence: CalendarOccurrence) => {
+  const clearCalendarSchedule = (occurrence: CalendarOccurrence) => {
     if (!isCalendarCardItem(occurrence.item)) {
       return;
     }
 
-    setUpdateSuccessToast("Đã xóa ngày hết hạn");
+    setUpdateSuccessToast("Đã bỏ lịch làm");
 
     executeUpdateCard({
       id: occurrence.item.cardId,
       boardId,
-      dueDate: null,
-      reminder: null,
-      isCompleted: false,
+      scheduledOn: null,
+      scheduledStartAt: null,
+      scheduledEndAt: null,
     });
   };
 
@@ -141,11 +127,11 @@ export const useCalendarCardInteractions = ({
   return {
     openCalendarCard,
     openCalendarCardDirect,
-    canClearStartDate,
-    canClearDueDate,
+    canPlanSchedule,
+    canClearSchedule,
     toggleCalendarCardComplete,
-    clearCalendarStartDate,
-    clearCalendarDueDate,
+    planCalendarSchedule,
+    clearCalendarSchedule,
     handleQuickActionClick,
     handleUnscheduledCardClick,
   };

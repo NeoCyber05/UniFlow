@@ -11,6 +11,8 @@ export const MoveChecklistItem = z.object({
   itemId: z.string(),
   sourceChecklistId: z.string(),
   destinationChecklistId: z.string(),
+  expectedSourceOrderVersion: z.number().int().nonnegative(),
+  expectedDestinationOrderVersion: z.number().int().nonnegative(),
   sourceItems: z.array(orderedItem),
   destinationItems: z.array(orderedItem),
 });

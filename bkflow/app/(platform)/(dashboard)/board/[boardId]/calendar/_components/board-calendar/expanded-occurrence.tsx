@@ -27,8 +27,8 @@ import type { CalendarOccurrence } from "../../_types";
 type ExpandedOccurrenceProps = {
   occurrence: CalendarOccurrence;
   isUpdatingCardDate: boolean;
-  canClearStartDate: (occurrence: CalendarOccurrence) => boolean;
-  canClearDueDate: (occurrence: CalendarOccurrence) => boolean;
+  canPlanSchedule: (occurrence: CalendarOccurrence) => boolean;
+  canClearSchedule: (occurrence: CalendarOccurrence) => boolean;
   onOpenCard: (
     cardId: string,
     event?: MouseEvent<HTMLElement>,
@@ -43,21 +43,21 @@ type ExpandedOccurrenceProps = {
     action: () => void,
   ) => void;
   onToggleComplete: (occurrence: CalendarOccurrence) => void;
-  onClearStartDate: (occurrence: CalendarOccurrence) => void;
-  onClearDueDate: (occurrence: CalendarOccurrence) => void;
+  onPlanSchedule: (occurrence: CalendarOccurrence) => void;
+  onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
 export const ExpandedOccurrence = ({
   occurrence,
   isUpdatingCardDate,
-  canClearStartDate,
-  canClearDueDate,
+  canPlanSchedule,
+  canClearSchedule,
   onOpenCard,
   onOpenCardDirect,
   onQuickActionClick,
   onToggleComplete,
-  onClearStartDate,
-  onClearDueDate,
+  onPlanSchedule,
+  onClearSchedule,
 }: ExpandedOccurrenceProps) => {
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
@@ -124,13 +124,13 @@ export const ExpandedOccurrence = ({
         <QuickActionsMenu
           occurrence={occurrence}
           isUpdatingCardDate={isUpdatingCardDate}
-          canClearStartDate={canClearStartDate}
-          canClearDueDate={canClearDueDate}
+          canPlanSchedule={canPlanSchedule}
+          canClearSchedule={canClearSchedule}
           onQuickActionClick={onQuickActionClick}
           onOpenCardDirect={onOpenCardDirect}
           onToggleComplete={onToggleComplete}
-          onClearStartDate={onClearStartDate}
-          onClearDueDate={onClearDueDate}
+          onPlanSchedule={onPlanSchedule}
+          onClearSchedule={onClearSchedule}
         />
       </div>
     </Hint>

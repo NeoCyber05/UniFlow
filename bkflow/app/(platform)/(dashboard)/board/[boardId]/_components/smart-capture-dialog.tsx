@@ -39,6 +39,8 @@ type DialogStep = "input" | "preview";
 
 type EditableSmartCaptureDraft = SmartCaptureDraft & {
   localId: string;
+  /** Sent as Card.id; kept across retries so a timeout never creates a second card. */
+  creationId: string;
   isSelected: boolean;
   selectedChecklistTitles: string[];
 };
@@ -55,6 +57,7 @@ const toEditableDraft = (
 ): EditableSmartCaptureDraft => ({
   ...draft,
   localId: createLocalId(index),
+  creationId: globalThis.crypto.randomUUID(),
   isSelected: true,
   selectedChecklistTitles: draft.checklistItems,
   assigneeBoardMemberIds: draft.assigneeBoardMemberIds.filter((memberId) =>
@@ -239,8 +242,13 @@ export const SmartCaptureDialog = ({
         cardModal.onOpen(data[0].id);
       }
     },
-    onError: (error) => {
+    onError: (error, errorCode) => {
       toast.error(error);
+
+      // Server already handled these ids with other content: the next submit must be a new request.
+      if (errorCode === "CAPTURE_ALREADY_PROCESSED") {
+        setDrafts((current) => current.map((draft) => ({ ...draft, creationId: globalThis.crypto.randomUUID() })));
+      }
     },
   });
 
@@ -409,6 +417,7 @@ export const SmartCaptureDialog = ({
     executeCreate({
       boardId,
       drafts: selectedDrafts.map((draft) => ({
+        creationId: draft.creationId,
         listId: draft.listId,
         courseId: draft.courseId,
         title: draft.title.replace(/\s+/g, " ").trim(),

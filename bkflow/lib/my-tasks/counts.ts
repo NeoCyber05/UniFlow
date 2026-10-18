@@ -1,5 +1,6 @@
 import "server-only";
 
+import { deadlineWhere } from "@/lib/cards/task-deadline";
 import { db } from "@/lib/db";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
 import { pickCurrentSemester } from "@/lib/semesters";
@@ -32,7 +33,7 @@ export const getMyTaskCounts = async (userId: string, now: Date = new Date()): P
           { isCompleted: false },
           {
             OR: [
-              { dueDate: { lte: endOfToday } },
+              deadlineWhere({ lte: endOfToday }),
               { userStates: { some: { userId, myDayAt: { gte: startOfToday } } } },
             ],
           },

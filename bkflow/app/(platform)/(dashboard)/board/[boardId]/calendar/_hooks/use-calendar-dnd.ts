@@ -1,12 +1,10 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
-import { isSameDay } from "date-fns";
 import { toast } from "sonner";
 
 import type { InputType as SetChecklistItemDueDateInput } from "@/actions/checklists/set-checklist-item-due-date/types";
-import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
-import { getDateTimezoneOffset } from "@/lib/date-utils";
+import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
 import {
   DAY_VIEW_SLOT_COUNT,
   DAY_VIEW_SLOT_HEIGHT,
@@ -19,13 +17,11 @@ import {
 } from "@/lib/calendar/calendar-dnd";
 import type { BoardCalendarUnscheduledCard } from "@/types";
 
-import { GMT7_OFFSET_MINUTES } from "../_lib/constants";
 import {
   copyDateToDay,
   getDayKey,
   getDefaultDueDateForDay,
   getGmt7DayKey,
-  getReminderError,
   parseCalendarDate,
 } from "../_lib/date-utils";
 import {
@@ -53,14 +49,13 @@ type UseCalendarDndOptions = {
   anchorDate: Date;
   occurrencesById: Record<string, CalendarOccurrence>;
   dayViewBlocksById: Record<string, DayViewBlock>;
-  executeUpdateCard: (input: UpdateCardInput) => void;
+  scheduleCard: (cardId: string, intent: ScheduleIntent, successMessage?: string) => void;
   executeSetChecklistItemDueDate: (input: SetChecklistItemDueDateInput) => void;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
   invalidateBoardCalendar: () => void;
   suppressClickRef: BooleanRef;
   setExpandedDayKey: (dayKey: string | null) => void;
-  setUpdateSuccessToast: (message: string | null) => void;
   setUpdatingChecklistItemCardId: (cardId: string | null) => void;
   resetDayViewBlockResize: () => void;
   resetDayViewCreateSelection: () => void;
@@ -71,14 +66,13 @@ export const useCalendarDnd = ({
   anchorDate,
   occurrencesById,
   dayViewBlocksById,
-  executeUpdateCard,
+  scheduleCard,
   executeSetChecklistItemDueDate,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
   invalidateBoardCalendar,
   suppressClickRef,
   setExpandedDayKey,
-  setUpdateSuccessToast,
   setUpdatingChecklistItemCardId,
   resetDayViewBlockResize,
   resetDayViewCreateSelection,
@@ -116,6 +110,7 @@ export const useCalendarDnd = ({
       isUpdatingCardDate ||
       isUpdatingChecklistItemDueDate ||
       occurrence.kind === "range" ||
+      (isCalendarCardItem(occurrence.item) && occurrence.item.displayKind !== undefined && occurrence.item.displayKind !== "work") ||
       (!isCalendarCardItem(occurrence.item) && !isCalendarChecklistItem(occurrence.item))
     ) {
       event.preventDefault();
@@ -307,84 +302,12 @@ export const useCalendarDnd = ({
       return;
     }
 
-    const currentStartDate = parseCalendarDate(block.item.startDate);
-    const currentDueDate = parseCalendarDate(block.item.dueDate);
-
-    if (!currentStartDate && !currentDueDate) {
-      toast.error("Thẻ chưa có thời gian để di chuyển trong Day View.");
+    if (parseCalendarDate(block.item.startDate)?.getTime() === targetDate.getTime()) {
       resetCalendarDragState();
       return;
     }
 
-    if (currentStartDate && currentDueDate) {
-      const durationMs = currentDueDate.getTime() - currentStartDate.getTime();
-
-      if (durationMs <= 0) {
-        toast.error("Khoảng thời gian của thẻ không hợp lệ.");
-        resetCalendarDragState();
-        return;
-      }
-
-      const nextDueDate = new Date(targetDate.getTime() + durationMs);
-
-      if (
-        currentStartDate.getTime() === targetDate.getTime() &&
-        currentDueDate.getTime() === nextDueDate.getTime()
-      ) {
-        resetCalendarDragState();
-        return;
-      }
-
-      setUpdateSuccessToast("Đã di chuyển thẻ");
-
-      executeUpdateCard({
-        id: block.item.cardId,
-        boardId,
-        startDate: targetDate,
-        dueDate: nextDueDate,
-        dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-        isCompleted: block.item.isCompleted,
-        ...(block.item.reminder !== null ? { reminder: block.item.reminder } : {}),
-      });
-      return;
-    }
-
-    if (currentStartDate) {
-      if (currentStartDate.getTime() === targetDate.getTime()) {
-        resetCalendarDragState();
-        return;
-      }
-
-      setUpdateSuccessToast("Đã di chuyển thẻ");
-
-      executeUpdateCard({
-        id: block.item.cardId,
-        boardId,
-        startDate: targetDate,
-        dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-      });
-      return;
-    }
-
-    if (currentDueDate) {
-      const nextDueDate = new Date(targetDate.getTime() + 30 * 60_000);
-
-      if (currentDueDate.getTime() === nextDueDate.getTime()) {
-        resetCalendarDragState();
-        return;
-      }
-
-      setUpdateSuccessToast("Đã di chuyển thẻ");
-
-      executeUpdateCard({
-        id: block.item.cardId,
-        boardId,
-        dueDate: nextDueDate,
-        dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-        isCompleted: block.item.isCompleted,
-        ...(block.item.reminder !== null ? { reminder: block.item.reminder } : {}),
-      });
-    }
+    scheduleCard(block.item.cardId, { type: "move", startsAt: targetDate.toISOString() }, "Đã di chuyển thẻ");
   };
 
   const updateOccurrenceDate = (occurrence: CalendarOccurrence, targetDay: Date) => {
@@ -423,117 +346,34 @@ export const useCalendarDnd = ({
       return;
     }
 
-    let nextStartDate: Date | undefined;
-    let nextDueDate: Date | undefined;
-    let shouldUpdateDueDate = false;
+    // Chỉ dời lịch làm; hạn nộp và nhắc giữ nguyên.
+    if (item.scheduledStartAt && currentStartDate) {
+      const shiftMs = Date.parse(`${targetDayKey}T00:00:00Z`) - Date.parse(`${sourceDayKey}T00:00:00Z`);
 
-    if (occurrence.kind === "start") {
-      if (!currentStartDate) {
-        toast.error("Không tìm thấy ngày bắt đầu của thẻ.");
-        handleOccurrenceDragEnd();
-        return;
-      }
-
-      nextStartDate = copyDateToDay(currentStartDate, targetDay);
-    } else if (occurrence.kind === "due") {
-      if (!currentDueDate) {
-        toast.error("Không tìm thấy ngày hết hạn của thẻ.");
-        handleOccurrenceDragEnd();
-        return;
-      }
-
-      nextDueDate = copyDateToDay(currentDueDate, targetDay);
-      shouldUpdateDueDate = true;
-    } else if (currentStartDate && currentDueDate && isSameDay(currentStartDate, currentDueDate)) {
-      nextStartDate = copyDateToDay(currentStartDate, targetDay);
-      nextDueDate = copyDateToDay(currentDueDate, targetDay);
-      shouldUpdateDueDate = true;
-    } else if (currentDueDate) {
-      nextDueDate = copyDateToDay(currentDueDate, targetDay);
-      shouldUpdateDueDate = true;
-    } else if (currentStartDate) {
-      nextStartDate = copyDateToDay(currentStartDate, targetDay);
-    } else {
-      toast.error("Không tìm thấy ngày của thẻ.");
-      handleOccurrenceDragEnd();
+      scheduleCard(
+        item.cardId,
+        { type: "move", startsAt: new Date(currentStartDate.getTime() + shiftMs).toISOString() },
+        "Đã cập nhật ngày",
+      );
       return;
     }
 
-    const effectiveStartDate = nextStartDate ?? currentStartDate;
-    const effectiveDueDate = nextDueDate ?? currentDueDate;
-
-    if (
-      effectiveStartDate &&
-      effectiveDueDate &&
-      effectiveStartDate.getTime() > effectiveDueDate.getTime()
-    ) {
-      toast.error("Ngày bắt đầu phải trước hoặc bằng ngày hết hạn.");
-      invalidateBoardCalendar();
-      handleOccurrenceDragEnd();
-      return;
-    }
-
-    if (nextDueDate) {
-      const reminderError = getReminderError(nextDueDate, item.reminder);
-
-      if (reminderError) {
-        toast.error(reminderError);
-        invalidateBoardCalendar();
-        handleOccurrenceDragEnd();
-        return;
-      }
-    }
-
-    setUpdateSuccessToast("Đã cập nhật ngày");
-
-    executeUpdateCard({
-      id: item.cardId,
-      boardId,
-      ...(nextStartDate !== undefined ? { startDate: nextStartDate } : {}),
-      ...(nextDueDate !== undefined ? { dueDate: nextDueDate } : {}),
-      dueDateTimezoneOffset: nextDueDate
-        ? getDateTimezoneOffset(nextDueDate)
-        : nextStartDate
-          ? getDateTimezoneOffset(nextStartDate)
-          : undefined,
-      ...(shouldUpdateDueDate ? { isCompleted: item.isCompleted } : {}),
-      ...(shouldUpdateDueDate && item.reminder !== null ? { reminder: item.reminder } : {}),
-    });
+    scheduleCard(item.cardId, { type: "day", day: targetDayKey }, "Đã cập nhật ngày");
   };
 
   const scheduleCardForDay = (
     card: SchedulableCardPayload,
     targetDay: Date,
   ) => {
-    const dueDate = getDefaultDueDateForDay(targetDay);
-
-    setUpdateSuccessToast("Đã lên lịch thẻ");
-
-    executeUpdateCard({
-      id: card.cardId,
-      boardId,
-      dueDate,
-      dueDateTimezoneOffset: getDateTimezoneOffset(dueDate),
-      isCompleted: card.isCompleted,
-    });
+    scheduleCard(card.cardId, { type: "day", day: getDayKey(targetDay) }, "Đã lên lịch thẻ");
   };
 
+  // Thả vào giờ chưa biết thời lượng: scheduleCard sẽ hỏi giờ kết thúc thay vì tự đặt 30/60 phút.
   const scheduleCardAtDate = (
     card: SchedulableCardPayload,
     startDate: Date,
   ) => {
-    const dueDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-
-    setUpdateSuccessToast("Đã lên lịch thẻ");
-
-    executeUpdateCard({
-      id: card.cardId,
-      boardId,
-      startDate,
-      dueDate,
-      dueDateTimezoneOffset: -GMT7_OFFSET_MINUTES,
-      isCompleted: card.isCompleted,
-    });
+    scheduleCard(card.cardId, { type: "time", startsAt: startDate.toISOString() }, "Đã lên lịch thẻ");
   };
 
   const handleDayViewBlockDragStart = (

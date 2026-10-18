@@ -2,49 +2,16 @@
 
 import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
-import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
+import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
+import { CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
-import { triggerCardCreated } from "@/lib/boards/realtime";
 
 import { CreateSmartCaptureCards } from "./schema";
 import { InputType, ReturnType } from "./types";
-import type { CardWithAssignees } from "@/types";
-
-type DraftInput = InputType["drafts"][number];
-
-const normalizeDueDate = (value: DraftInput["dueDate"]) => {
-  if (!value) {
-    return null;
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const normalizeChecklistItems = (items: string[]) => {
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  for (const item of items) {
-    const title = item.replace(/\s+/g, " ").trim();
-    const key = title.toLowerCase();
-
-    if (!title || seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    result.push(title);
-  }
-
-  return result;
-};
 
 const handler = async (data: InputType): Promise<ReturnType> => {
   const { userId } = await auth();
@@ -62,240 +29,32 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: permission.error };
     }
 
-    const requestedListIds = Array.from(new Set(drafts.map((draft) => draft.listId)));
-    const requestedAssigneeIds = Array.from(
-      new Set(drafts.flatMap((draft) => [
-        ...draft.assigneeBoardMemberIds,
-        ...(draft.assigneeBoardMemberId ? [draft.assigneeBoardMemberId] : []),
-      ])),
-    );
-    const requestedLabelIds = Array.from(
-      new Set(drafts.flatMap((draft) => draft.labelIds)),
-    );
-    const requestedCourseIds = Array.from(
-      new Set(drafts.flatMap((draft) => (draft.courseId ? [draft.courseId] : []))),
-    );
+    const { cards, createdIds } = await createCapturedCardsWithStatus({ userId, boardId, drafts });
 
-    const [lists, assignees, labels, courses] = await Promise.all([
-      db.list.findMany({
-        where: {
-          id: {
-            in: requestedListIds,
-          },
-          archivedAt: null,
-          board: {
-            id: boardId,
-            userId,
-          },
-        },
-        select: {
-          id: true,
-          title: true,
-        },
-      }),
-      Promise.resolve([] as Array<{ id: string; role: any }>),
-      requestedLabelIds.length > 0
-        ? db.label.findMany({
-            where: {
-              id: {
-                in: requestedLabelIds,
-              },
-              boardId,
-              board: {
-                userId,
-              },
-            },
-            select: {
-              id: true,
-            },
-          })
-        : [],
-      requestedCourseIds.length > 0
-        ? db.course.findMany({
-            where: {
-              id: {
-                in: requestedCourseIds,
-              },
-              boardId,
-              board: {
-                userId,
-              },
-            },
-            select: {
-              id: true,
-            },
-          })
-        : [],
-    ]);
-
-    const listById = new Map(lists.map((list) => [list.id, list]));
-
-    if (requestedListIds.some((listId) => !listById.has(listId))) {
-      return { error: "Không tìm thấy một hoặc nhiều danh sách." };
-    }
-
-    const validAssigneeIds = new Set<string>();
-    const validLabelIds = new Set(labels.map((label) => label.id));
-    const validCourseIds = new Set(courses.map((course) => course.id));
-    const normalizedDrafts = drafts.map((draft) => ({
-      ...draft,
-      dueDateValue: normalizeDueDate(draft.dueDate),
-      checklistItems: normalizeChecklistItems(draft.checklistItems),
-      assigneeBoardMemberIds: Array.from(new Set([
-        ...draft.assigneeBoardMemberIds,
-        ...(draft.assigneeBoardMemberId ? [draft.assigneeBoardMemberId] : []),
-      ])).filter((id) => validAssigneeIds.has(id)),
-      labelIds: Array.from(new Set(draft.labelIds)).filter((id) => validLabelIds.has(id)),
-      courseId: draft.courseId && validCourseIds.has(draft.courseId) ? draft.courseId : null,
-    }));
-
-    const cards = await db.$transaction(async (tx) => {
-      const orderCursorByListId = new Map<string, number>();
-      const createdCards: CardWithAssignees[] = [];
-
-      for (const listId of requestedListIds) {
-        const lastCard = await tx.card.findFirst({
-          where: {
-            listId,
-            archivedAt: null,
-          },
-          orderBy: {
-            order: "desc",
-          },
-          select: {
-            order: true,
-          },
-        });
-
-        orderCursorByListId.set(listId, lastCard ? lastCard.order : 0);
-      }
-
-      for (const draft of normalizedDrafts) {
-        const nextOrder = (orderCursorByListId.get(draft.listId) ?? 0) + 1;
-
-        orderCursorByListId.set(draft.listId, nextOrder);
-
-        const createdCard = await tx.card.create({
-          data: {
-            title: draft.title,
-            description: draft.description,
-            listId: draft.listId,
-            order: nextOrder,
-            courseId: draft.courseId,
-            ...(draft.dueDateValue ? { dueDate: draft.dueDateValue } : {}),
-            ...(draft.isImportant
-              ? { userStates: { create: { userId, isImportant: true } } }
-              : {}),
-          },
-        });
-
-
-        if (draft.labelIds.length > 0) {
-          await tx.cardLabel.createMany({
-            data: draft.labelIds.map((labelId) => ({
-              cardId: createdCard.id,
-              labelId,
-            })),
-            skipDuplicates: true,
-          });
-        }
-
-        if (draft.checklistItems.length > 0) {
-          const checklist = await tx.checklist.create({
-            data: {
-              cardId: createdCard.id,
-              title: "Việc cần làm",
-              order: 0,
-            },
-          });
-
-          await tx.checklistItem.createMany({
-            data: draft.checklistItems.map((item, index) => ({
-              checklistId: checklist.id,
-              title: item,
-              order: index,
-              isCompleted: false,
-            })),
-          });
-        }
-
-        const card = await tx.card.findUniqueOrThrow({
-          where: {
-            id: createdCard.id,
-          },
-          include: {
-            labels: {
-              include: {
-                label: true,
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
-            checklists: {
-              select: {
-                items: {
-                  select: {
-                    isCompleted: true,
-                  },
-                },
-              },
-            },
-            _count: {
-              select: {
-                comments: true,
-                attachments: true,
-              },
-            },
-          },
-        });
-
-        createdCards.push({
-          ...card,
-          assignees: [],
-          checklistProgress: {
-            total: draft.checklistItems.length,
-            completed: 0,
-          },
-          unresolvedBlockerCount: 0,
-        });
-      }
-
-      return createdCards;
-    }, {
-      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+    const lists = await db.list.findMany({
+      where: { id: { in: cards.map((card) => card.listId) } },
+      select: { id: true, title: true },
     });
 
-    await Promise.all(cards.map((card) => {
-      const list = listById.get(card.listId);
-
-      return createAuditLog({
-        entityId: card.id,
-        entityTitle: `detail:đã tạo thẻ "${card.title}" từ Smart Capture trong danh sách "${list?.title ?? ""}"`,
-        entityType: ENTITY_TYPE.CARD,
-        action: ACTION.CREATE,
-        boardId,
-        cardId: card.id,
-      });
-    }));
-
-    await Promise.all(cards.map((card) =>
-      triggerCardCreated({
-        boardId,
-        listId: card.listId,
-        cardId: card.id,
-        actorUserId: userId,
-      }),
-    ));
+    await announceCapturedCards({
+      cards,
+      createdIds,
+      boardId,
+      userId,
+      listTitles: new Map(lists.map((list) => [list.id, list.title])),
+    });
 
     revalidatePath(`/board/${boardId}`);
 
     return { data: cards };
   } catch (error) {
+    if (error instanceof CapturedCardsError) {
+      return { error: error.message, ...(error.code ? { errorCode: error.code } : {}) };
+    }
+
     logger.error("[CREATE_SMART_CAPTURE_CARDS_ERROR]", error, {
       action: "create-smart-capture-cards",
       aiFeature: "smart-capture",
-      
       userId,
       boardId,
       draftCount: drafts.length,

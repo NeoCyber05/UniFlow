@@ -1,3 +1,4 @@
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import "server-only";
 
 import { db } from "@/lib/db";
@@ -75,6 +76,7 @@ export const getBoardAnalyticsData = async ({
             courseId: true,
             startDate: true,
             dueDate: true,
+            deadlineOn: true,
             isCompleted: true,
             createdAt: true,
             updatedAt: true,
@@ -148,6 +150,8 @@ export const getBoardAnalyticsData = async ({
   const cards = lists.flatMap((list) =>
     list.cards.map((card) => ({
       ...card,
+      // shortcut: hạn chỉ-ngày tính như cuối ngày VN để quá hạn/sắp hạn đúng ngày; báo cáo không hiển thị giờ này
+      dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) }),
       listTitle: list.title,
       listOrder: list.order,
     })),

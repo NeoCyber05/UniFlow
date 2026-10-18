@@ -1,12 +1,4 @@
-import {
-  eachDayOfInterval,
-  endOfWeek,
-  format,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
-import { vi } from "date-fns/locale";
-
+import { getCalendarRange, getTodayKey } from "@/lib/calendar/calendar-navigation";
 import {
   DAY_VIEW_LABELS,
   DEFAULT_CREATE_HOUR,
@@ -18,29 +10,12 @@ import {
   TIME_INPUT_PATTERN,
 } from "./constants";
 
-export const getMonthGridRange = (anchorDate: Date) => {
-  const monthStart = startOfMonth(anchorDate);
-  const from = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const monthEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
-  const to = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
-  return {
-    fromIso: from.toISOString(),
-    toIso: to.toISOString(),
-    days: eachDayOfInterval({ start: from, end: to }),
-  };
+const getGridRange = (anchorDate: Date, mode: "month" | "week" | "day") => {
+  const { from, to } = getCalendarRange(getTodayKey(anchorDate), mode);
+  return { fromIso: from, toIso: to, days: Array.from({ length: Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) }, (_, index) => new Date(Date.parse(from) + index * 86_400_000)) };
 };
-
-export const getWeekGridRange = (anchorDate: Date) => {
-  const from = startOfWeek(anchorDate, { weekStartsOn: 1 });
-  const to = endOfWeek(anchorDate, { weekStartsOn: 1 });
-
-  return {
-    fromIso: from.toISOString(),
-    toIso: to.toISOString(),
-    days: eachDayOfInterval({ start: from, end: to }),
-  };
-};
+export const getMonthGridRange = (anchorDate: Date) => getGridRange(anchorDate, "month");
+export const getWeekGridRange = (anchorDate: Date) => getGridRange(anchorDate, "week");
 
 export const getGmt7Parts = (date: Date) => {
   const shiftedDate = new Date(date.getTime() + GMT7_OFFSET_MS);
@@ -110,7 +85,7 @@ export const parseGmt7DateTimeInput = (value: string) => {
     Number(minutes),
   );
 
-  if (Number.isNaN(parsedDate.getTime())) {
+  if (Number.isNaN(parsedDate.getTime()) || formatGmt7DateTimeInput(parsedDate) !== value) {
     return null;
   }
 
@@ -270,12 +245,18 @@ export const formatDayTitle = (date: Date) => {
   return `${DAY_VIEW_LABELS[parts.day]}, ${String(parts.date).padStart(2, "0")}/${String(parts.month + 1).padStart(2, "0")}/${parts.year}`;
 };
 
-export const getDayKey = (date: Date) => format(date, "yyyy-MM-dd");
-
-export const formatCalendarTime = (date: Date) => format(date, "HH:mm");
-
-export const formatCalendarDateTime = (date: Date) =>
-  format(date, "dd/MM/yyyy HH:mm", { locale: vi });
+export const getDayKey = (date: Date) => getGmt7DayKey(date);
+export const formatCalendarTime = (date: Date) => formatGmt7Time(date);
+export const formatCalendarDate = (date: Date) => {
+  const p = getGmt7Parts(date);
+  return `${String(p.date).padStart(2, "0")}/${String(p.month + 1).padStart(2, "0")}/${p.year}`;
+};
+export const formatCalendarDateTime = (date: Date) => `${formatCalendarDate(date)} ${formatGmt7Time(date)}`;
+export const isSameCalendarMonth = (left: Date, right: Date) => {
+  const a = getGmt7Parts(left), b = getGmt7Parts(right);
+  return a.year === b.year && a.month === b.month;
+};
+export const isCalendarToday = (date: Date) => getDayKey(date) === getDayKey(new Date());
 
 export const formatGmt7Time = (date: Date) => {
   const parts = getGmt7Parts(date);
@@ -293,7 +274,7 @@ export const formatGmt7DateTime = (date: Date) => {
 };
 
 export const getLocalDay = (date: Date) =>
-  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  getGmt7DayBoundary(date).start;
 
 export const compareDay = (left: Date, right: Date) =>
   getLocalDay(left).getTime() - getLocalDay(right).getTime();
@@ -313,41 +294,17 @@ export const parseCalendarDate = (value: string | null) => {
 };
 
 export const copyDateToDay = (sourceDate: Date, targetDay: Date) => {
-  const nextDate = new Date(sourceDate);
-  nextDate.setFullYear(
-    targetDay.getFullYear(),
-    targetDay.getMonth(),
-    targetDay.getDate(),
-  );
-
-  return nextDate;
+  const target = getGmt7Parts(targetDay), source = getGmt7Parts(sourceDate);
+  return getGmt7DateFromParts(target.year, target.month, target.date, source.hours, source.minutes, sourceDate.getUTCSeconds(), sourceDate.getUTCMilliseconds());
 };
-
-export const getDateWithPreservedTime = (sourceDate: Date, targetDay: Date) =>
-  new Date(
-    targetDay.getFullYear(),
-    targetDay.getMonth(),
-    targetDay.getDate(),
-    sourceDate.getHours(),
-    sourceDate.getMinutes(),
-    sourceDate.getSeconds(),
-    sourceDate.getMilliseconds(),
-  );
-
+export const getDateWithPreservedTime = copyDateToDay;
+/** The selected last occupied day precedes an exclusive midnight end by one day. */
+export const copyRangeEndToDay = (end: Date, targetDay: Date) =>
+  copyDateToDay(end, new Date(targetDay.getTime() + (getLocalDay(end).getTime() === end.getTime() ? 86_400_000 : 0)));
 export const getDefaultDueDateForDay = (day: Date, timeValue = DEFAULT_CREATE_TIME) => {
   const match = TIME_INPUT_PATTERN.exec(timeValue);
-  const hours = match ? Number(match[1]) : DEFAULT_CREATE_HOUR;
-  const minutes = match ? Number(match[2]) : 0;
-
-  return new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate(),
-    hours,
-    minutes,
-    0,
-    0,
-  );
+  const p = getGmt7Parts(day);
+  return getGmt7DateFromParts(p.year, p.month, p.date, match ? Number(match[1]) : DEFAULT_CREATE_HOUR, match ? Number(match[2]) : 0);
 };
 
 export const getReminderError = (dueDate: Date, reminder: string | null) => {

@@ -14,7 +14,7 @@ import { Hint } from "@/components/hint";
 import { BlockedCompletionDialog } from "./metadata/blocked-completion-dialog";
 import { cn } from "@/lib/utils";
 
-import { patchBoardCardPreview, patchCardQueryData } from "./card-cache-utils";
+import { getCardRevision, patchBoardCardPreview, patchCardQueryData } from "./card-cache-utils";
 
 interface HeaderProps {
   data: CardWithList;
@@ -60,9 +60,11 @@ export const Header = ({
     onSuccess: (updatedCard) => {
       patchCardQueryData(queryClient, updatedCard.id, {
         isCompleted: updatedCard.isCompleted,
+        updatedAt: updatedCard.updatedAt,
       });
       patchBoardCardPreview(boardId, updatedCard.id, {
         isCompleted: updatedCard.isCompleted,
+        updatedAt: updatedCard.updatedAt,
       });
       queryClient.invalidateQueries({
         queryKey: ["card-logs", updatedCard.id],
@@ -146,6 +148,7 @@ export const Header = ({
     executeUpdateCard({
       id: data.id,
       boardId,
+      expectedUpdatedAt: getCardRevision(queryClient, data.id, data.updatedAt),
       isCompleted: checked,
     });
   };
@@ -164,9 +167,11 @@ export const Header = ({
 
       patchCardQueryData(queryClient, updatedCard.id, {
         title: updatedCard.title,
+        updatedAt: updatedCard.updatedAt,
       });
       patchBoardCardPreview(boardId, updatedCard.id, {
         title: updatedCard.title,
+        updatedAt: updatedCard.updatedAt,
       });
 
       queryClient.invalidateQueries({
@@ -263,6 +268,7 @@ export const Header = ({
       title: trimmedTitle,
       boardId,
       id: data.id,
+      expectedUpdatedAt: getCardRevision(queryClient, data.id, data.updatedAt),
     });
   };
 

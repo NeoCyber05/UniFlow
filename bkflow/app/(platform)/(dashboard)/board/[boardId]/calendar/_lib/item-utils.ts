@@ -1,4 +1,3 @@
-import { format, isSameDay } from "date-fns";
 
 import type {
   BoardCalendarCardItem,
@@ -8,6 +7,8 @@ import type {
 
 import {
   formatCalendarDateTime,
+  formatCalendarDate,
+  getDayKey,
   formatCalendarTime,
   parseCalendarDate,
 } from "./date-utils";
@@ -74,10 +75,37 @@ export const getCalendarItemTitle = (item: BoardCalendarItem) => {
 };
 
 export const getOccurrenceTimeLabel = (occurrence: CalendarOccurrence) => {
+  const card = occurrence.item;
+
+  if (isCalendarCardItem(card) && card.displayKind) {
+    if (card.displayKind === "work") {
+      const start = parseCalendarDate(card.startDate);
+      const end = parseCalendarDate(card.dueDate);
+
+      return card.scheduledStartAt && start && end
+        ? `${formatCalendarTime(start)}-${formatCalendarTime(end)}`
+        : null;
+    }
+    if (card.displayKind === "deadline") {
+      const due = parseCalendarDate(card.dueDate);
+
+      return card.dueDate && card.deadlineOn === null && due ? formatCalendarTime(due) : null;
+    }
+  }
+
+  // Ngày làm / hạn chỉ-ngày không có giờ: không in 00:00.
+  if (
+    isCalendarCardItem(card) &&
+    !card.scheduledStartAt &&
+    (card.scheduledOn || (card.deadlineOn && !card.dueDate))
+  ) {
+    return null;
+  }
+
   const startDate = parseCalendarDate(getCalendarItemStartDate(occurrence.item));
   const dueDate = parseCalendarDate(getCalendarItemDueDate(occurrence.item));
 
-  if (startDate && dueDate && isSameDay(startDate, dueDate)) {
+  if (startDate && dueDate && getDayKey(startDate) === getDayKey(dueDate)) {
     const startTime = formatCalendarTime(startDate);
     const dueTime = formatCalendarTime(dueDate);
 
@@ -108,6 +136,12 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
     return null;
   }
 
+  if (occurrence.item.displayKind === "deadline") return "Hạn nộp";
+  if (occurrence.item.displayKind === "legacy-start") return "Bắt đầu";
+  if (occurrence.item.displayKind === "work") {
+    return occurrence.item.scheduledStartAt ? null : "Lịch làm";
+  }
+
   if (occurrence.kind === "start") {
     return "Bắt đầu";
   }
@@ -121,7 +155,7 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
     const due = parseCalendarDate(occurrence.item.dueDate);
 
     if (start && due) {
-      return `${format(start, "dd/MM")} - ${format(due, "dd/MM")}`;
+      return `${formatCalendarDate(start).slice(0, 5)} - ${formatCalendarDate(due).slice(0, 5)}`;
     }
 
     return null;
@@ -147,7 +181,10 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
 };
 
 export const isOverdue = (item: BoardCalendarItem) => {
-  const dueDate = getCalendarItemDueDate(item);
+  // Thẻ đã qua adapter: startDate/dueDate là lịch làm, hạn nộp nằm ở deadlineAt.
+  const dueDate = isCalendarCardItem(item) && item.deadlineAt !== undefined
+    ? item.deadlineAt
+    : getCalendarItemDueDate(item);
 
   if (!dueDate || item.isCompleted) {
     return false;
@@ -170,6 +207,10 @@ export const getOccurrenceTone = (
 
   if (occurrence.item.type === "checklist-item") {
     return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100";
+  }
+
+  if (occurrence.item.displayKind === "deadline") {
+    return "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100";
   }
 
   if (occurrence.kind === "start") {

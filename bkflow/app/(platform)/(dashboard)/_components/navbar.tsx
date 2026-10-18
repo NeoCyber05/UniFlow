@@ -2,7 +2,6 @@
 
 import Link from "@/web/shims/next-link";
 import { useNavigate } from "react-router";
-import { useParams } from "@/web/shims/next-navigation";
 
 import { useUser, signOut } from "@/web/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -79,9 +78,6 @@ const UserMenu = () => {
 };
 
 export const Navbar = () => {
-    const params = useParams();
-    const boardId = params.boardId as string;
-
     return (
         <nav aria-label="Thanh công cụ" className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border bg-background/95 backdrop-blur-sm flex items-center justify-between gap-x-3">
             <RealtimeNotificationSync />
@@ -96,7 +92,7 @@ export const Navbar = () => {
                       <span className="hidden sm:inline">uniflow</span>
                       <span className="ml-1 hidden text-[10px] font-normal tracking-normal text-muted-foreground lg:inline">HUST</span>
                     </Link>
-                    {boardId && <BoardSidebarToggle variant="navbar" />}
+                    <BoardSidebarToggle variant="navbar" />
                 </div>
             </div>
 

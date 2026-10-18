@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useBoardFilters } from "@/hooks/use-board-filters";
 import { buildTodayOverview } from "@/lib/my-tasks/today-overview";
 import type { MyTask } from "@/lib/my-tasks/types";
+import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { formatVNShortDate } from "@/lib/my-tasks/vn-day";
 import { QuickAddBar } from "./quick-add-bar";
 import { TaskRow } from "./task-row";
@@ -61,7 +62,7 @@ export const TodayView = ({ tasks, boardId, now, canEdit, onOpen, courses }: Tod
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-violet-200 bg-violet-50/60 p-5 sm:p-6">
           {focus ? <>
             <BookOpen aria-hidden="true" className="size-8 shrink-0 text-violet-700" strokeWidth={1.3} />
-            <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-wider text-violet-700">Việc tiếp theo</p><h3 className="mt-1 break-words text-base font-medium">{focus.title}</h3><p className="mt-2 text-xs text-muted-foreground">{focus.course?.code ?? focus.course?.name ?? "Cá nhân"}{focus.dueDate ? ` · Hạn ${formatVNShortDate(new Date(focus.dueDate))}` : " · Chưa đặt hạn"}</p></div>
+            <div className="min-w-0 flex-1"><p className="text-[10px] font-semibold uppercase tracking-wider text-violet-700">Việc tiếp theo</p><h3 className="mt-1 break-words text-base font-medium">{focus.title}</h3><p className="mt-2 text-xs text-muted-foreground">{focus.course?.code ?? focus.course?.name ?? "Cá nhân"}{getTaskDeadlineAt(focus) ? ` · Hạn ${formatVNShortDate(getTaskDeadlineAt(focus)!)}` : " · Chưa đặt hạn"}</p></div>
             <Button onClick={() => onOpen(focus.id)} className="gap-2">Mở công việc <ArrowRight aria-hidden="true" className="size-4" /></Button>
           </> : <><CheckCheck aria-hidden="true" className="size-7 text-violet-700" /><div><h3 className="font-medium">Chưa có việc cần làm.</h3></div></>}
         </div>
@@ -77,7 +78,7 @@ export const TodayView = ({ tasks, boardId, now, canEdit, onOpen, courses }: Tod
         <section aria-labelledby="upcoming-heading">
           <div className="mb-4 flex items-center justify-between gap-3"><h2 id="upcoming-heading" className="text-sm font-semibold">Sắp đến hạn</h2><Link href={`/board/${boardId}/calendar`} onClick={() => useBoardFilters.getState().clearFilters(boardId)} className="workspace-text-link">Mở lịch <ArrowRight aria-hidden="true" className="size-3.5" /></Link></div>
           <div className="divide-y divide-border rounded-xl border border-border bg-card px-5">
-            {overview.upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => onOpen(task.id)} className="flex w-full gap-3 py-4 text-left hover:text-violet-700"><CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-violet-600" /><span className="min-w-0"><span className="block break-words text-sm font-medium">{task.title}</span><span className="mt-1 block text-xs text-muted-foreground">{formatVNShortDate(new Date(task.dueDate!))} · {task.course?.code ?? task.course?.name ?? "Cá nhân"}</span></span></button>)}
+            {overview.upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => onOpen(task.id)} className="flex w-full gap-3 py-4 text-left hover:text-violet-700"><CalendarDays aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-violet-600" /><span className="min-w-0"><span className="block break-words text-sm font-medium">{task.title}</span><span className="mt-1 block text-xs text-muted-foreground">{formatVNShortDate(getTaskDeadlineAt(task)!)} · {task.course?.code ?? task.course?.name ?? "Cá nhân"}</span></span></button>)}
             {overview.upcoming.length === 0 && <p className="py-6 text-sm text-muted-foreground">Chưa có hạn sắp tới. Bạn có thể thêm hạn khi tạo công việc.</p>}
           </div>
           <NoteDeadlines now={now} />

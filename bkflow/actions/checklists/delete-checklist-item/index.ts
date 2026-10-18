@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
+import { deleteItemWithVersion } from "@/lib/checklists/checklist-mutations";
 import { triggerChecklistItemDeleted } from "@/lib/boards/realtime";
 
 import { DeleteChecklistItem } from "./schema";
@@ -69,18 +70,20 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Không tìm thấy mục công việc." };
     }
 
-    await db.notification.deleteMany({
+    const notificationWhere = {
       where: {
         type: NOTIFICATION_TYPE.CHECKLIST_ITEM_ASSIGNED,
         dedupeKey: `checklist-item-assigned:${checklistItem.id}`,
         readAt: null,
       },
-    });
+    };
 
-    await db.checklistItem.delete({
-      where: {
-        id,
-      },
+    const { orderVersion } = await db.$transaction(async (tx) => {
+      await tx.notification.deleteMany(notificationWhere);
+      return deleteItemWithVersion(tx, {
+        checklistId: checklistItem.checklist.id,
+        itemId: id,
+      });
     });
 
     await createAuditLog({
@@ -102,7 +105,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     });
 
     revalidatePath(`/board/${boardId}`);
-    return { data: checklistItem };
+    return { data: { ...checklistItem, orderVersion } };
   } catch (error) {
     console.error("[DELETE_CHECKLIST_ITEM_ERROR]", error);
     return {

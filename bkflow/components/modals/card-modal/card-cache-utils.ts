@@ -25,6 +25,24 @@ export const patchCardQueryData = (
   });
 };
 
+/**
+ * Revision (Card.updatedAt, ISO) mới nhất client biết cho metadata CAS:
+ * lấy mốc muộn nhất giữa cache chi tiết `["card", id]` và các nguồn dự phòng (state board/calendar...).
+ */
+export const getCardRevision = (
+  queryClient: QueryClient,
+  cardId: string,
+  ...fallbacks: Array<Date | string | null | undefined>
+): string | undefined => {
+  const cached = queryClient.getQueryData<CardWithList>(["card", cardId])?.updatedAt;
+  const times = [cached, ...fallbacks]
+    .filter((value): value is Date | string => Boolean(value))
+    .map((value) => new Date(value).getTime())
+    .filter((time) => !Number.isNaN(time));
+
+  return times.length > 0 ? new Date(Math.max(...times)).toISOString() : undefined;
+};
+
 export const mergeCardAssignee = (
   assignees: CardWithList["assignees"],
   assignee: CardWithList["assignees"][number],

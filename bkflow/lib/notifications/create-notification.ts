@@ -121,6 +121,9 @@ export const createNotification = async ({
 
     await triggerNotificationCreated(notification);
   } catch (error) {
+    // Another writer inserted the same dedupeKey first (unique index on card reminders): that is the dedupe working.
+    if ((error as { code?: string }).code === "P2002") return;
+
     logger.error("[CREATE_NOTIFICATION_ERROR]", error, {
       action: "create-notification",
       eventType: type,

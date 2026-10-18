@@ -47,3 +47,10 @@ export const applySelectionResult = (current: string, snapshot: string, start: n
     : `${selected.match(/^\s*/)?.[0] ?? ""}${result}${selected.match(/\s*$/)?.[0] ?? ""}`;
   return snapshot.slice(0, start) + replacement + snapshot.slice(end);
 };
+
+/** "Thêm nội dung": puts a "/" on its own line so the shared slash command list opens. */
+export const openSlashAtCursor = (value: string, start: number) => {
+  const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+  const prefix = value.slice(lineStart, start).trim() ? "\n/" : "/";
+  return { value: value.slice(0, start) + prefix + value.slice(start), caret: start + prefix.length };
+};

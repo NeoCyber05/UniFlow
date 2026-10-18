@@ -73,11 +73,13 @@ export const BoardSidebarToggle = ({
       size="icon"
       onClick={toggle}
       className={cn(
-        "hidden md:flex h-8 w-8 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg",
-        effectiveIsOpen && "bg-neutral-100/80 text-violet-700",
+        "hidden md:flex h-8 w-8 text-foreground hover:bg-muted rounded-lg",
+        effectiveIsOpen && "bg-muted text-foreground",
         className
       )}
       title={effectiveIsOpen ? "Thu gọn thanh bên" : "Mở thanh bên"}
+      aria-label={effectiveIsOpen ? "Thu gọn thanh bên" : "Mở thanh bên"}
+      aria-expanded={effectiveIsOpen}
     >
       <PanelLeft className="h-4 w-4" />
     </Button>

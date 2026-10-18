@@ -93,7 +93,7 @@ export const CalendarToolbar = ({
           )}
         >
           <CalendarX2 className="h-3.5 w-3.5 shrink-0" />
-          <span>Chưa lên lịch ({filteredUnscheduledCount})</span>
+          <span>Chưa xếp lịch làm ({filteredUnscheduledCount})</span>
         </Button>
 
         <div className="flex h-8 shrink-0 items-center rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm">

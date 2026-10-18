@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
+import { createItemWithVersion } from "@/lib/checklists/checklist-mutations";
 import { triggerChecklistItemCreated } from "@/lib/boards/realtime";
 
 import { CreateChecklistItem } from "./schema";
@@ -58,28 +59,9 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Không tìm thấy danh sách việc cần làm." };
     }
 
-    const lastItem = await db.checklistItem.findFirst({
-      where: {
-        checklistId,
-      },
-      orderBy: {
-        order: "desc",
-      },
-      select: {
-        order: true,
-      },
-    });
-
-    const newOrder = lastItem ? lastItem.order + 1 : 0;
-
-    const checklistItem = await db.checklistItem.create({
-      data: {
-        checklistId,
-        title,
-        order: newOrder,
-        isCompleted: false,
-      },
-    });
+    const { item: checklistItem, orderVersion } = await db.$transaction((tx) =>
+      createItemWithVersion(tx, { checklistId, title }),
+    );
 
     await createAuditLog({
       entityId: checklistItem.id,
@@ -101,7 +83,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     });
 
     revalidatePath(`/board/${boardId}`);
-    return { data: checklistItem };
+    return { data: { ...checklistItem, orderVersion } };
   } catch (error) {
     console.error("[CREATE_CHECKLIST_ITEM_ERROR]", error);
     return {

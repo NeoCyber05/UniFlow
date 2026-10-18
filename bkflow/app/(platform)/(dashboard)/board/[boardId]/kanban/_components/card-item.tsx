@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { ListWithCards } from "@/types";
 import { CopyCardDialog } from "@/components/modals/copy-card-dialog";
 
+import { getCardRevision } from "@/components/modals/card-modal/card-cache-utils";
 import { useBoardState } from "./board-state-context";
 import { CardBadges, CardLabels } from "./card-badges";
 import { CardContextMenu } from "./card-context-menu";
@@ -87,7 +88,7 @@ export const CardItem = memo(function CardItem({
 
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
     onSuccess: (updatedCard) => {
-      boardState.patchCard(updatedCard.id, { title: updatedCard.title });
+      boardState.patchCard(updatedCard.id, { title: updatedCard.title, updatedAt: updatedCard.updatedAt });
       titleRollbackRef.current = null;
       disableEditing();
     },
@@ -171,6 +172,7 @@ export const CardItem = memo(function CardItem({
       id: data.id,
       title: trimmedTitle,
       boardId,
+      expectedUpdatedAt: getCardRevision(queryClient, data.id, data.updatedAt),
     });
   };
 
