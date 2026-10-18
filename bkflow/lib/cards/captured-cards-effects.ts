@@ -15,6 +15,8 @@ export const announceCapturedCards = async (input: {
   boardId: string;
   userId: string;
   listTitles: Map<string, string>;
+  /** Nguồn hiện trong nhật ký, mặc định Smart Capture. */
+  origin?: string;
 }) => {
   const created = input.cards.filter((card) => input.createdIds.has(card.id));
 
@@ -22,7 +24,7 @@ export const announceCapturedCards = async (input: {
     try {
       await createAuditLog({
         entityId: card.id,
-        entityTitle: `detail:đã tạo thẻ "${card.title}" từ Smart Capture trong danh sách "${input.listTitles.get(card.listId) ?? ""}"`,
+        entityTitle: `detail:đã tạo thẻ "${card.title}" từ ${input.origin ?? "Smart Capture"} trong danh sách "${input.listTitles.get(card.listId) ?? ""}"`,
         entityType: ENTITY_TYPE.CARD,
         action: ACTION.CREATE,
         boardId: input.boardId,

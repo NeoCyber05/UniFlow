@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import type { CaptureAnalysis } from "@/lib/capture/analysis";
 import { ActionState } from "@/lib/create-safe-action";
 
-import { AnalyzeSmartCapture } from "./schema";
+import { AnalyzeQuickCapture, AnalyzeSmartCapture, AnalyzeSmartCaptureBoard } from "./schema";
 
 export type SmartCaptureBoardList = {
   id: string;
@@ -47,4 +48,12 @@ export type SmartCaptureAnalysis = {
 };
 
 export type InputType = z.infer<typeof AnalyzeSmartCapture>;
-export type ReturnType = ActionState<InputType, SmartCaptureAnalysis>;
+export type QuickInputType = z.infer<typeof AnalyzeQuickCapture>;
+export type BoardInputType = z.infer<typeof AnalyzeSmartCaptureBoard>;
+export type ReturnType = ActionState<InputType, SmartCaptureAnalysis | CaptureAnalysis>;
+
+/** Caller chọn mode nào nhận đúng shape đó, không phải tự thu hẹp union. */
+export type AnalyzeSmartCaptureAction = {
+  (input: QuickInputType): Promise<ActionState<InputType, CaptureAnalysis>>;
+  (input: BoardInputType): Promise<ActionState<InputType, SmartCaptureAnalysis>>;
+};
