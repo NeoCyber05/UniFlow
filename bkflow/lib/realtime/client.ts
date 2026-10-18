@@ -2,6 +2,7 @@
 
 import Pusher, { Channel } from "pusher-js";
 
+import { supabase } from "@/web/lib/supabase";
 import type { RealtimeChannelName } from "@/lib/realtime/channels";
 import { debugBoardRealtime } from "@/lib/realtime/debug";
 import type {
@@ -19,6 +20,14 @@ type ChannelState = {
   generation: number;
   lastRecoveryAt: number;
 };
+
+const tokenRef = { current: null as string | null };
+supabase.auth.onAuthStateChange((_e, s) => {
+  tokenRef.current = s?.access_token ?? null;
+});
+void supabase.auth.getSession().then(({ data }) => {
+  tokenRef.current = data.session?.access_token ?? null;
+});
 
 const channelStates = new Map<string, ChannelState>();
 const channelRecoveryListeners = new Map<string, Set<() => void>>();
@@ -64,6 +73,10 @@ export const getClientPusher = () => {
     channelAuthorization: {
       endpoint: "/api/pusher/auth",
       transport: "ajax",
+      headersProvider: () => {
+        const token = tokenRef.current;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      },
     },
   });
 
