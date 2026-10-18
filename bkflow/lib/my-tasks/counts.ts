@@ -4,13 +4,12 @@ import { db } from "@/lib/db";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
 import { pickCurrentSemester } from "@/lib/semesters";
 import { getOrSeedSemesters } from "@/lib/semesters-db";
-import { resolvePersonalOrgId } from "@/lib/workspace";
 
 import { buildTodoBaseWhere, getTodayWindow } from "./query";
 import type { MyTaskCounts } from "./types";
 
 export const getMyTaskCounts = async (userId: string, now: Date = new Date()): Promise<MyTaskCounts> => {
-  const personalOrgId = await resolvePersonalOrgId(userId);
+  const personalOrgId = userId;
   const currentSemester = personalOrgId
     ? pickCurrentSemester(await getOrSeedSemesters(personalOrgId))
     : null;

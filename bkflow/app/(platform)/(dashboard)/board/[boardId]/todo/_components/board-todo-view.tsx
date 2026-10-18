@@ -7,7 +7,6 @@ import { AlertCircle, ListTodo, Sparkles } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 
 import { SmartCaptureDialog } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/smart-capture-dialog";
-import { MyOrgControl } from "@/components/my-tasks/my-org-control";
 import { QuickAddBar, type QuickAddDefaults } from "@/components/my-tasks/quick-add-bar";
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
 import { TaskGroupSection } from "@/components/my-tasks/task-group-section";
@@ -80,9 +79,6 @@ export const BoardTodoView = ({
 
   return (
     <div className="flex h-full items-start gap-4 overflow-hidden p-4">
-      {/* Panel việc nhóm cần org của thẻ; không mở panel → org của bảng */}
-      <MyOrgControl personalOrgId={boardOrgId} taskId={taskId} />
-
       <div className="h-full min-w-0 flex-1 overflow-y-auto rounded-2xl bg-white/95 p-5 shadow-sm backdrop-blur styled-scrollbar">
         <div className="mx-auto max-w-3xl space-y-5">
           <header>

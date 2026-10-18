@@ -15,15 +15,10 @@ import BoardSplitRoute from "./routes/board-split";
 import BoardTimelineRoute from "./routes/board-timeline";
 import BoardKanbanRoute from "./routes/board-kanban";
 import BoardLayoutRoute from "./routes/board-layout";
-import OrganizationActivityRoute from "./routes/organization-activity";
-import OrganizationLayoutRoute from "./routes/organization-layout";
-import OrganizationRoute from "./routes/organization";
-import OrganizationSettingsRoute from "./routes/organization-settings";
 import MyRoute from "./routes/my";
 import PagesRoute, { PagesLayoutRoute } from "./routes/pages";
 import NotePageRoute from "./routes/page";
 import SemesterRoute from "./routes/semester";
-import SelectOrgRoute from "./routes/select-org";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
 const centered = (el: React.ReactNode) => <div className="h-full flex items-center justify-center">{el}</div>;
@@ -51,7 +46,6 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { path: "/select-org/*", element: <SelectOrgRoute /> },
           {
             element: <DashboardLayoutRoute />,
             children: [
@@ -67,15 +61,6 @@ export const router = createBrowserRouter([
                   { path: "graph", element: <BoardGraphRoute /> },
                   { path: "analytics", element: <BoardAnalyticsRoute /> },
                   { path: "todo", element: <BoardTodoRoute /> },
-                ],
-              },
-              {
-                path: "organization/:organizationId",
-                element: <OrganizationLayoutRoute />,
-                children: [
-                  { index: true, element: <OrganizationRoute /> },
-                  { path: "activity", element: <OrganizationActivityRoute /> },
-                  { path: "settings/*", element: <OrganizationSettingsRoute /> },
                 ],
               },
               { path: "my/:view", element: <MyRoute /> },

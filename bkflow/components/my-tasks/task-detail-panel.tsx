@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "@/web/shims/next-link";
-import { useOrganization } from "@clerk/react";
 import { ExternalLink, Star, Sun, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaQuery } from "usehooks-ts";
@@ -28,10 +27,8 @@ type TaskDetailPanelOuterProps = TaskDetailPanelProps & {
 
 const PanelContent = ({ taskId, onClose }: TaskDetailPanelProps) => {
   const { data: context, isError } = useCardContext(taskId);
-  const { organization } = useOrganization();
   const { setImportant, setMyDay } = useMyTaskMutations();
-  // Org active phải khớp org của thẻ thì API/action thẻ mới chạy (MyOrgControl lo việc đổi)
-  const isReady = Boolean(context) && organization?.id === context?.orgId;
+  const isReady = Boolean(context);
   const isPinned = Boolean(context?.myDayAt && isSameVNDay(new Date(context.myDayAt), new Date()));
 
   useEffect(() => {
