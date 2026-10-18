@@ -1,20 +1,17 @@
-import { Navigate, Outlet, useLocation } from "react-router";
-import { useAuth } from "@clerk/react";
+import { Navigate, Outlet } from "react-router";
 
-/** Ports proxy.ts: signed-out -> /sign-in; signed-in without an active org -> /select-org. */
+import { useAuth } from "../lib/auth";
+
+/** Signed-out users go to /sign-in. */
 export const RequireAuth = () => {
-  const { isLoaded, userId, orgId } = useAuth();
-  const { pathname } = useLocation();
+  const { isLoaded, userId } = useAuth();
   if (!isLoaded) return null;
-  if (!userId) return <Navigate to="/sign-in" replace />;
-  if (!orgId && !pathname.startsWith("/select-org")) return <Navigate to="/select-org" replace />;
-  return <Outlet />;
+  return userId ? <Outlet /> : <Navigate to="/sign-in" replace />;
 };
 
-/** Signed-in users on "/", "/sign-in", "/sign-up" go to their org or /select-org (proxy.ts: isAuthRoute). */
+/** Signed-in users on "/", "/sign-in", "/sign-up" go to the personal workspace. */
 export const RedirectIfSignedIn = () => {
-  const { isLoaded, userId, orgId } = useAuth();
+  const { isLoaded, userId } = useAuth();
   if (!isLoaded) return null;
-  if (!userId) return <Outlet />;
-  return <Navigate to={orgId ? `/organization/${orgId}` : "/select-org"} replace />;
+  return userId ? <Navigate to="/my/today" replace /> : <Outlet />;
 };

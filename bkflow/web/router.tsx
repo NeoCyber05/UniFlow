@@ -1,5 +1,5 @@
 import { createBrowserRouter, Outlet } from "react-router";
-import { SignIn, SignUp } from "@clerk/react";
+import { SignInPage, SignUpPage } from "./routes/auth-pages";
 
 import { ModalProvider } from "@/components/providers/modal-provider";
 import MarketingPage from "@/app/(marketing)/page";
@@ -44,8 +44,8 @@ export const router = createBrowserRouter([
         element: <RedirectIfSignedIn />,
         children: [
           { path: "/", element: <MarketingLayout><MarketingPage /></MarketingLayout> },
-          { path: "/sign-in/*", element: centered(<SignIn routing="path" path="/sign-in" />) },
-          { path: "/sign-up/*", element: centered(<SignUp routing="path" path="/sign-up" />) },
+          { path: "/sign-in", element: centered(<SignInPage />) },
+          { path: "/sign-up", element: centered(<SignUpPage />) },
         ],
       },
       {
