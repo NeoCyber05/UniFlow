@@ -10,8 +10,9 @@ import { useView } from "../lib/use-view";
 export type DashboardView = Awaited<ReturnType<typeof loadDashboard>>;
 
 export default function DashboardLayoutRoute() {
-  const { data } = useView<DashboardView>("/dashboard");
+  const { data, error } = useView<DashboardView>("/dashboard");
 
+  if (error) return <p className="p-6 text-sm text-red-600">Không tải được dữ liệu ({error.message}). Thử đăng nhập lại hoặc tải lại trang.</p>;
   if (!data) return null;
 
   return (

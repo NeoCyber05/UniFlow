@@ -94,7 +94,7 @@ export const AppearanceProvider = ({ initialAppearance, children }: AppearancePr
       >
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 -z-10 transition-[background] duration-500"
+          className="pointer-events-none fixed inset-0 -z-10 transition-[background,filter] duration-500 dark:brightness-[0.22] dark:saturate-50"
           style={backgroundStyle}
         />
         {children}

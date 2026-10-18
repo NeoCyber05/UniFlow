@@ -665,3 +665,52 @@ li:has([data-active-card="true"]) > div::after {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-geist-mono: "Geist Mono Variable", ui-monospace, monospace;
 }
+
+/*
+ * Dark mode. Most components hard-code neutral and white utilities, so instead of editing each one we
+ * invert the neutral scale and the accent tints here. text-white is left alone (it sits on accent buttons).
+ */
+.dark {
+  color-scheme: dark;
+  --color-neutral-50: oklch(0.2 0 0);
+  --color-neutral-100: oklch(0.24 0 0);
+  --color-neutral-200: oklch(0.3 0 0);
+  --color-neutral-300: oklch(0.37 0 0);
+  --color-neutral-400: oklch(0.55 0 0);
+  --color-neutral-500: oklch(0.65 0 0);
+  --color-neutral-600: oklch(0.72 0 0);
+  --color-neutral-700: oklch(0.8 0 0);
+  --color-neutral-800: oklch(0.9 0 0);
+  --color-neutral-900: oklch(0.95 0 0);
+  --color-neutral-950: oklch(0.98 0 0);
+}
+
+.dark .bg-white {
+  background-color: var(--card);
+}
+
+.dark [class*="bg-white/"] {
+  background-color: color-mix(in oklab, var(--background) 92%, transparent);
+}
+
+/* Accent tints become dark washes of the accent; accent text steps get lighter. 500/600 stay as-is. */
+.dark,
+.dark[data-accent],
+.dark [data-accent] {
+  --color-violet-50: color-mix(in oklab, var(--color-violet-500) 12%, oklch(0.18 0 0));
+  --color-violet-100: color-mix(in oklab, var(--color-violet-500) 20%, oklch(0.18 0 0));
+  --color-violet-200: color-mix(in oklab, var(--color-violet-500) 30%, oklch(0.18 0 0));
+  --color-violet-300: color-mix(in oklab, var(--color-violet-500) 50%, oklch(0.18 0 0));
+  --color-violet-700: color-mix(in oklab, var(--color-violet-500) 65%, white);
+  --color-violet-800: color-mix(in oklab, var(--color-violet-500) 50%, white);
+  --color-violet-900: color-mix(in oklab, var(--color-violet-500) 35%, white);
+}
+
+/* Solid dark buttons (bg-neutral-900 + text-white) must stay dark, not flip with the scale. */
+.dark :is(.bg-neutral-900, .bg-neutral-950, .hover\:bg-neutral-900:hover, .hover\:bg-neutral-950:hover) {
+  background-color: oklch(0.34 0 0);
+}
+
+.dark :is(.bg-neutral-800, .hover\:bg-neutral-800:hover) {
+  background-color: oklch(0.4 0 0);
+}
