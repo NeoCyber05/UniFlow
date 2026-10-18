@@ -113,7 +113,6 @@ export const CopyCardDialog = ({
   const [position, setPosition] = useState(1);
   const [keepChecklists, setKeepChecklists] = useState(fallbackCounts.checklists > 0);
   const [keepLabels, setKeepLabels] = useState(fallbackCounts.labels > 0);
-  const [keepMembers, setKeepMembers] = useState(fallbackCounts.members > 0);
   const [keepAttachments, setKeepAttachments] = useState(fallbackCounts.attachments > 0);
   const [keepComments, setKeepComments] = useState(fallbackCounts.comments > 0);
 
@@ -175,7 +174,6 @@ export const CopyCardDialog = ({
     setTitle(data.title);
     setKeepChecklists(counts.checklists > 0);
     setKeepLabels(counts.labels > 0);
-    setKeepMembers(counts.members > 0);
     setKeepAttachments(counts.attachments > 0);
     setKeepComments(counts.comments > 0);
   }, [data, open, options?.sourceCounts]);
@@ -233,7 +231,7 @@ export const CopyCardDialog = ({
       position,
       keepChecklists,
       keepLabels,
-      keepMembers,
+      keepMembers: false,
       keepAttachments,
       keepComments,
     });
@@ -329,13 +327,6 @@ export const CopyCardDialog = ({
                 disabled={sourceCounts.labels === 0}
                 label="Nhãn"
                 onChange={setKeepLabels}
-              />
-              <KeepOption
-                checked={keepMembers}
-                count={sourceCounts.members}
-                disabled={sourceCounts.members === 0}
-                label="Thành viên"
-                onChange={setKeepMembers}
               />
               <KeepOption
                 checked={keepAttachments}

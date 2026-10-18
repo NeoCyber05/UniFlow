@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AuditLog, BoardMemberRole } from "@prisma/client";
+import { AuditLog } from "@prisma/client";
 
 import { CardCommentWithReplies, CardWithList } from "@/types";
 import { fetcher } from "@/lib/fetcher";
@@ -73,7 +73,6 @@ const CardMainContent = ({
         cardId={cardData.id}
         boardId={cardData.list.boardId}
         cardDueDate={cardData.dueDate}
-        boardMembers={cardData.boardMembers || []}
         checklists={cardData.checklists || []}
         canEdit={canEdit}
       />
@@ -132,7 +131,7 @@ export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps)
     queryKey: ["card-comments", cardId],
     queryFn: () => fetcher(`/api/cards/${cardId}/comments`),
   });
-  const canEdit = cardData?.currentMemberRole !== BoardMemberRole.VIEWER;
+  const canEdit = true;
 
   return (
     <>
@@ -167,15 +166,13 @@ export const CardDetailBody = ({ cardId, layout, onClose }: CardDetailBodyProps)
             : <Activity
                 items={auditLogsData}
                 cardTitle={cardData?.title}
-                memberNames={cardData?.boardMembers?.map((m) => m.userName) || []}
+                memberNames={[]}
               />
           }
           <Comments
             cardId={cardId}
             boardId={cardData?.list.boardId}
             items={commentsData ?? []}
-            boardMembers={cardData?.boardMembers}
-            currentMemberRole={cardData?.currentMemberRole}
           />
         </div>
       </div>

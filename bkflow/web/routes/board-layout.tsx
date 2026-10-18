@@ -6,6 +6,7 @@ import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
 import { BoardCoursesHydrator } from "@/components/courses/board-courses-hydrator";
 import { CourseFilterBar } from "@/components/courses/course-filter-bar";
 import { CourseFilterFromUrl } from "@/components/courses/course-filter-from-url";
+import { ImportantFilterFromUrl } from "@/components/boards/important-filter-from-url";
 import { BoardNavbar } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-navbar";
 import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-shell";
 
@@ -47,9 +48,7 @@ export default function BoardLayoutRoute() {
         boardNavbar={
           <BoardNavbar
             data={data.board}
-            organizationMembers={data.effectiveOrgMembers}
             currentUserId={data.currentUserId}
-            currentMemberRole={data.currentMemberRole}
             semesters={data.semesters}
           />
         }

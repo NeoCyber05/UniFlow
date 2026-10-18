@@ -1,14 +1,12 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type { CardWithList } from "@/types";
 import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
-import { assignCardMember } from "@/actions/cards/assign-card-member";
-import { unassignCardMember } from "@/actions/cards/unassign-card-member";
 import {
   getDateTimezoneOffset,
   parseDateTimeLocalInput,
@@ -16,11 +14,8 @@ import {
 
 import { humanizeReminderMinutes } from "./metadata-utils";
 import {
-  mergeCardAssignee,
   patchBoardCardPreview,
   patchCardQueryData,
-  removeCardAssignee,
-  scheduleCoalescedCardRefetch,
 } from "../card-cache-utils";
 
 interface UseCardMetadataActionsProps {
@@ -46,16 +41,6 @@ export const useCardMetadataActions = ({
     previousReminder: CardWithList["reminder"];
     previousIsCompleted: CardWithList["isCompleted"];
   } | null>(null);
-  const memberRequestsRef = useRef(new Map<string, {
-    previousAssignee: CardWithList["assignees"][number] | null;
-    sentAssigned: boolean;
-    queuedAssigned: boolean | null;
-    version: number;
-  }>());
-  const memberRequestVersionsRef = useRef(new Map<string, number>());
-  const memberPendingCountRef = useRef(0);
-  const [assignPendingCount, setAssignPendingCount] = useState(0);
-  const [unassignPendingCount, setUnassignPendingCount] = useState(0);
 
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
     onSuccess: (updatedCard) => {
@@ -113,227 +98,6 @@ export const useCardMetadataActions = ({
       toast.error(error);
     },
   });
-
-  const getCurrentAssignees = () =>
-    queryClient.getQueryData<CardWithList>(["card", data.id])?.assignees ?? data.assignees;
-
-  const patchAssignees = (assignees: CardWithList["assignees"]) => {
-    patchCardQueryData(queryClient, data.id, {
-      assignees,
-    });
-    patchBoardCardPreview(boardId, data.id, {
-      assignees,
-    });
-  };
-
-  const getOptimisticAssignee = (memberId: string): CardWithList["assignees"][number] | null => {
-    const boardMember = data.boardMembers.find((member) => member.id === memberId);
-
-    if (!boardMember) {
-      return null;
-    }
-
-    const now = new Date();
-
-    return {
-      id: `temp-assignee-${data.id}-${memberId}`,
-      cardId: data.id,
-      boardMemberId: memberId,
-      createdAt: now,
-      updatedAt: now,
-      boardMember,
-    };
-  };
-
-  const getNextMemberRequestVersion = (memberId: string) => {
-    const nextVersion = (memberRequestVersionsRef.current.get(memberId) ?? 0) + 1;
-    memberRequestVersionsRef.current.set(memberId, nextVersion);
-    return nextVersion;
-  };
-
-  const finishMemberSuccess = (
-    memberId: string,
-    sentAssigned: boolean,
-    nextAssignees: CardWithList["assignees"],
-    successMessage: string,
-    version: number,
-  ) => {
-    const request = memberRequestsRef.current.get(memberId);
-
-    if (!request || request.version !== version || request.sentAssigned !== sentAssigned) {
-      return;
-    }
-
-    invalidateBoardCalendar();
-    queryClient.invalidateQueries({
-      queryKey: ["card-logs", data.id],
-    });
-    toast.success(successMessage);
-
-    const queuedAssigned = request.queuedAssigned;
-    memberRequestsRef.current.delete(memberId);
-
-    if (queuedAssigned !== null && queuedAssigned !== sentAssigned) {
-      sendMemberMutation(memberId, queuedAssigned, nextAssignees);
-      return;
-    }
-
-    patchAssignees(nextAssignees);
-  };
-
-  const finishMemberError = (
-    memberId: string,
-    sentAssigned: boolean,
-    version: number,
-    error: string,
-  ) => {
-    const request = memberRequestsRef.current.get(memberId);
-
-    if (request && request.version === version && request.sentAssigned === sentAssigned) {
-      const currentAssignees = getCurrentAssignees();
-      const assignees = request.previousAssignee
-        ? mergeCardAssignee(currentAssignees, request.previousAssignee)
-        : removeCardAssignee(currentAssignees, memberId);
-
-      patchAssignees(assignees);
-      memberRequestsRef.current.delete(memberId);
-    }
-
-    toast.error(error);
-  };
-
-  const executeAssignMember = async (memberId: string, version: number) => {
-    memberPendingCountRef.current += 1;
-    setAssignPendingCount((count) => count + 1);
-
-    try {
-      const result = await assignCardMember({
-        boardId,
-        cardId: data.id,
-        boardMemberId: memberId,
-      });
-
-      if (result.error) {
-        finishMemberError(memberId, true, version, result.error);
-        return;
-      }
-
-      if (result.data) {
-        const assigned = result.data;
-        const assignees = mergeCardAssignee(getCurrentAssignees(), assigned);
-
-        finishMemberSuccess(
-          assigned.boardMemberId,
-          true,
-          assignees,
-          `Đã giao thẻ cho ${assigned.boardMember.userName}`,
-          version,
-        );
-      }
-
-      if (!result.data) {
-        finishMemberError(
-          memberId,
-          true,
-          version,
-          "Có lỗi xảy ra khi cập nhật thành viên.",
-        );
-      }
-    } catch {
-      finishMemberError(
-        memberId,
-        true,
-        version,
-        "Có lỗi xảy ra khi cập nhật thành viên.",
-      );
-    } finally {
-      memberPendingCountRef.current = Math.max(0, memberPendingCountRef.current - 1);
-      setAssignPendingCount((count) => Math.max(0, count - 1));
-
-      if (memberPendingCountRef.current === 0) {
-        scheduleCoalescedCardRefetch(queryClient, data.id);
-      }
-    }
-  };
-
-  const executeUnassignMember = async (memberId: string, version: number) => {
-    memberPendingCountRef.current += 1;
-    setUnassignPendingCount((count) => count + 1);
-
-    try {
-      const result = await unassignCardMember({
-        boardId,
-        cardId: data.id,
-        boardMemberId: memberId,
-      });
-
-      if (result.error) {
-        finishMemberError(memberId, false, version, result.error);
-        return;
-      }
-
-      if (result.data) {
-        const unassigned = result.data;
-        const assignees = removeCardAssignee(
-          getCurrentAssignees(),
-          unassigned.boardMemberId,
-        );
-
-        finishMemberSuccess(
-          unassigned.boardMemberId,
-          false,
-          assignees,
-          `Đã bỏ giao thẻ cho ${unassigned.boardMember.userName}`,
-          version,
-        );
-      }
-
-      if (!result.data) {
-        finishMemberError(
-          memberId,
-          false,
-          version,
-          "Có lỗi xảy ra khi cập nhật thành viên.",
-        );
-      }
-    } catch {
-      finishMemberError(
-        memberId,
-        false,
-        version,
-        "Có lỗi xảy ra khi cập nhật thành viên.",
-      );
-    } finally {
-      memberPendingCountRef.current = Math.max(0, memberPendingCountRef.current - 1);
-      setUnassignPendingCount((count) => Math.max(0, count - 1));
-
-      if (memberPendingCountRef.current === 0) {
-        scheduleCoalescedCardRefetch(queryClient, data.id);
-      }
-    }
-  };
-
-  const sendMemberMutation = (
-    memberId: string,
-    desiredAssigned: boolean,
-    previousAssignees: CardWithList["assignees"],
-  ) => {
-    const version = getNextMemberRequestVersion(memberId);
-
-    memberRequestsRef.current.set(memberId, {
-      previousAssignee: previousAssignees.find((item) => item.boardMemberId === memberId) ?? null,
-      sentAssigned: desiredAssigned,
-      queuedAssigned: null,
-      version,
-    });
-
-    if (desiredAssigned) {
-      void executeAssignMember(memberId, version);
-      return;
-    }
-
-    void executeUnassignMember(memberId, version);
-  };
 
   const updateDateRange = ({
     startDate,
@@ -398,85 +162,73 @@ export const useCardMetadataActions = ({
   };
 
   const updateDueDate = (
-    dueDate: Date | null,
-    isCompleted = data.isCompleted,
-    reminder = reminderValue,
+    nextDueDate: Date | null,
+    nextReminder?: string | null,
+    nextIsCompleted?: boolean,
   ) => {
-    updateDateRange({ dueDate, isCompleted, reminder });
+    updateDateRange({
+      dueDate: nextDueDate,
+      reminder: nextReminder,
+      isCompleted: nextIsCompleted,
+    });
   };
 
-  const updateStartDate = (startDate: Date | null) => {
-    if (
-      (startDate === null && !data.startDate) ||
-      (startDate && data.startDate && startDate.getTime() === new Date(data.startDate).getTime())
-    ) {
-      return;
-    }
-
-    updateDateRange({ startDate });
+  const updateStartDate = (nextStartDate: Date | null) => {
+    updateDateRange({
+      startDate: nextStartDate,
+    });
   };
 
   const onDateSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const startValue = formData.get("startDate") as string;
-    const value = formData.get("dueDate") as string;
+    const startDateString = formData.get("startDate") as string;
+    const dueDateString = formData.get("dueDate") as string;
     const reminder = formData.get("reminder") as string;
 
-    const parsedStartDate = startValue
-      ? parseDateTimeLocalInput(startValue)
-      : null;
-    const parsedDueDate = value
-      ? parseDateTimeLocalInput(value)
-      : null;
+    const parsedStartDate = parseDateTimeLocalInput(startDateString);
+    const parsedDueDate = parseDateTimeLocalInput(dueDateString);
 
-    const normReminder = reminder === "none" || !reminder ? "none" : reminder;
-    const normOldReminder = data.reminder === "none" || !data.reminder ? "none" : data.reminder;
-
-    const startDateChanged = (parsedStartDate?.getTime() ?? null) !== (data.startDate ? new Date(data.startDate).getTime() : null);
-    const dueDateChanged = (parsedDueDate?.getTime() ?? null) !== (data.dueDate ? new Date(data.dueDate).getTime() : null);
-    const reminderChanged = normReminder !== normOldReminder;
-
-    if (!startDateChanged && !dueDateChanged && !reminderChanged) {
-      setIsDateOpen(false);
+    if (startDateString && !parsedStartDate) {
+      toast.error("Thời gian bắt đầu không hợp lệ.");
       return;
     }
 
-    if (startValue && !parsedStartDate) {
-      toast.error("Ngày bắt đầu không hợp lệ.");
+    if (dueDateString && !parsedDueDate) {
+      toast.error("Hạn chót không hợp lệ.");
       return;
     }
 
-    if (value && !parsedDueDate) {
-      toast.error("Ngày hết hạn không hợp lệ.");
+    if (parsedStartDate && parsedDueDate && parsedStartDate > parsedDueDate) {
+      toast.error("Thời gian bắt đầu phải trước hạn chót.");
       return;
     }
 
-    if (
-      parsedStartDate &&
-      parsedDueDate &&
-      parsedStartDate.getTime() > parsedDueDate.getTime()
-    ) {
-      toast.error("Ngày bắt đầu phải trước hoặc bằng ngày hết hạn.");
-      return;
-    }
+    if (reminder && reminder !== "none") {
+      if (!parsedDueDate) {
+        toast.error("Phải đặt hạn chót mới có thể đặt nhắc nhở.");
+        return;
+      }
 
-    if (!parsedDueDate && reminder && reminder !== "none") {
-      toast.error("Vui lòng đặt ngày hết hạn trước khi thiết lập nhắc nhở.");
-      return;
-    }
+      const reminderMinutesMap: Record<string, number> = {
+        at_due: 0,
+        "5m_before": 5,
+        "10m_before": 10,
+        "15m_before": 15,
+        "1h_before": 60,
+        "2h_before": 120,
+        "1d_before": 1440,
+        "2d_before": 2880,
+      };
 
-    if (parsedDueDate && reminder && reminder !== "none") {
-      const offsetMinutes = parseInt(reminder, 10);
-      if (!Number.isNaN(offsetMinutes)) {
-        const dueDateTime = parsedDueDate.getTime();
-        const triggerTime = dueDateTime - offsetMinutes * 60 * 1000;
-        const now = Date.now();
-
-        if (triggerTime < now) {
-          const minutesUntilDue = Math.floor((dueDateTime - now) / 60_000);
+      const minutesBefore = reminderMinutesMap[reminder];
+      if (minutesBefore !== undefined) {
+        const now = new Date();
+        const reminderTime = new Date(parsedDueDate.getTime() - minutesBefore * 60 * 1000);
+        if (reminderTime <= now) {
+          const minutesUntilDue = Math.floor((parsedDueDate.getTime() - now.getTime()) / (60 * 1000));
           if (minutesUntilDue <= 0) {
-            toast.error("Thẻ đã hết hạn. Vui lòng cập nhật ngày hết hạn trước.");
+            toast.error("Hạn chót đã qua, không thể đặt nhắc nhở.");
           } else {
             toast.error(
               `Thời gian nhắc nhở không hợp lệ. Thẻ chỉ còn ${humanizeReminderMinutes(minutesUntilDue)} — hãy chọn mốc nhắc ngắn hơn.`
@@ -503,39 +255,12 @@ export const useCardMetadataActions = ({
     });
   };
 
-  const handleMemberToggle = async (memberId: string, isAssigned: boolean) => {
-    const desiredAssigned = !isAssigned;
-    const activeRequest = memberRequestsRef.current.get(memberId);
-    const currentAssignees = getCurrentAssignees();
-    await queryClient.cancelQueries({ queryKey: ["card", data.id] });
-    const nextAssignees = desiredAssigned
-      ? (() => {
-          const optimisticAssignee = getOptimisticAssignee(memberId);
-
-          return optimisticAssignee
-            ? mergeCardAssignee(currentAssignees, optimisticAssignee)
-            : currentAssignees;
-        })()
-      : removeCardAssignee(currentAssignees, memberId);
-
-    patchAssignees(nextAssignees);
-
-    if (activeRequest) {
-      activeRequest.queuedAssigned = desiredAssigned;
-    } else {
-      sendMemberMutation(memberId, desiredAssigned, currentAssignees);
-    }
-  };
-
   return {
     isLoadingUpdate,
-    isLoadingAssign: assignPendingCount > 0,
-    isLoadingUnassign: unassignPendingCount > 0,
     updateDateRange,
     updateDueDate,
     updateStartDate,
     onDateSubmit,
     updateCompletion,
-    handleMemberToggle,
   };
 };

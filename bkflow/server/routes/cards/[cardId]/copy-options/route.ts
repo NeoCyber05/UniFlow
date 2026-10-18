@@ -1,4 +1,4 @@
-import { auth, clerkClient } from "@/server/auth";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -56,62 +56,52 @@ export async function GET(
       return new Response(permission.error, { status: 403 });
     }
 
-    const client = await clerkClient();
-    const memberships = await client.users.getOrganizationMembershipList({
-      userId,
-      limit: 100,
-    });
-    const organizations = memberships.data.map((membership) => ({
-      id: membership.organization.id,
-      name: membership.organization.name,
-      imageUrl: membership.organization.imageUrl,
-    }));
-    const organizationIds = organizations.map((organization) => organization.id);
-
-    const boards = organizationIds.length > 0
-      ? await db.board.findMany({
+    const boards = await db.board.findMany({
+      where: {
+        OR: [
+          { orgId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        orgId: true,
+        lists: {
           where: {
-            orgId: {
-              in: organizationIds,
-            },
-            members: {
-              some: {
-                userId,
-              },
-            },
+            archivedAt: null,
           },
           select: {
             id: true,
             title: true,
-            orgId: true,
-            lists: {
-              where: {
-                archivedAt: null,
-              },
+            order: true,
+            _count: {
               select: {
-                id: true,
-                title: true,
-                order: true,
-                _count: {
-                  select: {
-                    cards: {
-                      where: {
-                        archivedAt: null,
-                      },
-                    },
+                cards: {
+                  where: {
+                    archivedAt: null,
                   },
                 },
-              },
-              orderBy: {
-                order: "asc",
               },
             },
           },
           orderBy: {
-            createdAt: "desc",
+            order: "asc",
           },
-        })
-      : [];
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const organizations = [
+      {
+        id: userId,
+        name: "Không gian làm việc",
+        imageUrl: "",
+      },
+    ];
 
     return Response.json({
       currentBoardId: card.list.boardId,
@@ -119,7 +109,7 @@ export async function GET(
       sourceCounts: {
         checklists: card._count.checklists,
         labels: card._count.labels,
-        members: card._count.assignees,
+        members: 0,
         attachments: card._count.attachments,
         comments: card._count.comments,
       },

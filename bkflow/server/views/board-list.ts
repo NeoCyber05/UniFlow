@@ -55,7 +55,7 @@ export const loadBoardList = async ({ boardId }: { boardId: string }, userId: st
     boardId,
     boardOrgId: board.orgId,
     isTeamBoard: board.boardType === BoardType.TEAM_PROJECT,
-    canEdit: permission.membership.role !== BoardMemberRole.VIEWER,
+    canEdit: true,
     currentBoardMemberId: permission.membership.id,
     assignableMembers,
     lists: board.lists,

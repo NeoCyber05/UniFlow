@@ -5,22 +5,8 @@ import { CheckSquare, LockKeyhole, MessageSquare, Paperclip } from "lucide-react
 
 import { DueDateBadge } from "@/components/due-date-badge";
 import { Hint } from "@/components/hint";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarImage,
-} from "@/components/ui/avatar";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { cn, getColorName } from "@/lib/utils";
 import type { CardBadgesProps } from "../_types";
-
-const getInitials = (name: string) => {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const initials = words.slice(0, 2).map((word) => word[0]).join("");
-
-  return initials.toUpperCase() || "U";
-};
 
 const getContrastColor = (hexColor: string): string => {
   let hex = hexColor.replace("#", "");
@@ -38,44 +24,74 @@ const getContrastColor = (hexColor: string): string => {
     v /= 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   });
+  
   const luminance = 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
   
-  return luminance > 0.45 ? "text-neutral-900/90" : "text-white";
+  return luminance > 0.4 ? "text-neutral-900" : "text-white";
 };
 
-const LABELS_EXPANDED_STORAGE_KEY = "bkflow-labels-expanded";
-const LABELS_TOGGLE_EVENT = "bkflow-labels-toggle";
+const LABELS_STORAGE_KEY = "uniflow:labels-expanded";
+let cachedSnapshot: boolean | null = null;
 
-const subscribeToLabelsExpanded = (callback: () => void) => {
-  window.addEventListener(LABELS_TOGGLE_EVENT, callback);
-  window.addEventListener("storage", callback);
+const labelsStore = {
+  getSnapshot: (): boolean => {
+    if (typeof window === "undefined") {
+      return false;
+    }
 
-  return () => {
-    window.removeEventListener(LABELS_TOGGLE_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+    if (cachedSnapshot === null) {
+      cachedSnapshot = window.localStorage.getItem(LABELS_STORAGE_KEY) === "true";
+    }
+
+    return cachedSnapshot;
+  },
+  subscribe: (callback: () => void) => {
+    if (typeof window === "undefined") {
+      return () => {};
+    }
+
+    const handler = (event: StorageEvent) => {
+      if (event.key === LABELS_STORAGE_KEY) {
+        cachedSnapshot = event.newValue === "true";
+        callback();
+      }
+    };
+
+    window.addEventListener("storage", handler);
+
+    return () => {
+      window.removeEventListener("storage", handler);
+    };
+  },
+  toggle: () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const next = !labelsStore.getSnapshot();
+    cachedSnapshot = next;
+    window.localStorage.setItem(LABELS_STORAGE_KEY, String(next));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: LABELS_STORAGE_KEY,
+        newValue: String(next),
+      }),
+    );
+  },
 };
-
-const getLabelsExpandedSnapshot = () =>
-  window.localStorage.getItem(LABELS_EXPANDED_STORAGE_KEY) === "true";
-
-const getLabelsExpandedServerSnapshot = () => false;
 
 export const CardLabels = ({
   card,
-}: CardBadgesProps) => {
+}: Pick<CardBadgesProps, "card">) => {
   const isExpanded = useSyncExternalStore(
-    subscribeToLabelsExpanded,
-    getLabelsExpandedSnapshot,
-    getLabelsExpandedServerSnapshot,
+    labelsStore.subscribe,
+    labelsStore.getSnapshot,
+    () => false,
   );
 
   const onToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault();
-    const nextState = !isExpanded;
-    localStorage.setItem(LABELS_EXPANDED_STORAGE_KEY, String(nextState));
-    window.dispatchEvent(new CustomEvent(LABELS_TOGGLE_EVENT));
+    labelsStore.toggle();
   };
 
   if (!card.labels || card.labels.length === 0) {
@@ -123,12 +139,6 @@ export const CardLabels = ({
 export const CardBadges = ({
   card,
 }: CardBadgesProps) => {
-  const assignableAssignees = card.assignees.filter((assignee) =>
-    isAssignableBoardMember(assignee.boardMember),
-  );
-  const visibleAssignees = assignableAssignees.slice(0, 3);
-  const hiddenAssigneesCount = Math.max(assignableAssignees.length - visibleAssignees.length, 0);
-
   const fallbackChecklistTotalItems = card.checklists?.reduce((acc, cl) => acc + cl.items.length, 0) ?? 0;
   const fallbackChecklistCompletedItems = card.checklists?.reduce(
     (acc, cl) => acc + cl.items.filter((item) => item.isCompleted).length,
@@ -144,7 +154,7 @@ export const CardBadges = ({
   const unresolvedBlockerCount = card.unresolvedBlockerCount ?? 0;
   const isBlocked = unresolvedBlockerCount > 0;
 
-  const hasFooter = Boolean(card.dueDate) || Boolean(card.startDate) || card.isCompleted || assignableAssignees.length > 0
+  const hasFooter = Boolean(card.dueDate) || Boolean(card.startDate) || card.isCompleted
     || Boolean(card._count && card._count.comments > 0) || hasChecklistProgress || hasAttachments || isBlocked;
 
   if (!hasFooter) {
@@ -171,12 +181,13 @@ export const CardBadges = ({
           </Hint>
         )}
         {isBlocked && (
-          <Hint description={`Bị chặn bởi ${unresolvedBlockerCount} thẻ khác`} side="bottom">
-            <div className="flex items-center gap-x-1 text-xs py-0.5 px-1.5 rounded border border-rose-200 bg-rose-50 text-rose-700">
-              <LockKeyhole className="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />
-              <span className="font-semibold leading-none">
-                {unresolvedBlockerCount}
-              </span>
+          <Hint
+            description={`Đang bị chặn bởi ${unresolvedBlockerCount} công việc`}
+            side="bottom"
+          >
+            <div className="flex items-center gap-x-1 text-xs text-amber-700 py-0.5 px-1.5 rounded bg-amber-50 border border-amber-200">
+              <LockKeyhole className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+              <span className="font-semibold leading-none">{unresolvedBlockerCount}</span>
             </div>
           </Hint>
         )}
@@ -212,33 +223,6 @@ export const CardBadges = ({
           </Hint>
         )}
       </div>
-      {assignableAssignees.length > 0 && (
-        <AvatarGroup className="-mr-1 ml-auto flex-shrink-0 -space-x-1.5 *:data-[slot=avatar]:ring-white">
-          {visibleAssignees.map((assignee) => (
-            <Hint
-              key={assignee.id}
-              description={assignee.boardMember.userName}
-            >
-              <Avatar size="sm" className="h-6 w-6 bg-white">
-                <AvatarImage
-                  src={assignee.boardMember.userImage}
-                  alt={assignee.boardMember.userName}
-                />
-                <AvatarFallback className="text-[10px] font-semibold">
-                  {getInitials(assignee.boardMember.userName)}
-                </AvatarFallback>
-              </Avatar>
-            </Hint>
-          ))}
-          {hiddenAssigneesCount > 0 && (
-            <Hint description={`Còn ${hiddenAssigneesCount} người phụ trách khác`}>
-              <div className="relative flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 px-1.5 text-[10px] font-semibold text-neutral-600 ring-2 ring-white">
-                +{hiddenAssigneesCount}
-              </div>
-            </Hint>
-          )}
-        </AvatarGroup>
-      )}
     </div>
   );
 };

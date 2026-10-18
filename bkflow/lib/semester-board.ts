@@ -1,6 +1,6 @@
 import "server-only";
 
-import { BoardMemberRole, BoardType, Prisma } from "@prisma/client";
+import { BoardType, Prisma } from "@prisma/client";
 
 import { defaultImages } from "@/constants/images";
 import { db } from "@/lib/db";
@@ -11,35 +11,15 @@ const DEFAULT_LABEL_COLORS = ["#4ade80", "#facc15", "#fb923c", "#f87171", "#c084
 
 export type SemesterBoardUser = {
   userId: string;
-  userName: string;
-  userImage: string;
-  userEmail: string | null;
+  userName?: string;
+  userImage?: string;
+  userEmail?: string | null;
 };
 
 type GetOrCreateSemesterBoardInput = {
   orgId: string;
   semesterId: string;
   user: SemesterBoardUser;
-};
-
-const ensureMembership = async (boardId: string, user: SemesterBoardUser) => {
-  await db.boardMember.upsert({
-    where: {
-      boardId_userId: {
-        boardId,
-        userId: user.userId,
-      },
-    },
-    update: {},
-    create: {
-      boardId,
-      userId: user.userId,
-      userName: user.userName,
-      userImage: user.userImage,
-      userEmail: user.userEmail,
-      role: BoardMemberRole.ADMIN,
-    },
-  });
 };
 
 /**
@@ -49,7 +29,6 @@ const ensureMembership = async (boardId: string, user: SemesterBoardUser) => {
 export const getOrCreateSemesterBoard = async ({
   orgId,
   semesterId,
-  user,
 }: GetOrCreateSemesterBoardInput) => {
   const semester = await db.semester.findFirst({
     where: { id: semesterId, orgId },
@@ -66,7 +45,6 @@ export const getOrCreateSemesterBoard = async ({
   });
 
   if (existing) {
-    await ensureMembership(existing.id, user);
     return existing;
   }
 
@@ -84,15 +62,6 @@ export const getOrCreateSemesterBoard = async ({
         imageFullUrl: image.urls.full,
         imageUserName: image.user.name,
         imageLinkHTML: image.links.html,
-        members: {
-          create: {
-            userId: user.userId,
-            userName: user.userName,
-            userImage: user.userImage,
-            userEmail: user.userEmail,
-            role: BoardMemberRole.ADMIN,
-          },
-        },
         lists: {
           createMany: {
             data: SEMESTER_BOARD_DEFAULT_LISTS.map((title, index) => ({
@@ -118,7 +87,6 @@ export const getOrCreateSemesterBoard = async ({
       });
 
       if (board) {
-        await ensureMembership(board.id, user);
         return board;
       }
     }

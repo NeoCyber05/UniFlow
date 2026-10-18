@@ -8,7 +8,6 @@ import { generateAiText } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
 
@@ -1114,23 +1113,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           order: "asc",
         },
       }),
-      db.boardMember.findMany({
-        where: {
-          boardId,
-          board: {
-            orgId,
-          },
-        },
-        select: {
-          id: true,
-          userName: true,
-          userEmail: true,
-          role: true,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      }),
+      Promise.resolve([] as Array<{ id: string; userName: string; userEmail: string | null; role: BoardMemberRole }>),
       db.label.findMany({
         where: {
           boardId,
@@ -1167,7 +1150,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Bảng chưa có cột để tạo thẻ." };
     }
 
-    const assignableMembers = members.filter(isAssignableBoardMember);
+    const assignableMembers: Array<{ id: string; userName: string; userEmail: string | null; role: BoardMemberRole }> = [];
 
     const payload = {
       nowIso,

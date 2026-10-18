@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BoardMember } from "@prisma/client";
 import {
   DragDropContext,
   Draggable,
@@ -12,7 +11,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { assignChecklistItem } from "@/actions/checklists/assign-checklist-item";
 import { createChecklistItem } from "@/actions/checklists/create-checklist-item";
 import { deleteChecklist } from "@/actions/checklists/delete-checklist";
 import { deleteChecklistItem } from "@/actions/checklists/delete-checklist-item";
@@ -44,7 +42,6 @@ interface ChecklistsProps {
   cardId: string;
   boardId: string;
   cardDueDate: Date | string | null;
-  boardMembers: BoardMember[];
   checklists: ChecklistWithItems[];
   canEdit?: boolean;
 }
@@ -53,7 +50,6 @@ export const ChecklistsSection = ({
   cardId,
   boardId,
   cardDueDate,
-  boardMembers,
   checklists,
   canEdit = true,
 }: ChecklistsProps) => {
@@ -290,24 +286,6 @@ export const ChecklistsSection = ({
     },
   });
 
-  const { execute: executeAssignItem } = useAction(assignChecklistItem, {
-    onSuccess: (data) => {
-      mutationRollbackRef.current = null;
-      if (data.cardMemberAdded) {
-        toast.success("Đã giao thành viên vào checklist và tự động thêm vào thẻ.");
-      } else if (data.item.assigneeId) {
-        toast.success("Đã giao thành viên vào checklist.");
-      } else {
-        toast.success("Đã bỏ giao thành viên khỏi checklist.");
-      }
-      invalidateCard(true);
-    },
-    onError: (error) => {
-      rollbackLocalChecklists();
-      toast.error(error);
-    },
-  });
-
   const { execute: executeDeleteItem } = useAction(deleteChecklistItem, {
     onSuccess: () => {
       mutationRollbackRef.current = null;
@@ -342,9 +320,6 @@ export const ChecklistsSection = ({
     },
   });
 
-  const boardMembersById = useMemo(() => {
-    return new Map(boardMembers.map((member) => [member.id, member]));
-  }, [boardMembers]);
 
   const parentCardDueDate = useMemo(
     () => parseParentCardDueDate(cardDueDate),
@@ -499,20 +474,6 @@ export const ChecklistsSection = ({
 
     try {
       await executeSetDueDate({ boardId, cardId, id: itemId, dueDate });
-    } finally {
-      setItemPending(itemId, false);
-    }
-  };
-
-  const handleAssignItem = async (itemId: string, assigneeId: string | null) => {
-    const assignee = assigneeId ? boardMembersById.get(assigneeId) ?? null : null;
-
-    setItemPending(itemId, true);
-    mutationRollbackRef.current = localChecklists;
-    updateLocalItem(itemId, (item) => ({ ...item, assigneeId, assignee }));
-
-    try {
-      await executeAssignItem({ boardId, cardId, id: itemId, assigneeId });
     } finally {
       setItemPending(itemId, false);
     }
@@ -702,13 +663,11 @@ export const ChecklistsSection = ({
                             >
                               <ChecklistItem
                                 item={item}
-                                boardMembers={boardMembers}
                                 dragHandleProps={provided.dragHandleProps}
                                 isDragging={snapshot.isDragging}
                                 isMutating={pendingItemIds.has(item.id)}
                                 isTogglePending={pendingToggleItemIds.has(item.id)}
                                 maxDueDate={parentCardDueDate}
-                                onAssign={handleAssignItem}
                                 onDelete={handleDeleteItem}
                                 onRename={handleRenameItem}
                                 onSetDueDate={handleSetDueDate}

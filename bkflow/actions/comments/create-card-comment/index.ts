@@ -7,7 +7,6 @@ import { createNotifications } from "@/lib/notifications/create-notification";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
-import { findMentionedBoardMembers } from "@/lib/mentions";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCommentCreated } from "@/lib/comments/realtime";
 
@@ -68,11 +67,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             },
           },
         },
-        assignees: {
-          include: {
-            boardMember: true,
-          },
-        },
       },
     });
 
@@ -121,18 +115,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       },
     });
 
-    const boardMembers = await db.boardMember.findMany({
-      where: {
-        boardId,
-      },
-    });
-
-    const mentionKeys = new Set(
-      Array.from(content.matchAll(/@([\p{L}\p{N}_-]+)/gu)).map((match) =>
-        match[1].toLowerCase()
-      )
-    );
-
     const recipientIds = new Set<string>();
     const notifications = [];
     const actor = {
@@ -159,41 +141,9 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       });
     }
 
-    const targetMembers = new Map<string, typeof boardMembers[number]>();
-
-    if (mentionKeys.has("board")) {
-      boardMembers.forEach((m) => targetMembers.set(m.userId, m));
+    if (notifications.length > 0) {
+      await createNotifications(notifications);
     }
-    if (mentionKeys.has("card")) {
-      card.assignees.forEach((a) => targetMembers.set(a.boardMember.userId, a.boardMember));
-    }
-    
-    const individualMentions = findMentionedBoardMembers(content, boardMembers);
-    individualMentions.forEach((m) => targetMembers.set(m.userId, m));
-
-    targetMembers.forEach((member) => {
-      if (member.userId === userId || recipientIds.has(member.userId)) {
-        return;
-      }
-
-      recipientIds.add(member.userId);
-      notifications.push({
-        orgId,
-        recipientUserId: member.userId,
-        actor,
-        type: NOTIFICATION_TYPE.COMMENT_MENTION,
-        title: "Bạn được nhắc đến",
-        message: `${actor.name} đã nhắc đến bạn trong thẻ "${card.title}".`,
-        boardId: card.list.board.id,
-        boardTitle: card.list.board.title,
-        cardId: card.id,
-        cardTitle: card.title,
-        listTitle: card.list.title,
-        commentId: comment.id,
-      });
-    });
-
-    await createNotifications(notifications);
 
     await createAuditLog({
       entityId: card.id,

@@ -9,7 +9,7 @@ import { createSafeAction } from "@/lib/create-safe-action";
 import { InputType, ReturnType } from "./types";
 import { CreateBoard } from "./schema";
 import { createAuditLog } from "@/lib/create-audit-log";
-import { ACTION, BoardMemberRole, BoardType, ENTITY_TYPE } from "@prisma/client";
+import { ACTION, BoardType, ENTITY_TYPE } from "@prisma/client";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
   const { userId, orgId } = await auth();
@@ -56,15 +56,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         imageUserName,
         imageLinkHTML,
         boardType: BoardType.TEAM_PROJECT,
-        members: {
-          create: {
-            userId,
-            userName,
-            userImage: user.imageUrl,
-            userEmail: user.primaryEmailAddress?.emailAddress,
-            role: BoardMemberRole.ADMIN,
-          },
-        },
         labels: {
           createMany: {
             data: [
