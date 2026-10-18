@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [
         { find: /^next\/font\/(google|local)$/, replacement: path.join(__dirname, "shims/next-font.ts") },
+        { find: /^next\/image$/, replacement: path.join(__dirname, "shims/next-image.tsx") },
+        { find: /^next\/link$/, replacement: path.join(__dirname, "shims/next-link.tsx") },
+        { find: /^next\/navigation$/, replacement: path.join(__dirname, "shims/next-navigation.ts") },
         { find: /^@\//, replacement: root + "/" },
       ],
     },

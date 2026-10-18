@@ -15,7 +15,11 @@
     "jsx": "react-jsx",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "next/font/*": ["./web/shims/next-font.ts"],
+      "next/image": ["./web/shims/next-image.tsx"],
+      "next/link": ["./web/shims/next-link.tsx"],
+      "next/navigation": ["./web/shims/next-navigation.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
