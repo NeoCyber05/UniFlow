@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -6,17 +6,17 @@ import { ensureDueReminderNotifications } from "@/lib/notifications/reminder-not
 
 export async function GET() {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    await ensureDueReminderNotifications({ userId, orgId });
+    await ensureDueReminderNotifications({ userId });
 
     const notifications = await db.notification.findMany({
       where: {
-        orgId,
+        
         recipientUserId: userId,
       },
       orderBy: {

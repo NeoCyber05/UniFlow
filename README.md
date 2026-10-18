@@ -1,15 +1,15 @@
-# HustFlow
+# UniFlow (HustFlow)
 
-Hướng dẫn chạy HustFlow trên máy local, cấu hình Stripe và triển khai trên Railway.
+Hướng dẫn chạy UniFlow trên máy local và triển khai lên production.
 
 ## 1. Chạy local
 
 ### Yêu cầu
 
 - Node.js 20+
-- MySQL
+- PostgreSQL (hoặc Supabase project)
 - npm
-- Tài khoản Clerk, Pusher, UploadThing, Unsplash, OpenAI và Sentry
+- Tài khoản Supabase, Pusher, UploadThing, Unsplash, Google AI (Gemini) / OpenAI và Sentry
 - Stripe CLI nếu cần kiểm thử thanh toán
 
 ### Cài đặt
@@ -22,8 +22,8 @@ npm install
 Tạo file `bkflow/.env`:
 
 ```env
-# Database
-DATABASE_URL="mysql://USER:PASSWORD@HOST:PORT/DATABASE"
+# Database (PostgreSQL / Supabase connection string)
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
 
 # URL ứng dụng
 NEXT_PUBLIC_APP_URL="http://localhost:5173"
@@ -31,13 +31,9 @@ NEXT_PUBLIC_APP_URL="http://localhost:5173"
 # Origin được phép gọi API (bắt buộc khi NODE_ENV=production, phân tách bằng dấu phẩy)
 APP_ORIGINS="http://localhost:5173"
 
-# Clerk
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
-CLERK_SECRET_KEY="sk_test_..."
-NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
-NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/select-org"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/select-org"
+# Supabase Auth
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOi..."
 
 # Pusher
 PUSHER_APP_ID=""
@@ -53,25 +49,26 @@ UPLOADTHING_TOKEN=""
 # Unsplash
 NEXT_PUBLIC_UNSPLASH_ACCESS_KEY=""
 
-# OpenAI
-OPENAI_API_KEY=""
-OPENAI_MODEL="gpt-4o-mini"
+# AI (Google Gemini hoặc OpenAI)
+GOOGLE_GENERATIVE_AI_API_KEY=""
+AI_MODEL="gemini-2.5-flash"
+# Hoặc OPENAI_API_KEY=""
 
 # Stripe
 STRIPE_API_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 
 # Sentry
-# (SENTRY_DSN cho server, mặc định dùng NEXT_PUBLIC_SENTRY_DSN)
 NEXT_PUBLIC_SENTRY_DSN=""
 SENTRY_ENVIRONMENT="development"
 ```
 
-Khởi tạo cấu trúc database:
+Khởi tạo cấu trúc database & RLS:
 
 ```bash
 npx prisma generate
 npx prisma db push
+npm run db:rls    # Bật Row Level Security trên các bảng public
 ```
 
 Chạy ứng dụng (API Hono ở `:4000` + web Vite ở `:5173`, Vite proxy `/api` sang API):
@@ -96,7 +93,7 @@ Cấu trúc thư mục chính trong `bkflow/`:
 - `app/**/_components|_hooks|_lib|_types`: component và logic của từng màn hình, SPA import trực tiếp.
 - `actions/`, `components/`, `hooks/`, `lib/`, `prisma/`: dùng chung.
 
-Ứng dụng không còn dùng Next.js. Khi chạy production, thêm origin production vào `APP_ORIGINS` và vào danh sách allowed origins trong Clerk Dashboard.
+Ứng dụng là hệ thống quản lý deadline và học tập cá nhân (Personal-only), xác thực bằng Supabase Auth (JWT ES256). Mọi dữ liệu thuộc quyền sở hữu của từng cá nhân (`userId`), không còn khái niệm Organization, Team hay Member.
 
 Nếu cần xem dữ liệu:
 
@@ -206,7 +203,7 @@ Preset Next.js của Vercel không còn áp dụng; có thể deploy lên bất 
 
 1. Vào **Settings → Networking → Generate Domain**.
 2. Cập nhật `NEXT_PUBLIC_APP_URL` bằng domain vừa tạo.
-3. Thêm domain production vào allowed origins/redirect URL trong Clerk Dashboard (và cập nhật `APP_ORIGINS`).
+3. Thêm domain production vào redirect URL trong Supabase Authentication URL Configuration (và cập nhật `APP_ORIGINS`).
 4. Tạo Stripe webhook production trỏ tới `/api/webhook`.
 5. Redeploy service.
 

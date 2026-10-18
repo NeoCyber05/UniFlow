@@ -25,6 +25,6 @@ test("navigation matches Vietnamese with or without accents", () => {
   assert.equal(getNavigationItems("zzzz").length, 0);
 });
 
-test("workspace search requires both active workspace and board membership", () => {
-  assert.deepEqual(workspaceBoardScope("user", "org"), { orgId: "org", members: { some: { userId: "user" } } });
+test("workspace search requires user scope", () => {
+  assert.deepEqual(workspaceBoardScope("user", "org"), { userId: "user" });
 });

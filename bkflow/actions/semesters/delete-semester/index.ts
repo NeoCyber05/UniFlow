@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
 
 import { db } from "@/lib/db";
@@ -10,9 +10,9 @@ import { InputType, ReturnType } from "./types";
 import { DeleteSemester } from "./schema";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -24,13 +24,13 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   try {
     const existing = await db.semester.findUnique({ where: { id } });
 
-    if (!existing || existing.orgId !== orgId) {
+    if (!existing || existing.userId !== userId) {
       return { error: "Không tìm thấy học kỳ." };
     }
 
     // Bảng kỳ gắn 1-1 với học kỳ; xóa kỳ thì bảng (cùng list/card) cũng đi theo
     [, semester] = await db.$transaction([
-      db.board.deleteMany({ where: { semesterId: id, orgId } }),
+      db.board.deleteMany({ where: { semesterId: id, userId } }),
       db.semester.delete({ where: { id } }),
     ]);
   } catch {
@@ -39,7 +39,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     };
   }
 
-  revalidatePath(`/organization/${orgId}`);
+  revalidatePath("/dashboard");
   return { data: semester };
 };
 

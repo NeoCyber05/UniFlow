@@ -1,6 +1,6 @@
 import "server-only";
 
-import { BoardMemberRole, BoardType, Prisma } from "@prisma/client";
+import { BoardType, Prisma } from "@prisma/client";
 
 import { defaultImages } from "@/constants/images";
 import { db } from "@/lib/db";
@@ -11,48 +11,32 @@ const DEFAULT_LABEL_COLORS = ["#4ade80", "#facc15", "#fb923c", "#f87171", "#c084
 
 export type SemesterBoardUser = {
   userId: string;
-  userName: string;
-  userImage: string;
-  userEmail: string | null;
+  userName?: string;
+  userImage?: string;
+  userEmail?: string | null;
 };
 
 type GetOrCreateSemesterBoardInput = {
-  orgId: string;
+  userId?: string;
+  orgId?: string;
   semesterId: string;
-  user: SemesterBoardUser;
-};
-
-const ensureMembership = async (boardId: string, user: SemesterBoardUser) => {
-  await db.boardMember.upsert({
-    where: {
-      boardId_userId: {
-        boardId,
-        userId: user.userId,
-      },
-    },
-    update: {},
-    create: {
-      boardId,
-      userId: user.userId,
-      userName: user.userName,
-      userImage: user.userImage,
-      userEmail: user.userEmail,
-      role: BoardMemberRole.ADMIN,
-    },
-  });
+  user?: SemesterBoardUser;
 };
 
 /**
  * Mỗi học kỳ có đúng 1 bảng. Tạo lười ở lần mở đầu tiên.
- * Trả về null khi học kỳ không thuộc org hiện tại.
+ * Trả về null khi học kỳ không thuộc user hiện tại.
  */
-export const getOrCreateSemesterBoard = async ({
-  orgId,
-  semesterId,
-  user,
-}: GetOrCreateSemesterBoardInput) => {
+export const getOrCreateSemesterBoard = async (input: GetOrCreateSemesterBoardInput) => {
+  const userId = input.userId ?? input.orgId;
+  const { semesterId } = input;
+
+  if (!userId) {
+    return null;
+  }
+
   const semester = await db.semester.findFirst({
-    where: { id: semesterId, orgId },
+    where: { id: semesterId, userId },
     select: { id: true, title: true },
   });
 
@@ -66,7 +50,6 @@ export const getOrCreateSemesterBoard = async ({
   });
 
   if (existing) {
-    await ensureMembership(existing.id, user);
     return existing;
   }
 
@@ -75,7 +58,7 @@ export const getOrCreateSemesterBoard = async ({
   try {
     return await db.board.create({
       data: {
-        orgId,
+        userId,
         title: `Học kỳ ${semester.title}`,
         semesterId,
         boardType: BoardType.SEMESTER,
@@ -84,15 +67,6 @@ export const getOrCreateSemesterBoard = async ({
         imageFullUrl: image.urls.full,
         imageUserName: image.user.name,
         imageLinkHTML: image.links.html,
-        members: {
-          create: {
-            userId: user.userId,
-            userName: user.userName,
-            userImage: user.userImage,
-            userEmail: user.userEmail,
-            role: BoardMemberRole.ADMIN,
-          },
-        },
         lists: {
           createMany: {
             data: SEMESTER_BOARD_DEFAULT_LISTS.map((title, index) => ({
@@ -118,7 +92,6 @@ export const getOrCreateSemesterBoard = async ({
       });
 
       if (board) {
-        await ensureMembership(board.id, user);
         return board;
       }
     }

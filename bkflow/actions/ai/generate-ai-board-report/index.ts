@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { z } from "zod";
 
 import { generateAiText } from "@/lib/ai/client";
@@ -53,16 +53,16 @@ const systemPrompt = [
 ].join("\n");
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
   const { boardId, range } = data;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -70,7 +70,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     const analytics = await getBoardAnalyticsData({
       boardId,
-      orgId,
+      userId,
       range,
       includeReportContext: true,
     });
@@ -98,7 +98,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[GENERATE_AI_BOARD_REPORT_ERROR]", error, {
       action: "generate-ai-board-report",
       aiFeature: "board-report",
-      orgId,
+      
       userId,
       boardId,
       range,

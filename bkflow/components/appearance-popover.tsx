@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Palette, Sparkles, LayoutGrid, Paintbrush } from "lucide-react";
+import { Check, Palette, Sparkles, LayoutGrid, Paintbrush, Sun, Moon, Monitor } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,9 +12,17 @@ import {
   type BackgroundCategory,
 } from "@/constants/appearance";
 import { cn } from "@/lib/utils";
+import { useColorMode, type ColorMode } from "@/hooks/use-color-mode";
 import { PageStyleControls } from "@/components/notes/page-style-controls";
 
+const COLOR_MODES: { id: ColorMode; label: string; Icon: typeof Sun }[] = [
+  { id: "light", label: "Sáng", Icon: Sun },
+  { id: "dark", label: "Tối", Icon: Moon },
+  { id: "system", label: "Theo hệ thống", Icon: Monitor },
+];
+
 export const AppearancePopover = () => {
+  const { mode, setMode } = useColorMode();
   const { accent, background, setAccent, setBackground, pageStyle, setPageStyle } = useAppearance();
   const [filter, setFilter] = useState<BackgroundCategory>("all");
 
@@ -47,6 +55,24 @@ export const AppearancePopover = () => {
             <p className="my-3 text-xs text-muted-foreground">Áp dụng cho các trang chưa có kiểu riêng. Tùy chỉnh ngay trong trang để giữ một kiểu khác.</p>
             <PageStyleControls value={pageStyle} onChange={setPageStyle} />
           </details>
+          <div role="radiogroup" aria-label="Chế độ sáng tối" className="grid grid-cols-3 gap-1 rounded-lg bg-neutral-100/80 p-0.5 text-[11px]">
+            {COLOR_MODES.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={mode === id}
+                onClick={() => setMode(id)}
+                className={cn(
+                  "flex cursor-pointer items-center justify-center gap-1 rounded-md px-2 py-1.5 font-medium transition-all",
+                  mode === id ? "bg-white text-neutral-800 shadow-xs" : "text-neutral-500 hover:text-neutral-800",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
           {/* Accent Color Section */}
           <section className="space-y-2">
             <div className="flex items-center justify-between">

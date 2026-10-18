@@ -1,25 +1,23 @@
-import { BoardMemberRole } from "@prisma/client";
-
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/split/page.tsx.
-export const loadBoardSplit = async ({ boardId }: { boardId: string }, userId: string, orgId: string | null) => {
+export const loadBoardSplit = async ({ boardId }: { boardId: string }, userId: string) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
 
   if (currentMembership.error || !currentMembership.membership) {
     const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/organization/${orgId ?? ""}?error=${encodeURIComponent(errorMessage)}` } as const;
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
   }
 
-  const boardOrgId = currentMembership.membership.board.orgId;
+  const boardUserId = currentMembership.membership.board.userId;
 
-  const lists = await db.list.findMany({
+  const rawLists = await db.list.findMany({
     where: {
       boardId,
       archivedAt: null,
       board: {
-        orgId: boardOrgId,
+        userId: boardUserId,
       },
     },
     include: {
@@ -28,21 +26,6 @@ export const loadBoardSplit = async ({ boardId }: { boardId: string }, userId: s
           archivedAt: null,
         },
         include: {
-          assignees: {
-            where: {
-              boardMember: {
-                role: {
-                  not: BoardMemberRole.VIEWER,
-                },
-              },
-            },
-            include: {
-              boardMember: true,
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
           labels: {
             include: {
               label: true,
@@ -77,22 +60,13 @@ export const loadBoardSplit = async ({ boardId }: { boardId: string }, userId: s
     },
   });
 
-  const boardMembers = await db.boardMember.findMany({
-    where: {
-      boardId,
-      board: {
-        orgId: boardOrgId,
-        members: {
-          some: {
-            userId,
-          },
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+  const lists = rawLists.map((list) => ({
+    ...list,
+    cards: list.cards.map((card) => ({
+      ...card,
+      assignees: [],
+    })),
+  }));
 
   const calendarLists = lists.map((list) => ({
     id: list.id,
@@ -104,9 +78,9 @@ export const loadBoardSplit = async ({ boardId }: { boardId: string }, userId: s
     boardId,
     lists,
     calendarLists,
-    boardMembers,
+    boardMembers: [] as any[],
     currentUserId: userId,
     currentBoardMemberId: currentMembership.membership.id,
-    currentMemberRole: currentMembership.membership.role,
+    currentMemberRole: "ADMIN" as const,
   } as const;
 };

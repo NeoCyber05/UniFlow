@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { createAgentUIStreamResponse, createIdGenerator, type UIMessage } from "ai";
 import { z } from "zod";
 
@@ -188,7 +188,6 @@ export async function POST(request: Request) {
   const { userId, membership } = result;
   const session: AssistantSession = {
     boardId,
-    orgId: membership.board.orgId,
     userId,
     boardMemberId: membership.id,
     role: membership.role,

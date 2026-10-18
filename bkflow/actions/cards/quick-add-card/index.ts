@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
@@ -8,7 +8,6 @@ import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditorForUser } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { isCourseInBoard } from "@/lib/courses/course-guards";
 import {
   NO_CURRENT_SEMESTER_ERROR,
@@ -76,16 +75,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Môn không hợp lệ." };
     }
 
-    const assignees = assigneeUserIds.length > 0
-      ? (await db.boardMember.findMany({
-          where: { boardId, userId: { in: assigneeUserIds } },
-        })).filter(isAssignableBoardMember)
-      : [];
-
-    if (assignees.length !== assigneeUserIds.length) {
-      return { error: "Người được giao không hợp lệ." };
-    }
-
     const lastCard = await db.card.findFirst({
       where: { listId: list.id, archivedAt: null },
       orderBy: { order: "desc" },
@@ -101,9 +90,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         order: lastCard ? lastCard.order + 1 : 1,
         ...(courseId ? { courseId } : {}),
         ...(dueDate ? { dueDate } : {}),
-        ...(assignees.length > 0
-          ? { assignees: { create: assignees.map((member) => ({ boardMemberId: member.id })) } }
-          : {}),
         ...(hasUserState
           ? {
               userStates: {
@@ -125,7 +111,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       action: ACTION.CREATE,
       boardId,
       cardId: card.id,
-      orgId: permission.membership.board.orgId,
     });
 
     await triggerCardCreated({

@@ -1,28 +1,26 @@
-import { BoardMemberRole } from "@prisma/client";
-
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 import type { CardWithAssignees, ListWithCards } from "@/types";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/page.tsx.
-export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: string, orgId: string | null) => {
+export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: string) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
 
   if (currentMembership.error || !currentMembership.membership) {
     const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/organization/${orgId ?? ""}?error=${encodeURIComponent(errorMessage)}` } as const;
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
   }
 
-  const boardOrgId = currentMembership.membership.board.orgId;
+  const boardUserId = currentMembership.membership.board.userId;
   
-  const [listsData, boardMembers] = await measureDev(`board:${boardId}:initial-data`, () => Promise.all([
+  const listsData = await measureDev(`board:${boardId}:initial-data`, () =>
     db.list.findMany({
       where: {
         boardId,
         archivedAt: null,
         board: {
-          orgId: boardOrgId,
+          userId: boardUserId,
         },
       },
       select: {
@@ -62,21 +60,6 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
             },
             createdAt: true,
             updatedAt: true,
-            assignees: {
-              where: {
-                boardMember: {
-                  role: {
-                    not: BoardMemberRole.VIEWER,
-                  },
-                },
-              },
-              include: {
-                boardMember: true,
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
             labels: {
               include: {
                 label: true,
@@ -111,23 +94,7 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
         order: "asc",
       },
     }),
-    db.boardMember.findMany({
-      where: {
-        boardId,
-        board: {
-          orgId: boardOrgId,
-          members: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    }),
-  ]));
+  );
 
   const cardIds = listsData.flatMap((list) => list.cards.map((card) => card.id));
   const checklistSummaries = cardIds.length > 0
@@ -164,6 +131,7 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
     ...list,
     cards: list.cards.map(({ userStates, ...card }) => ({
       ...card,
+      assignees: [],
       isImportant: userStates[0]?.isImportant ?? false,
       checklistProgress: checklistProgressByCardId.get(card.id) ?? {
         total: 0,
@@ -176,8 +144,8 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
   return {
     boardId,
     lists,
-    boardMembers,
+    boardMembers: [] as any[],
     currentUserId: userId,
-    currentMemberRole: currentMembership.membership.role,
+    currentMemberRole: "ADMIN" as const,
   } as const;
 };

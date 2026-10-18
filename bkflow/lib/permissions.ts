@@ -1,17 +1,13 @@
-import { BoardMemberRole } from "@prisma/client";
 import { cache } from "react";
-
-import { getRoleLabel } from "@/lib/boards/board-member-role";
 import { db } from "@/lib/db";
 
 export const BOARD_MEMBER_REQUIRED_ERROR = "Bạn không phải là thành viên của bảng này.";
 export const BOARD_ADMIN_REQUIRED_ERROR = "Chỉ quản trị viên mới có thể thực hiện hành động này.";
-
 export const BOARD_EDITOR_REQUIRED_ERROR = "Bạn chỉ có quyền xem bảng này.";
 
 type BoardPermissionInput = {
   boardId: string;
-  orgId: string;
+  orgId?: string;
   userId: string;
 };
 
@@ -20,37 +16,35 @@ type BoardUserPermissionInput = {
   userId: string;
 };
 
-export const getBoardMembership = cache(async (
+export type BoardOwnershipMembership = {
+  id: string;
+  userId: string;
+  role: "ADMIN";
+  board: {
+    id: string;
+    title: string;
+    userId: string;
+  };
+};
+
+export const checkBoardOwnership = async (
   boardId: string,
-  orgId: string,
   userId: string,
-) => {
-  return db.boardMember.findUnique({
+  database = db,
+): Promise<{ error: string | null; membership: BoardOwnershipMembership | null }> => {
+  const board = await (database as typeof db).board.findFirst({
     where: {
-      boardId_userId: {
-        boardId,
-        userId,
-      },
-      board: {
-        orgId,
-      },
+      id: boardId,
+      userId,
     },
-    include: {
-      board: {
-        select: {
-          id: true,
-          title: true,
-          orgId: true,
-        },
-      },
+    select: {
+      id: true,
+      title: true,
+      userId: true,
     },
   });
-});
 
-export const requireBoardMember = async (input: BoardPermissionInput) => {
-  const membership = await getBoardMembership(input.boardId, input.orgId, input.userId);
-
-  if (!membership) {
+  if (!board) {
     return {
       error: BOARD_MEMBER_REQUIRED_ERROR,
       membership: null,
@@ -59,101 +53,51 @@ export const requireBoardMember = async (input: BoardPermissionInput) => {
 
   return {
     error: null,
-    membership,
+    membership: {
+      id: `owner_${userId}`,
+      userId,
+      role: "ADMIN",
+      board,
+    },
   };
+};
+
+export const getBoardMembership = cache(async (
+  boardId: string,
+  _orgId: string,
+  userId: string,
+) => {
+  const result = await checkBoardOwnership(boardId, userId);
+  return result.membership;
+});
+
+export const requireBoardMember = async (input: BoardPermissionInput) => {
+  return checkBoardOwnership(input.boardId, input.userId);
 };
 
 export const getBoardMembershipForUser = cache(async (
   boardId: string,
   userId: string,
 ) => {
-  return db.boardMember.findUnique({
-    where: {
-      boardId_userId: {
-        boardId,
-        userId,
-      },
-    },
-    include: {
-      board: {
-        select: {
-          id: true,
-          title: true,
-          orgId: true,
-        },
-      },
-    },
-  });
+  const result = await checkBoardOwnership(boardId, userId);
+  return result.membership;
 });
 
 export const requireBoardMemberForUser = async (input: BoardUserPermissionInput) => {
-  const membership = await getBoardMembershipForUser(input.boardId, input.userId);
-
-  if (!membership) {
-    return {
-      error: BOARD_MEMBER_REQUIRED_ERROR,
-      membership: null,
-    };
-  }
-
-  return {
-    error: null,
-    membership,
-  };
+  return checkBoardOwnership(input.boardId, input.userId);
 };
 
 export const requireBoardEditorForUser = async (input: BoardUserPermissionInput) => {
-  const result = await requireBoardMemberForUser(input);
-
-  if (result.error || !result.membership) {
-    return result;
-  }
-
-  if (result.membership.role === BoardMemberRole.VIEWER) {
-    return {
-      error: BOARD_EDITOR_REQUIRED_ERROR,
-      membership: result.membership,
-    };
-  }
-
-  return result;
+  return checkBoardOwnership(input.boardId, input.userId);
 };
 
 export const requireBoardAdmin = async (input: BoardPermissionInput) => {
-  const result = await requireBoardMember(input);
-
-  if (result.error || !result.membership) {
-    return result;
-  }
-
-  if (result.membership.role !== BoardMemberRole.ADMIN) {
-    return {
-      error: BOARD_ADMIN_REQUIRED_ERROR,
-      membership: result.membership,
-    };
-  }
-
-  return result;
+  return checkBoardOwnership(input.boardId, input.userId);
 };
 
 export const requireBoardEditor = async (input: BoardPermissionInput) => {
-  const result = await requireBoardMember(input);
-
-  if (result.error || !result.membership) {
-    return result;
-  }
-
-  if (result.membership.role === BoardMemberRole.VIEWER) {
-    return {
-      error: BOARD_EDITOR_REQUIRED_ERROR,
-      membership: result.membership,
-    };
-  }
-
-  return result;
+  return checkBoardOwnership(input.boardId, input.userId);
 };
 
-export const isBoardAdmin = (role: BoardMemberRole) => role === BoardMemberRole.ADMIN;
-export const isBoardEditor = (role: BoardMemberRole) => role !== BoardMemberRole.VIEWER;
-
-export { getRoleLabel };
+export const isBoardAdmin = (_role?: string) => true;
+export const isBoardEditor = (_role?: string) => true;

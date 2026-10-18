@@ -1,12 +1,10 @@
 import "server-only";
 
 import { db } from "@/lib/db";
-import { resolvePersonalOrgId } from "@/lib/workspace";
 
 export const getPersonalNoteScope = async (userId: string) => {
-  const orgId = await resolvePersonalOrgId(userId);
-  return orgId ? { userId, orgId } : null;
+  return { userId };
 };
 
-export const findOwnedNote = (scope: { userId: string; orgId: string }, id: string) =>
-  db.notePage.findFirst({ where: { id, ...scope } });
+export const findOwnedNote = (scope: { userId: string }, id: string) =>
+  db.notePage.findFirst({ where: { id, userId: scope.userId } });

@@ -2,7 +2,7 @@ import { NOTIFICATION_TYPE } from "@prisma/client";
 
 export interface NotificationItem {
   id: string;
-  orgId: string;
+  orgId?: string;
   recipientUserId: string;
   actorUserId: string | null;
   actorName: string | null;

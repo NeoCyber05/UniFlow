@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { requireBoardMember } from "@/lib/permissions";
@@ -12,9 +12,9 @@ export async function GET(
 ) {
   try {
     const { boardId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -27,7 +27,7 @@ export async function GET(
       );
     }
 
-    const permission = await requireBoardMember({ boardId, orgId, userId });
+    const permission = await requireBoardMember({ boardId, userId });
 
     if (permission.error) {
       return new Response(permission.error, { status: 403 });
@@ -51,7 +51,7 @@ export async function GET(
           },
           ...titleFilter,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -87,7 +87,7 @@ export async function GET(
         list: {
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },

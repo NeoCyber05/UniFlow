@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import {
   buildBoardCsv,
@@ -37,7 +37,7 @@ export async function GET(
 
     const data = await getBoardExportData({
       boardId,
-      orgId: permission.membership.board.orgId,
+      userId: permission.membership.board.userId,
     });
 
     if (!data) {

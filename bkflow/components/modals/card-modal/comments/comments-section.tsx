@@ -1,9 +1,9 @@
+import { BoardMemberRole, type BoardMember } from "@/types";
 "use client";
-
 import { useMemo, useState } from "react";
-import { useUser } from "@clerk/react";
+import { useUser } from "@/web/lib/auth";
 import { MessageSquare } from "lucide-react";
-import { BoardMemberRole, type BoardMember } from "@prisma/client";
+
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CardCommentWithReplies } from "@/types";

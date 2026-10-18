@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@/server/clerk"
+import { currentUser } from "@/server/auth";
 import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
@@ -8,15 +8,14 @@ type CurrentUser = NonNullable<Awaited<ReturnType<typeof currentUser>>>;
 
 interface Props {
   entityId: string;
-  entityType: ENTITY_TYPE,
+  entityType: ENTITY_TYPE;
   entityTitle: string;
   action: ACTION;
   eventType?: AUDIT_EVENT_TYPE;
   boardId?: string | null;
   cardId?: string | null;
-  /** Mặc định lấy org đang active; truyền khi bảng thuộc org khác (vd bảng kỳ cá nhân) */
-  orgId?: string;
-};
+  orgId?: string; // Kept as optional for backwards compatibility with any remaining call sites
+}
 
 const getDefaultEventType = (action: ACTION) => {
   switch (action) {
@@ -55,10 +54,9 @@ const getUserDisplayName = (user: CurrentUser) => {
 
 export const createAuditLog = async (props: Props) => {
   try {
-    const orgId = props.orgId ?? (await auth()).orgId;
     const user = await currentUser();
 
-    if (!user || !orgId) {
+    if (!user) {
       throw new Error("User not found!");
     }
 
@@ -66,7 +64,6 @@ export const createAuditLog = async (props: Props) => {
 
     await db.auditLog.create({
       data: {
-        orgId,
         boardId,
         cardId,
         entityId,
@@ -75,9 +72,9 @@ export const createAuditLog = async (props: Props) => {
         action,
         eventType: eventType ?? getDefaultEventType(action),
         userId: user.id,
-        userImage: user?.imageUrl,
+        userImage: user.imageUrl,
         userName: getUserDisplayName(user),
-      }
+      },
     });
   } catch (error) {
     logger.error("[AUDIT_LOG_ERROR]", error, {
@@ -88,4 +85,4 @@ export const createAuditLog = async (props: Props) => {
       cardId: props.cardId,
     });
   }
-}
+};

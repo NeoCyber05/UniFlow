@@ -1,8 +1,6 @@
 export const REALTIME_CHANNEL_PREFIX = "private" as const;
 
 export const realtimeChannels = {
-  org: (organizationId: string) =>
-    `${REALTIME_CHANNEL_PREFIX}-org-${organizationId}` as const,
   board: (boardId: string) =>
     `${REALTIME_CHANNEL_PREFIX}-board-${boardId}` as const,
   card: (cardId: string) =>
@@ -12,16 +10,11 @@ export const realtimeChannels = {
 };
 
 export type RealtimeChannelName =
-  | ReturnType<typeof realtimeChannels.org>
   | ReturnType<typeof realtimeChannels.board>
   | ReturnType<typeof realtimeChannels.card>
   | ReturnType<typeof realtimeChannels.user>;
 
 export type RealtimeChannelScope =
-  | {
-      type: "org";
-      organizationId: string;
-    }
   | {
       type: "board";
       boardId: string;
@@ -38,7 +31,7 @@ export type RealtimeChannelScope =
 export const parseRealtimeChannelName = (
   channelName: string,
 ): RealtimeChannelScope | null => {
-  const match = channelName.match(/^private-(org|board|card|user)-(.+)$/);
+  const match = channelName.match(/^private-(board|card|user)-(.+)$/);
 
   if (!match) {
     return null;
@@ -48,13 +41,6 @@ export const parseRealtimeChannelName = (
 
   if (!id) {
     return null;
-  }
-
-  if (type === "org") {
-    return {
-      type,
-      organizationId: id,
-    };
   }
 
   if (type === "board") {

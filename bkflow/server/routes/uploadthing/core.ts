@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -36,15 +36,15 @@ export const ourFileRouter = {
   )
     .input(CardAttachmentUploadInput)
     .middleware(async ({ input }) => {
-      const { userId, orgId } = await auth();
+      const { userId } = await auth();
 
-      if (!userId || !orgId) {
+      if (!userId) {
         throw new UploadThingError("Không có quyền truy cập.");
       }
 
       const permission = await requireBoardEditor({
         boardId: input.boardId,
-        orgId,
+        
         userId,
       });
 
@@ -58,7 +58,7 @@ export const ourFileRouter = {
           list: {
             board: {
               id: input.boardId,
-              orgId,
+              
             },
           },
         },
@@ -73,7 +73,6 @@ export const ourFileRouter = {
 
       return {
         userId,
-        orgId,
         cardId: card.id,
         boardId: input.boardId,
       };

@@ -1,21 +1,18 @@
 import "server-only";
 
-import { currentUser } from "@/server/clerk";
+import { currentUser } from "@/server/auth";
 
 import { getOrCreateSemesterBoard } from "@/lib/semester-board";
 import { pickCurrentSemester } from "@/lib/semesters";
 import { getOrSeedSemesters } from "@/lib/semesters-db";
-import { resolvePersonalOrgId } from "@/lib/workspace";
 
 export const NO_CURRENT_SEMESTER_ERROR = "Chưa có học kỳ hiện tại. Hãy tạo học kỳ trước.";
 
 /** Id bảng của học kỳ hiện tại trong workspace cá nhân; tạo bảng nếu chưa có. */
 export const resolveCurrentSemesterBoardId = async (userId: string): Promise<string | null> => {
-  const personalOrgId = await resolvePersonalOrgId(userId);
+  if (!userId) return null;
 
-  if (!personalOrgId) return null;
-
-  const semester = pickCurrentSemester(await getOrSeedSemesters(personalOrgId));
+  const semester = pickCurrentSemester(await getOrSeedSemesters(userId));
 
   if (!semester) return null;
 
@@ -24,16 +21,12 @@ export const resolveCurrentSemesterBoardId = async (userId: string): Promise<str
   if (!user) return null;
 
   const board = await getOrCreateSemesterBoard({
-    orgId: personalOrgId,
+    userId,
     semesterId: semester.id,
     user: {
       userId,
-      userName:
-        user.fullName ||
-        user.username ||
-        user.primaryEmailAddress?.emailAddress ||
-        "Sinh viên",
-      userImage: user.imageUrl,
+      userName: user.fullName || user.primaryEmailAddress?.emailAddress || "Sinh viên",
+      userImage: user.imageUrl ?? "",
       userEmail: user.primaryEmailAddress?.emailAddress ?? null,
     },
   });

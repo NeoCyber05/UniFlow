@@ -36,7 +36,7 @@ export const loadMy = async ({ view, error }: { view: string; error?: string }, 
       context,
       data,
       now: now.toISOString(),
-      canEdit: permission.membership.role !== "VIEWER",
+      canEdit: true,
       error,
     } as const;
   }

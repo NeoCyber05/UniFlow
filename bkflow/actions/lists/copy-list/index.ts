@@ -1,11 +1,10 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
 import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -15,9 +14,9 @@ import { CopyList } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -27,7 +26,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let list;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -39,7 +38,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         boardId,
         archivedAt: null,
         board: {
-          orgId,
+          userId,
         },
       },
       include: {
@@ -56,14 +55,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
                 createdAt: "asc",
               },
             },
-            assignees: {
-              include: {
-                boardMember: true,
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
             attachments: {
               orderBy: [
                 { type: "asc" },
@@ -74,9 +65,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             checklists: {
               include: {
                 items: {
-                  include: {
-                    assignee: true,
-                  },
                   orderBy: {
                     order: "asc",
                   },
@@ -121,7 +109,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             gte: newOrder,
           },
           board: {
-            orgId,
+            userId,
           },
         },
         data: {
@@ -167,22 +155,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           });
         }
 
-        if (cardToCopy.assignees.length > 0) {
-          const assignableCardAssignees = cardToCopy.assignees.filter((assignee) =>
-            isAssignableBoardMember(assignee.boardMember),
-          );
-
-          if (assignableCardAssignees.length > 0) {
-            await tx.cardAssignee.createMany({
-              data: assignableCardAssignees.map((assignee) => ({
-                cardId: createdCard.id,
-                boardMemberId: assignee.boardMemberId,
-              })),
-              skipDuplicates: true,
-            });
-          }
-        }
-
         if (cardToCopy.attachments.length > 0) {
           await tx.cardAttachment.createMany({
             data: cardToCopy.attachments.map((attachment) => ({
@@ -210,20 +182,14 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
             if (checklist.items.length > 0) {
               await tx.checklistItem.createMany({
-                data: checklist.items.map((item) => {
-                  const assigneeId = item.assignee && isAssignableBoardMember(item.assignee)
-                    ? item.assigneeId
-                    : null;
-
-                  return {
-                    checklistId: createdChecklist.id,
-                    title: item.title,
-                    isCompleted: item.isCompleted,
-                    order: item.order,
-                    dueDate: item.dueDate,
-                    assigneeId,
-                  };
-                }),
+                data: checklist.items.map((item) => ({
+                  checklistId: createdChecklist.id,
+                  title: item.title,
+                  isCompleted: item.isCompleted,
+                  order: item.order,
+                  dueDate: item.dueDate,
+                  assigneeId: null,
+                })),
               });
             }
           }

@@ -1,32 +1,28 @@
-import { Board, BoardMember, BoardMemberRole, BoardType, Label, List, type Semester } from "@prisma/client";
+import { Board, BoardType, Label, List, type Semester } from "@prisma/client";
 
 import { BoardTitleForm } from "./board-title-form";
 import { BoardOptions } from "./board-options";
-import { BoardMembers } from "./board-members";
 import { BoardFilters } from "./board-filters";
 import { BoardImportantToggle } from "./board-important-toggle";
 import { BoardViewSwitcher } from "./board-view-switcher";
 import { BoardSemesterSwitcher } from "./board-semester-switcher";
 import { BoardSidebarToggle } from "./board-sidebar-toggle";
-import { ClerkOrgMember } from "@/lib/clerk-org-members";
 
 interface BoardNavbarProps {
-  data: Board & { members: BoardMember[]; labels: Label[]; lists: List[] };
-  organizationMembers: ClerkOrgMember[];
+  data: Board & { labels: Label[]; lists: List[] };
+  organizationMembers?: any[];
   currentUserId: string;
-  currentMemberRole: BoardMemberRole;
+  currentMemberRole?: string;
   semesters: Semester[];
-};
+}
 
 export const BoardNavbar = ({
   data,
-  organizationMembers,
   currentUserId,
-  currentMemberRole,
   semesters,
 }: BoardNavbarProps) => {
-  const isAdmin = currentMemberRole === BoardMemberRole.ADMIN;
-  const canEdit = currentMemberRole !== BoardMemberRole.VIEWER;
+  const isAdmin = true;
+  const canEdit = true;
 
   return (
     <div className="relative shrink-0 z-[40] flex h-14 w-full items-center justify-between bg-gradient-to-b from-black/50 to-black/30 px-3 text-white backdrop-blur-sm md:px-6">
@@ -49,27 +45,16 @@ export const BoardNavbar = ({
         <BoardImportantToggle boardId={data.id} />
         <BoardFilters
           boardId={data.id}
-          members={data.members}
-          currentUserId={currentUserId}
           labels={data.labels}
-        />
-        <BoardMembers
-          boardId={data.id}
-          members={data.members}
-          organizationMembers={organizationMembers}
-          currentUserId={currentUserId}
-          canManage={isAdmin}
         />
         <BoardOptions
           id={data.id}
           title={data.title}
-          orgId={data.orgId}
+          orgId={data.userId ?? data.id}
           currentUserId={currentUserId}
-          currentMemberRole={currentMemberRole}
           canDelete={isAdmin}
           canEdit={canEdit}
           lists={data.lists}
-          members={data.members}
           labels={data.labels}
         />
       </div>

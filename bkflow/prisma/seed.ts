@@ -31,14 +31,14 @@ const TASKS: { title: string; course: string | null; inDays: number | null; list
 ];
 
 const main = async () => {
-  const orgId = process.env.SEED_ORG_ID;
+  const userId = process.env.SEED_USER_ID ?? process.env.SEED_ORG_ID;
 
-  if (!orgId) {
-    throw new Error("Thiếu SEED_ORG_ID (id Clerk org của workspace cá nhân).");
+  if (!userId) {
+    throw new Error("Thiếu SEED_USER_ID (id Supabase user).");
   }
 
   const semester = await db.semester.findFirst({
-    where: { orgId, isCurrent: true },
+    where: { userId, isCurrent: true },
     include: {
       board: {
         include: { lists: { where: { archivedAt: null }, orderBy: { order: "asc" } } },

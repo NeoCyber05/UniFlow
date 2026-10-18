@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
 
 import { db } from "@/lib/db";
@@ -10,9 +10,9 @@ import { InputType, ReturnType } from "./types";
 import { CreateSemester } from "./schema";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -22,12 +22,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let semester;
 
   try {
-    const existingCount = await db.semester.count({ where: { orgId } });
+    const existingCount = await db.semester.count({ where: { userId } });
 
     semester = await db.semester.create({
-      data: {
-        orgId,
-        title,
+      data: { userId, title,
         startDate,
         endDate,
         isCurrent: existingCount === 0,
@@ -39,7 +37,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     };
   }
 
-  revalidatePath(`/organization/${orgId}`);
+  revalidatePath("/dashboard");
   return { data: semester };
 };
 

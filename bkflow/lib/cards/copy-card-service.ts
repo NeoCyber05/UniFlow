@@ -6,14 +6,8 @@ import type {
 } from "@/lib/cards/copy-card-contract";
 import { db } from "@/lib/db";
 import { requireBoardEditorForUser, requireBoardMemberForUser } from "@/lib/permissions";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { triggerCardCreated } from "@/lib/boards/realtime";
 import { copyCardLabels } from "@/lib/cards/copy-card-labels";
-import {
-  copyCardAssignees,
-  mapTargetMembersByUserId,
-  resolveChecklistItemAssigneeId,
-} from "@/lib/cards/copy-card-members";
 
 type CurrentUserLike = {
   imageUrl: string;
@@ -44,7 +38,6 @@ export const copyCardService = async ({
     position,
     keepChecklists,
     keepLabels,
-    keepMembers,
     keepAttachments,
     keepComments,
   } = data;
@@ -84,14 +77,6 @@ export const copyCardService = async ({
             createdAt: "asc",
           },
         },
-        assignees: {
-          include: {
-            boardMember: true,
-          },
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
         attachments: {
           orderBy: [
             { type: "asc" },
@@ -102,9 +87,6 @@ export const copyCardService = async ({
         checklists: {
           include: {
             items: {
-              include: {
-                assignee: true,
-              },
               orderBy: {
                 order: "asc",
               },
@@ -133,7 +115,7 @@ export const copyCardService = async ({
       return { error: "Không tìm thấy thẻ." };
     }
 
-    const [targetList, destinationCards, targetMembers, targetLabels] = await Promise.all([
+    const [targetList, destinationCards, targetLabels] = await Promise.all([
       db.list.findFirst({
         where: {
           id: targetListId,
@@ -161,11 +143,6 @@ export const copyCardService = async ({
           order: "asc",
         },
       }),
-      db.boardMember.findMany({
-        where: {
-          boardId: targetBoardId,
-        },
-      }),
       db.label.findMany({
         where: {
           boardId: targetBoardId,
@@ -184,7 +161,6 @@ export const copyCardService = async ({
       : shouldShiftDestinationCards
         ? destinationCards[insertIndex].order
         : destinationCards[destinationCards.length - 1].order + 1;
-    const targetMembersByUserId = mapTargetMembersByUserId(targetMembers);
 
     card = await db.$transaction(async (tx) => {
       if (shouldShiftDestinationCards) {
@@ -229,15 +205,6 @@ export const copyCardService = async ({
         });
       }
 
-      if (keepMembers && cardToCopy.assignees.length > 0) {
-        await copyCardAssignees({
-          tx,
-          cardId: createdCard.id,
-          assignees: cardToCopy.assignees,
-          targetMembersByUserId,
-        });
-      }
-
       if (keepAttachments && cardToCopy.attachments.length > 0) {
         await tx.cardAttachment.createMany({
           data: cardToCopy.attachments.map((attachment) => ({
@@ -265,23 +232,14 @@ export const copyCardService = async ({
 
           if (checklist.items.length > 0) {
             await tx.checklistItem.createMany({
-              data: checklist.items.map((item) => {
-                const assigneeId = item.assignee && isAssignableBoardMember(item.assignee)
-                  ? resolveChecklistItemAssigneeId({
-                      userId: item.assignee.userId,
-                      targetMembersByUserId,
-                    })
-                  : null;
-
-                return {
-                  checklistId: createdChecklist.id,
-                  title: item.title,
-                  isCompleted: item.isCompleted,
-                  order: item.order,
-                  dueDate: item.dueDate,
-                  assigneeId,
-                };
-              }),
+              data: checklist.items.map((item) => ({
+                checklistId: createdChecklist.id,
+                title: item.title,
+                isCompleted: item.isCompleted,
+                order: item.order,
+                dueDate: item.dueDate,
+                assigneeId: null,
+              })),
             });
           }
         }
@@ -341,7 +299,6 @@ export const copyCardService = async ({
 
       await tx.auditLog.create({
         data: {
-          orgId: targetPermission.membership.board.orgId,
           boardId: targetBoardId,
           cardId: createdCard.id,
           entityId: createdCard.id,

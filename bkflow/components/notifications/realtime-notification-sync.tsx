@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useUser } from "@clerk/react";
+import { useUser } from "@/web/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { NotificationItem } from "@/components/notifications/types";
@@ -19,7 +19,7 @@ const toNotificationItem = (
   payload: NotificationCreatedPayload,
 ): NotificationItem => ({
   id: payload.notificationId,
-  orgId: payload.orgId,
+  orgId: payload.orgId ?? "",
   recipientUserId: payload.recipientUserId,
   actorUserId: payload.actor?.userId ?? null,
   actorName: payload.actor?.name ?? null,

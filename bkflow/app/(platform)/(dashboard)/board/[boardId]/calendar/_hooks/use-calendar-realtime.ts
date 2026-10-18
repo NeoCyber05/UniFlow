@@ -76,7 +76,7 @@ export const useCalendarRealtime = ({
 
     toast.error("Bảng này đã bị xóa.");
     cardModal.onClose();
-    router.push(`/organization/${payload.orgId}`);
+    router.push("/my/today");
   }, [cardModal, processRealtimeEvent, router]);
 
   const handleAccessRevokedRealtime = useCallback((payload: BoardCalendarAccessPayload) => {
@@ -87,7 +87,7 @@ export const useCalendarRealtime = ({
     if (payload.targetUserId === currentUserId) {
       toast.error("Bạn không còn quyền truy cập bảng này.");
       cardModal.onClose();
-      router.push(`/organization/${payload.orgId}`);
+      router.push("/my/today");
       return;
     }
 

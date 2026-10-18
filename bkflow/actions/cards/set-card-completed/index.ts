@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
@@ -23,7 +23,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   try {
     const card = await db.card.findUnique({
       where: { id: data.cardId },
-      select: { list: { select: { boardId: true, board: { select: { orgId: true } } } } },
+      select: { list: { select: { boardId: true } } },
     });
 
     if (!card) {
@@ -33,7 +33,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const result = await updateCardService({
       data: { id: data.cardId, boardId: card.list.boardId, isCompleted: data.value },
       userId,
-      orgId: card.list.board.orgId,
     });
 
     return { error: result.error, errorCode: result.errorCode, data: result.data };

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/create-audit-log";
@@ -13,9 +13,9 @@ import { UpdateListOrder } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return {
       error: "Không có quyền truy cập.",
     };
@@ -27,7 +27,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   let shouldTriggerRealtime = false;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -41,7 +41,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         boardId,
         archivedAt: null,
         board: {
-          orgId,
+          userId,
         },
       },
     });
@@ -72,7 +72,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           archivedAt: null,
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
         data: {

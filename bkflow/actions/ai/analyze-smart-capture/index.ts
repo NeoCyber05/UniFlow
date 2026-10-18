@@ -1,14 +1,13 @@
+import { BoardMemberRole } from "@/types";
 "use server";
+import { auth } from "@/server/auth";
 
-import { auth } from "@/server/clerk";
-import { BoardMemberRole } from "@prisma/client";
 import { z } from "zod";
 
 import { generateAiText } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
 
@@ -1078,16 +1077,16 @@ const multiCardSystemPrompt = [
 ].join("\n");
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
   const { boardId, rawText, timezoneOffsetMinutes, nowIso, timezoneLabel, localNowIso } = data;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -1103,7 +1102,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           boardId,
           archivedAt: null,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1114,28 +1113,12 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           order: "asc",
         },
       }),
-      db.boardMember.findMany({
-        where: {
-          boardId,
-          board: {
-            orgId,
-          },
-        },
-        select: {
-          id: true,
-          userName: true,
-          userEmail: true,
-          role: true,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      }),
+      Promise.resolve([] as Array<{ id: string; userName: string; userEmail: string | null; role: BoardMemberRole }>),
       db.label.findMany({
         where: {
           boardId,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1151,7 +1134,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         where: {
           boardId,
           board: {
-            orgId,
+            userId,
           },
         },
         select: {
@@ -1167,7 +1150,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Bảng chưa có cột để tạo thẻ." };
     }
 
-    const assignableMembers = members.filter(isAssignableBoardMember);
+    const assignableMembers: Array<{ id: string; userName: string; userEmail: string | null; role: BoardMemberRole }> = [];
 
     const payload = {
       nowIso,
@@ -1201,7 +1184,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       logger.warn("[ANALYZE_SMART_CAPTURE_PARSE_FALLBACK]", {
         action: "analyze-smart-capture",
         aiFeature: "smart-capture",
-        orgId,
+        
         userId,
         boardId,
         rawLength: raw.length,
@@ -1349,7 +1332,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[ANALYZE_SMART_CAPTURE_ERROR]", error, {
       action: "analyze-smart-capture",
       aiFeature: "smart-capture",
-      orgId,
+      
       userId,
       boardId,
     });

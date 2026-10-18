@@ -7,7 +7,6 @@ import { BoardCoursesHydrator } from "@/components/courses/board-courses-hydrato
 import { CourseFilterBar } from "@/components/courses/course-filter-bar";
 import { CourseFilterFromUrl } from "@/components/courses/course-filter-from-url";
 import { ImportantFilterFromUrl } from "@/components/boards/important-filter-from-url";
-import { BoardOrgControl } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-org-control";
 import { BoardNavbar } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-navbar";
 import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-shell";
 
@@ -31,7 +30,6 @@ export default function BoardLayoutRoute() {
       className="relative h-screen flex flex-col overflow-hidden bg-no-repeat bg-cover bg-center"
       style={{ backgroundImage: `url(${data.board.imageFullUrl})` }}
     >
-      <BoardOrgControl orgId={data.boardOrgId} />
       <BoardCoursesHydrator
         boardId={boardId}
         initialData={{ boardType: data.board.boardType, courses: data.courses }}
@@ -50,9 +48,7 @@ export default function BoardLayoutRoute() {
         boardNavbar={
           <BoardNavbar
             data={data.board}
-            organizationMembers={data.effectiveOrgMembers}
             currentUserId={data.currentUserId}
-            currentMemberRole={data.currentMemberRole}
             semesters={data.semesters}
           />
         }

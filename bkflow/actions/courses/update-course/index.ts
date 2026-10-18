@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/create-audit-log";
@@ -17,16 +17,16 @@ import { UpdateCourse } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
   const { id, boardId, name, code, credits, color } = data;
 
   try {
-    const guard = await requireSemesterBoardEditor({ boardId, orgId, userId });
+    const guard = await requireSemesterBoardEditor({ boardId, userId });
 
     if (guard.error) {
       return { error: guard.error };

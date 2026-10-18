@@ -1,5 +1,5 @@
-import type { BoardMember, Checklist } from "@prisma/client";
-
+import { BoardMember } from "@/types";
+import type { Checklist } from "@prisma/client";
 import type {
   CardCommentWithReplies,
   CardWithList,

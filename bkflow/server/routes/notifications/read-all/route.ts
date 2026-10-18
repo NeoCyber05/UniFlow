@@ -1,42 +1,20 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
 export async function PATCH() {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const boardMemberships = await db.boardMember.findMany({
-      where: {
-        userId,
-        board: {
-          orgId,
-        },
-      },
-      select: {
-        boardId: true,
-      },
-    });
-    const boardIds = boardMemberships.map((membership) => membership.boardId);
-
     await db.notification.updateMany({
       where: {
-        orgId,
         recipientUserId: userId,
         readAt: null,
-        OR: [
-          { boardId: null },
-          {
-            boardId: {
-              in: boardIds,
-            },
-          },
-        ],
       },
       data: {
         readAt: new Date(),

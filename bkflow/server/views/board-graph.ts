@@ -1,5 +1,3 @@
-import { BoardMemberRole } from "@prisma/client";
-
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -10,208 +8,159 @@ import type {
 } from "@/types";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/graph/page.tsx.
-export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: string, orgId: string | null) => {
+export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: string) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
 
   if (currentMembership.error || !currentMembership.membership) {
     const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/organization/${orgId ?? ""}?error=${encodeURIComponent(errorMessage)}` } as const;
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
   }
 
-  const boardOrgId = currentMembership.membership.board.orgId;
+  const boardUserId = currentMembership.membership.board.userId;
 
-  const [listsData, boardMembersData] = await measureDev(`board:${boardId}:graph-data`, () =>
-    Promise.all([
-      db.list.findMany({
-        where: {
-          boardId,
-          archivedAt: null,
-          board: {
-            orgId: boardOrgId,
-          },
+  const listsData = await measureDev(`board:${boardId}:graph-data`, () =>
+    db.list.findMany({
+      where: {
+        boardId,
+        archivedAt: null,
+        board: {
+          userId: boardUserId,
         },
-        select: {
-          id: true,
-          title: true,
-          order: true,
-          createdAt: true,
-          updatedAt: true,
-          cards: {
-            where: {
-              archivedAt: null,
+      },
+      select: {
+        id: true,
+        title: true,
+        order: true,
+        createdAt: true,
+        updatedAt: true,
+        cards: {
+          where: {
+            archivedAt: null,
+          },
+          select: {
+            id: true,
+            title: true,
+            order: true,
+            listId: true,
+            courseId: true,
+            startDate: true,
+            dueDate: true,
+            isCompleted: true,
+            createdAt: true,
+            updatedAt: true,
+            labels: {
+              select: {
+                label: {
+                  select: {
+                    id: true,
+                    title: true,
+                    color: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
             },
-            select: {
-              id: true,
-              title: true,
-              order: true,
-              listId: true,
-              courseId: true,
-              startDate: true,
-              dueDate: true,
-              isCompleted: true,
-              createdAt: true,
-              updatedAt: true,
-              assignees: {
-                where: {
-                  boardMember: {
-                    role: {
-                      not: BoardMemberRole.VIEWER,
-                    },
-                  },
-                },
-                select: {
-                  id: true,
-                  boardMemberId: true,
-                  boardMember: {
-                    select: {
-                      userId: true,
-                      userName: true,
-                      userImage: true,
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
-                },
-              },
-              labels: {
-                select: {
-                  label: {
-                    select: {
-                      id: true,
-                      title: true,
-                      color: true,
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
-                },
-              },
-              checklists: {
-                select: {
-                  items: {
-                    select: {
-                      isCompleted: true,
-                    },
+            checklists: {
+              select: {
+                items: {
+                  select: {
+                    isCompleted: true,
                   },
                 },
               },
-              blockedByDependencies: {
-                where: {
-                  blockerCard: {
+            },
+            blockedByDependencies: {
+              where: {
+                blockerCard: {
+                  archivedAt: null,
+                  list: {
                     archivedAt: null,
-                    list: {
-                      archivedAt: null,
-                      board: {
-                        id: boardId,
-                        orgId: boardOrgId,
-                      },
+                    board: {
+                      id: boardId,
+                      userId: boardUserId,
                     },
                   },
-                },
-                select: {
-                  id: true,
-                  blockerCard: {
-                    select: {
-                      id: true,
-                      title: true,
-                      listId: true,
-                      isCompleted: true,
-                      startDate: true,
-                      dueDate: true,
-                      createdAt: true,
-                      updatedAt: true,
-                      list: {
-                        select: {
-                          title: true,
-                        },
-                      },
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
                 },
               },
-              blockingDependencies: {
-                where: {
-                  blockedCard: {
+              select: {
+                id: true,
+                blockerCard: {
+                  select: {
+                    id: true,
+                    title: true,
+                    listId: true,
+                    isCompleted: true,
+                    startDate: true,
+                    dueDate: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    list: {
+                      select: {
+                        title: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+            blockingDependencies: {
+              where: {
+                blockedCard: {
+                  archivedAt: null,
+                  list: {
                     archivedAt: null,
+                    board: {
+                      id: boardId,
+                      userId: boardUserId,
+                    },
+                  },
+                },
+              },
+              select: {
+                id: true,
+                blockedCard: {
+                  select: {
+                    id: true,
+                    title: true,
+                    listId: true,
+                    isCompleted: true,
+                    startDate: true,
+                    dueDate: true,
+                    createdAt: true,
+                    updatedAt: true,
                     list: {
-                      archivedAt: null,
-                      board: {
-                        id: boardId,
-                        orgId: boardOrgId,
+                      select: {
+                        title: true,
                       },
                     },
                   },
                 },
-                select: {
-                  id: true,
-                  blockedCard: {
-                    select: {
-                      id: true,
-                      title: true,
-                      listId: true,
-                      isCompleted: true,
-                      startDate: true,
-                      dueDate: true,
-                      createdAt: true,
-                      updatedAt: true,
-                      list: {
-                        select: {
-                          title: true,
-                        },
-                      },
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
-                },
               },
-              _count: {
-                select: {
-                  comments: true,
-                  attachments: true,
-                },
+              orderBy: {
+                createdAt: "asc",
               },
             },
-            orderBy: {
-              order: "asc",
-            },
-          },
-        },
-        orderBy: {
-          order: "asc",
-        },
-      }),
-      db.boardMember.findMany({
-        where: {
-          boardId,
-          board: {
-            orgId: boardOrgId,
-            members: {
-              some: {
-                userId,
+            _count: {
+              select: {
+                comments: true,
+                attachments: true,
               },
             },
           },
+          orderBy: {
+            order: "asc",
+          },
         },
-        select: {
-          id: true,
-          userId: true,
-          userName: true,
-          userImage: true,
-          userEmail: true,
-          role: true,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      }),
-    ]),
+      },
+      orderBy: {
+        order: "asc",
+      },
+    }),
   );
 
   const mapDependency = (
@@ -292,13 +241,7 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
           title: label.title,
           color: label.color,
         })),
-        assignees: card.assignees.map((assignee) => ({
-          id: assignee.id,
-          boardMemberId: assignee.boardMemberId,
-          userId: assignee.boardMember.userId,
-          userName: assignee.boardMember.userName,
-          userImage: assignee.boardMember.userImage,
-        })),
+        assignees: [],
         commentCount: card._count.comments,
         attachmentCount: card._count.attachments,
         checklistProgress,
@@ -309,7 +252,7 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
     }),
   }));
 
-  const boardMembers: BoardTimelineBoardMember[] = boardMembersData;
+  const boardMembers: BoardTimelineBoardMember[] = [];
 
   return {
     boardId,
@@ -318,6 +261,6 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
     boardMembers,
     currentUserId: userId,
     currentBoardMemberId: currentMembership.membership.id,
-    currentMemberRole: currentMembership.membership.role,
+    currentMemberRole: "ADMIN" as const,
   } as const;
 };

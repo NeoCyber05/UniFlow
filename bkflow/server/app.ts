@@ -4,11 +4,10 @@ import { logger as honoLogger } from "hono/logger";
 
 import { createActionsRoute } from "./actions";
 import { actionRegistry } from "./actions-registry.gen";
-import { authenticate, runWithAuth } from "./clerk";
+import { authenticate, runWithAuth } from "./auth";
 import { mountRoutes } from "./mount-routes";
 import { viewsRoute } from "./views";
 
-// Copied from proxy.ts
 const PUBLIC_API = [/^\/api\/health$/, /^\/api\/webhook$/, /^\/api\/uploadthing(\/.*)?$/];
 
 export const createApp = async () => {
@@ -22,7 +21,7 @@ export const createApp = async () => {
 
   app.use("/api/*", async (c, next) => {
     // A malformed token must not 500 public routes such as /api/health.
-    const requestAuth = await authenticate(c.req.raw).catch(() => ({ userId: null, orgId: null, sessionClaims: null }));
+    const requestAuth = await authenticate(c.req.raw).catch(() => ({ userId: null, user: null }));
     const isPublic = PUBLIC_API.some((re) => re.test(c.req.path));
     if (!requestAuth.userId && !isPublic) return c.text("Unauthorized", 401);
     return runWithAuth(requestAuth, next);

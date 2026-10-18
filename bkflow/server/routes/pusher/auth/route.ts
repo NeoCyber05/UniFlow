@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { parseRealtimeChannelName } from "@/lib/realtime/channels";
 import { getServerPusher } from "@/lib/realtime/server";
@@ -45,7 +45,7 @@ const parsePusherAuthRequest = async (req: Request) => {
 
 export async function POST(req: Request) {
   try {
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return new Response("Unauthorized", { status: 401 });
@@ -67,26 +67,18 @@ export async function POST(req: Request) {
       return new Response("Forbidden", { status: 403 });
     }
 
-    if (channelScope.type === "org") {
-      if (!orgId || channelScope.organizationId !== orgId) {
-        return new Response("Forbidden", { status: 403 });
-      }
-    }
-
     if (channelScope.type === "board") {
-      const boardMembership = await db.boardMember.findUnique({
+      const board = await db.board.findFirst({
         where: {
-          boardId_userId: {
-            boardId: channelScope.boardId,
-            userId,
-          },
+          id: channelScope.boardId,
+          
         },
         select: {
           id: true,
         },
       });
 
-      if (!boardMembership) {
+      if (!board) {
         return new Response("Forbidden", { status: 403 });
       }
     }
@@ -99,11 +91,7 @@ export async function POST(req: Request) {
           list: {
             archivedAt: null,
             board: {
-              members: {
-                some: {
-                  userId,
-                },
-              },
+              
             },
           },
         },

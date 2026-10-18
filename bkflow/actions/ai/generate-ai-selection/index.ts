@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { z } from "zod";
 import { generateAiText } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
@@ -14,17 +14,17 @@ type Input = z.infer<typeof GenerateAiSelection>;
 const Response = z.object({ text: z.string().trim().min(1).max(12000) });
 
 export const generateAiSelection = createSafeAction(GenerateAiSelection, async (input: Input): Promise<ActionState<Input, { text: string }>> => {
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) return { error: "Không có quyền truy cập." };
+  const { userId } = await auth();
+  if (!userId) return { error: "Không có quyền truy cập." };
   try {
     if ("pageId" in input) {
-      const page = await db.notePage.findFirst({ where: { id: input.pageId, userId, orgId }, select: { id: true } });
+      const page = await db.notePage.findFirst({ where: { id: input.pageId, userId }, select: { id: true } });
       if (!page) return { error: "Không tìm thấy trang ghi chú." };
     } else {
-      const permission = await requireBoardEditor({ boardId: input.boardId, orgId, userId });
+      const permission = await requireBoardEditor({ boardId: input.boardId, userId });
       if (permission.error) return { error: permission.error };
       const card = await db.card.findFirst({
-        where: { id: input.cardId, archivedAt: null, list: { archivedAt: null, board: { id: input.boardId, orgId } } },
+        where: { id: input.cardId, archivedAt: null, list: { archivedAt: null, board: { id: input.boardId, userId } } },
         select: { id: true },
       });
       if (!card) return { error: "Không tìm thấy thẻ hợp lệ để AI hỗ trợ." };

@@ -1,6 +1,5 @@
+import { BoardMemberRole } from "@/types";
 import "server-only";
-
-import { BoardMemberRole } from "@prisma/client";
 
 import { db } from "@/lib/db";
 
@@ -13,12 +12,10 @@ import { formatZonedDateTime } from "./time";
 export type AssistantSession = {
   /** Định danh duy nhất (UUID) của bảng làm việc hiện tại */
   boardId: string;
-  /** Định danh tổ chức (Clerk Organization ID) sở hữu bảng */
-  orgId: string;
-  /** Định danh người dùng (Clerk User ID) gửi yêu cầu chat */
+  /** Định danh người dùng gửi yêu cầu chat */
   userId: string;
-  /** Định danh thành viên bảng (BoardMember ID) trong cơ sở dữ liệu */
-  boardMemberId: string;
+  /** Định danh thành viên bảng (tùy chọn / legacy) */
+  boardMemberId?: string;
   /** Vai trò quyền hạn của người dùng trên bảng (ADMIN, MEMBER, hoặc VIEWER) */
   role: BoardMemberRole;
   /** Chuỗi định danh múi giờ IANA của client (ví dụ: "Asia/Ho_Chi_Minh") */
@@ -81,10 +78,6 @@ export const loadBoardSnapshot = async (boardId: string) => {
         orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       },
       semester: { select: { title: true, startDate: true, endDate: true } },
-      members: {
-        select: { id: true, userId: true, userName: true, role: true },
-        orderBy: { createdAt: "asc" },
-      },
       lists: {
         where: { archivedAt: null },
         orderBy: { order: "asc" },
@@ -101,11 +94,6 @@ export const loadBoardSnapshot = async (boardId: string) => {
               dueDate: true,
               isCompleted: true,
               course: { select: { name: true, code: true } },
-              assignees: {
-                select: {
-                  boardMember: { select: { id: true, userId: true, userName: true } },
-                },
-              },
               labels: { select: { label: { select: { title: true } } } },
               checklists: {
                 select: { items: { select: { isCompleted: true } } },
@@ -137,11 +125,7 @@ export const loadBoardSnapshot = async (boardId: string) => {
         startDate: card.startDate,
         dueDate: card.dueDate,
         isCompleted: card.isCompleted,
-        assignees: card.assignees.map(({ boardMember }) => ({
-          boardMemberId: boardMember.id,
-          userId: boardMember.userId,
-          name: boardMember.userName,
-        })),
+        assignees: [],
         labels: card.labels.map(({ label }) => label.title).filter(Boolean),
         checklist: {
           done: items.filter((item) => item.isCompleted).length,
@@ -154,7 +138,7 @@ export const loadBoardSnapshot = async (boardId: string) => {
   return {
     board,
     lists: board.lists.map((list) => ({ id: list.id, title: list.title, cardCount: list.cards.length })),
-    members: board.members,
+    members: [] as { id: string; userId: string; userName: string; role: BoardMemberRole }[],
     cards,
   };
 };
@@ -244,8 +228,7 @@ export const buildBoardContext = (
           )
           .join("; ")}`
       : null,
-    `Người đang chat: ${me?.userName ?? "không rõ"} (vai trò ${session.role}${session.role === BoardMemberRole.VIEWER ? " — CHỈ ĐƯỢC XEM, không được tạo/sửa thẻ" : ""})`,
-    `Thành viên: ${members.map((member) => member.userName).join(", ")}`,
+    `Người đang chat: ${me?.userName ?? "Người dùng"}`,
     `Các cột (theo thứ tự): ${lists.map((list) => `"${list.title}" [${list.id}]`).join(", ") || "chưa có cột nào"}`,
     "",
     `Thẻ (${cards.length} thẻ, sắp xếp theo hạn chót):`,

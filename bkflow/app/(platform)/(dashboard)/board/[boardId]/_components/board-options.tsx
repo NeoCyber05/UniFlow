@@ -3,14 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
-import { Activity, Archive, Download, LogOut, MoreHorizontal, Sparkles, Trash2, X } from "lucide-react";
-import { BoardMemberRole, type BoardMember, type Label, type List } from "@prisma/client";
+import { Activity, Archive, Download, MoreHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import type { Label, List } from "@prisma/client";
 
 import { deleteBoard } from "@/actions/boards/delete-board";
-import { leaveBoard } from "@/actions/boards/leave-board";
 import { useAction } from "@/hooks/use-action";
 import { Button } from "@/components/ui/button";
-import { Hint } from "@/components/hint";
 import {
   Popover,
   PopoverClose,
@@ -27,26 +25,25 @@ import { SmartCaptureDialog } from "./smart-capture-dialog";
 interface BoardOptionsProps {
   id: string;
   title: string;
-  orgId: string;
+  orgId?: string;
   currentUserId: string;
-  currentMemberRole: BoardMemberRole;
+  currentMemberRole?: string;
   canDelete?: boolean;
   canEdit?: boolean;
   lists: Pick<List, "id" | "title">[];
-  members: Pick<BoardMember, "id" | "userId" | "userName" | "userEmail" | "role">[];
+  members?: any[];
   labels: Pick<Label, "id" | "title" | "color">[];
-};
+}
 
 export const BoardOptions = ({
   id,
   title,
-  orgId,
-  currentUserId,
-  currentMemberRole,
+  orgId: _orgId,
+  currentUserId: _currentUserId,
   canDelete = false,
   canEdit = false,
   lists,
-  members,
+  members = [],
   labels,
 }: BoardOptionsProps) => {
   const router = useRouter();
@@ -55,25 +52,10 @@ export const BoardOptions = ({
   const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isSmartCaptureOpen, setIsSmartCaptureOpen] = useState(false);
-  const currentBoardMember = members.find((member) => member.userId === currentUserId);
-  const adminCount = members.filter((member) => member.role === BoardMemberRole.ADMIN).length;
-  const isLastAdmin =
-    (currentBoardMember?.role ?? currentMemberRole) === BoardMemberRole.ADMIN && adminCount <= 1;
 
   const { execute: executeDeleteBoard, isLoading: isDeleting } = useAction(deleteBoard, {
     onSuccess: () => {
-      router.push(`/organization/${orgId}`);
-    },
-    onError: (error) => {
-      toast.error(error);
-    },
-  });
-
-  const { execute: executeLeaveBoard, isLoading: isLeaving } = useAction(leaveBoard, {
-    onSuccess: () => {
-      toast.success("Đã rời khỏi bảng này.");
-      router.push(`/organization/${orgId}`);
-      router.refresh();
+      router.push("/my/today");
     },
     onError: (error) => {
       toast.error(error);
@@ -82,10 +64,6 @@ export const BoardOptions = ({
 
   const onDelete = () => {
     executeDeleteBoard({ id });
-  };
-
-  const onLeave = () => {
-    executeLeaveBoard({ boardId: id });
   };
 
   const onPopoverOpenChange = (open: boolean) => {
@@ -130,82 +108,53 @@ export const BoardOptions = ({
               </div>
               <PopoverClose asChild>
                 <Button
-                  className="h-7 w-7 p-0 absolute top-2 right-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-md"
+                  className="h-auto w-auto p-2 absolute top-2 right-2 text-neutral-600 rounded-lg"
                   variant="ghost"
+                  aria-label="Đóng"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </Button>
               </PopoverClose>
               <Button
-                id="board-activity-trigger"
                 variant="ghost"
                 onClick={() => setView("activity")}
-                className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 gap-x-2 rounded-none"
+                className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-700 hover:bg-neutral-100 gap-x-2 rounded-none cursor-pointer"
               >
-                <Activity className="h-4 w-4 text-neutral-400" />
-                Hoạt động
+                <Activity className="h-4 w-4 text-neutral-500" />
+                Nhật ký hoạt động
               </Button>
-              <PopoverClose asChild>
-                <Button
-                  id="board-export-trigger"
-                  variant="ghost"
-                  onClick={() => setIsExportDialogOpen(true)}
-                  className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 gap-x-2 rounded-none"
-                >
-                  <Download className="h-4 w-4 text-neutral-400" />
-                  Xuất dữ liệu
-                </Button>
-              </PopoverClose>
               {canEdit && (
                 <PopoverClose asChild>
                   <Button
-                    id="smart-capture-trigger"
                     variant="ghost"
                     onClick={() => setIsSmartCaptureOpen(true)}
-                    className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 gap-x-2 rounded-none"
+                    className="w-full h-9 px-4 justify-start font-normal text-sm text-violet-700 hover:bg-violet-50 hover:text-violet-800 gap-x-2 rounded-none cursor-pointer"
                   >
-                    <Sparkles className="h-4 w-4 text-violet-500" />
-                    Tạo nhanh thông minh
+                    <Sparkles className="h-4 w-4 text-violet-600" />
+                    Thêm việc bằng ảnh AI
                   </Button>
                 </PopoverClose>
               )}
               <PopoverClose asChild>
                 <Button
-                  id="archived-items-trigger"
+                  variant="ghost"
+                  onClick={() => setIsExportDialogOpen(true)}
+                  className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-700 hover:bg-neutral-100 gap-x-2 rounded-none cursor-pointer"
+                >
+                  <Download className="h-4 w-4 text-neutral-500" />
+                  Xuất dữ liệu bảng
+                </Button>
+              </PopoverClose>
+              <PopoverClose asChild>
+                <Button
                   variant="ghost"
                   onClick={() => setIsArchivedModalOpen(true)}
-                  className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 gap-x-2 rounded-none"
+                  className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-700 hover:bg-neutral-100 gap-x-2 rounded-none cursor-pointer"
                 >
-                  <Archive className="h-4 w-4 text-neutral-400" />
+                  <Archive className="h-4 w-4 text-neutral-500" />
                   Mục đã lưu trữ
                 </Button>
               </PopoverClose>
-              <Hint
-                description={
-                  isLastAdmin
-                    ? "Bảng phải có ít nhất một quản trị viên. Vui lòng chuyển quyền quản trị cho người khác trước khi rời bảng."
-                    : "Rời khỏi bảng này"
-                }
-                side="right"
-              >
-                <span className="block">
-                  <ConfirmModal
-                    onConfirm={onLeave}
-                    title="Rời khỏi bảng này?"
-                    description="Bạn sẽ bị gỡ khỏi bảng này. Các phân công thẻ và checklist liên quan sẽ không còn hiển thị bạn là người phụ trách."
-                    disabled={isLeaving || isLastAdmin}
-                  >
-                    <Button
-                      variant="ghost"
-                      disabled={isLeaving || isLastAdmin}
-                      className="w-full h-9 px-4 justify-start font-normal text-sm text-amber-600 hover:bg-amber-50 hover:text-amber-700 gap-x-2 rounded-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      {isLeaving ? "Đang rời..." : "Rời khỏi bảng"}
-                    </Button>
-                  </ConfirmModal>
-                </span>
-              </Hint>
               {canDelete && (
                 <ConfirmModal
                   onConfirm={onDelete}

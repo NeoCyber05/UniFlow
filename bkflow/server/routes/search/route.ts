@@ -1,16 +1,14 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { db } from "@/lib/db";
-import { resolvePersonalOrgId } from "@/lib/workspace";
 import { getNavigationItems, parseRecentItems, workspaceBoardScope, type WorkspaceSearchItem, type SearchReference } from "@/lib/search/workspace-search";
 
 export async function GET(request: Request) {
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) return new Response("Unauthorized", { status: 401 });
-  const personalOrgId = await resolvePersonalOrgId(userId);
+  const { userId } = await auth();
+  if (!userId) return new Response("Unauthorized", { status: 401 });
   const query = (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 100);
   const recent = parseRecentItems(new URL(request.url).searchParams.get("recent"));
   const ids = (type: SearchReference["type"]) => recent.filter(item => item.type === type).map(item => item.id);
-  const boardScope = workspaceBoardScope(userId, orgId);
+  const boardScope = workspaceBoardScope(userId);
   const match = { contains: query, mode: "insensitive" as const };
   try {
     const [cards, courses, boards, notes] = await Promise.all([
@@ -28,8 +26,8 @@ export async function GET(request: Request) {
         where: { ...boardScope, ...(query ? { title: match } : { id: { in: ids("board") } }) },
         select: { id: true, title: true }, orderBy: { updatedAt: "desc" }, take: 6,
       }) : [],
-      personalOrgId && (query || ids("note").length) ? db.notePage.findMany({
-        where: { userId, orgId: personalOrgId, ...(query ? { OR: [{ title: match }, { content: match }] } : { id: { in: ids("note") } }) },
+      query || ids("note").length ? db.notePage.findMany({
+        where: { userId, ...(query ? { OR: [{ title: match }, { content: match }] } : { id: { in: ids("note") } }) },
         select: { id: true, title: true }, orderBy: { updatedAt: "desc" }, take: 8,
       }) : [],
     ]);

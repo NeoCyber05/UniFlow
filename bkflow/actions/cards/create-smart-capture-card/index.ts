@@ -1,19 +1,19 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
 import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
 
 import { CreateSmartCaptureCards } from "./schema";
 import { InputType, ReturnType } from "./types";
+import type { CardWithAssignees } from "@/types";
 
 type DraftInput = InputType["drafts"][number];
 
@@ -47,16 +47,16 @@ const normalizeChecklistItems = (items: string[]) => {
 };
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
   const { boardId, drafts } = data;
 
   try {
-    const permission = await requireBoardEditor({ boardId, orgId, userId });
+    const permission = await requireBoardEditor({ boardId, userId });
 
     if (permission.error) {
       return { error: permission.error };
@@ -85,7 +85,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           archivedAt: null,
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
         select: {
@@ -93,23 +93,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           title: true,
         },
       }),
-      requestedAssigneeIds.length > 0
-        ? db.boardMember.findMany({
-            where: {
-              id: {
-                in: requestedAssigneeIds,
-              },
-              boardId,
-              board: {
-                orgId,
-              },
-            },
-            select: {
-              id: true,
-              role: true,
-            },
-          })
-        : [],
+      Promise.resolve([] as Array<{ id: string; role: any }>),
       requestedLabelIds.length > 0
         ? db.label.findMany({
             where: {
@@ -118,7 +102,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
               },
               boardId,
               board: {
-                orgId,
+                userId,
               },
             },
             select: {
@@ -134,7 +118,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
               },
               boardId,
               board: {
-                orgId,
+                userId,
               },
             },
             select: {
@@ -150,11 +134,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Không tìm thấy một hoặc nhiều danh sách." };
     }
 
-    const validAssigneeIds = new Set(
-      assignees
-        .filter(isAssignableBoardMember)
-        .map((assignee) => assignee.id),
-    );
+    const validAssigneeIds = new Set<string>();
     const validLabelIds = new Set(labels.map((label) => label.id));
     const validCourseIds = new Set(courses.map((course) => course.id));
     const normalizedDrafts = drafts.map((draft) => ({
@@ -171,7 +151,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     const cards = await db.$transaction(async (tx) => {
       const orderCursorByListId = new Map<string, number>();
-      const createdCards = [];
+      const createdCards: CardWithAssignees[] = [];
 
       for (const listId of requestedListIds) {
         const lastCard = await tx.card.findFirst({
@@ -209,15 +189,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           },
         });
 
-        if (draft.assigneeBoardMemberIds.length > 0) {
-          await tx.cardAssignee.createMany({
-            data: draft.assigneeBoardMemberIds.map((boardMemberId) => ({
-              cardId: createdCard.id,
-              boardMemberId,
-            })),
-            skipDuplicates: true,
-          });
-        }
 
         if (draft.labelIds.length > 0) {
           await tx.cardLabel.createMany({
@@ -253,14 +224,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             id: createdCard.id,
           },
           include: {
-            assignees: {
-              include: {
-                boardMember: true,
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
             labels: {
               include: {
                 label: true,
@@ -289,6 +252,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
         createdCards.push({
           ...card,
+          assignees: [],
           checklistProgress: {
             total: draft.checklistItems.length,
             completed: 0,
@@ -331,7 +295,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[CREATE_SMART_CAPTURE_CARDS_ERROR]", error, {
       action: "create-smart-capture-cards",
       aiFeature: "smart-capture",
-      orgId,
+      
       userId,
       boardId,
       draftCount: drafts.length,

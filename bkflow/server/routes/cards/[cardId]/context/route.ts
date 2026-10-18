@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -21,7 +21,7 @@ export async function GET(
       select: {
         id: true,
         title: true,
-        list: { select: { board: { select: { id: true, title: true, orgId: true } } } },
+        list: { select: { board: { select: { id: true, title: true, userId: true } } } },
         userStates: { where: { userId }, select: { isImportant: true, myDayAt: true } },
       },
     });
@@ -42,7 +42,7 @@ export async function GET(
       title: card.title,
       boardId: card.list.board.id,
       boardTitle: card.list.board.title,
-      orgId: card.list.board.orgId,
+      userId: card.list.board.userId,
       isImportant: state?.isImportant ?? false,
       myDayAt: state?.myDayAt?.toISOString() ?? null,
     };

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 import { revalidatePath } from "@/server/cache";
 
@@ -19,9 +19,9 @@ import { MoveChecklistItem } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-  const { userId, orgId } = await auth();
+  const { userId } = await auth();
 
-  if (!userId || !orgId) {
+  if (!userId) {
     return { error: "Không có quyền truy cập." };
   }
 
@@ -49,7 +49,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       sourceChecklistId,
       destinationChecklistId,
       itemId,
-      orgId,
+      
       userId,
       sourceItems,
       destinationItems,

@@ -1,4 +1,4 @@
-import type { BoardMember, BoardMemberRole } from "@prisma/client";
+import { BoardMember, BoardMemberRole } from "@/types";
 
 import type { CardWithAssignees, ListWithCards } from "@/types";
 

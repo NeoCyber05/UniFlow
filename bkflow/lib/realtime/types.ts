@@ -1,4 +1,5 @@
-import type { AttachmentType, BoardMemberRole, NOTIFICATION_TYPE } from "@prisma/client";
+import { BoardMemberRole } from "@/types";
+import type { AttachmentType, NOTIFICATION_TYPE } from "@prisma/client";
 
 export type RealtimeActor = {
   userId: string;

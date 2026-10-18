@@ -42,7 +42,8 @@ export type MyTaskCounts = {
 
 export type SerializedSemester = {
   id: string;
-  orgId: string;
+  userId: string;
+  orgId?: string;
   title: string;
   startDate: string;
   endDate: string;
@@ -70,7 +71,8 @@ export type CardContext = {
   title: string;
   boardId: string;
   boardTitle: string;
-  orgId: string;
+  userId: string;
+  orgId?: string;
   isImportant: boolean;
   myDayAt: string | null;
 };

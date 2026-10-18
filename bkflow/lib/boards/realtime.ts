@@ -1,7 +1,7 @@
+import { BoardMemberRole } from "@/types";
 import "server-only";
-
 import { randomUUID } from "crypto";
-import type { BoardMemberRole } from "@prisma/client";
+
 
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { REALTIME_EVENTS } from "@/lib/realtime/events";
@@ -32,7 +32,7 @@ export const triggerBoardUpdated = async ({
   title,
   changedFields,
 }: BoardRealtimeInput & {
-  orgId: string;
+  orgId?: string;
   title?: string;
   changedFields: BoardUpdatedField[];
 }) => {
@@ -42,7 +42,7 @@ export const triggerBoardUpdated = async ({
     await triggerBoardEvent(REALTIME_EVENTS.BOARD_UPDATED, boardId, {
       eventId: randomUUID(),
       boardId,
-      orgId,
+      orgId: orgId ?? actorUserId,
       actorUserId,
       title,
       changedFields,
@@ -58,13 +58,13 @@ export const triggerBoardDeleted = async ({
   orgId,
   actorUserId,
 }: BoardRealtimeInput & {
-  orgId: string;
+  orgId?: string;
 }) => {
   try {
     await triggerBoardEvent(REALTIME_EVENTS.BOARD_DELETED, boardId, {
       eventId: randomUUID(),
       boardId,
-      orgId,
+      orgId: orgId ?? actorUserId,
       actorUserId,
       deletedAt: new Date().toISOString(),
     });

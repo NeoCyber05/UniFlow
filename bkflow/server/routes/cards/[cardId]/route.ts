@@ -1,5 +1,4 @@
-import { auth } from "@/server/clerk"; 
-import { BoardMemberRole } from "@prisma/client";
+import { auth } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
@@ -11,9 +10,9 @@ export async function GET(
 ) {
   try {
     const { cardId } = await params;
-    const { userId, orgId } = await auth();
+    const { userId } = await auth();
 
-    if (!userId || !orgId) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -22,7 +21,7 @@ export async function GET(
         id: cardId,
         list: {
           board: {
-            orgId,
+            userId,
           },
         },
       },
@@ -31,18 +30,6 @@ export async function GET(
           select: {
             title: true,
             boardId: true,
-          },
-        },
-        assignees: {
-          where: {
-            boardMember: {
-              role: {
-                not: BoardMemberRole.VIEWER,
-              },
-            },
-          },
-          include: {
-            boardMember: true,
           },
         },
         labels: {
@@ -105,9 +92,6 @@ export async function GET(
         checklists: {
           include: {
             items: {
-              include: {
-                assignee: true,
-              },
               orderBy: {
                 order: "asc",
               },
@@ -126,7 +110,6 @@ export async function GET(
 
     const permission = await requireBoardMember({
       boardId: card.list.boardId,
-      orgId,
       userId,
     });
 
@@ -134,14 +117,9 @@ export async function GET(
       return new Response(permission.error, { status: 403 });
     }
 
-    const [boardMembers, boardLabels, boardChecklists] = await measureDev(
+    const [boardLabels, boardChecklists] = await measureDev(
       `api:card:${cardId}:board-related`,
       () => Promise.all([
-        db.boardMember.findMany({
-          where: {
-            boardId: card.list.boardId,
-          },
-        }),
         db.label.findMany({
           where: {
             boardId: card.list.boardId,
@@ -162,9 +140,6 @@ export async function GET(
           },
           include: {
             items: {
-              include: {
-                assignee: true,
-              },
               orderBy: {
                 order: "asc",
               },
@@ -184,10 +159,11 @@ export async function GET(
 
     return Response.json({
       ...card,
-      boardMembers,
+      assignees: [],
+      boardMembers: [],
       boardLabels,
       boardChecklists,
-      currentMemberRole: permission.membership?.role,
+      currentMemberRole: "ADMIN",
     });
   } catch (error) {
     console.error("[CARD_GET_ERROR]", error);

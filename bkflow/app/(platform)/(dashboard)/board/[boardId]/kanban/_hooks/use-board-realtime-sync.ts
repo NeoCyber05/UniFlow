@@ -714,7 +714,7 @@ export const useBoardRealtimeSync = ({
 
     toast.error("Bảng này đã bị xóa.");
     cardModal.onClose();
-    router.push(`/organization/${payload.orgId}`);
+    router.push("/my/today");
   }, [boardId, cardModal, processBoardEvent, router]);
 
   const handleAccessRevoked = useCallback((payload: BoardAccessRevokedPayload) => {
@@ -742,7 +742,7 @@ export const useBoardRealtimeSync = ({
     }
 
     cardModal.onClose();
-    router.push(`/organization/${payload.orgId}`);
+    router.push("/my/today");
   }, [boardId, cardModal, currentUserId, processBoardEvent, router]);
 
   const handleBoardMemberRemoved = useCallback((payload: BoardMemberRemovedPayload) => {
@@ -762,7 +762,7 @@ export const useBoardRealtimeSync = ({
       }
 
       cardModal.onClose();
-      router.push(`/organization/${payload.orgId}`);
+      router.push("/my/today");
       return;
     }
 

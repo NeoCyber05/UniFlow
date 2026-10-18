@@ -1,24 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CardWithList } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDueDateStatus } from "@/components/due-date-badge";
 import { formatDateTimeLocalInput } from "@/lib/date-utils";
-import { isAssignableBoardMember } from "@/lib/boards/board-member-role";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 
-import { CardAssigneeSummary } from "./card-assignee-summary";
 import { CardCourseSelect } from "./card-course-select";
 import { CardDateStatusColumn } from "./card-date-status-column";
 import { CardLabelSummary } from "./card-label-summary";
 import { MetadataActionRow } from "./metadata-action-row";
-import {
-  getDateSummary,
-  getFilteredBoardMembers,
-} from "./metadata-utils";
+import { getDateSummary } from "./metadata-utils";
 import { useCardMetadataActions } from "./use-card-metadata-actions";
 
 interface MetadataProps {
@@ -34,13 +29,11 @@ export const MetadataSection = ({
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [startDateValue, setStartDateValue] = useState(formatDateTimeLocalInput(data.startDate));
   const [dueDateValue, setDueDateValue] = useState(formatDateTimeLocalInput(data.dueDate));
   const [reminderValue, setReminderValue] = useState(data.reminder || "none");
 
   const [isDateOpen, setIsDateOpen] = useState(false);
-  const [isMemberOpen, setIsMemberOpen] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -51,12 +44,9 @@ export const MetadataSection = ({
 
   const {
     isLoadingUpdate,
-    isLoadingAssign,
-    isLoadingUnassign,
     updateDueDate,
     updateStartDate,
     onDateSubmit,
-    handleMemberToggle,
   } = useCardMetadataActions({
     data,
     boardId,
@@ -66,19 +56,6 @@ export const MetadataSection = ({
     setIsDateOpen,
   });
 
-  const filteredBoardMembers = getFilteredBoardMembers(data.boardMembers, searchQuery);
-  const unresolvedBlockers = useMemo(
-    () => data.blockedByDependencies.filter(
-      (dependency) => !dependency.blockerCard.isCompleted,
-    ),
-    [data.blockedByDependencies],
-  );
-
-  const visibleAssignees = useMemo(
-    () => data.assignees.filter((assignee) => isAssignableBoardMember(assignee.boardMember)),
-    [data.assignees],
-  );
-  const hasAssignees = visibleAssignees.length > 0;
   const hasStartDate = !!data.startDate;
   const hasDueDate = !!data.dueDate;
   const hasDateRange = hasStartDate || hasDueDate;
@@ -97,14 +74,12 @@ export const MetadataSection = ({
 
   return (
     <div className="space-y-5">
-
       {/* 1. Action Button Row */}
       {showActionButtonRow && (
         <MetadataActionRow
           data={data}
           boardId={boardId}
           hasDateRange={hasDateRange}
-          hasAssignees={hasAssignees}
           hasLabels={hasLabels}
           isDateOpen={isDateOpen}
           onDateOpenChange={setIsDateOpen}
@@ -121,14 +96,6 @@ export const MetadataSection = ({
           onDateSubmit={onDateSubmit}
           onClearStartDate={() => updateStartDate(null)}
           onClearDueDate={() => updateDueDate(null)}
-          isMemberOpen={isMemberOpen}
-          onMemberOpenChange={setIsMemberOpen}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          boardMembers={filteredBoardMembers}
-          isLoadingAssign={isLoadingAssign}
-          isLoadingUnassign={isLoadingUnassign}
-          onToggleMember={handleMemberToggle}
         />
       )}
 
@@ -141,22 +108,7 @@ export const MetadataSection = ({
           canEdit={canEdit}
         />
 
-        {/* Column A: Thành viên (Active State) */}
-        {hasAssignees && (
-          <CardAssigneeSummary
-            assignees={visibleAssignees}
-            isMemberOpen={isMemberOpen}
-            onMemberOpenChange={setIsMemberOpen}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            boardMembers={filteredBoardMembers}
-            isLoadingAssign={isLoadingAssign}
-            isLoadingUnassign={isLoadingUnassign}
-            onToggleMember={handleMemberToggle}
-          />
-        )}
-
-        {/* Column B: Nhãn (Active State) */}
+        {/* Nhãn (Active State) */}
         {hasLabels && (
           <CardLabelSummary
             cardId={data.id}
@@ -167,7 +119,7 @@ export const MetadataSection = ({
           />
         )}
 
-        {/* Column C: Ngày / Trạng thái */}
+        {/* Ngày / Trạng thái */}
         <CardDateStatusColumn
           data={data}
           hasDateRange={hasDateRange}
@@ -204,13 +156,6 @@ MetadataSection.Skeleton = function MetadataSkeleton() {
         <Skeleton className="w-16 h-8 rounded-lg bg-neutral-100" />
       </div>
       <div className="flex flex-wrap gap-x-8 gap-y-4">
-        <div className="space-y-2">
-          <Skeleton className="w-16 h-3 rounded bg-neutral-100" />
-          <div className="flex items-center gap-x-1.5">
-            <Skeleton className="w-7 h-7 rounded-full bg-neutral-100" />
-            <Skeleton className="w-7 h-7 rounded-full bg-neutral-100" />
-          </div>
-        </div>
         <div className="space-y-2">
           <Skeleton className="w-20 h-3 rounded bg-neutral-100" />
           <div className="flex items-center gap-x-2">

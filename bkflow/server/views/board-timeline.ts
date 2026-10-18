@@ -1,5 +1,3 @@
-import { BoardMemberRole } from "@prisma/client";
-
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -10,23 +8,23 @@ import type {
 } from "@/types";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/timeline/page.tsx.
-export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId: string, orgId: string | null) => {
+export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId: string) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
 
   if (currentMembership.error || !currentMembership.membership) {
     const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/organization/${orgId ?? ""}?error=${encodeURIComponent(errorMessage)}` } as const;
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
   }
 
-  const boardOrgId = currentMembership.membership.board.orgId;
+  const boardUserId = currentMembership.membership.board.userId;
 
-  const [listsData, boardMembersData] = await measureDev(`board:${boardId}:timeline-data`, () => Promise.all([
+  const listsData = await measureDev(`board:${boardId}:timeline-data`, () =>
     db.list.findMany({
       where: {
         boardId,
         archivedAt: null,
         board: {
-          orgId: boardOrgId,
+          userId: boardUserId,
         },
       },
       select: {
@@ -58,29 +56,6 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
             isCompleted: true,
             createdAt: true,
             updatedAt: true,
-            assignees: {
-              where: {
-                boardMember: {
-                  role: {
-                    not: BoardMemberRole.VIEWER,
-                  },
-                },
-              },
-              select: {
-                id: true,
-                boardMemberId: true,
-                boardMember: {
-                  select: {
-                    userId: true,
-                    userName: true,
-                    userImage: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: "asc",
-              },
-            },
             labels: {
               select: {
                 label: {
@@ -112,7 +87,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      orgId: boardOrgId,
+                      userId: boardUserId,
                     },
                   },
                 },
@@ -149,7 +124,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      orgId: boardOrgId,
+                      userId: boardUserId,
                     },
                   },
                 },
@@ -194,31 +169,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
         order: "asc",
       },
     }),
-    db.boardMember.findMany({
-      where: {
-        boardId,
-        board: {
-          orgId: boardOrgId,
-          members: {
-            some: {
-              userId,
-            },
-          },
-        },
-      },
-      select: {
-        id: true,
-        userId: true,
-        userName: true,
-        userImage: true,
-        userEmail: true,
-        role: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    }),
-  ]));
+  );
 
   const mapDependency = (
     dependency: {
@@ -295,13 +246,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
           title: label.title,
           color: label.color,
         })),
-        assignees: card.assignees.map((assignee) => ({
-          id: assignee.id,
-          boardMemberId: assignee.boardMemberId,
-          userId: assignee.boardMember.userId,
-          userName: assignee.boardMember.userName,
-          userImage: assignee.boardMember.userImage,
-        })),
+        assignees: [],
         commentCount: card._count.comments,
         attachmentCount: card._count.attachments,
         checklistProgress,
@@ -311,7 +256,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
       };
     }),
   }));
-  const boardMembers: BoardTimelineBoardMember[] = boardMembersData;
+  const boardMembers: BoardTimelineBoardMember[] = [];
 
   return {
     boardId,
@@ -320,6 +265,6 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
     boardMembers,
     currentUserId: userId,
     currentBoardMemberId: currentMembership.membership.id,
-    currentMemberRole: currentMembership.membership.role,
+    currentMemberRole: "ADMIN" as const,
   } as const;
 };

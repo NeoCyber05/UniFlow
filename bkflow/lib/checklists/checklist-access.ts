@@ -7,16 +7,16 @@ import { CHECKLIST_MESSAGES } from "@/lib/checklists/checklist-messages";
 type ChecklistAccessInput = {
   boardId: string;
   checklistId: string;
-  orgId: string;
   userId: string;
+  orgId?: string;
   cardId?: string;
 };
 
 type ChecklistItemAccessInput = {
   boardId: string;
   itemId: string;
-  orgId: string;
   userId: string;
+  orgId?: string;
   cardId?: string;
 };
 
@@ -28,8 +28,8 @@ type ChecklistItemMoveInput = {
   sourceChecklistId: string;
   destinationChecklistId: string;
   itemId: string;
-  orgId: string;
   userId: string;
+  orgId?: string;
   sourceItems: ChecklistItemOrderInput[];
   destinationItems: ChecklistItemOrderInput[];
 };
@@ -47,11 +47,10 @@ const idsMatch = (actualIds: string[], payloadIds: string[]) => {
 export const getChecklistAccess = async ({
   boardId,
   checklistId,
-  orgId,
   userId,
   cardId,
 }: ChecklistAccessInput) => {
-  const permission = await requireBoardEditor({ boardId, orgId, userId });
+  const permission = await requireBoardEditor({ boardId, userId });
 
   if (permission.error) {
     return { error: permission.error, checklist: null };
@@ -65,7 +64,7 @@ export const getChecklistAccess = async ({
         list: {
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },
@@ -101,11 +100,10 @@ export const getChecklistAccess = async ({
 export const getChecklistItemAccess = async ({
   boardId,
   itemId,
-  orgId,
   userId,
   cardId,
 }: ChecklistItemAccessInput) => {
-  const permission = await requireBoardEditor({ boardId, orgId, userId });
+  const permission = await requireBoardEditor({ boardId, userId });
 
   if (permission.error) {
     return { error: permission.error, item: null };
@@ -120,14 +118,13 @@ export const getChecklistItemAccess = async ({
           list: {
             board: {
               id: boardId,
-              orgId,
+              userId,
             },
           },
         },
       },
     },
     include: {
-      assignee: true,
       checklist: {
         include: {
           card: {
@@ -163,14 +160,12 @@ export const validateChecklistItemsForReorder = async ({
   boardId,
   cardId,
   checklistId,
-  orgId,
   userId,
   items,
 }: ChecklistAccessInput & { items: ChecklistItemOrderInput[] }) => {
   const access = await getChecklistAccess({
     boardId,
     checklistId,
-    orgId,
     userId,
     cardId,
   });
@@ -190,7 +185,7 @@ export const validateChecklistItemsForReorder = async ({
           list: {
             board: {
               id: boardId,
-              orgId,
+              userId,
             },
           },
         },
@@ -214,7 +209,6 @@ export const validateChecklistItemMove = async ({
   sourceChecklistId,
   destinationChecklistId,
   itemId,
-  orgId,
   userId,
   sourceItems,
   destinationItems,
@@ -227,7 +221,7 @@ export const validateChecklistItemMove = async ({
     };
   }
 
-  const permission = await requireBoardEditor({ boardId, orgId, userId });
+  const permission = await requireBoardEditor({ boardId, userId });
 
   if (permission.error) {
     return {
@@ -247,7 +241,7 @@ export const validateChecklistItemMove = async ({
         list: {
           board: {
             id: boardId,
-            orgId,
+            userId,
           },
         },
       },

@@ -16,7 +16,7 @@ export const triggerNotificationCreated = async (
       event: REALTIME_EVENTS.NOTIFICATION_CREATED,
       payload: {
         notificationId: notification.id,
-        orgId: notification.orgId,
+        orgId: notification.recipientUserId,
         recipientUserId: notification.recipientUserId,
         type: notification.type,
         title: notification.title,
@@ -51,7 +51,6 @@ export const triggerNotificationCreated = async (
     logger.error("[NOTIFICATION_REALTIME_ERROR]", error, {
       action: "notification-realtime",
       eventType: notification.type,
-      orgId: notification.orgId,
       boardId: notification.boardId,
       cardId: notification.cardId,
     });

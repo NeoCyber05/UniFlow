@@ -3,7 +3,7 @@
 import Link from "@/web/shims/next-link";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useState } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/web/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
