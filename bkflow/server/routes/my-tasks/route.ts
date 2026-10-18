@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";

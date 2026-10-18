@@ -1,6 +1,6 @@
 import "server-only";
 
-import { currentUser } from "@/server/clerk";
+import { currentUser } from "@/server/auth";
 
 import { getOrCreateSemesterBoard } from "@/lib/semester-board";
 import { pickCurrentSemester } from "@/lib/semesters";

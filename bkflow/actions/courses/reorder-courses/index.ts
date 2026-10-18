@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireSemesterBoardEditor } from "@/lib/courses/course-guards";

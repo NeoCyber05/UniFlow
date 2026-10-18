@@ -1,4 +1,4 @@
-import { auth, clerkClient } from "@/server/clerk";
+import { auth, clerkClient } from "@/server/auth";
 
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";

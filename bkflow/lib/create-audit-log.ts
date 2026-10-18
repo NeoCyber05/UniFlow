@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@/server/clerk"
+import { auth, currentUser } from "@/server/auth"
 import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";

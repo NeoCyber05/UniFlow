@@ -1,4 +1,4 @@
-import { auth, clerkClient } from "@/server/clerk";
+import { auth, clerkClient } from "@/server/auth";
 
 const ADMIN_ROLE = "org:admin";
 const MEMBER_ROLE = "org:member";

@@ -1,4 +1,4 @@
-import { clerkClient } from "../clerk";
+import { clerkClient } from "@/server/auth";
 
 // generateMetadata of app/(platform)/(dashboard)/organization/[organizationId]/layout.tsx.
 export const loadOrganizationLayout = async (organizationId: string | undefined, orgId: string | null) => {

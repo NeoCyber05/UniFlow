@@ -1,4 +1,4 @@
-import { currentUser } from "../clerk";
+import { currentUser } from "@/server/auth";
 import { db } from "@/lib/db";
 import { getOrCreateSemesterBoard } from "@/lib/semester-board";
 import { resolvePersonalOrgId } from "@/lib/workspace";

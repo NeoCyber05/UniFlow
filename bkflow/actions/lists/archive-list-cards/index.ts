@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, ENTITY_TYPE } from "@prisma/client";
 import { revalidatePath } from "@/server/cache";
 

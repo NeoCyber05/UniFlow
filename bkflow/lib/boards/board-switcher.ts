@@ -1,4 +1,4 @@
-import { clerkClient } from "@/server/clerk";
+import { clerkClient } from "@/server/auth";
 import { cache } from "react";
 
 import { db } from "@/lib/db";

@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getBoardCourses, type BoardCoursesResponse } from "@/lib/courses/board-courses";
 import { db } from "@/lib/db";

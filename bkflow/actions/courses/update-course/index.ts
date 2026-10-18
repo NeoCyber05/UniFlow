@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/create-audit-log";

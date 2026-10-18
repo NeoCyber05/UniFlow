@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { parseRealtimeChannelName } from "@/lib/realtime/channels";
 import { getServerPusher } from "@/lib/realtime/server";

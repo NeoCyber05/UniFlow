@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getMyTasksContext } from "@/lib/my-tasks/context";
 

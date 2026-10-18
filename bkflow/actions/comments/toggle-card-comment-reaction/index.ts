@@ -1,6 +1,6 @@
 "use server";
 
-import { auth, currentUser } from "@/server/clerk";
+import { auth, currentUser } from "@/server/auth";
 
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";

@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { SaveNotePage } from "@/lib/notes/contract";

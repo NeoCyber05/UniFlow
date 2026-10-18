@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { createAgentUIStreamResponse, createIdGenerator, type UIMessage } from "ai";
 import { z } from "zod";
 

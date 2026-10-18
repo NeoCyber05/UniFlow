@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { clerkClient } from "@/server/clerk";
+import { clerkClient } from "@/server/auth";
 
 import { db } from "@/lib/db";
 

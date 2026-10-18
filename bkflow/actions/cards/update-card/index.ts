@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { updateCardService } from "@/lib/cards/card-update-service";
 import { createSafeAction } from "@/lib/create-safe-action";

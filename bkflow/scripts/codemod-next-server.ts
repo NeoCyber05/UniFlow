@@ -19,7 +19,7 @@ for (const file of files) {
 
   if (withClerk) {
     src = src
-      .replace(/from ["']@clerk\/nextjs\/server["']/g, 'from "@/server/clerk"')
+      .replace(/from ["']@clerk\/nextjs\/server["']/g, 'from "@/server/auth"')
       .replace(/import \{ revalidatePath \} from "next\/cache";/g, 'import { revalidatePath } from "@/server/cache";');
   }
 

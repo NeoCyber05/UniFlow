@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import { auth } from "../clerk";
+import { auth } from "@/server/auth";
 import { loadBoardAnalytics } from "./board-analytics";
 import { loadBoardCalendar } from "./board-calendar";
 import { loadBoardGraph } from "./board-graph";

@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getBoardTaskGroups } from "@/lib/my-tasks/board-tasks";
 import { requireBoardMemberForUser } from "@/lib/permissions";

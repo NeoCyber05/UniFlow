@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getOrganizationMember } from "@/lib/clerk-org-members";
 import { getTeamOverview } from "@/lib/team-tasks/query";

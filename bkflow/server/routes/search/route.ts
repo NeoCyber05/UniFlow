@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 import { db } from "@/lib/db";
 import { resolvePersonalOrgId } from "@/lib/workspace";
 import { getNavigationItems, parseRecentItems, workspaceBoardScope, type WorkspaceSearchItem, type SearchReference } from "@/lib/search/workspace-search";

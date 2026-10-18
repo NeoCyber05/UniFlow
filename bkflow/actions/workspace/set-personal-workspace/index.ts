@@ -1,6 +1,6 @@
 "use server";
 
-import { auth, clerkClient } from "@/server/clerk";
+import { auth, clerkClient } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
 
 import { db } from "@/lib/db";

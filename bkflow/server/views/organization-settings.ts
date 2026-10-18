@@ -5,7 +5,7 @@ import type {
   WorkspaceSettingsMember,
 } from "@/app/(platform)/(dashboard)/organization/[organizationId]/settings/_types";
 
-import { clerkClient } from "../clerk";
+import { clerkClient } from "@/server/auth";
 
 const ADMIN_ROLE = "org:admin";
 const MEMBER_ROLE = "org:member";

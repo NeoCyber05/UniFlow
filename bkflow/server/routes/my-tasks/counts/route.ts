@@ -1,4 +1,4 @@
-import { auth } from "@/server/clerk";
+import { auth } from "@/server/auth";
 
 import { getMyTaskCounts } from "@/lib/my-tasks/counts";
 
