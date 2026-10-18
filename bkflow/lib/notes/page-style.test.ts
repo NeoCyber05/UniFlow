@@ -19,6 +19,13 @@ test("custom solid color overrides a pattern and typography stays within presets
   assert.equal(css.maxWidth, "640px");
 });
 
+test("default page style follows the app theme instead of forcing white paper", () => {
+  const css = pageStyleCss(DEFAULT_PAGE_STYLE);
+  assert.equal(css.backgroundColor, undefined);
+  assert.equal(css.color, undefined);
+  assert.equal(pageStyleCss({ ...DEFAULT_PAGE_STYLE, paperColor: "#fef3c7" }).color, "#1f2937");
+});
+
 test("saving notes requires a version and bounds title and content", () => {
   const note = { title: "Ghi chú", content: "Nội dung", style: null, expectedUpdatedAt: "2026-10-17T00:00:00.000Z" };
   assert.equal(SaveNotePage.safeParse(note).success, true);

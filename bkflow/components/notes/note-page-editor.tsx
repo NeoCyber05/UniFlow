@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Smile, Star, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
+import { BookOpen, Check, ChevronRight, LoaderCircle, PencilLine, Smile, Sparkles, Star, Type, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BlockEditor } from "@/components/notes/block-editor";
+import { AutoTextarea, BlockEditor } from "@/components/notes/block-editor";
 import { PageStyleControls } from "@/components/notes/page-style-controls";
 import { parseNoteBlocks, serializeNoteBlocks, type NoteBlock } from "@/lib/notes/blocks";
-import { pageStyleCss, type PageStyle } from "@/lib/notes/page-style";
+import { hasCustomPaper, pageStyleCss, type PageStyle } from "@/lib/notes/page-style";
+import { cn } from "@/lib/utils";
 import { NoteReadingView } from "@/components/notes/note-reading-view";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { shouldResaveNote } from "@/lib/notes/save-state";
@@ -163,61 +164,102 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
 
   const effectiveStyle = style ?? defaultStyle;
 
-  return <main className="mx-auto w-full px-4 pb-24 pt-5 sm:px-8">
-    <div className="mx-auto max-w-5xl">
-      <header className="mb-7 flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Đường dẫn" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-          <Link href="/pages" className="rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">Trang của tôi</Link>
-          {ancestors.map(ancestor => <span key={ancestor.id} className="flex min-w-0 items-center gap-1">
-            <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
-            <Link href={`/pages/${encodeURIComponent(ancestor.id)}`} className="max-w-40 truncate rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{ancestor.title || "Trang chưa đặt tên"}</Link>
-          </span>)}
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") { event.preventDefault(); void saveChanges(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [saveChanges]);
+
+  const toolbarButton = "flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground data-[state=open]:bg-muted";
+
+  // Cancels SidebarShell's main padding so the page bar spans the content area.
+  return <div className="-mx-4 -mt-7 sm:-mx-7 lg:-mx-10 lg:-mt-9">
+    <div className="sticky top-14 z-20 flex h-11 items-center gap-2 bg-background/90 px-4 backdrop-blur sm:px-6">
+      <nav aria-label="Đường dẫn" className="flex min-w-0 items-center gap-0.5 text-sm text-muted-foreground">
+        <Link href="/pages" className="shrink-0 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">Trang của tôi</Link>
+        {ancestors.map(ancestor => <span key={ancestor.id} className="flex min-w-0 items-center gap-0.5">
           <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
-          <span aria-current="page" className="flex min-w-0 items-center gap-1.5 px-1.5 text-foreground">{icon && <span aria-hidden="true">{icon}</span>}<span className="truncate">{title.trim() || "Trang chưa đặt tên"}</span></span>
-        </nav>
-        {!trashed && <div className="ml-auto flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon-sm" aria-pressed={isFavorite} aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"} onClick={() => void updateMeta(page.id, { isFavorite: !isFavorite })}>
-            <Star className={isFavorite ? "fill-amber-400 text-amber-400" : ""} />
-          </Button>
-          <PageActionsMenu page={summary} className="size-8" />
-        </div>}
-        <Button type="button" variant="outline" aria-pressed={reading} onClick={() => setReading(value => !value)}>{reading ? "Quay lại viết" : "Chế độ đọc"}</Button>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-live="polite">{saving ? <><LoaderCircle className="size-3.5 animate-spin" /> Đang lưu</> : saved ? <><Check className="size-3.5" /> Đã lưu</> : "Chưa lưu"}<span className="sr-only">Cập nhật lúc {new Date(updatedAt).toLocaleTimeString("vi-VN")}</span></div>
-      </header>
-      {trashed && <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-        Trang này đang ở thùng rác.
-        <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>Khôi phục</Button>
-      </div>}
-      <article className="note-styled-page mx-auto rounded-2xl border border-border/70 bg-card shadow-sm" style={pageStyleCss(effectiveStyle)}>
-        <fieldset disabled={aiBusy} className="mx-auto w-full min-w-0">
+          <Link href={`/pages/${encodeURIComponent(ancestor.id)}`} className="flex max-w-40 items-center gap-1 truncate rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{ancestor.icon && <span aria-hidden="true">{ancestor.icon}</span>}<span className="truncate">{ancestor.title || "Trang chưa đặt tên"}</span></Link>
+        </span>)}
+        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
+        <span aria-current="page" className="flex min-w-0 items-center gap-1 px-1.5 text-foreground">{icon && <span aria-hidden="true">{icon}</span>}<span className="truncate">{title.trim() || "Trang chưa đặt tên"}</span></span>
+      </nav>
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        <span className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex" aria-live="polite">
+          {saving ? <><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />Đang lưu…</> : saved ? <><Check aria-hidden="true" className="size-3.5" />Đã lưu</> : "Chưa lưu"}
+          <span className="sr-only">Cập nhật lúc {new Date(updatedAt).toLocaleTimeString("vi-VN")}</span>
+        </span>
+        {!trashed && <>
+          <Popover>
+            <PopoverTrigger className={toolbarButton} aria-label="Nhờ AI chỉnh trang"><Sparkles aria-hidden="true" className="size-4 text-violet-600" /><span className="hidden md:inline">AI</span></PopoverTrigger>
+            <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
+              <p className="mb-2 text-sm font-medium">Nhờ AI chỉnh trang</p>
+              <div className="flex gap-2">
+                <Input aria-label="Yêu cầu AI chỉnh nội dung" value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void runAiEdit(); }} placeholder="Ví dụ: chia thành các mục ôn tập" />
+                <Button onClick={() => void runAiEdit()} disabled={saving || aiBusy || !prompt.trim()}>{aiBusy ? <LoaderCircle className="animate-spin" /> : "Áp dụng"}</Button>
+              </div>
+              {!!history.length && <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-2.5 py-1.5 text-xs"><span>{new Date(change.createdAt).toLocaleString("vi-VN")}</span>{change.undoneAt ? <span className="text-muted-foreground">Đã hoàn tác</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" /> Hoàn tác</Button>}</li>)}</ul>}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger className={toolbarButton} aria-label="Kiểu trang"><Type aria-hidden="true" className="size-4" /></PopoverTrigger>
+            <PopoverContent align="end" className="max-h-[70vh] w-80 overflow-y-auto">
+              <fieldset disabled={aiBusy}><PageStyleControls value={effectiveStyle} onChange={next => { if (!aiBusy) setStyle(next); }} /></fieldset>
+              <Button type="button" variant="link" className="mt-2 px-0" onClick={() => setStyle(null)}>Dùng kiểu mặc định của tôi</Button>
+            </PopoverContent>
+          </Popover>
+          <button type="button" className={toolbarButton} aria-pressed={reading} aria-label={reading ? "Quay lại viết" : "Chế độ đọc"} onClick={() => setReading(value => !value)}>
+            {reading ? <PencilLine aria-hidden="true" className="size-4" /> : <BookOpen aria-hidden="true" className="size-4" />}
+          </button>
+          <button type="button" className={toolbarButton} aria-pressed={isFavorite} aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"} onClick={() => void updateMeta(page.id, { isFavorite: !isFavorite })}>
+            <Star aria-hidden="true" className={cn("size-4", isFavorite && "fill-amber-400 text-amber-400")} />
+          </button>
+          <PageActionsMenu page={summary} className="size-8 rounded-md text-muted-foreground hover:bg-muted" />
+        </>}
+      </div>
+    </div>
+
+    {trashed && <div role="alert" className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">
+      Trang này đang ở thùng rác.
+      <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>Khôi phục</Button>
+    </div>}
+    {error && <p role="alert" className="mx-auto mt-3 max-w-3xl rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">{error}</p>}
+
+    <article className={cn("note-styled-page mx-auto w-full", hasCustomPaper(effectiveStyle) && "my-6 rounded-2xl shadow-sm")} style={pageStyleCss(effectiveStyle)}>
+      <fieldset disabled={aiBusy} className="min-w-0">
+        <div className="group/cover pl-12 pt-8">
           <Popover open={iconOpen} onOpenChange={setIconOpen}>
             <PopoverTrigger asChild>
               {icon
-                ? <button type="button" disabled={trashed} aria-label="Đổi icon trang" className="mb-2 rounded-lg p-1 text-5xl leading-none hover:bg-muted">{icon}</button>
-                : <Button type="button" variant="ghost" size="sm" disabled={trashed || reading} className="mb-1 -ml-2 text-muted-foreground"><Smile aria-hidden="true" /> Thêm icon</Button>}
+                ? <button type="button" disabled={trashed || reading} aria-label="Đổi icon trang" className="mb-3 rounded-lg p-1 text-6xl leading-none hover:bg-black/5 dark:hover:bg-white/10">{icon}</button>
+                : <button type="button" disabled={trashed || reading} className="mb-2 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-sm text-muted-foreground opacity-0 hover:bg-muted focus-visible:opacity-100 group-hover/cover:opacity-100 disabled:hidden"><Smile aria-hidden="true" className="size-4" />Thêm icon</button>}
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80">
               <IconPicker value={icon} onSelect={next => { void updateMeta(page.id, { icon: next }); setIconOpen(false); }} />
             </PopoverContent>
           </Popover>
-          <Input aria-label="Tên trang" readOnly={reading} value={title} onChange={event => setTitle(event.target.value)} onBlur={() => { if (!title.trim()) setTitle("Trang mới"); }} placeholder="Trang chưa đặt tên" className="mb-7 h-auto border-0 bg-transparent px-0 py-1 text-3xl font-semibold shadow-none focus-visible:ring-0 sm:text-4xl" />
-          <div hidden={reading}>
-          <BlockEditor blocks={blocks} onChange={setBlocks} tasks={tasks} />
-          <section className="mt-9 border-t border-border/60 pt-5">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-medium"><Sparkles aria-hidden="true" className="size-4 text-primary" /> Nhờ AI chỉnh trang</h2>
-            <div className="flex flex-col gap-2 sm:flex-row"><Input aria-label="Yêu cầu AI chỉnh nội dung" value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void runAiEdit(); }} placeholder="Ví dụ: chia ghi chú thành các mục ôn tập" /><Button onClick={() => void runAiEdit()} disabled={saving || aiBusy || !prompt.trim()} className="min-h-11">{aiBusy ? <LoaderCircle className="animate-spin" /> : <Sparkles />} Áp dụng</Button></div>
-            {!!history.length && <ul className="mt-3 space-y-1">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2 text-xs"><span>AI chỉnh trang · {new Date(change.createdAt).toLocaleString("vi-VN")}</span>{change.undoneAt ? <span className="text-muted-foreground">Đã hoàn tác</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" /> Hoàn tác</Button>}</li>)}</ul>}
-          </section>
-          </div>
-          {reading && <NoteReadingView blocks={blocks} tasks={tasks} />}
-        </fieldset>
-      </article>
-      <details className="mx-auto mt-4 max-w-5xl rounded-xl border bg-card p-4">
-        <summary className="cursor-pointer text-sm font-medium">Tùy chỉnh trang</summary>
-        <fieldset disabled={aiBusy} className="mt-4 max-w-xl"><PageStyleControls value={effectiveStyle} onChange={next => { if (!aiBusy) setStyle(next); }} /><Button type="button" variant="link" className="mt-3" onClick={() => setStyle(null)}>Dùng kiểu mặc định của tôi</Button></fieldset>
-      </details>
-      {error && <p role="alert" className="mx-auto mt-4 max-w-5xl rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
-      <Button className="mt-4" disabled={saving || aiBusy} onClick={() => void saveChanges()} aria-label="Lưu trang">Lưu trang</Button>
-    </div>
-  </main>;
+          <AutoTextarea
+            aria-label="Tên trang"
+            readOnly={reading || trashed}
+            value={title}
+            maxLength={200}
+            onChange={event => setTitle(event.target.value.replace(/\n/g, " "))}
+            onBlur={() => { if (!title.trim()) setTitle("Trang mới"); }}
+            onKeyDown={event => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              document.querySelector<HTMLElement>("[data-block-input]")?.focus();
+            }}
+            placeholder="Trang chưa đặt tên"
+            className="text-[2.5em] font-bold leading-tight tracking-tight placeholder:text-muted-foreground/40"
+          />
+        </div>
+        <div className="mt-4">
+          {reading || trashed ? <div className="pb-16 pl-12"><NoteReadingView blocks={blocks} tasks={tasks} /></div> : <BlockEditor blocks={blocks} onChange={setBlocks} tasks={tasks} />}
+        </div>
+      </fieldset>
+    </article>
+  </div>;
 };

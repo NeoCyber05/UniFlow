@@ -25,8 +25,6 @@
 .note-markdown img { max-width: 100%; height: auto; }
 .note-markdown .contains-task-list { list-style: none; }
 .note-styled-page textarea { font-size: 1em; line-height: inherit; color: inherit; }
-.note-styled-page textarea[aria-label="Tiêu đề khối"] { font-size: 1.4em; line-height: 1.3; }
-.note-styled-page textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 4px; }
 
 .workspace-text-link {
   display: inline-flex;

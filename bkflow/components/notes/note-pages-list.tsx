@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/web/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PageSummary } from "@/lib/notes/page-tree";
 
@@ -46,11 +47,25 @@ export const NotePagesList = () => {
   const { userId } = useAuth();
   const { data, isPending, isError, refetch } = useNotePages();
   const { create, creating } = useCreateNotePage();
-  return <div className="mx-auto max-w-5xl">
-      <header className="mb-7 flex flex-wrap items-start justify-between gap-4"><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Trang của tôi</h1><Button disabled={creating || !userId} onClick={() => void create()}>{creating ? "Đang tạo…" : "Tạo trang"}</Button></header>
-    {!userId ? <p role="status">Đăng nhập để mở ghi chú.</p> : isPending ? <p role="status">Đang tải trang…</p> : isError ? <div role="alert">Chưa tải được ghi chú. <Button variant="link" onClick={() => void refetch()}>Thử lại</Button></div> : data?.length ? <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{data.map(page => <Link key={page.id} href={`/pages/${encodeURIComponent(page.id)}`} className="rounded-xl border bg-card p-5 transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-ring"><h2 className="truncate font-medium">{page.title}</h2><p className="mt-3 text-xs text-muted-foreground">Sửa {new Date(page.updatedAt).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}</p></Link>)}</div>
+  const titleOf = (id: string | null) => data?.find(page => page.id === id)?.title;
+  return <div className="mx-auto max-w-3xl">
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Trang của tôi</h1>
+      <Button disabled={creating || !userId} onClick={() => void create()}><Plus aria-hidden="true" />{creating ? "Đang tạo…" : "Trang mới"}</Button>
+    </header>
+    {!userId ? <p role="status">Đăng nhập để mở ghi chú.</p> : isPending ? <p role="status" className="text-sm text-muted-foreground">Đang tải trang…</p> : isError ? <div role="alert">Chưa tải được ghi chú. <Button variant="link" onClick={() => void refetch()}>Thử lại</Button></div> : data?.length ? <>
+      <p className="mb-1 px-3 text-xs font-medium text-muted-foreground">Sửa gần đây</p>
+      <ul className="space-y-0.5">{data.map(page => <li key={page.id}>
+        <Link href={`/pages/${encodeURIComponent(page.id)}`} className="flex h-11 items-center gap-3 rounded-md px-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+          <span aria-hidden="true" className="flex w-5 shrink-0 justify-center text-base">{page.icon ?? <FileText className="size-4 text-muted-foreground" />}</span>
+          <span className="min-w-0 flex-1 truncate font-medium">{page.title || "Trang chưa đặt tên"}</span>
+          {titleOf(page.parentId) && <span className="hidden max-w-40 truncate text-xs text-muted-foreground sm:inline">trong {titleOf(page.parentId)}</span>}
+          <span className="shrink-0 text-xs text-muted-foreground">{new Date(page.updatedAt).toLocaleDateString("vi-VN", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}</span>
+        </Link>
+      </li>)}</ul>
       {data.length === 100 && <p className="mt-4 text-sm text-muted-foreground">Hiển thị 100 trang mới sửa gần nhất. Dùng Tìm nhanh để mở các trang cũ hơn.</p>}
-    </> : <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">Chưa có ghi chú.</div>}
+    </> : <button type="button" disabled={creating} onClick={() => void create()} className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed p-10 text-muted-foreground hover:bg-muted/50">
+      <FileText aria-hidden="true" className="size-6" />Chưa có trang nào. Bấm để tạo trang đầu tiên.
+    </button>}
   </div>;
 };

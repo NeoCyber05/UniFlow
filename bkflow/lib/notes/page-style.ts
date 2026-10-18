@@ -19,10 +19,13 @@ export const readPageStyle = (value: unknown): PageStyle => {
   const result = PageStyleSchema.safeParse(value);
   return result.success ? result.data : DEFAULT_PAGE_STYLE;
 };
+// A page without its own paper follows the app theme (light or dark).
+export const hasCustomPaper = (style: PageStyle) => style.background !== "inherit" || Boolean(style.paperColor);
+
 export const pageStyleCss = (style: PageStyle): CSSProperties => ({
-  ...(BACKGROUNDS.find(background => background.id === style.background)?.style ?? { backgroundColor: "#ffffff" }),
+  ...BACKGROUNDS.find(background => background.id === style.background)?.style,
   ...(style.paperColor ? { backgroundColor: style.paperColor, backgroundImage: "none" } : {}),
-  color: style.textColor ?? "#1f2937",
+  color: style.textColor ?? (hasCustomPaper(style) ? "#1f2937" : undefined),
   fontFamily: { sans: "var(--font-sans), sans-serif", serif: "Georgia, 'Times New Roman', serif", mono: "ui-monospace, Consolas, monospace" }[style.fontFamily],
   fontSize: `${style.fontSize}px`, lineHeight: style.lineHeight,
   maxWidth: { compact: "640px", normal: "800px", wide: "1000px", full: "100%" }[style.width],

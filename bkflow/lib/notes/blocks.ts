@@ -7,6 +7,9 @@ export const NoteBlockSchema = z.discriminatedUnion("type", [
   textBlock.extend({ type: z.literal("heading"), level: z.union([z.literal(1), z.literal(2), z.literal(3)]) }),
   textBlock.extend({ type: z.literal("todo"), checked: z.boolean() }),
   textBlock.extend({ type: z.literal("callout") }),
+  textBlock.extend({ type: z.literal("bullet") }),
+  textBlock.extend({ type: z.literal("numbered") }),
+  textBlock.extend({ type: z.literal("quote") }),
   z.object({ id: z.string().min(1).max(80), type: z.literal("divider") }),
   z.object({ id: z.string().min(1).max(80), type: z.literal("task"), taskId: z.string().max(80) }),
   // dueAt is an ISO datetime or "" while unset; reminder is a reminderLabels key or "none".
