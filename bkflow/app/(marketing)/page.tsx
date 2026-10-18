@@ -27,8 +27,8 @@ const highlights = [
     },
     {
         icon: Users,
-        title: "Làm bài nhóm gọn gàng",
-        description: "Chia việc, giao người phụ trách và theo dõi tiến độ cả nhóm.",
+        title: "Ghi chú và trợ lý AI",
+        description: "Ghi chú theo môn, nhờ AI tóm tắt và gợi ý việc cần làm.",
     },
 ];
 
@@ -49,7 +49,7 @@ const MarketingPage = () => {
                 "max-w-xl text-center text-base leading-relaxed text-neutral-600 md:text-lg",
                 textFont.className
             )}>
-                HustFlow giúp sinh viên quản lý môn học, deadline và bài tập nhóm ở cùng một nơi.
+                HustFlow giúp sinh viên quản lý môn học, deadline và ghi chú ở cùng một nơi.
             </p>
 
             {/* CTA */}
