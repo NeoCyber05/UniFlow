@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/web/lib/auth";
 import { usePathname, useSearchParams } from "@/web/shims/next-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
@@ -14,9 +14,9 @@ import { useCardModal } from "@/hooks/use-card-modal";
 const labels = { card: "Công việc", course: "Học phần", board: "Bảng", note: "Ghi chú", page: "Trang" };
 
 export const WorkspaceSearch = () => {
-  const { userId, orgId } = useAuth();
-  const identity = `${userId}:${orgId}`;
-  return <SearchPalette key={identity} identity={identity} enabled={Boolean(userId && orgId)} />;
+  const { userId } = useAuth();
+  const identity = `${userId}`;
+  return <SearchPalette key={identity} identity={identity} enabled={Boolean(userId)} />;
 };
 
 const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boolean }) => {

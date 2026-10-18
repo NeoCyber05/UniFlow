@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useUser } from "@clerk/react";
+import { useUser } from "@/web/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { NotificationItem } from "@/components/notifications/types";

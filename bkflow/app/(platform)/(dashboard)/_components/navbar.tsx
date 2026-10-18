@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "@/web/shims/next-link";
-import { OrganizationSwitcher, UserButton } from "@clerk/react";
+import { useNavigate } from "react-router";
 import { useParams } from "@/web/shims/next-navigation";
+
+import { useUser, signOut } from "@/web/lib/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { NotificationsPopover } from "@/components/notifications-popover";
@@ -11,6 +22,61 @@ import { NotificationToasts } from "@/components/notifications/notification-toas
 import { RealtimeNotificationSync } from "@/components/notifications/realtime-notification-sync";
 import { WorkspaceSearch } from "@/components/workspace-search";
 import { BoardSidebarToggle } from "../board/[boardId]/_components/board-sidebar-toggle";
+
+const UserMenu = () => {
+  const { user } = useUser();
+  const navigate = useNavigate();
+
+  if (!user) return null;
+
+  const initials = (user.fullName || user.username || "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="relative flex size-8 shrink-0 items-center justify-center rounded-full outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Avatar className="size-8">
+            <AvatarImage src={user.imageUrl} alt={user.fullName || "Avatar"} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.fullName || "Người dùng"}</p>
+            {user.primaryEmailAddress?.emailAddress && (
+              <p className="text-xs leading-none text-muted-foreground">
+                {user.primaryEmailAddress.emailAddress}
+              </p>
+            )}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={handleSignOut}
+          className="cursor-pointer"
+        >
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 export const Navbar = () => {
     const params = useParams();
@@ -43,31 +109,7 @@ export const Navbar = () => {
             <div className="flex items-center gap-x-3 shrink-0">
                 <AppearancePopover />
                 <NotificationsPopover />
-                <div className="hidden sm:block"><OrganizationSwitcher
-                    hidePersonal
-                    afterCreateOrganizationUrl="/organization/:id"
-                    afterSelectOrganizationUrl="/organization/:id"
-                    afterLeaveOrganizationUrl="/select-org"
-                    appearance={{
-                        elements: {
-                            rootBox: {
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                             },
-                        },
-                    }}
-                /></div>
-                <UserButton
-                    appearance={{
-                        elements: {
-                            avatarBox: {
-                                height: 30,
-                                width: 30,
-                            },
-                        },
-                    }}
-                />
+                <UserMenu />
             </div>
         </nav>
     );
