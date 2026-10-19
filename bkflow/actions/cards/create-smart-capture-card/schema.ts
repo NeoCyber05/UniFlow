@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-const DueDateValue = z.union([z.date(), z.string().datetime(), z.null()]);
+import { DateOnly, OffsetDateTime, validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { hasUnsafeMarkdownLink } from "@/lib/capture/source";
+
+const DueDateValue = z.union([z.date(), z.string().datetime({ offset: true }), z.null()]);
+const NullableDate = z.optional(z.union([DateOnly, z.null()]));
+const NullableInstant = z.optional(z.union([OffsetDateTime, z.null()]));
+/** Contract nhắc của card: số phút trước hạn; "none"/null = không nhắc. */
+export const ReminderValue = z.optional(z.union([z.string().regex(/^\d{1,6}$/), z.literal("none"), z.null()]));
 
 const SmartCaptureCardDraft = z.object({
   // Stable per submit; becomes Card.id so a retry maps to the same card.
@@ -21,9 +28,18 @@ const SmartCaptureCardDraft = z.object({
         .max(3_000, { message: "Mô tả tối đa 3000 ký tự." })
         .refine((value) => !value.includes("```"), {
           message: "Mô tả không được chứa mã markdown code fence.",
+        })
+        .refine((value) => !hasUnsafeMarkdownLink(value), {
+          message: "Mô tả chứa liên kết không an toàn.",
         }),
   ),
   dueDate: z.optional(DueDateValue),
+  deadlineOn: NullableDate,
+  scheduledOn: NullableDate,
+  scheduledStartAt: NullableInstant,
+  scheduledEndAt: NullableInstant,
+  reminder: ReminderValue,
+  myDay: z.optional(z.boolean()),
   assigneeBoardMemberId: z.optional(z.union([z.string().min(1), z.null()])),
   assigneeBoardMemberIds: z.array(z.string().min(1)).max(20).default([]),
   labelIds: z.array(z.string().min(1)).max(20).default([]),
@@ -33,6 +49,19 @@ const SmartCaptureCardDraft = z.object({
       .transform((value) => value.replace(/\s+/g, " ").trim())
       .pipe(z.string().max(120)),
   ).max(20).default([]),
+}).superRefine((draft, ctx) => {
+  if (draft.dueDate && draft.deadlineOn) {
+    ctx.addIssue({ code: "custom", path: ["deadlineOn"], message: "Hạn nộp chỉ có ngày hoặc có giờ, không đồng thời." });
+  }
+  const scheduleError = validateTaskSchedule({
+    scheduledOn: draft.scheduledOn ?? null,
+    scheduledStartAt: draft.scheduledStartAt ?? null,
+    scheduledEndAt: draft.scheduledEndAt ?? null,
+  });
+  if (scheduleError) ctx.addIssue({ code: "custom", path: ["scheduledOn"], message: scheduleError });
+  if (draft.reminder && draft.reminder !== "none" && !draft.dueDate && !draft.deadlineOn) {
+    ctx.addIssue({ code: "custom", path: ["reminder"], message: "Nhắc hạn cần có hạn nộp." });
+  }
 });
 
 export const CreateSmartCaptureCards = z.object({

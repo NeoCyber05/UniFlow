@@ -117,4 +117,13 @@ describe("parseQuickAdd", () => {
   it("chỉ có token → tiêu đề rỗng", () => {
     assert.equal(parseQuickAdd("@mai !", { now: NOW }).title, "");
   });
+
+  it("@ngày → deadlineOn chỉ-ngày theo giờ VN, không gắn giờ", () => {
+    assert.equal(parseQuickAdd("x @mai", { now: NOW }).deadlineOn, "2026-10-07");
+    assert.equal(parseQuickAdd("x @t2", { now: NOW }).deadlineOn, "2026-10-12");
+    assert.equal(parseQuickAdd("x @1/3", { now: NOW }).deadlineOn, "2027-03-01");
+    // 17:30 UTC ngày 6/10 = 00:30 VN ngày 7/10.
+    assert.equal(parseQuickAdd("x @nay", { now: new Date("2026-10-06T17:30:00Z") }).deadlineOn, "2026-10-07");
+    assert.equal(parseQuickAdd("x", { now: NOW }).deadlineOn, null);
+  });
 });

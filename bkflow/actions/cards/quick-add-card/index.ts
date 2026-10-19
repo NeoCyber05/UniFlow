@@ -1,14 +1,15 @@
 "use server";
 
-import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
+import { auth } from "@/server/auth";
+
+import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
+import { CAPTURE_REJECTED, CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import { db } from "@/lib/db";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { logger } from "@/lib/logger";
 import { requireBoardEditorForUser } from "@/lib/permissions";
-import { triggerCardCreated } from "@/lib/boards/realtime";
-import { isCourseInBoard } from "@/lib/courses/course-guards";
 import {
   NO_CURRENT_SEMESTER_ERROR,
   resolveCurrentSemesterBoardId,
@@ -48,9 +49,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const { title, courseId, dueDate } = data;
-  const assigneeUserIds = Array.from(new Set(data.assigneeUserIds ?? []));
-  let card;
+  const creationId = data.creationId ?? randomUUID();
 
   try {
     const boardId = data.boardId ?? (await resolveCurrentSemesterBoardId(userId));
@@ -68,62 +67,52 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const list = await resolveTargetList(boardId, data.listId);
 
     if (!list) {
-      return { error: "Không tìm thấy danh sách." };
+      return { error: "Không tìm thấy danh sách.", errorCode: CAPTURE_REJECTED };
     }
 
-    if (courseId && !(await isCourseInBoard(courseId, boardId))) {
-      return { error: "Môn không hợp lệ." };
-    }
-
-    const lastCard = await db.card.findFirst({
-      where: { listId: list.id, archivedAt: null },
-      orderBy: { order: "desc" },
-      select: { order: true },
-    });
-
-    const hasUserState = Boolean(data.isImportant || data.myDay);
-
-    card = await db.card.create({
-      data: {
-        title,
+    const { cards, createdIds } = await createCapturedCardsWithStatus({
+      userId,
+      boardId,
+      drafts: [{
+        creationId,
         listId: list.id,
-        order: lastCard ? lastCard.order + 1 : 1,
-        ...(courseId ? { courseId } : {}),
-        ...(dueDate ? { dueDate } : {}),
-        ...(hasUserState
-          ? {
-              userStates: {
-                create: {
-                  userId,
-                  isImportant: Boolean(data.isImportant),
-                  myDayAt: data.myDay ? new Date() : null,
-                },
-              },
-            }
-          : {}),
-      },
+        title: data.title,
+        description: data.description ?? "",
+        courseId: data.courseId ?? null,
+        dueDate: data.dueDate ?? null,
+        deadlineOn: data.deadlineOn ?? null,
+        scheduledOn: data.scheduledOn ?? null,
+        scheduledStartAt: data.scheduledStartAt ?? null,
+        scheduledEndAt: data.scheduledEndAt ?? null,
+        reminder: data.reminder ?? null,
+        checklistItems: data.checklistItems ?? [],
+        isImportant: Boolean(data.isImportant),
+        myDay: Boolean(data.myDay),
+        labelIds: [],
+        assigneeBoardMemberIds: [],
+      }],
     });
 
-    await createAuditLog({
-      entityId: card.id,
-      entityTitle: `detail:đã thêm thẻ "${card.title}" vào danh sách "${list.title}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.CREATE,
+    // Sau commit, không throw: lỗi audit/realtime không được làm client tạo id mới.
+    await announceCapturedCards({
+      cards,
+      createdIds,
       boardId,
-      cardId: card.id,
+      userId,
+      listTitles: new Map([[list.id, list.title]]),
+      origin: "Thêm nhanh",
     });
 
-    await triggerCardCreated({
-      boardId,
-      listId: list.id,
-      cardId: card.id,
-      actorUserId: userId,
-    });
-  } catch {
+    return { data: cards[0] };
+  } catch (error) {
+    if (error instanceof CapturedCardsError) {
+      return { error: error.message, errorCode: error.code ?? CAPTURE_REJECTED };
+    }
+
+    logger.error("[QUICK_ADD_CARD_ERROR]", error, { action: "quick-add-card", userId });
+
     return { error: "Tạo việc thất bại." };
   }
-
-  return { data: card };
 };
 
 export const quickAddCard = createSafeAction(QuickAddCard, handler);
