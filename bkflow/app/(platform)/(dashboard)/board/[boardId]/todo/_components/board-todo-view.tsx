@@ -52,7 +52,7 @@ export const BoardTodoView = ({
 }: BoardTodoViewProps) => {
   const queryClient = useQueryClient();
   const { taskId, openTask, closeTask } = useTaskPanelParam();
-  const { courses } = useBoardCourses(boardId);
+  const { courseOptions } = useBoardCourses(boardId);
   const filters = useBoardFilters((state) => state.filtersByBoardId[boardId] ?? emptyBoardFilters);
   const clearFilters = useBoardFilters((state) => state.clearFilters);
   const [openByGroup, setOpenByGroup] = useLocalStorage<Record<string, boolean>>(TODO_GROUPS_STORAGE_KEY, {});
@@ -100,7 +100,7 @@ export const BoardTodoView = ({
           {canEdit && (
             <QuickAddBar
               boardId={boardId}
-              courses={courses}
+              courses={courseOptions}
               defaults={quickAddDefaults}
               trailing={
                 <button

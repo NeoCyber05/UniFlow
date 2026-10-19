@@ -2,7 +2,7 @@
 
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CardWithList } from "@/types";
@@ -311,6 +311,12 @@ export const Header = ({
         />
       )}
 
+      {data.kind === "EVENT" ? (
+        // Sự kiện chỉ để xem: không có nút hoàn thành
+        <span className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-sky-50 text-sky-600" title="Sự kiện">
+          <Clock className="h-5 w-5" aria-hidden="true" />
+        </span>
+      ) : (
       <Hint description={data.isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"} side="bottom">
         <button
           onClick={onToggleComplete}
@@ -333,6 +339,7 @@ export const Header = ({
           )} />
         </button>
       </Hint>
+      )}
       <div className="w-full min-w-0">
         <form onSubmit={(e) => {
           e.preventDefault();

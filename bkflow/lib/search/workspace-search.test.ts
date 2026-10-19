@@ -20,8 +20,7 @@ test("recent items are deduplicated, newest first, and limited to eight", () => 
 });
 
 test("navigation matches Vietnamese with or without accents", () => {
-  assert.equal(getNavigationItems("hoc phan")[0].href, "/my/courses");
-  assert.equal(getNavigationItems("HÔM NAY")[0].href, "/my/today");
+  assert.equal(getNavigationItems("lich")[0].href, "/my/calendar");
   assert.equal(getNavigationItems("zzzz").length, 0);
 });
 

@@ -35,18 +35,32 @@ const getOpenAiApiKey = () => {
   return apiKey;
 };
 
+type AiImage = { data: string; mediaType: string };
+
 /** Gemini (same model as the assistant), used when no OpenAI key is configured. */
-const generateGeminiText = async ({ system, user, temperature, maxTokens }: Required<GenerateAiTextInput>) => {
+const generateGeminiText = async ({
+  system,
+  user,
+  temperature,
+  maxTokens,
+  image,
+  timeoutMs = AI_REQUEST_TIMEOUT_MS,
+}: Required<GenerateAiTextInput> & { image?: AiImage; timeoutMs?: number }) => {
   try {
     const { text } = await generateText({
       model: getAssistantModel(),
       system,
-      prompt: user,
+      ...(image
+        ? { messages: [{ role: "user" as const, content: [{ type: "file" as const, data: image.data, mediaType: image.mediaType }, { type: "text" as const, text: user }] }] }
+        : { prompt: user }),
       temperature,
       maxOutputTokens: maxTokens,
       // Thinking tokens count against maxOutputTokens; these calls are short structured answers.
-      providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
-      abortSignal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+      // Gemini 2.x tắt bằng budget 0; 3.8 flash không nhận budget 0 hay "minimal" → "low"
+      providerOptions: {
+        google: { thinkingConfig: /^gemini-2\./.test(ASSISTANT_MODEL_ID) ? { thinkingBudget: 0 } : { thinkingLevel: "low" as const } },
+      },
+      abortSignal: AbortSignal.timeout(timeoutMs),
     });
     const content = text.trim();
     if (!content) throw new Error("AI chưa tạo được nội dung hợp lệ. Vui lòng thử lại.");
@@ -63,6 +77,20 @@ const generateGeminiText = async ({ system, user, temperature, maxTokens }: Requ
     });
     throw new Error("AI chưa phản hồi thành công. Vui lòng thử lại.");
   }
+};
+
+/** Đọc ảnh (OCR + hiểu nội dung). Chỉ Gemini; ảnh là base64 không có tiền tố data:. */
+export const generateAiTextFromImage = async ({
+  system,
+  user,
+  image,
+  maxTokens = 4_000,
+}: GenerateAiTextInput & { image: AiImage }) => {
+  if (!getAssistantApiKey()) {
+    throw new Error("Chưa cấu hình AI đọc ảnh. Vui lòng thêm GEMINI_API_KEY.");
+  }
+  // Ảnh lớn đọc lâu hơn câu chữ
+  return generateGeminiText({ system, user, temperature: 0.1, maxTokens, image, timeoutMs: Math.max(AI_REQUEST_TIMEOUT_MS, 60_000) });
 };
 
 export const generateAiText = async ({

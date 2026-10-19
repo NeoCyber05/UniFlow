@@ -30,7 +30,7 @@ export const getMyTaskCounts = async (userId: string, now: Date = new Date()): P
       where: {
         AND: [
           base,
-          { isCompleted: false },
+          { isCompleted: false, kind: "TASK" },
           {
             OR: [
               deadlineWhere({ lte: endOfToday }),
@@ -45,6 +45,7 @@ export const getMyTaskCounts = async (userId: string, now: Date = new Date()): P
       where: {
         archivedAt: null,
         isCompleted: false,
+        kind: "TASK",
         list: { archivedAt: null, boardId: semesterBoard.id },
       },
       _count: { _all: true },

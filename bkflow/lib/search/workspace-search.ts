@@ -18,10 +18,7 @@ export const rememberSearchItem = (items: SearchReference[], item: SearchReferen
   [{ type: item.type, id: item.id }, ...items.filter(old => old.type !== item.type || old.id !== item.id)].slice(0, RECENT_LIMIT);
 
 const NAVIGATION = [
-  { id: "today", title: "Hôm nay", href: "/my/today" },
   { id: "calendar", title: "Lịch", href: "/my/calendar" },
-  { id: "courses", title: "Học phần", href: "/my/courses" },
-  { id: "notes", title: "Trang của tôi", href: "/pages" },
 ] as const;
 
 export const getNavigationItems = (query: string): WorkspaceSearchItem[] => NAVIGATION

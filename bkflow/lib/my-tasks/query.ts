@@ -53,6 +53,7 @@ export const myTaskSelect = (userId: string) => ({
   id: true,
   title: true,
   isCompleted: true,
+  kind: true,
   dueDate: true,
   deadlineOn: true,
   scheduledOn: true,
@@ -88,12 +89,14 @@ const toBucketRow = (row: MyTaskRow): BucketRow => {
     dueDate: row.dueDate,
     deadlineOn: serializeTaskDates(row).deadlineOn,
     isCompleted: row.isCompleted,
+    isEvent: row.kind === "EVENT",
     updatedAt: row.updatedAt,
     myDayAt: state?.myDayAt ?? null,
     dto: {
       id: row.id,
       title: row.title,
       isCompleted: row.isCompleted,
+      kind: row.kind,
       ...serializeTaskDates(row),
       updatedAt: row.updatedAt.toISOString(),
       myDayAt: state?.myDayAt?.toISOString() ?? null,
@@ -134,7 +137,7 @@ export const getTodoTasks = async ({
   now?: Date;
 }): Promise<TaskListResponse> => {
   const includeTeam = await isCurrentSemesterBoard(boardId);
-  const { startOfToday } = getTodayWindow(now);
+  const { startOfToday, endOfToday } = getTodayWindow(now);
   const rows = await db.card.findMany({
     where: {
       AND: [
@@ -145,6 +148,8 @@ export const getTodoTasks = async ({
             { isCompleted: true, updatedAt: { gte: startOfToday } },
           ],
         },
+        // Sự kiện (buổi học) chỉ hiện ngày diễn ra, không chiếm chỗ việc cần làm
+        { OR: [{ kind: "TASK" }, { scheduledStartAt: { gte: startOfToday, lte: endOfToday } }] },
       ],
     },
     select: myTaskSelect(userId),

@@ -4,9 +4,9 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 /**
  * Định danh mô hình AI mặc định được sử dụng cho Trợ lý Agent (UniFlow Assistant).
- * Lấy từ biến môi trường `GEMINI_MODEL`, mặc định là `"gemini-2.5-flash"`.
+ * Lấy từ biến môi trường `GEMINI_MODEL`, mặc định là `"gemini-3.8-flash"`.
  */
-export const ASSISTANT_MODEL_ID = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const ASSISTANT_MODEL_ID = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 /**
  * Các ngưỡng giới hạn kỹ thuật (rate limits & budget constraints) áp dụng cho Agent:

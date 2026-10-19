@@ -37,8 +37,7 @@ const render = (data: View | undefined) => {
 
   return (
     <PersonalWorkspaceView
-      key={`${data.boardId}:${data.view}`}
-      view={data.view}
+      key={data.boardId}
       initialContext={data.context}
       initialData={data.data}
       initialNow={data.now}

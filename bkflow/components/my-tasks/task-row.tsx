@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, ListChecks, Star, Sun, Users } from "lucide-react";
+import { CalendarDays, Check, Clock, ListChecks, Star, Sun, Users } from "lucide-react";
 
 import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { useMyTaskMutations } from "@/hooks/use-my-task-mutations";
@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { TaskLabels } from "@/components/tasks/task-labels";
 
 import { AssigneeStack } from "./assignee-stack";
+
+const formatVNTime = (iso: string) =>
+  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
 
 type TaskRowProps = {
   task: MyTask;
@@ -36,6 +39,7 @@ export const TaskRow = ({
   const isOverdue = !task.isCompleted && due !== null && due < now;
   const isPinned = task.myDayAt !== null && isSameVNDay(new Date(task.myDayAt), now);
   const courseColor = task.course ? getCourseColor(task.course.color) : null;
+  const isEvent = task.kind === "EVENT";
 
   return (
     // Cả hàng bấm chuột để mở, nhưng bàn phím chỉ qua nút tiêu đề; control con độc lập (không lồng button).
@@ -48,6 +52,12 @@ export const TaskRow = ({
         isSelected ? "border-violet-300 ring-2 ring-violet-100" : "border-neutral-200",
       )}
     >
+      {isEvent ? (
+        // Sự kiện (buổi học) chỉ để xem: không có checkbox hoàn thành
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-sky-500" title="Sự kiện">
+          <Clock className="h-4 w-4" aria-hidden="true" />
+        </span>
+      ) : (
       <button
         type="button"
         aria-label={task.isCompleted ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
@@ -64,6 +74,7 @@ export const TaskRow = ({
       >
         {task.isCompleted && <Check className="h-3 w-3" />}
       </button>
+      )}
 
       <div className="min-w-0 flex-1">
         <button
@@ -87,6 +98,12 @@ export const TaskRow = ({
             <span className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded-full bg-sky-50 px-1.5 py-0.5 text-sky-700 ring-1 ring-sky-200">
               <Users className="h-3 w-3 shrink-0" />
               {task.boardTitle}
+            </span>
+          )}
+          {isEvent && task.scheduledStartAt && task.scheduledEndAt && (
+            <span className="inline-flex items-center gap-1 text-sky-700">
+              <Clock className="h-3 w-3" />
+              {formatVNShortDate(new Date(task.scheduledStartAt))} {formatVNTime(task.scheduledStartAt)}–{formatVNTime(task.scheduledEndAt)}
             </span>
           )}
           {due && (

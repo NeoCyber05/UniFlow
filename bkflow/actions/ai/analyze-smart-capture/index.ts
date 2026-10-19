@@ -10,6 +10,7 @@ import { parseAiJson } from "@/lib/ai/json";
 import { getZonedDayKey, validateCaptureAnalysis } from "@/lib/capture/analysis";
 import { CaptureSourceError, getCaptureTimeContext, normalizeCaptureSource } from "@/lib/capture/source";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { pickCatalogCandidates } from "@/lib/courses/catalog-candidates";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -1120,11 +1121,13 @@ const analyzeQuick = async (data: QuickInputType, userId: string): Promise<Retur
     const nowIso = new Date().toISOString();
     const referenceIso = source ? getCaptureTimeContext(source).referenceIso : nowIso;
 
-    const courses = await db.course.findMany({
+    const boardCourses = await db.course.findMany({
       where: { boardId, board: { userId } },
       select: { id: true, name: true, code: true },
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     });
+    // Chỉ thêm vài môn danh mục có từ trùng rawText (id `catalog:…`, quick-add-card tạo Course khi lưu)
+    const courses = [...boardCourses, ...pickCatalogCandidates(rawText, boardCourses)];
 
     const raw = await generateAiText({
       system: quickSystemPrompt,

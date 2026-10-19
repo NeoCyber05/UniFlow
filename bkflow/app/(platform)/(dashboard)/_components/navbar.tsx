@@ -88,8 +88,8 @@ export const Navbar = () => {
                 <MobileSidebar />
                 <div className="flex items-center gap-x-2">
                     <Link href="/my/today" aria-label="UniFlow — Hôm nay" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-                      <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-lg bg-violet-700 text-lg font-medium text-white">u</span>
-                      <span className="hidden sm:inline">uniflow</span>
+                      <img src="/logo.svg" alt="" aria-hidden="true" className="size-7 rounded-lg" />
+                      <span className="hidden sm:inline">UniFlow</span>
                       <span className="ml-1 hidden text-[10px] font-normal tracking-normal text-muted-foreground lg:inline">HUST</span>
                     </Link>
                     <BoardSidebarToggle variant="navbar" />

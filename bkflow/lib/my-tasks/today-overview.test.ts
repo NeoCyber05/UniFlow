@@ -6,7 +6,7 @@ import { buildTodayOverview } from "./today-overview";
 
 const now = new Date("2026-10-17T17:05:00Z"); // 00:05 October 18 in Vietnam
 const task = (id: string, patch: Partial<MyTask> = {}): MyTask => ({
-  id, title: id, isCompleted: false, dueDate: null, deadlineOn: null, scheduledOn: null,
+  id, title: id, isCompleted: false, kind: "TASK", dueDate: null, deadlineOn: null, scheduledOn: null,
   scheduledStartAt: null, scheduledEndAt: null, updatedAt: now.toISOString(),
   myDayAt: null, isImportant: false, boardId: "b", boardTitle: "Semester",
   boardType: "SEMESTER", listId: "l", labelIds: [], labels: [], course: null,

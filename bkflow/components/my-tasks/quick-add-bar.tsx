@@ -27,6 +27,8 @@ type QuickAddBarProps = {
   trailing?: React.ReactNode;
   onCreated?: () => void;
   compact?: boolean;
+  variant?: "bar" | "card";
+  onCancel?: () => void;
 };
 
 /** Ô thêm nhanh một việc: cú pháp #môn @ngày !, gợi ý AI và chip sửa được, chỉ lưu khi bấm Thêm/Enter. */

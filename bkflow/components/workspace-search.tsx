@@ -36,7 +36,7 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
     if (!enabled) return;
     const boardId = pathname.match(/^\/board\/([^/]+)/)?.[1];
     const noteId = pathname.match(/^\/pages\/([^/]+)/)?.[1];
-    const pageId = pathname === "/pages" ? "notes" : ({ "/my/today": "today", "/my/tasks": "tasks", "/my/calendar": "calendar", "/my/courses": "courses" } as Record<string, string>)[pathname];
+    const pageId = pathname === "/pages" ? "notes" : ({ "/my/today": "today", "/my/tasks": "tasks", "/my/calendar": "calendar" } as Record<string, string>)[pathname];
     const reference: SearchReference | null = modalCardId ? { type: "card", id: modalCardId }
       : noteId ? { type: "note", id: noteId }
       : boardId && cardId ? { type: "card", id: cardId }
