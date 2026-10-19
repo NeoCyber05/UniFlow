@@ -4,6 +4,7 @@ import type { loadDashboard } from "@/server/views/dashboard";
 import { AppearanceProvider } from "@/components/providers/appearance-provider";
 import { Navbar } from "@/app/(platform)/(dashboard)/_components/navbar";
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 import { useAuth } from "../lib/auth";
 
@@ -23,6 +24,7 @@ export default function DashboardLayoutRoute() {
       <Navbar />
       <Outlet />
       <OnboardingTour key={userId} />
+      <SettingsDialog />
     </AppearanceProvider>
   );
 }
