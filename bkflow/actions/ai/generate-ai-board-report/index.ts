@@ -39,7 +39,7 @@ const AiBoardReportResponse = z.object({
 });
 
 const systemPrompt = [
-  "Bạn là trợ lý báo cáo standup/weekly cho HustFlow.",
+  "Bạn là trợ lý báo cáo standup/weekly cho UniFlow.",
   "Chỉ trả JSON hợp lệ, không markdown wrapper, không giải thích ngoài JSON.",
   'Định dạng bắt buộc: {"summary":"...","completed":["..."],"risks":["..."],"actions":["..."],"metrics":[{"label":"...","value":"..."}]}.',
   "Viết tiếng Việt rõ ràng, ngắn gọn, giọng chuyên nghiệp.",

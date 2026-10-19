@@ -11,6 +11,8 @@ import {
   DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { NoteBlock } from "@/lib/notes/blocks";
+import type { LinkedTaskView } from "@/lib/notes/contract";
+import { LinkedTaskBlock, type PickedTask } from "@/components/notes/linked-task-block";
 import {
   commandAfterEnter, convertBlock, isTextBlock, makeBlock, matchMarkdownShortcut, numberedIndex, shouldExitListOnEnter,
   type BlockCommand,
@@ -18,7 +20,6 @@ import {
 import { toSearchKey } from "@/lib/my-tasks/parse-quick-add";
 import { cn } from "@/lib/utils";
 
-type Task = { id: string; title: string; dueDate: string | null; boardId: string };
 type Focus = { id: string; pos: number | "end" };
 
 const COMMANDS: { command: BlockCommand; label: string; keywords: string; icon: LucideIcon }[] = [
@@ -26,19 +27,19 @@ const COMMANDS: { command: BlockCommand; label: string; keywords: string; icon: 
   { command: "h1", label: "Tiêu đề 1", keywords: "heading h1 title", icon: Heading1 },
   { command: "h2", label: "Tiêu đề 2", keywords: "heading h2", icon: Heading2 },
   { command: "h3", label: "Tiêu đề 3", keywords: "heading h3", icon: Heading3 },
-  { command: "todo", label: "Việc cần làm", keywords: "todo checkbox check", icon: CheckSquare },
+  { command: "todo", label: "Todo trong Trang", keywords: "todo checkbox check viec can lam", icon: CheckSquare },
   { command: "bullet", label: "Danh sách chấm", keywords: "bullet list ul", icon: List },
   { command: "numbered", label: "Danh sách số", keywords: "numbered list ol", icon: ListOrdered },
   { command: "quote", label: "Trích dẫn", keywords: "quote", icon: Quote },
   { command: "callout", label: "Ghi chú nổi bật", keywords: "callout highlight", icon: Lightbulb },
   { command: "divider", label: "Đường phân cách", keywords: "divider line hr", icon: Minus },
-  { command: "deadline", label: "Hạn & nhắc", keywords: "deadline reminder date nhac han", icon: CalendarClock },
-  { command: "task", label: "Liên kết công việc", keywords: "task card link the", icon: Link2 },
+  { command: "deadline", label: "Hạn trong Trang (cũ)", keywords: "deadline reminder date nhac han", icon: CalendarClock },
+  { command: "task", label: "Công việc liên kết", keywords: "task card link the cong viec lien ket", icon: Link2 },
 ];
 const TEXT_COMMANDS = COMMANDS.filter(item => !["divider", "deadline", "task"].includes(item.command));
 
 const PLACEHOLDERS: Partial<Record<NoteBlock["type"], string>> = {
-  todo: "Việc cần làm", bullet: "Danh sách", numbered: "Danh sách", quote: "Trích dẫn", callout: "Ghi chú nổi bật",
+  todo: "Todo trong Trang", bullet: "Danh sách", numbered: "Danh sách", quote: "Trích dẫn", callout: "Ghi chú nổi bật",
 };
 
 // Keys must exist in reminderLabels (lib/notifications/reminder-notifications.ts).
@@ -70,25 +71,13 @@ const DeadlineBlock = ({ block, onChange, onEnter }: { block: Extract<NoteBlock,
   return <div className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2", overdue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/40")}>
     <input type="checkbox" aria-label="Đánh dấu hạn đã xong" checked={block.checked} onChange={event => onChange({ checked: event.target.checked })} className="size-4 accent-violet-600" />
     <CalendarClock aria-hidden="true" className={cn("size-4 shrink-0", overdue ? "text-destructive" : "text-violet-600")} />
+    <span className="shrink-0 text-xs font-medium text-muted-foreground">Hạn trong Trang (cũ)</span>
     <input data-block-input={block.id} aria-label="Tên hạn" value={block.text} maxLength={200} placeholder="Nộp bài, thi, đăng ký…" onChange={event => onChange({ text: event.target.value })} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onEnter(); } }} className={cn("min-w-40 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60", block.checked && "text-muted-foreground line-through")} />
     <input type="datetime-local" aria-label="Thời điểm hạn" value={toLocalInput(block.dueAt)} onChange={event => onChange({ dueAt: event.target.value ? new Date(event.target.value).toISOString() : "" })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground" />
     <select aria-label="Nhắc trước" value={block.reminder} onChange={event => onChange({ reminder: event.target.value })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground">
       {reminderOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
     </select>
     {overdue && <span className="text-xs font-medium text-destructive">Quá hạn</span>}
-  </div>;
-};
-
-const TaskBlock = ({ block, tasks, onChange }: { block: Extract<NoteBlock, { type: "task" }>; tasks: Task[]; onChange: (patch: Partial<NoteBlock>) => void }) => {
-  const task = tasks.find(item => item.id === block.taskId);
-  return <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-    <Link2 aria-hidden="true" className="size-4 shrink-0 text-violet-600" />
-    <select data-block-input={block.id} aria-label="Công việc được liên kết" value={block.taskId} onChange={event => onChange({ taskId: event.target.value })} className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm text-foreground">
-      <option value="">Chọn công việc…</option>
-      {block.taskId && !task && <option value={block.taskId}>Công việc không còn trong học kỳ này</option>}
-      {tasks.map(item => <option key={item.id} value={item.id}>{item.title}{item.dueDate ? ` · hạn ${new Date(item.dueDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}` : ""}</option>)}
-    </select>
-    {task && <a className="text-xs font-medium text-violet-600 hover:underline" href={`/board/${encodeURIComponent(task.boardId)}?cardId=${encodeURIComponent(task.id)}`}>Mở ↗</a>}
   </div>;
 };
 
@@ -102,7 +91,12 @@ const focusBlock = (target: Focus) => {
   }
 };
 
-export const BlockEditor = ({ blocks, onChange, tasks }: { blocks: NoteBlock[]; onChange: (blocks: NoteBlock[]) => void; tasks: Task[] }) => {
+export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
+  blocks: NoteBlock[];
+  onChange: (blocks: NoteBlock[]) => void;
+  linkedTask: (taskId: string) => LinkedTaskView;
+  onPickTask: (task: PickedTask) => void;
+}) => {
   const [slash, setSlash] = useState<{ id: string; active: number } | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ from: number; to: number | null } | null>(null);
@@ -316,7 +310,7 @@ export const BlockEditor = ({ blocks, onChange, tasks }: { blocks: NoteBlock[]; 
       </div>
 
       {block.type === "divider" ? <div className="py-2"><hr className="border-border" aria-label="Đường phân cách" /></div>
-        : block.type === "task" ? <TaskBlock block={block} tasks={tasks} onChange={patch => update(index, patch)} />
+        : block.type === "task" ? <LinkedTaskBlock block={block} resolved={linkedTask(block.taskId)} onRemove={() => remove(index)} onChoose={task => { onPickTask(task); update(index, { taskId: task.id }); }} />
         : block.type === "deadline" ? <DeadlineBlock block={block} onChange={patch => update(index, patch)} onEnter={() => insertBelow(index)} />
         : renderText(block, index)}
 

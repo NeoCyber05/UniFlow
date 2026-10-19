@@ -145,3 +145,17 @@ export const appendChecklistItems = async (tx: Tx, input: { checklistId: string;
   }
   return { items, orderVersion };
 };
+
+/** New checklist appended to the card with its items, inside the caller's transaction (AI add_checklist). */
+export const createChecklistWithItems = async (tx: Tx, input: { cardId: string; title: string; titles: string[] }) => {
+  const last = await tx.checklist.findFirst({
+    where: { cardId: input.cardId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const { id } = await tx.checklist.create({
+    data: { cardId: input.cardId, title: input.title, order: last ? last.order + 1 : 0 },
+  });
+  const { items } = await appendChecklistItems(tx, { checklistId: id, titles: input.titles });
+  return { checklist: await tx.checklist.findUniqueOrThrow({ where: { id } }), items };
+};

@@ -1,4 +1,4 @@
-import { DEFAULT_UNIFLOW_ORIGIN, SOURCE_HOSTS } from "./protocol.js";
+import { DEFAULT_UNIFLOW_ORIGIN } from "./protocol.js";
 
 const status = document.getElementById("status");
 const originInput = document.getElementById("origin");
@@ -20,10 +20,10 @@ document.getElementById("origin-form").addEventListener("submit", async (event) 
   event.preventDefault();
   try {
     const origin = normalizeOrigin(originInput.value);
-    // Must run inside the click: permissions.request needs a user gesture.
-    if (!(await chrome.permissions.request({ origins: [`${origin}/*`] }))) return say("Chưa được cấp quyền cho địa chỉ này.");
-    const { uniflowOrigin: previous } = await chrome.storage.local.get("uniflowOrigin");
-    if (previous && previous !== origin && previous !== DEFAULT_UNIFLOW_ORIGIN) await chrome.permissions.remove({ origins: [`${previous}/*`] }).catch(() => {});
+    // Must run inside the click: permissions.request needs a user gesture. Production is granted at install.
+    if (origin !== DEFAULT_UNIFLOW_ORIGIN && !(await chrome.permissions.request({ origins: [`${origin}/*`] }))) {
+      return say("Chưa được cấp quyền cho địa chỉ này.");
+    }
     await chrome.storage.local.set({ uniflowOrigin: origin });
     originInput.value = origin;
     say(`Đã lưu ${origin}.`);
@@ -31,22 +31,3 @@ document.getElementById("origin-form").addEventListener("submit", async (event) 
     say(error instanceof Error ? error.message : "Địa chỉ không hợp lệ.");
   }
 });
-
-const { origins = [] } = await chrome.permissions.getAll();
-const hosts = document.getElementById("hosts");
-for (const host of SOURCE_HOSTS) {
-  const label = document.createElement("label");
-  label.className = "host";
-  const box = document.createElement("input");
-  box.type = "checkbox";
-  box.checked = host.patterns.every((pattern) => origins.includes(pattern));
-  box.addEventListener("change", async () => {
-    const granted = box.checked
-      ? await chrome.permissions.request({ origins: host.patterns })
-      : !(await chrome.permissions.remove({ origins: host.patterns }));
-    box.checked = granted;
-    say(granted ? `Đã bật cho ${host.label}. Tải lại tab đang mở để dùng.` : `Đã tắt cho ${host.label}.`);
-  });
-  label.append(box, host.label);
-  hosts.append(label);
-}

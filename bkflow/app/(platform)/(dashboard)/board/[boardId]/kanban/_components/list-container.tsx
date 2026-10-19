@@ -20,6 +20,7 @@ import { debugBoardRealtime } from "@/lib/realtime/debug";
 
 import { ListForm } from "./list-form";
 import { ListItem } from "./list-item";
+import { KanbanLayoutToggle, useKanbanLayout } from "./kanban-layout-toggle";
 import { BoardRealtimeSubscriptions } from "./board-realtime-subscriptions";
 import { BoardStateProvider } from "./board-state-context";
 import { useBoardRealtimeSync } from "../_hooks/use-board-realtime-sync";
@@ -43,6 +44,7 @@ export const ListContainer = ({
     state.filtersByBoardId[boardId] ?? emptyBoardFilters,
   );
   const canEdit = currentMemberRole !== BoardMemberRole.VIEWER;
+  const [layout, setLayout] = useKanbanLayout();
 
   const rollbackRef = useRef<(() => void) | null>(null);
   const subscriptionCatchUpDoneRef = useRef(false);
@@ -140,21 +142,24 @@ export const ListContainer = ({
         onSubscribed={handleBoardRealtimeSubscribed}
         {...realtimeCallbacks}
       />
-      {filtersAreActive && visibleCardCount === 0 && (
-        <div className="mb-3 inline-flex rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-neutral-700 shadow-sm">
-          Không có thẻ nào phù hợp với bộ lọc hiện tại.
-        </div>
-      )}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <KanbanLayoutToggle value={layout} onChange={setLayout} />
+        {filtersAreActive && visibleCardCount === 0 && (
+          <div className="inline-flex rounded-lg bg-white/90 px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm">
+            Không có thẻ nào phù hợp với bộ lọc hiện tại.
+          </div>
+        )}
+      </div>
       <DragDropContext
         onDragStart={canEdit ? onDragStart : () => undefined}
         onDragEnd={canEdit ? onDragEnd : () => undefined}
       >
-        <Droppable droppableId="lists" type="list" direction="horizontal">
+        <Droppable droppableId="lists" type="list" direction={layout === "columns" ? "horizontal" : "vertical"}>
           {(provided) => (
             <ol
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className="flex h-full gap-x-3"
+              className={layout === "columns" ? "flex h-[calc(100%-2.75rem)] gap-x-3" : "flex flex-col gap-y-3 pb-4"}
             >
               {filteredData.map((list, index) => {
                 return (
@@ -163,6 +168,7 @@ export const ListContainer = ({
                     index={index}
                     data={list}
                     canEdit={canEdit}
+                    layout={layout}
                   />
                 )
               })}

@@ -1,40 +1,50 @@
 # UniFlow Capture (Edge / Chrome, MV3)
 
-Bôi đen tin nhắn trên Slack/Teams **web** → nút "Thêm vào UniFlow" → cửa sổ UniFlow nhỏ (`/capture`)
-điền sẵn câu, AI đọc hạn/lịch theo **giờ gửi của tin nhắn** → sửa nếu cần → Thêm.
+Bôi đen tin nhắn trên **Slack, Microsoft Teams, Messenger, Facebook, Zalo** (bản web) → nút "Thêm vào UniFlow"
+→ cửa sổ UniFlow nhỏ (`/capture`), AI điền sẵn tiêu đề, hạn nộp, môn theo **giờ gửi của tin nhắn** → bấm Thêm task.
 
-## Cài (unpacked, không cần store)
+## Người dùng cài thế nào
 
-1. Edge: mở `edge://extensions`, bật **Developer mode**.
-2. **Load unpacked** → chọn thư mục `extensions/uniflow-capture`.
-3. Trang cài đặt tự mở (hoặc chuột phải icon → Extension options):
-   - Địa chỉ UniFlow mặc định là bản deploy `https://uniflow-production-ba94.up.railway.app` (quyền được cấp lúc cài).
-     Chỉ đổi sang `http://localhost:5173` khi chạy thử `npm run dev`.
-   - Tích Slack và/hoặc Teams.
-4. Tải lại tab Slack/Teams đang mở.
+Khi đã lên store: trang Edge Add-ons → **Get** → **Add extension**. Edge hỏi quyền trên các trang chat và trang UniFlow
+một lần; sau đó extension tự mở `/capture/welcome`. Không có bước cài đặt nào khác.
 
-Sửa code extension xong: bấm **Reload** ở `edge://extensions`, rồi tải lại tab.
+## Phát hành lên Edge Add-ons (miễn phí)
 
-Phát hành sau này: Edge Add-ons đăng ký miễn phí; Chrome Web Store mất 5$ một lần.
+1. Tăng `version` trong `manifest.json`.
+2. Đóng gói (PowerShell, từ repo root):
+   ```powershell
+   Compress-Archive -Force -Path extensions/uniflow-capture/manifest.json, extensions/uniflow-capture/*.js, extensions/uniflow-capture/options.html, extensions/uniflow-capture/icons -DestinationPath uniflow-capture.zip
+   ```
+   Zip không chứa `protocol.test.mjs`, `package.json`, `README.md`.
+3. Microsoft Partner Center → Edge → tạo extension mới → tải `uniflow-capture.zip`.
+4. Trang giới thiệu: mô tả, ảnh 1280×800, logo store `store/logo-300.png` (gốc vector `store/logo.svg`, cùng logo với app `bkflow/public/logo.svg`), chính sách quyền riêng tư
+   `https://uniflow-production-ba94.up.railway.app/privacy`, giải thích quyền: "chỉ đọc đoạn người dùng bôi đen
+   trên các trang chat, sau khi bấm nút".
+5. Có link store → đặt `NEXT_PUBLIC_CAPTURE_EXTENSION_URL` trên Railway rồi build lại, để tutorial hiện nút "Cài".
+
+Chrome Web Store dùng cùng file zip (phí đăng ký 5$ một lần).
+
+## Cài thử (unpacked, cho dev)
+
+1. `edge://extensions` → bật **Developer mode** → **Load unpacked** → chọn `extensions/uniflow-capture`.
+2. Chạy bản dev (`npm run dev`): mở Extension options, chọn `http://localhost:5173` → **Lưu và cấp quyền**.
+3. Tải lại tab chat đang mở. Sửa code: bấm **Reload** ở `edge://extensions` rồi tải lại tab.
 
 ## Quyền và dữ liệu
 
-- Chỉ chạy trên host bạn tích (`optional_host_permissions`), không xin `<all_urls>`, history, cookies hay tabs.
-  Quyền cố định duy nhất là domain UniFlow deploy (để chuyển nháp vào trang `/capture`).
-- Trước khi bấm nút: không gửi gì, không lưu gì. Sau khi bấm: gửi đoạn bôi đen (≤ 4000 ký tự), URL trang
-  (bỏ query/fragment), tiêu đề trang, và giờ gửi của tin chứa đoạn đó (nếu đọc được).
-- Bỏ qua chọn trong ô nhập/ô soạn tin (input, textarea, contenteditable).
-- Nháp nằm trong `chrome.storage.session` tối đa **15 phút**, mất khi đóng trình duyệt; xóa khi đã thêm hoặc bấm Hủy.
-- Extension không giữ token: đăng nhập và lưu task chạy trong trang UniFlow như bình thường.
-  URL popup chỉ chứa mã yêu cầu ngẫu nhiên, không chứa nội dung.
-- Đóng popup lỡ tay: bấm icon extension để mở lại nháp gần nhất (trong 15 phút).
+- Quyền cố định: các trang chat ở trên và domain UniFlow; `localhost` chỉ khi dev tự cấp. Không xin `<all_urls>`,
+  history, cookies hay tabs.
+- Trước khi bấm nút: không gửi, không lưu gì. Sau khi bấm: đoạn bôi đen (≤ 4000 ký tự), URL trang (bỏ query/fragment),
+  tiêu đề trang, giờ gửi của tin (nếu đọc được).
+- Bỏ qua chọn trong ô nhập/ô soạn tin. Nháp nằm trong `chrome.storage.session` tối đa 15 phút.
+- Extension không giữ token; URL popup chỉ chứa mã ngẫu nhiên. Đóng popup lỡ tay: bấm icon extension để mở lại.
+- `bridge.js` gắn `data-uniflow-capture="<version>"` vào trang UniFlow để app biết đã cài.
 
 ## Giờ gửi tin
 
-`selection.js` đi từ đoạn chọn lên các phần tử cha và lấy timestamp đầu tiên tìm thấy
-(`time[datetime]` của Teams, `[data-ts]` của Slack). Gặp nhiều timestamp cùng cấp thì bỏ (không đoán);
-khi đó composer nhắc kiểm tra lại "hôm nay/mai". Giờ gửi luôn hiện trong phần "Nguồn" để bạn đối chiếu.
-Cách đọc này **chưa được kiểm trên Slack/Teams thật**; DOM của họ đổi thì cần sửa selector.
+`selection.js` lấy timestamp của tin chứa đoạn chọn (`time[datetime]` của Teams, `[data-ts]` của Slack), bỏ khi mơ hồ.
+Messenger/Facebook/Zalo chưa có cách đọc giờ đã biết: popup không hiện "Gửi lúc" và AI tính theo lúc bôi đen,
+nên tin cũ có "hôm nay" cần kiểm tra ngày. Chưa kiểm trên các trang thật; DOM đổi thì cần sửa selector.
 
 ## Kiểm tra
 
@@ -42,5 +52,3 @@ Cách đọc này **chưa được kiểm trên Slack/Teams thật**; DOM của 
 node --test extensions/uniflow-capture/protocol.test.mjs          # từ repo root
 cd bkflow && npx tsx --import ./server/register-aliases.mjs --test web/lib/capture-bridge.test.ts
 ```
-
-Gỡ: bỏ tích host trong cài đặt (tab đang mở cần tải lại), hoặc Remove ở `edge://extensions`.

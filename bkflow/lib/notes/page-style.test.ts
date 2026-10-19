@@ -27,7 +27,7 @@ test("default page style follows the app theme instead of forcing white paper", 
 });
 
 test("saving notes requires a version and bounds title and content", () => {
-  const note = { title: "Ghi chú", content: "Nội dung", style: null, expectedUpdatedAt: "2026-10-17T00:00:00.000Z" };
+  const note = { title: "Ghi chú", content: JSON.stringify({ version: 1, blocks: [{ id: "a", type: "paragraph", text: "Nội dung" }] }), style: null, expectedUpdatedAt: "2026-10-17T00:00:00.000Z" };
   assert.equal(SaveNotePage.safeParse(note).success, true);
   for (const patch of [{ title: " " }, { content: "a".repeat(100001) }, { expectedUpdatedAt: "" }]) {
     assert.equal(SaveNotePage.safeParse({ ...note, ...patch }).success, false);

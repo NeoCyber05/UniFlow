@@ -42,7 +42,48 @@ export const serializeNoteBlocks = (blocks: readonly NoteBlock[]): string => {
   return content;
 };
 
+// Save route accepts only a valid version-1 document; legacy text is converted by the client on explicit edit.
+export const isStructuredNoteContent = (content: string) => {
+  try { return NoteBlocksDocumentSchema.safeParse(JSON.parse(content)).success; } catch { return false; }
+};
+
+// A JSON object/array we cannot read (newer version, unknown block) is preserved untouched; plain legacy text is not.
+export const isUnsupportedNoteDocument = (content: string) => {
+  try {
+    const parsed: unknown = JSON.parse(content);
+    return typeof parsed === "object" && parsed !== null && !NoteBlocksDocumentSchema.safeParse(parsed).success;
+  } catch {
+    return false;
+  }
+};
+
 export const haveSameNoteContent = (left: readonly NoteBlock[], right: readonly NoteBlock[]) => {
   const content = (blocks: readonly NoteBlock[]) => JSON.stringify(blocks, (key, value: unknown) => key === "id" ? undefined : value);
   return content(left) === content(right);
+};
+
+const isProtectedBlock = (block: NoteBlock) => block.type === "task" || block.type === "deadline";
+const blockKey = (block?: NoteBlock) => block ? JSON.stringify(block, Object.keys(block).sort()) : "";
+
+export type AiBlockEditCheck = { ok: false; error: string } | { ok: true; noop: boolean; large: boolean };
+
+/**
+ * Invariants on validated AI output, enforced after the model and independent of the prompt:
+ * task/deadline blocks come back with the same id and payload; AI never adds or retargets one.
+ * "large" (needs replace_content + explicit confirmation): removes a task/deadline block, or on a page
+ * with at least 4 blocks removes/rewrites more than half of its other blocks.
+ */
+export const checkAiBlockEdit = (before: readonly NoteBlock[], after: readonly NoteBlock[]): AiBlockEditCheck => {
+  const beforeById = new Map(before.map(block => [block.id, block]));
+  for (const block of after) {
+    if (isProtectedBlock(block) && blockKey(beforeById.get(block.id)) !== blockKey(block)) {
+      return { ok: false, error: block.type === "task" ? "AI không được thêm hoặc đổi liên kết công việc. Trang chưa thay đổi." : "AI không được thêm hoặc đổi hạn. Trang chưa thay đổi." };
+    }
+  }
+  if (haveSameNoteContent(before, after)) return { ok: true, noop: true, large: false };
+  const afterById = new Map(after.map(block => [block.id, block]));
+  const others = before.filter(block => !isProtectedBlock(block));
+  const touched = others.filter(block => blockKey(afterById.get(block.id)) !== blockKey(block)).length;
+  const large = before.some(block => isProtectedBlock(block) && !afterById.has(block.id)) || (before.length >= 4 && touched * 2 > others.length);
+  return { ok: true, noop: false, large };
 };

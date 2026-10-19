@@ -5,6 +5,8 @@ import "server-only";
 import { db } from "@/lib/db";
 
 import { ASSISTANT_LIMITS } from "./config";
+import type { AssistantContext } from "./context";
+import type { AiOperation } from "./policy";
 import { formatZonedDateTime } from "./time";
 
 /**
@@ -21,6 +23,10 @@ export type AssistantSession = {
   role: BoardMemberRole;
   /** Chuỗi định danh múi giờ IANA của client (ví dụ: "Asia/Ho_Chi_Minh") */
   timeZone: string;
+  /** Ngữ cảnh đã kiểm quyền, chụp lại lúc gửi request. */
+  context?: AssistantContext;
+  /** Operation do thao tác UI/lệnh xác định; thiếu = hỏi đáp/đề xuất. */
+  operation?: AiOperation;
 };
 
 /**

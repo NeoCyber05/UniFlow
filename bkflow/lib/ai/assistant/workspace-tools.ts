@@ -13,9 +13,14 @@ import { searchWorkspace } from "@/lib/search/workspace-search-server";
 
 import type { AssistantSession } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
-import { formatZonedDateTime, getZonedDayStart, getZonedWeekStart } from "./time";
+import { formatZonedDateTime, getCurrentTimeInfo, getZonedDayStart, getZonedWeekStart } from "./time";
 
 export const createWorkspaceTools = ({ userId, timeZone }: AssistantSession) => ({
+  getCurrentTime: tool({
+    description: "Lấy thời điểm hiện tại theo múi giờ người dùng: hôm nay là ngày nào, thứ mấy, và lịch 14 ngày tới. Gọi trước khi đổi \"hôm nay\", \"mai\", \"thứ Sáu\", \"tuần sau\", \"cuối tuần\" thành ngày cụ thể.",
+    inputSchema: z.object({}),
+    execute: async () => ({ ok: true, ...getCurrentTimeInfo(new Date(), timeZone) }),
+  }),
   searchWorkspace: tool({
     description: "Tìm thẻ, môn học, bảng và trang ghi chú trong toàn bộ workspace cá nhân. Trả về liên kết nguồn; dùng getPage để đọc nội dung trang ghi chú tìm được. Kết quả có giới hạn, không phải thống kê tổng số.",
     inputSchema: z.object({ query: z.string().trim().min(1).max(100) }),

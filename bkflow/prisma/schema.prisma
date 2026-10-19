@@ -125,6 +125,7 @@ model Card {
   blockedByDependencies CardDependency[] @relation("BlockedRelation")
   userStates            CardUserState[]
   reminderDeliveries    ReminderDelivery[]
+  aiEdits               AiTaskEdit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -493,6 +494,26 @@ model NoteDeadline {
   @@index([userId, dueAt])
 }
 
+// Opt-in conversion of a legacy deadline block into a Card. Kept after restore and when the Card
+// is deleted (cardId has no FK), so the mapping and the original block snapshot are never lost.
+model NoteDeadlineTaskMap {
+  id                 String    @id @default(uuid())
+  userId             String
+  pageId             String
+  blockId            String
+  cardId             String
+  requestId          String
+  beforeBlock        Json
+  beforePageRevision DateTime
+  afterPageRevision  DateTime
+  cardRevision       DateTime
+  convertedAt        DateTime  @default(now())
+  restoredAt         DateTime?
+
+  @@unique([pageId, blockId])
+  @@index([userId, pageId, requestId])
+}
+
 model AiNoteEdit {
   id               String    @id @default(uuid())
   userId           String
@@ -503,6 +524,31 @@ model AiNoteEdit {
   appliedUpdatedAt DateTime
   undoneAt         DateTime?
   createdAt        DateTime  @default(now())
+  // Request receipt (null on rows written before receipts): one write per requestId; replay returns this row.
+  requestId          String?
+  requestFingerprint String?
+  beforeUpdatedAt    DateTime?
 
+  @@unique([userId, requestId])
   @@index([userId, notePageId, createdAt])
+}
+
+// Receipt + undo snapshot of one AI task edit. before/after hold only the fields of `operation`
+// (validated by lib/ai/assistant/task-edits.ts), never an arbitrary patch.
+model AiTaskEdit {
+  id                 String    @id @default(uuid())
+  userId             String
+  cardId             String
+  card               Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  requestId          String
+  requestFingerprint String
+  operation          String
+  before             Json
+  after              Json
+  appliedUpdatedAt   DateTime
+  undoneAt           DateTime?
+  createdAt          DateTime  @default(now())
+
+  @@unique([userId, requestId])
+  @@index([userId, cardId, createdAt])
 }

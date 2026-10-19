@@ -11,6 +11,9 @@ import { Hint } from "@/components/hint";
 import { ListWithCards } from "@/types";
 import { ListOptions } from "./list-options";
 import { useBoardState } from "./board-state-context";
+import { ListStatusIcon, listStatusPillClassName } from "./list-status-badge";
+import { getListStatus } from "@/lib/boards/list-status";
+import { cn } from "@/lib/utils";
 
 interface ListHeaderProps {
   data: ListWithCards;
@@ -30,6 +33,7 @@ export const ListHeader = ({
   canEdit,
 }: ListHeaderProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const status = getListStatus(data.title);
 
   const formRef = useRef<HTMLFormElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -213,15 +217,18 @@ export const ListHeader = ({
             onPointerCancel={() => {
               pointerDownRef.current = null;
             }}
-            className="flex min-h-8 w-fit max-w-full cursor-pointer items-start rounded-md px-2 py-1 text-left text-base font-bold text-neutral-800 transition-colors hover:bg-neutral-200/60"
+            className="flex min-h-8 w-fit max-w-full cursor-pointer items-center rounded-md text-left transition hover:brightness-95"
           >
-            <span className="whitespace-normal break-words">{data.title}</span>
+            <span className={cn(listStatusPillClassName(status), "text-sm font-semibold")}>
+              <ListStatusIcon status={status} />
+              <span className="whitespace-normal break-words">{data.title}</span>
+            </span>
           </button>
         </div>
       )}
       <div className="flex items-center gap-x-1">
         <Hint description={`${data.cards.length} thẻ`} side="top" sideOffset={6}>
-          <span className="inline-flex h-7 min-w-7 cursor-default items-center justify-center rounded-md bg-white/80 px-2 text-xs font-semibold text-neutral-500 shadow-sm border border-neutral-200">
+          <span className="inline-flex h-7 min-w-7 cursor-default items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums text-neutral-500">
             {data.cards.length}
           </span>
         </Hint>

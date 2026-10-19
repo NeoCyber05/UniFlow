@@ -16,10 +16,12 @@ import {
 } from "lucide-react";
 
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
+import type { AiOperation } from "@/lib/ai/assistant/policy";
 import type { AssistantMutationOutput } from "@/lib/ai/assistant/tools";
 import { cn } from "@/lib/utils";
 
 import { AssistantMarkdown } from "./assistant-markdown";
+import { TaskEditProposal, AiEditUndoButton } from "./task-edit-controls";
 
 type MessagePart = BoardAssistantUIMessage["parts"][number];
 
@@ -60,7 +62,22 @@ const MUTATION_TOOL_NAMES = new Set([
   "updateCardDeadline",
   "updateCardDetails",
   "archiveCard",
+  "createCardDependency",
+  "deleteCardDependency",
 ]);
+
+const OPERATION_LABELS: Record<AiOperation, string> = {
+  answer: "Trả lời",
+  edit_page: "Sửa trang",
+  edit_task_content: "Sửa nội dung thẻ",
+  add_checklist: "Thêm checklist",
+  set_schedule: "Đặt lịch",
+  set_deadline: "Đặt hạn",
+  batch_update: "Cập nhật nhiều việc",
+  replace_content: "Xóa hoặc thay nội dung",
+};
+
+const isProposal = (output: unknown) => (output as { action?: string } | null)?.action === "proposal";
 
 /**
  * Component hiển thị Thẻ hành động (Action Card) trực quan sau khi Agent thực thi công cụ mutation.
@@ -75,11 +92,31 @@ const ActionCard = ({
   output: AssistantMutationOutput;
   onOpenCard: (cardId: string) => void;
 }) => {
+  if (output.ok && output.action === "task_edited") return <div className="space-y-2 rounded-lg border bg-card p-3 text-card-foreground"><p>{output.edit ? "Đã sửa công việc." : "Không có thay đổi mới."}</p>{output.edit && <AiEditUndoButton editId={output.edit.id} cardId={output.card.id} />}</div>;
   if (!output.ok) {
     return (
       <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
         <span>{output.error}</span>
+      </div>
+    );
+  }
+
+  if (output.action === "proposal") {
+    return (
+      <div className="space-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+        <p className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-400">
+          <Sparkles className="size-3.5 shrink-0" />
+          Đề xuất: {OPERATION_LABELS[output.operation]} · chưa áp dụng
+        </p>
+        {output.confirmation === "explicit" ? (
+          <p className="text-muted-foreground">Thay đổi này cần bạn xác nhận trước khi áp dụng.</p>
+        ) : null}
+        {output.target ? (
+          <button type="button" onClick={() => onOpenCard(output.target!.id)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+            Mở thẻ: {output.target.title}<ExternalLink className="size-3" />
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -293,7 +330,7 @@ const ActionCard = ({
  * @param props.toolName - Tên công cụ đang thực thi.
  * @param props.state - Trạng thái của công cụ ("call", "output-available", "output-error"...).
  */
-const ToolStatus = ({ toolName, state }: { toolName: string; state: string }) => {
+const ToolStatus = ({ toolName, state, proposal }: { toolName: string; state: string; proposal?: boolean }) => {
   const done = state === "output-available";
   const failed = state === "output-error";
 
@@ -306,7 +343,7 @@ const ToolStatus = ({ toolName, state }: { toolName: string; state: string }) =>
       ) : (
         <Loader2 className="size-3 animate-spin" />
       )}
-      {(TOOL_LABELS[toolName] ?? toolName).replace(/^Đang /, done ? "Đã " : "Đang ")}
+      {proposal ? "Đã soạn đề xuất" : (TOOL_LABELS[toolName] ?? toolName).replace(/^Đang /, done ? "Đã " : "Đang ")}
     </div>
   );
 };
@@ -339,9 +376,9 @@ const RenderPart = ({
 
     return (
       <div className="space-y-2">
-        <ToolStatus toolName={toolName} state={part.state} />
+        <ToolStatus toolName={toolName} state={part.state} proposal={part.state === "output-available" && isProposal(part.output)} />
         {isMutation && part.state === "output-available" ? (
-          <ActionCard
+          isProposal(part.output) ? <TaskEditProposal proposal={part.output as import("@/lib/ai/assistant/policy").AiProposal} toolCallId={part.toolCallId} /> : <ActionCard
             output={part.output as AssistantMutationOutput}
             onOpenCard={onOpenCard}
           />
@@ -354,7 +391,7 @@ const RenderPart = ({
 };
 
 /**
- * Component hiển thị một tin nhắn hoàn chỉnh trong giao diện Trợ lý AI HustFlow Assistant.
+ * Component hiển thị một tin nhắn hoàn chỉnh trong giao diện Trợ lý AI UniFlow Assistant.
  * Phân biệt tin nhắn từ người dùng (User Bubble) và từ trợ lý (Assistant Bubble kèm Avatar Sparkles).
  *
  * @param props.message - Đối tượng tin nhắn UI tuân thủ giao thức `BoardAssistantUIMessage`.

@@ -1,4 +1,5 @@
 "use client";
+import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
@@ -9,12 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AutoTextarea, BlockEditor } from "@/components/notes/block-editor";
 import { PageStyleControls } from "@/components/notes/page-style-controls";
-import { parseNoteBlocks, serializeNoteBlocks, type NoteBlock } from "@/lib/notes/blocks";
+import { isUnsupportedNoteDocument, parseNoteBlocks, type NoteBlock } from "@/lib/notes/blocks";
+import { getLinkedTaskIds, resolveLinkedTaskView } from "@/lib/notes/contract";
+import { linkedTasksQueryState, LINKED_TASKS_KEY, useLinkedTasks, type PickedTask } from "@/components/notes/linked-task-block";
 import { hasCustomPaper, pageStyleCss, type PageStyle } from "@/lib/notes/page-style";
 import { cn } from "@/lib/utils";
 import { NoteReadingView } from "@/components/notes/note-reading-view";
 import { useAppearance } from "@/components/providers/appearance-provider";
-import { shouldResaveNote } from "@/lib/notes/save-state";
+import { buildNoteSave, shouldResaveNote } from "@/lib/notes/save-state";
 import { NOTE_PAGES_KEY, useNotePages } from "@/components/notes/note-pages-list";
 import { getPagePath } from "@/lib/notes/page-tree";
 import { IconPicker, PageActionsMenu, rememberRecentPage, usePageActions } from "@/components/notes/page-actions";
@@ -25,7 +28,7 @@ type UndoEntry = { id: string; createdAt: string; undoneAt: string | null };
 const initialDraft = (page: Page) => ({ title: page.title, blocks: parseNoteBlocks(page.content), style: page.style });
 const signature = (draft: { title: string; blocks: NoteBlock[]; style: PageStyle | null }) => JSON.stringify(draft);
 
-export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; tasks: { id: string; title: string; dueDate: string | null; boardId: string }[] }) => {
+export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   const page = initialPage;
   const { pageStyle: defaultStyle } = useAppearance();
   const queryClient = useQueryClient();
@@ -56,7 +59,23 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
   const savedSignatureRef = useRef(signature(initial));
   const saveRunningRef = useRef(false);
   const aiRequestRef = useRef(false);
+  const aiAttemptRef = useRef<{ key: string; requestId: string; confirmed?: object } | null>(null);
   const resaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Unsupported stored document: shown read-only and never autosaved until the user explicitly replaces it.
+  const [preserved, setPreserved] = useState(() => isUnsupportedNoteDocument(page.content));
+  const preservedRef = useRef(preserved);
+  const linkedQuery = useLinkedTasks(page.id);
+  const linkedState = linkedTasksQueryState(linkedQuery);
+  const [picked, setPicked] = useState<Record<string, PickedTask>>({});
+  const linkedTask = (taskId: string) => resolveLinkedTaskView(taskId, linkedState, picked[taskId]);
+  const savedTaskIdsRef = useRef(getLinkedTaskIds(page.content).join());
+  // The tasks endpoint reads saved content, so refetch once the saved set of refs changes.
+  const syncLinkedTasks = useCallback((content: string) => {
+    const ids = getLinkedTaskIds(content).join();
+    if (ids === savedTaskIdsRef.current) return;
+    savedTaskIdsRef.current = ids;
+    void queryClient.invalidateQueries({ queryKey: LINKED_TASKS_KEY });
+  }, [queryClient]);
 
   useEffect(() => { draftRef.current = { title, blocks, style }; }, [title, blocks, style]);
   useEffect(() => {
@@ -75,9 +94,11 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
     setSaving(true);
     setError("");
     try {
+      const body = buildNoteSave(draft, versionRef.current, preservedRef.current);
+      if (!body) return true;
       const response = await fetch(`/api/pages/${page.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draft, content: serializeNoteBlocks(draft.blocks), expectedUpdatedAt: versionRef.current }),
+        body: JSON.stringify(body),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? "Không lưu được trang.");
@@ -86,6 +107,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
       savedSignatureRef.current = currentSignature;
       setUpdatedAt(result.page.updatedAt);
       setSaved(signature(draftRef.current) === currentSignature);
+      syncLinkedTasks(body.content);
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không lưu được trang.");
@@ -99,7 +121,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
         resaveRef.current = setTimeout(() => { void saveChanges(); }, 250);
       }
     }
-  }, [page.id, queryClient]);
+  }, [page.id, queryClient, syncLinkedTasks]);
 
   useEffect(() => {
     const timer = setTimeout(() => { void saveChanges(); }, 900);
@@ -123,23 +145,44 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
     return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", beforeLink, true); void saveChanges(); };
   }, [saveChanges]);
 
-  const runAiEdit = async () => {
-    if (!prompt.trim() || aiRequestRef.current) return;
+  const runAiEdit = async (requestPrompt = prompt) => {
+    if (!requestPrompt.trim() || aiRequestRef.current) return;
     aiRequestRef.current = true;
     setAiBusy(true);
     setError("");
     try {
       if (!(await saveChanges())) return;
-      const response = await fetch(`/api/pages/${page.id}/ai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, expectedUpdatedAt: versionRef.current }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "AI chưa chỉnh được trang.");
+      // One requestId per prompt+revision, reused on retry so the server replays instead of editing twice.
+      const key = JSON.stringify([versionRef.current, requestPrompt]);
+      if (aiAttemptRef.current?.key !== key) aiAttemptRef.current = { key, requestId: crypto.randomUUID() };
+      const { requestId } = aiAttemptRef.current;
+      const send = async (extra: object) => {
+        const response = await fetch(`/api/pages/${page.id}/ai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: requestPrompt, expectedUpdatedAt: versionRef.current, requestId, operation: "edit_page", ...extra }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? "AI chưa chỉnh được trang.");
+        return result;
+      };
+      // A retry after a confirmed send repeats that exact payload, so a committed change is replayed.
+      let result = await send(aiAttemptRef.current.confirmed ?? {});
+      if (result.preview) {
+        // Large change or removal of task/deadline blocks: apply only after explicit confirmation.
+        if (!window.confirm("AI đề xuất thay đổi lớn (xoá khối công việc/hạn hoặc viết lại hơn nửa trang). Công việc thật không bị xoá. Áp dụng thay đổi này?")) {
+          setError("Chưa áp dụng thay đổi của AI. Trang vẫn được giữ nguyên.");
+          return;
+        }
+        aiAttemptRef.current.confirmed = { operation: "replace_content", confirmed: true, document: result.preview.document, expectedUpdatedAt: result.preview.expectedUpdatedAt };
+        result = await send(aiAttemptRef.current.confirmed);
+      }
+      aiAttemptRef.current = null;
       const nextBlocks = parseNoteBlocks(result.page.content);
       const nextDraft = { title: result.page.title, blocks: nextBlocks, style: result.page.style ?? style };
       setTitle(nextDraft.title); setBlocks(nextBlocks); setStyle(nextDraft.style);
       versionRef.current = result.page.updatedAt; setUpdatedAt(result.page.updatedAt);
       draftRef.current = nextDraft; savedSignatureRef.current = signature(nextDraft); setSaved(true);
-      setHistory(current => [result.change, ...current]); setPrompt("");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "AI chưa chỉnh được trang."); }
+      setHistory(current => [result.change, ...current.filter(change => change.id !== result.change.id)]); setPrompt("");
+      syncLinkedTasks(result.page.content);
+      return true;
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "AI chưa chỉnh được trang."); return false; }
     finally { aiRequestRef.current = false; setAiBusy(false); }
   };
 
@@ -158,11 +201,18 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
       const draft = { title: result.page.title, blocks: parseNoteBlocks(result.page.content), style: result.page.style ?? null };
       draftRef.current = draft; savedSignatureRef.current = signature(draft); setSaved(true);
       setHistory(current => current.map(change => change.id === changeId ? { ...change, undoneAt: new Date().toISOString() } : change));
+      syncLinkedTasks(result.page.content);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Không hoàn tác được thay đổi."); }
     finally { aiRequestRef.current = false; setAiBusy(false); }
   };
 
   const effectiveStyle = style ?? defaultStyle;
+  const replacePreserved = () => {
+    if (!window.confirm("Thay nội dung gốc bằng một trang trống? Nội dung hiện tại sẽ bị ghi đè khi lưu.")) return;
+    preservedRef.current = false;
+    setPreserved(false);
+    setBlocks([{ id: crypto.randomUUID(), type: "paragraph", text: "" }]);
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -192,6 +242,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
           <span className="sr-only">Cập nhật lúc {new Date(updatedAt).toLocaleTimeString("vi-VN")}</span>
         </span>
         {!trashed && <>
+          {!preserved && <>
           <Popover>
             <PopoverTrigger className={toolbarButton} aria-label="Nhờ AI chỉnh trang"><Sparkles aria-hidden="true" className="size-4 text-violet-600" /><span className="hidden md:inline">AI</span></PopoverTrigger>
             <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
@@ -210,6 +261,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
               <Button type="button" variant="link" className="mt-2 px-0" onClick={() => setStyle(null)}>Dùng kiểu mặc định của tôi</Button>
             </PopoverContent>
           </Popover>
+          </>}
           <button type="button" className={toolbarButton} aria-pressed={reading} aria-label={reading ? "Quay lại viết" : "Chế độ đọc"} onClick={() => setReading(value => !value)}>
             {reading ? <PencilLine aria-hidden="true" className="size-4" /> : <BookOpen aria-hidden="true" className="size-4" />}
           </button>
@@ -224,6 +276,10 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
     {trashed && <div role="alert" className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">
       Trang này đang ở thùng rác.
       <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>Khôi phục</Button>
+    </div>}
+    {preserved && <div role="alert" className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm">
+      Trang dùng định dạng chưa hỗ trợ. Nội dung gốc được giữ nguyên và không tự lưu.
+      {!trashed && <Button type="button" size="sm" variant="outline" onClick={replacePreserved}>Thay bằng trang trống</Button>}
     </div>}
     {error && <p role="alert" className="mx-auto mt-3 max-w-3xl rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">{error}</p>}
 
@@ -242,7 +298,7 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
           </Popover>
           <AutoTextarea
             aria-label="Tên trang"
-            readOnly={reading || trashed}
+            readOnly={reading || trashed || preserved}
             value={title}
             maxLength={200}
             onChange={event => setTitle(event.target.value.replace(/\n/g, " "))}
@@ -257,9 +313,12 @@ export const NotePageEditor = ({ initialPage, tasks }: { initialPage: Page; task
           />
         </div>
         <div className="mt-4">
-          {reading || trashed ? <div className="pb-16 pl-12"><NoteReadingView blocks={blocks} tasks={tasks} /></div> : <BlockEditor blocks={blocks} onChange={setBlocks} tasks={tasks} />}
+          {preserved ? <pre className="ml-12 mb-16 overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-muted/60 p-4 text-xs">{page.content}</pre>
+            : reading || trashed ? <div className="pb-16 pl-12"><NoteReadingView blocks={blocks} linkedTask={linkedTask} /></div>
+            : <BlockEditor blocks={blocks} onChange={setBlocks} linkedTask={linkedTask} onPickTask={task => setPicked(current => ({ ...current, [task.id]: task }))} />}
         </div>
       </fieldset>
     </article>
+    {!trashed && !preserved && <BoardAssistant context={{ kind: "page", pageId: page.id, expectedUpdatedAt: updatedAt }} label={`Trang: ${title}`} onEditPage={runAiEdit} />}
   </div>;
 };

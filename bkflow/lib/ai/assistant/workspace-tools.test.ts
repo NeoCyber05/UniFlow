@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Database doubles exercise real tools and actions without a live database. */
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "node:test";
+import { afterEach, beforeEach, test, mock } from "node:test";
+import Pusher from "pusher";
 import type { PrismaClient } from "@prisma/client";
 
 import { runWithAuth } from "@/server/auth";
@@ -8,13 +9,17 @@ import { BoardMemberRole } from "@/types";
 import { toAppUser } from "@/lib/auth/app-user";
 import type { AssistantSession } from "./board-data";
 import { createAssistantTools } from "./tools";
+import { createChecklistItemTool } from "./checklist-tool";
 import { GET as searchRoute } from "@/server/routes/search/route";
 
 const session: AssistantSession = { boardId: "b1", userId: "u1", role: BoardMemberRole.ADMIN, timeZone: "Asia/Ho_Chi_Minh" };
+// Lệnh sửa nội dung từ UI trên đúng thẻ đang mở: policy direct-with-undo cho phép chạy công cụ.
+const editing: AssistantSession = { ...session, context: { kind: "task", cardId: "c1", expectedUpdatedAt: "2026-10-18T00:00:00.000Z" }, operation: "edit_task_content" };
 const previousDb = globalThis.prisma;
 let database: Record<string, any>;
 
 beforeEach(() => {
+  mock.method(Pusher.prototype, "trigger", async () => ({}));
   database = {
     course: { findMany: async () => [] }, semester: {}, aiNoteEdit: {},
     board: { findMany: async () => [], findFirst: async () => ({ id: "b1", userId: "u1", title: "Board" }) },
@@ -25,7 +30,7 @@ beforeEach(() => {
   };
   globalThis.prisma = database as unknown as PrismaClient;
 });
-afterEach(() => { globalThis.prisma = previousDb; });
+afterEach(() => { globalThis.prisma = previousDb; mock.restoreAll(); });
 
 const execute = async (name: string, input: unknown, currentSession = session) => {
   const tools = createAssistantTools(currentSession) as Record<string, any>;
@@ -192,6 +197,11 @@ const checklistFixture = () => {
   return item;
 };
 const signedIn = (callback: () => Promise<any>) => runWithAuth({ userId: "u1", user: toAppUser({ sub: "u1", user_metadata: { full_name: "Student" } }) }, callback);
+// Test the underlying normal checklist command separately from the chat proposal gate.
+const executeChecklistCommand = async (input: any, scope = editing) => {
+  const definition = createChecklistItemTool(scope) as any;
+  return definition.execute(definition.inputSchema.parse(input), { toolCallId: "test", messages: [] });
+};
 
 test("checklist completion sets the desired state and retries do not toggle it back", async () => {
   const item = checklistFixture();
@@ -199,7 +209,7 @@ test("checklist completion sets the desired state and retries do not toggle it b
   database.auditLog.create = async ({ data }: any) => { logs.push(data); return data; };
   await signedIn(async () => {
     const input = { cardId: "c1", itemId: "i1", change: { type: "completed", isCompleted: true } };
-    const result = await execute("updateChecklistItem", input);
+    const result = await executeChecklistCommand(input);
     assert.equal(result.ok, true);
     assert.equal(item.isCompleted, true);
     assert.equal(logs.length, 1);
@@ -207,42 +217,43 @@ test("checklist completion sets the desired state and retries do not toggle it b
     assert.equal(logs[0].userId, "u1");
     assert.equal(result.action, "checklist_item_updated");
     assert.equal(result.card.id, "c1");
-    await execute("updateChecklistItem", input);
+    await executeChecklistCommand(input);
     assert.equal(item.isCompleted, true);
     assert.equal(logs.length, 1);
   });
 });
 
-test("checklist title and due-date edits reuse the actions and clearing dates works", async () => {
+test("checklist title edits reuse the action while due-date edits only become previews", async () => {
   const item = checklistFixture();
   await signedIn(async () => {
-    assert.equal((await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "title", title: "Read chapter 2" } })).ok, true);
+    assert.equal((await executeChecklistCommand({ cardId: "c1", itemId: "i1", change: { type: "title", title: "Read chapter 2" } })).ok, true);
     assert.equal(item.title, "Read chapter 2");
-    assert.equal((await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "dueDate", dueDate: "2026-10-19T12:00:00+07:00" } })).ok, true);
-    assert.equal(item.dueDate?.toISOString(), "2026-10-19T05:00:00.000Z");
-    assert.equal((await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "dueDate", dueDate: null } })).ok, true);
-    assert.equal(item.dueDate, null);
+    for (const dueDate of ["2026-10-19T12:00:00+07:00", null]) {
+      const result = await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "dueDate", dueDate } }, editing);
+      assert.equal(result.action, "proposal");
+      assert.equal(result.operation, "set_deadline");
+      assert.equal(item.dueDate, null);
+    }
   });
 });
 
-test("checklist edits reject invalid dates, later-than-parent dates and empty titles without changing data", async () => {
+test("checklist questions and empty titles never change data", async () => {
   const item = checklistFixture();
   await signedIn(async () => {
-    for (const dueDate of ["nonsense", "2026-10-19T12:00:00", "2026-10-21T12:00:00+07:00"]) {
-      const result = await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "dueDate", dueDate } });
-      assert.equal(result.ok, false);
-      assert.equal(item.dueDate, null);
-    }
-    await assert.rejects(() => execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "title", title: " " } }));
+    // Không có lệnh UI: kể cả sửa tên cũng chỉ là đề xuất.
+    const result = await execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "title", title: "Other" } });
+    assert.equal(result.action, "proposal");
+    assert.equal(item.title, "Read");
+    await assert.rejects(() => execute("updateChecklistItem", { cardId: "c1", itemId: "i1", change: { type: "title", title: " " } }, editing));
   });
 });
 
 test("checklist edits reject viewers, archived cards, wrong identities and foreign boards", async () => {
   const item = checklistFixture();
   const input = { cardId: "c1", itemId: "i1", change: { type: "completed", isCompleted: true } };
-  const viewer = await signedIn(() => execute("updateChecklistItem", input, { ...session, role: BoardMemberRole.VIEWER }));
+  const viewer = await signedIn(() => executeChecklistCommand(input, { ...editing, role: BoardMemberRole.VIEWER }));
   assert.equal(viewer.ok, false);
-  assert.equal((await execute("updateChecklistItem", input)).ok, false);
+  assert.equal((await executeChecklistCommand(input)).ok, false);
   await signedIn(async () => {
     database.card.findFirst = async ({ where }: any) => {
       assert.equal(where.archivedAt, null);
@@ -250,10 +261,10 @@ test("checklist edits reject viewers, archived cards, wrong identities and forei
       assert.equal(where.list.boardId, "b1");
       return null;
     };
-    assert.equal((await execute("updateChecklistItem", input)).ok, false);
+    assert.equal((await executeChecklistCommand(input)).ok, false);
     database.card.findFirst = async () => ({ id: "c1", title: "Report" });
     database.board.findFirst = async () => null;
-    assert.equal((await execute("updateChecklistItem", input)).ok, false);
+    assert.equal((await executeChecklistCommand(input)).ok, false);
   });
   assert.equal(item.isCompleted, false);
 });

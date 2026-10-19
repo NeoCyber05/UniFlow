@@ -20,7 +20,10 @@ import PagesRoute, { PagesLayoutRoute } from "./routes/pages";
 import NotePageRoute from "./routes/page";
 import ReminderDeliveryRoute from "./routes/reminder-delivery";
 import CaptureRoute from "./routes/capture";
+import CaptureWelcomeRoute from "./routes/capture-welcome";
+import PrivacyRoute from "./routes/privacy";
 import SemesterRoute from "./routes/semester";
+import SettingsAppearanceRoute from "./routes/settings-appearance";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
 const centered = (el: React.ReactNode) => <div className="h-full flex items-center justify-center">{el}</div>;
@@ -39,6 +42,8 @@ export const router = createBrowserRouter([
     children: [
       // Extension popup: handles its own sign-in so the pending request survives login.
       { path: "/capture", element: <CaptureRoute /> },
+      { path: "/capture/welcome", element: <CaptureWelcomeRoute /> },
+      { path: "/privacy", element: <PrivacyRoute /> },
       {
         element: <RedirectIfSignedIn />,
         children: [
@@ -69,6 +74,7 @@ export const router = createBrowserRouter([
                 ],
               },
               { path: "my/:view", element: <MyRoute /> },
+              { path: "settings/appearance", element: <SettingsAppearanceRoute /> },
               {
                 path: "pages",
                 element: <PagesLayoutRoute />,

@@ -16,18 +16,16 @@
 </head>
 <body>
   <h1>UniFlow Capture</h1>
-  <p class="muted">Bôi đen tin nhắn trên trang web được bật bên dưới, bấm “Thêm vào UniFlow” để mở cửa sổ thêm task.
+  <p class="muted">Bôi đen tin nhắn trên Slack, Teams, Messenger, Facebook hoặc Zalo web, bấm “Thêm vào UniFlow” để mở cửa sổ thêm task.
     Extension chỉ đọc đoạn bạn bôi đen và giờ gửi của tin nhắn đó, sau khi bạn bấm nút.</p>
 
-  <h2>1. Địa chỉ UniFlow</h2>
+  <h2>Địa chỉ UniFlow (cho nhà phát triển)</h2>
+  <p class="muted">Người dùng thường không cần đổi. Chọn http://localhost:5173 khi chạy thử bản dev.</p>
   <form id="origin-form">
     <input id="origin" type="url" required placeholder="https://uniflow-production-ba94.up.railway.app" aria-label="Địa chỉ UniFlow">
     <button type="submit">Lưu và cấp quyền</button>
   </form>
 
-  <h2>2. Bật trên trang</h2>
-  <div id="hosts"></div>
-  <p class="muted">Bỏ chọn để thu hồi quyền; các tab đang mở cần tải lại để gỡ hẳn nút.</p>
 
   <p id="status" role="status"></p>
   <script type="module" src="options.js"></script>

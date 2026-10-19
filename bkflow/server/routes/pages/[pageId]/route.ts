@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { SaveNotePage } from "@/lib/notes/contract";
 import { findOwnedNote, getPersonalNoteScope, syncNoteDeadlines } from "@/lib/notes/server";
 import { getSubtreeIds } from "@/lib/notes/page-tree";
+import { canonicalizeConvertedContent } from "@/lib/notes/legacy-task-conversion";
 
 const noAccess = () => Response.json({ error: "Không có quyền truy cập." }, { status: 401 });
 
@@ -26,8 +27,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pa
   const parsed = SaveNotePage.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Tiêu đề, nội dung hoặc kiểu trang không hợp lệ." }, { status: 400 });
   try {
-    const { title, content, style, expectedUpdatedAt } = parsed.data;
+    const { title, style, expectedUpdatedAt } = parsed.data;
     const page = await db.$transaction(async tx => {
+      const content = await canonicalizeConvertedContent(tx, { pageId, content: parsed.data.content });
       const expected = new Date(expectedUpdatedAt);
       const updated = await tx.notePage.updateMany({
         where: { id: pageId, ...scope, updatedAt: expected },

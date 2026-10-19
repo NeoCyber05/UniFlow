@@ -16,14 +16,13 @@ const POPUP = { width: 440, height: 640 };
 const KEY_PREFIX = "capture:";
 const BRIDGE_TYPES = new Set(["CAPTURE_READY", "CAPTURE_SAVED", "CAPTURE_CANCEL"]);
 
-/** Hosts the user can enable. Exact origins only; no <all_urls>. */
+/** Chat sites where the selection button runs. Exact origins only; no <all_urls>. Keep in sync with manifest.json. */
 export const SOURCE_HOSTS = [
-  { id: "slack", label: "Slack (app.slack.com)", patterns: ["https://app.slack.com/*"] },
-  {
-    id: "teams",
-    label: "Microsoft Teams (web)",
-    patterns: ["https://teams.microsoft.com/*", "https://teams.live.com/*", "https://teams.cloud.microsoft/*"],
-  },
+  { id: "slack", label: "Slack", patterns: ["https://app.slack.com/*"] },
+  { id: "teams", label: "Microsoft Teams", patterns: ["https://teams.microsoft.com/*", "https://teams.live.com/*", "https://teams.cloud.microsoft/*"] },
+  { id: "messenger", label: "Messenger", patterns: ["https://www.messenger.com/*"] },
+  { id: "facebook", label: "Facebook", patterns: ["https://www.facebook.com/*", "https://web.facebook.com/*"] },
+  { id: "zalo", label: "Zalo Web", patterns: ["https://chat.zalo.me/*"] },
 ];
 
 const originOf = (url) => {

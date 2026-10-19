@@ -1,4 +1,5 @@
 "use client";
+import { AiTaskHistory } from "@/components/ai-assistant/task-edit-controls";
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import { Activity } from "./activity";
 import { CommentsSection as Comments } from "./comments/comments-section";
 import { ChecklistsSection as Checklists } from "./checklists/checklists-section";
 import { AttachmentsSection as Attachments } from "./attachments/attachments-section";
-import { AiCardQualityAssistant } from "./ai/ai-card-quality-assistant";
+import { useAssistantTask } from "@/hooks/use-assistant-task";
 import { DependenciesSection as CardDependencies } from "./dependencies/dependencies-section";
 import type { BeforeCloseRef } from "./close-guard";
 
@@ -35,11 +36,7 @@ const CardMainContent = ({
       <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
       <CardDependencies data={cardData} canEdit={canEdit} />
       {canEdit && (
-        <AiCardQualityAssistant
-          cardId={cardData.id}
-          boardId={cardData.list.boardId}
-          checklists={cardData.checklists || []}
-        />
+        <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>AI: Gợi ý checklist</Button>
       )}
       {(cardData.attachments ?? []).length > 0 && (
         <Attachments
@@ -99,6 +96,12 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
   const isGone = status === 403 || status === 404;
   // After 403/404 the cached copy is no longer trustworthy, so it is not shown.
   const cardData = isGone ? undefined : cachedCard;
+  useEffect(() => {
+    const store = useAssistantTask.getState();
+    if (!cardData) { store.clear(cardId); return; }
+    store.show({ id: cardData.id, title: cardData.title, boardId: cardData.list.boardId, updatedAt: new Date(cardData.updatedAt).toISOString() });
+    return () => store.clear(cardId);
+  }, [cardId, cardData]);
 
   useEffect(() => {
     if (isGone) {
@@ -166,6 +169,7 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
           }
         </div>
         <div className={classes.side}>
+          {cardData && canEdit && <AiTaskHistory cardId={cardData.id} />}
           {!auditLogsData
             ? <Activity.Skeleton />
             : <Activity

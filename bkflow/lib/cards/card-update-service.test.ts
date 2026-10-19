@@ -82,6 +82,17 @@ test("rejects stale metadata without changing deadline", async () => {
   assert.deepEqual(state.effects, []);
 });
 
+test("AI receipt writes CAS the whole card revision even for a description-only change", async () => {
+  const ctx = setup();
+  ctx.database.$transaction = async (fn: any) => {
+    ctx.state.card = { ...ctx.state.card, title: "Manual title", updatedAt: new Date(T0.getTime() + 500) };
+    return fn(ctx.database);
+  };
+  const result = await updateCardService({ userId: "u1", data: { id: "c1", boardId: "b1", expectedUpdatedAt: T0.toISOString(), descriptionBaseUpdatedAt: T0.toISOString(), description: "AI" } }, ctx.database, ctx.effects, async () => {});
+  assert.equal(result.errorCode, CARD_CONFLICT_ERROR_CODE);
+  assert.equal(ctx.state.card.description, null);
+});
+
 test("rejects metadata change without expectedUpdatedAt", async () => {
   const { result, state } = await run({ isCompleted: true });
   assert.equal(result.errorCode, CARD_CONFLICT_ERROR_CODE);

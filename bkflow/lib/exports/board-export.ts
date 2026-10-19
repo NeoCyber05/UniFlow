@@ -347,7 +347,7 @@ export const buildBoardWorkbookBuffer = async (data: BoardExportData) => {
   const exportedAt = new Date();
   const summary = getBoardExportSummary(data, exportedAt);
 
-  workbook.creator = "HustFlow";
+  workbook.creator = "UniFlow";
   workbook.created = exportedAt;
   workbook.modified = exportedAt;
 

@@ -4,6 +4,10 @@ import { QueryClient } from "@tanstack/react-query";
 import superjson from "superjson";
 import { viewQueryOptions } from "./use-view";
 
+test("dashboard preferences from different accounts never share a fresh cache entry", () => {
+  assert.notDeepEqual(viewQueryOptions("/dashboard", "a").queryKey, viewQueryOptions("/dashboard", "b").queryKey);
+});
+
 test("board prefetch and mounted view share one request and fresh cache", async () => {
   const originalFetch = globalThis.fetch;
   let requests = 0;
