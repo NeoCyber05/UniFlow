@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { projectCalendarEntries, projectChecklistEntries } from "@/lib/calendar/calendar-entries";
-import { getCalendarRange, getTodayKey } from "@/lib/calendar/calendar-navigation";
+import { getCalendarRange, getTodayKey, readCalendarLocation } from "@/lib/calendar/calendar-navigation";
 import { buildDayTimeline } from "@/lib/calendar/day-timeline";
 import { toCalendarDisplayItems } from "@/lib/calendar/schedule-adapter";
 import { fetcher } from "@/lib/fetcher";
@@ -48,12 +48,50 @@ import type {
   ViewMode,
 } from "../_types";
 
+export const getBoardCalendarQueryOptions = (
+  boardId: string,
+  params?: {
+    viewMode?: ViewMode;
+    anchorDate?: Date;
+    searchParams?: URLSearchParams;
+  },
+) => {
+  let viewMode: ViewMode = params?.viewMode ?? "month";
+  let anchorDate = params?.anchorDate;
+
+  if (params?.searchParams) {
+    const loc = readCalendarLocation(params.searchParams);
+    viewMode = loc.mode;
+    if (!anchorDate) {
+      anchorDate = new Date(`${loc.day}T12:00:00+07:00`);
+    }
+  }
+
+  if (!anchorDate) {
+    anchorDate = new Date();
+  }
+
+  const range = getCalendarRange(getTodayKey(anchorDate), viewMode);
+  const fromIso = range.from;
+  const toIso = range.to;
+
+  return {
+    queryKey: ["board-calendar", boardId, viewMode, fromIso, toIso] as const,
+    queryFn: () =>
+      fetcher(
+        `/api/boards/${boardId}/calendar?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&includeUnscheduled=true`,
+      ),
+    staleTime: 30_000,
+  };
+};
+
 type UseCalendarQueryOptions = {
   boardId: string;
   viewMode: ViewMode;
   anchorDate: Date;
   filters: BoardFilterState;
   currentBoardMemberId: string;
+  initialData?: BoardCalendarResponse;
 };
 
 export const useCalendarQuery = ({
@@ -62,6 +100,7 @@ export const useCalendarQuery = ({
   anchorDate,
   filters,
   currentBoardMemberId,
+  initialData,
 }: UseCalendarQueryOptions) => {
   // Range theo ngày VN, `toIso` là biên mở; `days` chỉ để dựng lưới.
   const { fromIso, toIso, days } = useMemo(
@@ -78,12 +117,26 @@ export const useCalendarQuery = ({
     [anchorDate, viewMode],
   );
 
+  const queryOptions = useMemo(
+    () => getBoardCalendarQueryOptions(boardId, { viewMode, anchorDate }),
+    [boardId, viewMode, anchorDate],
+  );
+
+  const matchingInitialData = useMemo(() => {
+    if (
+      initialData &&
+      initialData.boardId === boardId &&
+      initialData.from === fromIso &&
+      initialData.to === toIso
+    ) {
+      return initialData;
+    }
+    return undefined;
+  }, [initialData, boardId, fromIso, toIso]);
+
   const query = useQuery<BoardCalendarResponse>({
-    queryKey: ["board-calendar", boardId, viewMode, fromIso, toIso],
-    queryFn: () =>
-      fetcher(
-        `/api/boards/${boardId}/calendar?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&includeUnscheduled=true`,
-      ),
+    ...queryOptions,
+    initialData: matchingInitialData,
   });
 
   const responseItems = query.data?.items;
@@ -172,9 +225,19 @@ export const useCalendarQuery = ({
     }, {});
   }, [occurrences]);
   const occurrencesByDay = useMemo(() => {
-    return occurrences.reduce<Record<string, CalendarOccurrence[]>>((acc, occurrence) => {
+    const grouped: Record<string, CalendarOccurrence[]> = {};
+    for (const occurrence of occurrences) {
       const key = getDayKey(occurrence.date);
-      acc[key] = [...(acc[key] ?? []), occurrence].sort((left, right) => {
+      const list = grouped[key];
+      if (list) {
+        list.push(occurrence);
+      } else {
+        grouped[key] = [occurrence];
+      }
+    }
+
+    for (const key of Object.keys(grouped)) {
+      grouped[key].sort((left, right) => {
         const timeDelta = left.date.getTime() - right.date.getTime();
 
         if (timeDelta !== 0) {
@@ -187,9 +250,9 @@ export const useCalendarQuery = ({
 
         return left.item.title.localeCompare(right.item.title, "vi");
       });
+    }
 
-      return acc;
-    }, {});
+    return grouped;
   }, [occurrences]);
 
   return {

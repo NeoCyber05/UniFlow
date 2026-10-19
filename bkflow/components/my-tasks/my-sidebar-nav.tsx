@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ManageSemestersDialog } from "@/components/semesters/manage-semesters-dialog";
 import { TrashDialog } from "@/components/notes/page-actions";
+import { useSettingsModal } from "@/hooks/use-settings-modal";
+import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
 import { useBoardFilters } from "@/hooks/use-board-filters";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
@@ -32,6 +34,7 @@ import { MY_TASKS_CONTEXT_KEY } from "@/lib/my-tasks/types";
 import { formatSemesterLabel } from "@/lib/semesters";
 import { cn } from "@/lib/utils";
 import { viewQueryOptions } from "@/web/lib/use-view";
+import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 
 const EMPTY_COURSE_IDS: string[] = [];
 
@@ -55,6 +58,7 @@ export const MySidebarNav = () => {
   const { data: counts } = useMyTaskCounts();
   const [manageOpen, setManageOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const settingsModal = useSettingsModal();
 
   const semesters = useMemo<Semester[]>(
     () =>
@@ -84,6 +88,9 @@ export const MySidebarNav = () => {
     if (!boardId) return;
     void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/layout`));
     void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/${view}`));
+    if (view === "calendar") {
+      void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
+    }
   };
 
   const courseHref = (courseKey: string) =>
@@ -177,9 +184,17 @@ export const MySidebarNav = () => {
       )}
 
       <div className="space-y-0.5">
-        <Link href="/settings/appearance" className={itemClassName(pathname === "/settings/appearance")}>
-          <Settings2 aria-hidden="true" className="h-4 w-4" />Cài đặt → Giao diện
-        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            useMobileSidebar.getState().onClose();
+            settingsModal.onOpen();
+          }}
+          className={itemClassName(settingsModal.isOpen)}
+        >
+          <Settings2 aria-hidden="true" className="h-4 w-4" />
+          Cài đặt
+        </button>
         {context?.personalOrgId && (
           <Link
             href={`/organization/${context.personalOrgId}/activity`}

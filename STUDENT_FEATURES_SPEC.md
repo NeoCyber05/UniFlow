@@ -28,7 +28,7 @@ Chuyển đổi cấu trúc phẳng `Organization -> Board` thành mô hình chu
 ```prisma
 model Semester {
   id        String   @id @default(uuid())
-  orgId     String   // Liên kết với Organization của Clerk
+  orgId     String   // Liên kết với Organization của UniFlow / Supabase
   title     String   // Ví dụ: "Kỳ 2024.1", "Học kỳ 1 (2024-2025)"
   startDate DateTime
   endDate   DateTime

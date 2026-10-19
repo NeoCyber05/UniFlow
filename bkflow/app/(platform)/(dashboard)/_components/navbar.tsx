@@ -14,17 +14,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { Settings } from "lucide-react";
+
 import { MobileSidebar } from "./mobile-sidebar";
 import { NotificationsPopover } from "@/components/notifications-popover";
-import { AppearancePopover } from "@/components/appearance-popover";
 import { NotificationToasts } from "@/components/notifications/notification-toasts";
 import { RealtimeNotificationSync } from "@/components/notifications/realtime-notification-sync";
 import { WorkspaceSearch } from "@/components/workspace-search";
 import { BoardSidebarToggle } from "../board/[boardId]/_components/board-sidebar-toggle";
+import { useSettingsModal } from "@/hooks/use-settings-modal";
 
 const UserMenu = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const settingsModal = useSettingsModal();
 
   if (!user) return null;
 
@@ -66,6 +69,13 @@ const UserMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
+          onClick={() => settingsModal.onOpen()}
+          className="cursor-pointer"
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          Cài đặt
+        </DropdownMenuItem>
+        <DropdownMenuItem
           variant="destructive"
           onClick={handleSignOut}
           className="cursor-pointer"
@@ -103,7 +113,6 @@ export const Navbar = () => {
 
             {/* Right Section */}
             <div className="flex items-center gap-x-3 shrink-0">
-                <AppearancePopover />
                 <NotificationsPopover />
                 <UserMenu />
             </div>

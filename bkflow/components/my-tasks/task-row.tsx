@@ -1,5 +1,14 @@
 "use client";
 
+import { memo } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  blur,
+  scale,
+  spring,
+  transition,
+  useTempoTransition,
+} from "@animate-ui/react/utils/motion";
 import { CalendarDays, Check, Clock, ListChecks, Star, Sun, Users } from "lucide-react";
 
 import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
@@ -26,17 +35,21 @@ type TaskRowProps = {
   showBoardChip?: boolean;
 };
 
-export const TaskRow = ({
+export const TaskRow = memo(function TaskRow({
   task,
   isSelected = false,
   onOpen,
   showAssignees = false,
   showBoardChip = true,
-}: TaskRowProps) => {
+}: TaskRowProps) {
   const { setCompleted, setImportant, setMyDay } = useMyTaskMutations();
   const now = new Date();
   const due = getTaskDeadlineAt(task);
   const isOverdue = !task.isCompleted && due !== null && due < now;
+  const isDueToday = !task.isCompleted && !isOverdue && due !== null && isSameVNDay(due, now);
+  const press = useTempoTransition(spring.press);
+  const checkPop = useTempoTransition(spring.checkPop);
+  const popOut = useTempoTransition(transition.popOut);
   const isPinned = task.myDayAt !== null && isSameVNDay(new Date(task.myDayAt), now);
   const courseColor = task.course ? getCourseColor(task.course.color) : null;
   const isEvent = task.kind === "EVENT";
@@ -58,22 +71,36 @@ export const TaskRow = ({
           <Clock className="h-4 w-4" aria-hidden="true" />
         </span>
       ) : (
-      <button
+      <motion.button
         type="button"
+        whileTap={{ scale: scale.press }}
+        transition={press}
         aria-label={task.isCompleted ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
         onClick={(event) => {
           event.stopPropagation();
           void setCompleted(task.id, !task.isCompleted);
         }}
         className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition",
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200",
           task.isCompleted
             ? "border-emerald-500 bg-emerald-500 text-white"
-            : "border-neutral-300 hover:border-violet-500",
+            : isOverdue
+              ? "border-rose-300 hover:border-rose-500 hover:bg-rose-50"
+              : "border-neutral-300 hover:border-violet-500 hover:bg-violet-50",
         )}
       >
-        {task.isCompleted && <Check className="h-3 w-3" />}
-      </button>
+        <AnimatePresence initial={false}>
+          {task.isCompleted && (
+            <motion.span
+              initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: checkPop }}
+              exit={{ opacity: 0, scale: scale.icon, transition: popOut }}
+            >
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.button>
       )}
 
       <div className="min-w-0 flex-1">
@@ -107,7 +134,14 @@ export const TaskRow = ({
             </span>
           )}
           {due && (
-            <span className={cn("inline-flex items-center gap-1", isOverdue && "font-semibold text-rose-600")}>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1",
+                (isOverdue || isDueToday) && "rounded-full px-1.5 py-0.5 font-semibold ring-1",
+                isOverdue && "bg-rose-50 text-rose-600 ring-rose-200",
+                isDueToday && "bg-amber-50 text-amber-700 ring-amber-200",
+              )}
+            >
               <CalendarDays className="h-3 w-3" />
               {formatVNShortDate(due)}
             </span>
@@ -158,4 +192,6 @@ export const TaskRow = ({
       </button>
     </div>
   );
-};
+});
+
+TaskRow.displayName = "TaskRow";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { DragEvent, MouseEvent } from "react";
+import { memo, type DragEvent, type MouseEvent } from "react";
 import { Plus } from "lucide-react";
 
 import { Hint } from "@/components/hint";
@@ -74,7 +74,7 @@ type CalendarDayCellProps = {
   onDayDragLeave: (dayKey: string) => void;
 };
 
-export const CalendarDayCell = ({
+export const CalendarDayCell = memo(function CalendarDayCell({
   day,
   index,
   viewMode,
@@ -110,7 +110,7 @@ export const CalendarDayCell = ({
   onDayDragOver,
   onDayDrop,
   onDayDragLeave,
-}: CalendarDayCellProps) => {
+}: CalendarDayCellProps) {
   const dayKey = getDayKey(day);
   const dayOccurrences = occurrencesByDay[dayKey] ?? [];
   const dayRangeOccurrences = rangeOccurrencesByDay[dayKey] ?? [];
@@ -157,7 +157,9 @@ export const CalendarDayCell = ({
         viewMode === "month" && index % 7 === 6 && "border-r-0",
         viewMode === "week" && "min-h-[132px] rounded-lg border md:min-h-[360px]",
         viewMode === "week" && index > 0 && "mt-2 md:mt-0",
+        viewMode === "month" && index % 7 >= 5 && "bg-neutral-50/50",
         viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "bg-neutral-50/80 text-neutral-400",
+        isCalendarToday(day) && "bg-violet-50/40 ring-1 ring-inset ring-violet-300",
         (draggingOccurrenceId || draggingUnscheduledCardId || draggingBoardCardId || draggingDayViewBlockId) && "ring-inset ring-violet-100",
         resizingRange && "cursor-ew-resize ring-inset ring-violet-100",
         dragOverDayKey === dayKey && "bg-violet-50 ring-2 ring-inset ring-violet-300",
@@ -274,4 +276,67 @@ export const CalendarDayCell = ({
       </div>
     </div>
   );
-};
+}, areCalendarDayCellPropsEqual);
+
+function areCalendarDayCellPropsEqual(
+  prev: CalendarDayCellProps,
+  next: CalendarDayCellProps,
+): boolean {
+  if (prev.day.getTime() !== next.day.getTime()) return false;
+  if (prev.index !== next.index) return false;
+  if (prev.viewMode !== next.viewMode) return false;
+  if (prev.variant !== next.variant) return false;
+  if (prev.currentMonth.getTime() !== next.currentMonth.getTime()) return false;
+  if (prev.maxVisibleDesktop !== next.maxVisibleDesktop) return false;
+  if (prev.maxVisibleMobile !== next.maxVisibleMobile) return false;
+  if (prev.listsCount !== next.listsCount) return false;
+  if (prev.isCreatingCard !== next.isCreatingCard) return false;
+  if (prev.isUpdatingCardDate !== next.isUpdatingCardDate) return false;
+  if (prev.isUpdatingChecklistItemDueDate !== next.isUpdatingChecklistItemDueDate) return false;
+
+  const dayKey = getDayKey(next.day);
+
+  // Chỉ re-render ô này nếu trạng thái dragOver của chính ô này thay đổi
+  const prevIsDragOver = prev.dragOverDayKey === dayKey;
+  const nextIsDragOver = next.dragOverDayKey === dayKey;
+  if (prevIsDragOver !== nextIsDragOver) return false;
+
+  // Việc đang kéo chung làm thay đổi border/ring của tất cả ô
+  const prevAnyDrag = Boolean(
+    prev.draggingOccurrenceId ||
+    prev.draggingUnscheduledCardId ||
+    prev.draggingBoardCardId ||
+    prev.draggingDayViewBlockId,
+  );
+  const nextAnyDrag = Boolean(
+    next.draggingOccurrenceId ||
+    next.draggingUnscheduledCardId ||
+    next.draggingBoardCardId ||
+    next.draggingDayViewBlockId,
+  );
+  if (prevAnyDrag !== nextAnyDrag) return false;
+
+  // Nếu draggingOccurrenceId cụ thể thay đổi, chỉ re-render ô nào chứa item đó
+  if (prev.draggingOccurrenceId !== next.draggingOccurrenceId) {
+    const prevItems = prev.occurrencesByDay[dayKey] ?? [];
+    const hasDraggedItem = prevItems.some(
+      (o) => o.id === prev.draggingOccurrenceId || o.id === next.draggingOccurrenceId,
+    );
+    if (hasDraggedItem) return false;
+  }
+
+  // Trạng thái resize dải ngày
+  if (Boolean(prev.resizingRange) !== Boolean(next.resizingRange)) return false;
+
+  // Sự kiện trong ngày
+  if (prev.occurrencesByDay[dayKey] !== next.occurrencesByDay[dayKey]) return false;
+  if (prev.rangeOccurrencesByDay[dayKey] !== next.rangeOccurrencesByDay[dayKey]) return false;
+
+  // Các dải ngày của hàng tuần này
+  const weekIndex = Math.floor(next.index / 7);
+  if (prev.rangeSegmentsByWeek[weekIndex] !== next.rangeSegmentsByWeek[weekIndex]) return false;
+
+  return true;
+}
+
+CalendarDayCell.displayName = "CalendarDayCell";

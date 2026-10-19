@@ -1,6 +1,6 @@
 "use client";
 
-import type { DragEvent, MouseEvent } from "react";
+import { memo, type DragEvent, type MouseEvent } from "react";
 import { CheckCircle2, ListChecks } from "lucide-react";
 
 import { Hint } from "@/components/hint";
@@ -51,7 +51,7 @@ type CalendarOccurrenceItemProps = {
   onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
-export const CalendarOccurrenceItem = ({
+export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
   occurrence,
   variant,
   className,
@@ -68,7 +68,7 @@ export const CalendarOccurrenceItem = ({
   onToggleComplete,
   onPlanSchedule,
   onClearSchedule,
-}: CalendarOccurrenceItemProps) => {
+}: CalendarOccurrenceItemProps) {
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
   const timeLabel = getOccurrenceTimeLabel(occurrence);
@@ -162,4 +162,25 @@ export const CalendarOccurrenceItem = ({
       </div>
     </Hint>
   );
-};
+}, areCalendarOccurrencePropsEqual);
+
+function areCalendarOccurrencePropsEqual(
+  prev: CalendarOccurrenceItemProps,
+  next: CalendarOccurrenceItemProps,
+): boolean {
+  if (prev.occurrence !== next.occurrence) return false;
+  if (prev.variant !== next.variant) return false;
+  if (prev.className !== next.className) return false;
+  if (prev.canPlanSchedule !== next.canPlanSchedule) return false;
+  if (prev.canClearSchedule !== next.canClearSchedule) return false;
+  if (prev.isUpdatingCardDate !== next.isUpdatingCardDate) return false;
+  if (prev.isUpdatingChecklistItemDueDate !== next.isUpdatingChecklistItemDueDate) return false;
+
+  const isDraggedPrev = prev.draggingOccurrenceId === prev.occurrence.id;
+  const isDraggedNext = next.draggingOccurrenceId === next.occurrence.id;
+  if (isDraggedPrev !== isDraggedNext) return false;
+
+  return true;
+}
+
+CalendarOccurrenceItem.displayName = "CalendarOccurrenceItem";

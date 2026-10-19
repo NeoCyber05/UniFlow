@@ -33,7 +33,7 @@ export const useAuth = () => {
   return { isLoaded, userId: session?.user.id ?? null, session };
 };
 
-/** Same shape the UI used from Clerk's useUser(): { isLoaded, user }. */
+/** Returns the current auth user state: { isLoaded, user }. */
 export const useUser = (): { isLoaded: boolean; user: AppUser | null } => {
   const { isLoaded, session } = useContext(AuthContext);
   const user = useMemo(

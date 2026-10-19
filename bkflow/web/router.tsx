@@ -26,7 +26,7 @@ import SemesterRoute from "./routes/semester";
 import SettingsAppearanceRoute from "./routes/settings-appearance";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
-const centered = (el: React.ReactNode) => <div className="h-full flex items-center justify-center">{el}</div>;
+const centered = (el: React.ReactNode) => <div className="min-h-screen min-h-dvh w-full flex items-center justify-center">{el}</div>;
 
 // ModalProvider uses next/navigation shims, so it must render inside the router.
 const Root = () => (
@@ -48,8 +48,8 @@ export const router = createBrowserRouter([
         element: <RedirectIfSignedIn />,
         children: [
           { path: "/", element: <MarketingLayout><MarketingPage /></MarketingLayout> },
-          { path: "/sign-in", element: centered(<SignInPage />) },
-          { path: "/sign-up", element: centered(<SignUpPage />) },
+          { path: "/sign-in", element: <SignInPage /> },
+          { path: "/sign-up", element: <SignUpPage /> },
         ],
       },
       {

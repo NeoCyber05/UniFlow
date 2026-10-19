@@ -14,9 +14,14 @@ import {
   X,
 } from "lucide-react";
 import type { BoardType } from "@prisma/client";
+import { motion } from "motion/react";
+import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 
 import { resolveViewOrder } from "@/lib/boards/view-order";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { viewQueryOptions } from "@/web/lib/use-view";
+import { getBoardCalendarQueryOptions } from "../calendar/_hooks/use-calendar-query";
 
 interface BoardViewSwitcherProps {
   boardId: string;
@@ -87,6 +92,17 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
   const [draggedViewId, setDraggedViewId] = useState<ViewId | null>(null);
   const [dragOverViewId, setDragOverViewId] = useState<ViewId | null>(null);
   const isDraggingRef = useRef(false);
+  const slide = useTempoTransition(spring.selection);
+  const queryClient = useQueryClient();
+
+  const prefetchView = (viewId: ViewId) => {
+    if (viewId === "calendar") {
+      void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/calendar`));
+      void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
+    } else if (viewId === "list") {
+      void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/list`));
+    }
+  };
 
   // Synchronize view order with localStorage using useSyncExternalStore
   const savedOrderJson = useSyncExternalStore(
@@ -114,7 +130,7 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
       list: {
         id: "list" as const,
         href: listHref,
-        label: "Danh sách",
+        label: boardType === "SEMESTER" ? "Việc cần làm" : "Danh sách",
         icon: List,
         active: isList,
       },
@@ -143,6 +159,7 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
       },
     };
   }, [
+    boardType,
     boardHref,
     listHref,
     calendarHref,
@@ -229,15 +246,15 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex min-w-0 items-stretch gap-1.5">
+      <ReducedMotionConfig>
       <nav
         aria-label="Chế độ xem bảng"
-        className="flex h-8 shrink-0 items-center rounded-lg bg-white/10 p-0.5 ring-1 ring-white/15"
+        className="flex min-w-0 items-stretch gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {orderedViewIds.map((viewId) => {
           const view = viewsMap[viewId];
           if (!view) return null;
-          if (boardType === "SEMESTER" && (viewId === "list" || viewId === "calendar")) return null;
           const Icon = view.icon;
 
           const tooltip = view.splitTooltip
@@ -252,6 +269,8 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
               key={view.id}
               href={view.href}
               draggable={true}
+              onMouseEnter={() => prefetchView(view.id)}
+              onFocus={() => prefetchView(view.id)}
               onDragStart={(e) => handleDragStart(e, view.id)}
               onDragOver={(e) => handleDragOver(e, view.id)}
               onDragLeave={(e) => handleDragLeave(e, view.id)}
@@ -265,22 +284,37 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
               aria-current={view.active ? "page" : undefined}
               title={tooltip}
               className={cn(
-                "inline-flex h-7 min-w-7 items-center justify-center gap-x-1.5 rounded-md px-1.5 text-xs font-semibold text-white/75 transition select-none cursor-grab active:cursor-grabbing hover:bg-white/15 hover:text-white lg:px-2",
-                view.active && "bg-white text-neutral-800 shadow-sm hover:bg-white hover:text-neutral-900",
-                isBeingDragged && "opacity-30 scale-95",
-                isDragOver && "ring-2 ring-violet-400 bg-white/20 scale-105 transition-transform",
+                "group/tab relative flex shrink-0 select-none items-center text-[13px] font-medium text-white/65 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white",
+                view.active && "text-white",
+                isBeingDragged && "opacity-30",
               )}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden lg:inline">{view.label}</span>
+              <span
+                className={cn(
+                  "relative z-10 flex items-center gap-x-1.5 rounded-md px-2.5 py-1.5 transition-colors duration-200 group-hover/tab:bg-white/10 group-focus-visible/tab:ring-2 group-focus-visible/tab:ring-white/60",
+                  isDragOver && "bg-white/20 ring-2 ring-white/40",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {view.label}
+              </span>
+              {view.active && (
+                // Một gạch chân duy nhất trượt giữa các tab (layoutId), không mờ chồng hai bản
+                <motion.span
+                  layoutId={`board-view-tab-${boardId}`}
+                  transition={slide}
+                  className="absolute inset-x-1.5 bottom-0 h-[3px] rounded-t-full bg-white"
+                />
+              )}
             </Link>
           );
         })}
       </nav>
+      </ReducedMotionConfig>
 
       {/* Split View Active Badge with quick exit button */}
       {isSplit && (
-        <div className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-violet-600/90 px-2 text-xs font-semibold text-white shadow-sm ring-1 ring-white/20">
+        <div className="my-auto flex h-8 shrink-0 items-center gap-1 rounded-lg bg-violet-600/90 px-2 text-xs font-semibold text-white shadow-sm ring-1 ring-white/20">
           <LayoutPanelLeft className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Chia đôi: Bảng & Lịch</span>
           <Link

@@ -5,7 +5,16 @@ import {
   useRef,
   useState,
 } from "react";
+import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, type Variants } from "motion/react";
+import {
+  blur,
+  ReducedMotionConfig,
+  shift,
+  transition as motionTransition,
+  useTempoTransition,
+} from "@animate-ui/react/utils/motion";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
@@ -58,6 +67,7 @@ export const BoardCalendarView = ({
   currentBoardMemberId,
   defaultUnscheduledCollapsed = false,
   variant = "default",
+  initialData,
 }: BoardCalendarViewProps) => {
   const router = useRouter();
   const cardModal = useCardModal();
@@ -121,6 +131,7 @@ export const BoardCalendarView = ({
     anchorDate,
     filters,
     currentBoardMemberId,
+    initialData,
   });
   const {
     realtimeChannelName,
@@ -173,6 +184,21 @@ export const BoardCalendarView = ({
   const monthLabel = `Tháng ${monthParts.month + 1}, ${monthParts.year}`;
   const weekLabel = `Tuần ${formatCalendarDate(new Date(fromIso))} - ${formatCalendarDate(new Date(Date.parse(toIso) - 1))}`;
   const dayLabel = formatDayTitle(anchorDate);
+  // Hướng chuyển khoảng xem (tới = 1, lui = -1) để lưới trượt đúng chiều
+  const [rangeNav, setRangeNav] = useState({ from: fromIso, mode: viewMode, dir: 0 });
+  if (rangeNav.from !== fromIso || rangeNav.mode !== viewMode) {
+    setRangeNav({ from: fromIso, mode: viewMode, dir: rangeNav.mode !== viewMode ? 0 : fromIso > rangeNav.from ? 1 : -1 });
+  }
+  const panelIn = useTempoTransition(motionTransition.panelIn);
+  const panelOut = useTempoTransition(motionTransition.panelOut);
+  const sheetIn = useTempoTransition(motionTransition.sheet);
+  const dismiss = useTempoTransition(motionTransition.dismiss);
+  const disclosure = useTempoTransition(motionTransition.disclosure);
+  const rangeVariants: Variants = {
+    enter: (dir: number) => ({ opacity: 0, x: dir * shift.tabs }),
+    center: { opacity: 1, x: 0, transition: panelIn },
+    exit: (dir: number) => ({ opacity: 0, x: -dir * shift.tabs, transition: panelOut }),
+  };
   const rangeLabel = `${formatCalendarDate(new Date(fromIso))} - ${formatCalendarDate(new Date(Date.parse(toIso) - 1))}`;
   const titleLabel = viewMode === "month"
     ? monthLabel
@@ -488,7 +514,7 @@ export const BoardCalendarView = ({
     onDayDragOver: handleDayDragOver,
     onDayDrop: handleDayDrop,
     onDayDragLeave: (dayKey: string) =>
-      setDragOverDayKey((value) => value === dayKey ? null : value),
+      setDragOverDayKey((value) => (value === dayKey ? null : value)),
     onRangeResizeStart: handleRangeResizeStart,
     onRangeResizeMove: handleRangeResizeMove,
     onRangeResizeEnd: handleRangeResizeEnd,
@@ -528,11 +554,14 @@ export const BoardCalendarView = ({
       />
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
         {viewMode === "month" && (
-          <div className="grid grid-cols-7 rounded-t-lg border border-b-0 border-neutral-200 bg-neutral-50">
-            {WEEK_DAYS.map((day) => (
+          <div className="grid grid-cols-7 rounded-t-xl border border-b-0 border-neutral-200 bg-neutral-50/80">
+            {WEEK_DAYS.map((day, dayIndex) => (
               <div
                 key={day}
-                className="border-r border-neutral-200 px-1.5 py-2 text-center text-[11px] font-semibold uppercase text-neutral-500 last:border-r-0"
+                className={cn(
+                  "border-r border-neutral-200 px-1.5 py-2 text-center text-[11px] font-bold uppercase tracking-wide last:border-r-0",
+                  dayIndex >= 5 ? "text-neutral-400" : "text-neutral-500",
+                )}
               >
                 {day}
               </div>
@@ -540,6 +569,16 @@ export const BoardCalendarView = ({
           </div>
         )}
 
+        <ReducedMotionConfig>
+        <AnimatePresence mode="wait" initial={false} custom={rangeNav.dir}>
+        <motion.div
+          key={`${viewMode}:${fromIso}`}
+          custom={rangeNav.dir}
+          variants={rangeVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+        >
         {query.isLoading && viewMode === "day" && renderCalendarDayTimeGrid(true)}
 
         {query.isLoading && viewMode !== "day" && (
@@ -589,7 +628,16 @@ export const BoardCalendarView = ({
               />
             )}
 
+            <AnimatePresence initial={false}>
             {expandedDayKey && expandedDayItems.length > 0 && (
+              <motion.div
+                key={expandedDayKey}
+                initial={{ height: 0, opacity: 0, filter: blur.disclosure }}
+                animate={{ height: "auto", opacity: 1, filter: "blur(0px)", transitionEnd: { filter: "none" } }}
+                exit={{ height: 0, opacity: 0, filter: blur.disclosure }}
+                transition={disclosure}
+                style={{ overflow: "hidden" }}
+              >
               <ExpandedDayPanel
                 dayKey={expandedDayKey}
                 occurrences={expandedDayItems}
@@ -604,11 +652,26 @@ export const BoardCalendarView = ({
                 onClearSchedule={clearCalendarSchedule}
                 onClose={() => setExpandedDayKey(null)}
               />
+              </motion.div>
             )}
+            </AnimatePresence>
           </>
         )}
+        </motion.div>
+        </AnimatePresence>
+        </ReducedMotionConfig>
       </div>
     </section>
+    <ReducedMotionConfig>
+    <AnimatePresence initial={false}>
+    {!isUnscheduledCollapsed && (
+    <motion.div
+      key="unscheduled-panel"
+      className="flex min-h-0 w-full shrink-0 lg:w-auto"
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0, transition: sheetIn }}
+      exit={{ opacity: 0, x: 16, transition: dismiss }}
+    >
     <UnscheduledPanel
       lists={lists}
       variant={variant}
@@ -630,6 +693,10 @@ export const BoardCalendarView = ({
       onCardDragStart={handleUnscheduledCardDragStart}
       onCardDragEnd={handleUnscheduledCardDragEnd}
     />
+    </motion.div>
+    )}
+    </AnimatePresence>
+    </ReducedMotionConfig>
     </div>
     <ScheduleDialog
       state={scheduleDialog}

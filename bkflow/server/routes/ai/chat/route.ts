@@ -64,7 +64,7 @@ const jsonError = (error: string, status: number) => Response.json({ error }, { 
  *
  * @remarks
  * Các bước kiểm tra:
- * 1. Lấy `userId` từ Clerk Auth session (`auth()`). Nếu chưa đăng nhập -> lỗi 401.
+ * 1. Lấy `userId` từ Auth session (`auth()`). Nếu chưa đăng nhập -> lỗi 401.
  * 2. Kiểm tra `boardId` được truyền vào. Nếu thiếu -> lỗi 400.
  * 3. Kiểm tra xem người dùng có phải là thành viên hợp lệ của bảng hay không (`requireBoardMemberForUser`).
  *    Nếu không thuộc bảng -> lỗi 403.

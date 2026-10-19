@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, MouseEvent, PointerEvent } from "react";
+import { memo, type CSSProperties, type MouseEvent, type PointerEvent } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import { Hint } from "@/components/hint";
@@ -69,7 +69,7 @@ type CalendarRangeSegmentItemProps = {
   onClearSchedule: (occurrence: CalendarOccurrence) => void;
 };
 
-export const CalendarRangeSegmentItem = ({
+export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
   segment,
   maxLanes,
   mode,
@@ -92,7 +92,7 @@ export const CalendarRangeSegmentItem = ({
   onToggleComplete,
   onPlanSchedule,
   onClearSchedule,
-}: CalendarRangeSegmentItemProps) => {
+}: CalendarRangeSegmentItemProps) {
   const course = useBoardCourse(segment.range.item.boardId, segment.range.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
   const isHidden = segment.lane >= maxLanes;
@@ -242,4 +242,41 @@ export const CalendarRangeSegmentItem = ({
       </div>
     </Hint>
   );
-};
+}, areCalendarRangeSegmentPropsEqual);
+
+function areCalendarRangeSegmentPropsEqual(
+  prev: CalendarRangeSegmentItemProps,
+  next: CalendarRangeSegmentItemProps,
+): boolean {
+  if (prev.segment !== next.segment) return false;
+  if (prev.maxLanes !== next.maxLanes) return false;
+  if (prev.mode !== next.mode) return false;
+  if (prev.variant !== next.variant) return false;
+  if (prev.isUpdatingCardDate !== next.isUpdatingCardDate) return false;
+  if (prev.canPlanSchedule !== next.canPlanSchedule) return false;
+  if (prev.canClearSchedule !== next.canClearSchedule) return false;
+
+  const isResizingPrev = prev.resizingRange?.range.id === prev.segment.range.id;
+  const isResizingNext = next.resizingRange?.range.id === next.segment.range.id;
+  if (isResizingPrev !== isResizingNext) return false;
+
+  const prevAnyDragOrResize = Boolean(
+    prev.resizingRange ||
+    prev.draggingOccurrenceId ||
+    prev.draggingUnscheduledCardId ||
+    prev.draggingBoardCardId ||
+    prev.draggingDayViewBlockId,
+  );
+  const nextAnyDragOrResize = Boolean(
+    next.resizingRange ||
+    next.draggingOccurrenceId ||
+    next.draggingUnscheduledCardId ||
+    next.draggingBoardCardId ||
+    next.draggingDayViewBlockId,
+  );
+  if (prevAnyDragOrResize !== nextAnyDragOrResize) return false;
+
+  return true;
+}
+
+CalendarRangeSegmentItem.displayName = "CalendarRangeSegmentItem";

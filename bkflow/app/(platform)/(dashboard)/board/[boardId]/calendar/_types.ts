@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { BoardCardCalendarDragPayload } from "@/lib/calendar/calendar-dnd";
-import type { BoardCalendarCardItem, BoardCalendarItem } from "@/types";
+import type { BoardCalendarCardItem, BoardCalendarItem, BoardCalendarResponse } from "@/types";
 
 export interface BoardCalendarViewProps {
   boardId: string;
@@ -10,6 +10,7 @@ export interface BoardCalendarViewProps {
   currentBoardMemberId: string;
   defaultUnscheduledCollapsed?: boolean;
   variant?: "default" | "split";
+  initialData?: BoardCalendarResponse;
 }
 
 export type BoardCalendarList = {

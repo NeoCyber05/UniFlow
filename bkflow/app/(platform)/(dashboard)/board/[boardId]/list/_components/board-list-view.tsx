@@ -4,14 +4,17 @@ import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, CalendarClock, Columns3, ListFilter, Plus, Sparkles } from "lucide-react";
+import { AlertCircle, CalendarClock, Columns3, ListTodo, Plus, Sparkles } from "lucide-react";
+import { motion } from "motion/react";
+import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { useSearchParams } from "@/web/shims/next-navigation";
 import { useLocalStorage } from "usehooks-ts";
 
 import { SmartCaptureDialog } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/smart-capture-dialog";
 import { QuickAddBar, type QuickAddDefaults } from "@/components/my-tasks/quick-add-bar";
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
-import { TaskGroupSection } from "@/components/my-tasks/task-group-section";
+import { getGroupTone, TaskGroupSection } from "@/components/my-tasks/task-group-section";
+import { TodoInsights } from "@/components/my-tasks/todo-insights";
 import { useBoardCourses } from "@/hooks/use-board-courses";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
@@ -145,6 +148,20 @@ export const BoardListView = ({
 
   const hasAnyAgendaTask = allAgendaGroups.some((group) => group.tasks.length > 0);
   const hasVisibleAgendaTask = agendaGroups.some((group) => group.tasks.length > 0);
+  const pendingAgendaGroups = agendaGroups.filter((group) => group.key !== "done" && group.tasks.length > 0);
+  const pendingCount = pendingAgendaGroups.reduce((sum, group) => sum + group.tasks.length, 0);
+  const overdueCount = agendaGroups.find((group) => group.key === "overdue")?.tasks.length ?? 0;
+  const showInsights = groupMode === "agenda" && !taskId && hasAnyAgendaTask;
+  const slide = useTempoTransition(spring.selection);
+
+  // Chip nhảy tới nhóm: mở nhóm nếu đang gập rồi cuộn tới
+  const jumpToGroup = (key: string) => {
+    setOpenByGroup((current) => ({ ...current, [key]: true }));
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() =>
+      document.getElementById(`task-group-${key}`)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }),
+    );
+  };
 
   const selectedCourseId = filters.selectedCourseIds.length === 1 ? filters.selectedCourseIds[0] : undefined;
   const quickAddDefaults: QuickAddDefaults = {
@@ -154,62 +171,90 @@ export const BoardListView = ({
   };
 
   return (
-    <div className="flex h-full items-stretch overflow-hidden bg-white/95 backdrop-blur">
-      <div className="h-full min-w-0 flex-1 overflow-y-auto styled-scrollbar">
-        <div className="mx-auto max-w-3xl space-y-5 px-5 pb-24 sm:px-8">
-          <header className="sticky top-0 z-10 -mx-5 flex flex-col gap-3 border-b border-neutral-100 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <div>
-              <h1 className="flex items-center gap-2 text-xl font-bold text-neutral-900">
-                <ListFilter className="h-5 w-5 text-violet-600" />
-                Danh sách
+    <div className="flex h-full items-start gap-4 overflow-hidden p-4">
+      <div className="h-full min-w-0 flex-1 overflow-y-auto rounded-2xl bg-white/95 p-5 shadow-sm backdrop-blur styled-scrollbar md:p-6">
+        <div
+          className={cn(
+            "mx-auto",
+            showInsights ? "max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-8" : "max-w-3xl",
+          )}
+        >
+        <div className="min-w-0 space-y-5">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-neutral-900">
+                <ListTodo className="h-6 w-6 text-violet-600" />
+                Việc cần làm
               </h1>
-              {groupMode === "agenda" && (
-                <p className="mt-0.5 text-sm capitalize text-neutral-500">{formatToday()}</p>
-              )}
+              <p className="mt-1 text-sm text-neutral-500">
+                <span className="capitalize">{formatToday()}</span>
+                {groupMode === "agenda" && hasAnyAgendaTask && (
+                  <>
+                    {" · "}còn {pendingCount} việc
+                    {overdueCount > 0 && <span className="font-semibold text-rose-600"> · {overdueCount} quá hạn</span>}
+                  </>
+                )}
+              </p>
             </div>
 
-            {/* Chế độ nhóm: cho phép người dùng chọn xem theo thời hạn hoặc theo cột */}
+            {/* Chế độ nhóm: nền trắng trượt giữa hai lựa chọn */}
             {!isTeamBoard && (
-              <div className="inline-flex items-center rounded-xl bg-neutral-100 p-1 text-xs font-medium text-neutral-600 self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setStoredGroupMode("agenda")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer",
-                    groupMode === "agenda"
-                      ? "bg-white text-neutral-900 shadow-sm font-semibold"
-                      : "hover:text-neutral-900 hover:bg-neutral-200/60"
-                  )}
+              <ReducedMotionConfig>
+                <div
+                  role="radiogroup"
+                  aria-label="Cách nhóm việc"
+                  className="inline-flex shrink-0 items-center self-start rounded-xl bg-neutral-100 p-1 text-xs font-medium"
                 >
-                  <CalendarClock className="h-3.5 w-3.5 text-violet-600" />
-                  Thời hạn & Việc nhóm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStoredGroupMode("list")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer",
-                    groupMode === "list"
-                      ? "bg-white text-neutral-900 shadow-sm font-semibold"
-                      : "hover:text-neutral-900 hover:bg-neutral-200/60"
-                  )}
-                >
-                  <Columns3 className="h-3.5 w-3.5 text-neutral-500" />
-                  Theo cột
-                </button>
-              </div>
-            )}
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-1.5 self-start rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 sm:self-auto"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                Thêm việc
-              </button>
+                  {([
+                    ["agenda", "Theo thời hạn", CalendarClock],
+                    ["list", "Theo cột", Columns3],
+                  ] as const).map(([mode, label, Icon]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={groupMode === mode}
+                      onClick={() => setStoredGroupMode(mode)}
+                      className={cn(
+                        "relative flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-200",
+                        groupMode === mode ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900",
+                      )}
+                    >
+                      {groupMode === mode && (
+                        <motion.span
+                          layoutId={`list-group-mode-${boardId}`}
+                          transition={slide}
+                          className="absolute inset-0 rounded-lg bg-white shadow-sm ring-1 ring-neutral-200/70"
+                        />
+                      )}
+                      <Icon className={cn("relative z-10 h-3.5 w-3.5", groupMode === mode && "text-violet-600")} />
+                      <span className="relative z-10">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </ReducedMotionConfig>
             )}
           </header>
+
+          {/* Chip nhảy nhanh tới nhóm theo độ gấp */}
+          {groupMode === "agenda" && pendingAgendaGroups.length > 1 && (
+            <nav aria-label="Nhảy tới nhóm" className="flex flex-wrap gap-2">
+              {pendingAgendaGroups.map((group) => (
+                <button
+                  key={group.key}
+                  type="button"
+                  onClick={() => jumpToGroup(group.key)}
+                  className={cn(
+                    "flex h-8 items-center gap-2 rounded-full px-3 text-xs font-semibold ring-1 transition-[filter] duration-200 hover:brightness-95",
+                    getGroupTone(group.key).chip,
+                  )}
+                >
+                  {group.label}
+                  <span className="tabular-nums opacity-80">{group.tasks.length}</span>
+                </button>
+              ))}
+            </nav>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">
@@ -323,6 +368,12 @@ export const BoardListView = ({
               ))}
             </>
           )}
+        </div>
+        {showInsights && (
+          <div className="sticky top-0 hidden xl:block">
+            <TodoInsights boardId={boardId} groups={agendaGroups} />
+          </div>
+        )}
         </div>
       </div>
 

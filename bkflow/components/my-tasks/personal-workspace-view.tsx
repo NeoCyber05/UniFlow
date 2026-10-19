@@ -6,7 +6,6 @@ import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
-import { AppearancePopover } from "@/components/appearance-popover";
 import { Button } from "@/components/ui/button";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
 import { useBoardCourses } from "@/hooks/use-board-courses";
@@ -36,7 +35,7 @@ export const PersonalWorkspaceView = ({ initialContext, initialData, initialNow,
   return <div className="personal-workspace mx-auto w-full max-w-6xl">
     <header className="mb-7 flex items-start justify-between gap-4">
       <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Hôm nay</h1></div>
-      <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label="Làm mới công việc"><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button><AppearancePopover /></div>
+      <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label="Làm mới công việc"><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button></div>
     </header>
     {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
     {isError && <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">Chưa làm mới được công việc. Đang hiển thị dữ liệu đã tải. <button className="underline" onClick={() => void refetch()}>Thử lại</button></div>}

@@ -135,6 +135,9 @@ model Card {
   @@index([listId])
   @@index([listId, archivedAt, order])
   @@index([courseId])
+  @@index([dueDate])
+  @@index([deadlineOn])
+  @@index([scheduledOn])
 }
 
 enum CardKind {
@@ -437,6 +440,7 @@ model ChecklistItem {
 
   @@index([checklistId])
   @@index([checklistId, isCompleted])
+  @@index([dueDate])
 }
 
 model BoardAiChat {

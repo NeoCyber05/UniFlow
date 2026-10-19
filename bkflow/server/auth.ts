@@ -10,7 +10,7 @@ const storage = new AsyncLocalStorage<RequestAuth>();
 
 export const runWithAuth = <T>(value: RequestAuth, fn: () => T) => storage.run(value, fn);
 
-/** Same call shape the code used with Clerk. */
+/** Returns the current request auth context. */
 export const auth = async (): Promise<RequestAuth> => storage.getStore() ?? SIGNED_OUT;
 export const currentUser = async (): Promise<AppUser | null> => (await auth()).user;
 

@@ -18,7 +18,7 @@ export const CalendarMonthView = ({
   weekRows,
   rowProps,
 }: CalendarMonthViewProps) => (
-  <div className="overflow-hidden rounded-b-lg border border-neutral-200 bg-white">
+  <div className="overflow-hidden rounded-b-xl border border-neutral-200 bg-white">
     {weekRows.map((weekDays, weekIndex) => (
       <CalendarWeekRow
         key={`week-row:${weekIndex}`}

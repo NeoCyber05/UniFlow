@@ -97,7 +97,7 @@ export default function CaptureRoute() {
     body = (
       <div className="space-y-3 p-4">
         <p className="text-sm text-neutral-500">Đăng nhập để thêm task. Đoạn đã chọn được giữ trong 15 phút.</p>
-        <AuthForm mode="sign-in" next={`${window.location.pathname}${window.location.hash}`} />
+        <AuthForm mode="sign-in" compact next={`${window.location.pathname}${window.location.hash}`} />
       </div>
     );
   } else body = <CaptureForm key={userId} requestId={requestId!} source={load.source} />;

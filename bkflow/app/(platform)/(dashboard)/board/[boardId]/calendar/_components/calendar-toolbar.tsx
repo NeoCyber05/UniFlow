@@ -1,14 +1,20 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import {
-  CalendarDays,
+  blur,
+  ReducedMotionConfig,
+  spring,
+  transition,
+  useTempoTransition,
+} from "@animate-ui/react/utils/motion";
+import {
   CalendarX2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
 import { Hint } from "@/components/hint";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import type { ViewMode } from "../_types";
@@ -31,6 +37,15 @@ type CalendarToolbarProps = {
   onNext: () => void;
 };
 
+const VIEW_MODES = [
+  ["month", "Tháng"],
+  ["week", "Tuần"],
+  ["day", "Ngày"],
+] as const;
+
+const navButtonClassName =
+  "flex h-7 items-center justify-center rounded-md text-neutral-600 transition-colors duration-200 hover:bg-neutral-100 hover:text-neutral-900";
+
 export const CalendarToolbar = ({
   titleLabel,
   rangeLabel,
@@ -47,103 +62,114 @@ export const CalendarToolbar = ({
   onPrevious,
   onToday,
   onNext,
-}: CalendarToolbarProps) => (
-  <div className="flex shrink-0 flex-col gap-2 border-b border-neutral-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-    <div className="flex min-w-0 flex-col gap-2">
-      <div className="flex items-center gap-x-2">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700">
-          <CalendarDays className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold text-neutral-900">
-            {titleLabel}
-          </h1>
-          <p className="truncate text-xs text-neutral-500">
-            {rangeLabel}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-600">
-        <div className="inline-flex h-7 items-center gap-x-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-2.5">
-          <span className="font-semibold text-neutral-900">{scheduledItemsCount}</span>
-          <span className="whitespace-nowrap">thẻ có lịch</span>
-        </div>
-        <div className="inline-flex h-7 items-center gap-x-1.5 rounded-md border border-emerald-100 bg-emerald-50 px-2.5 text-emerald-700">
-          <span className="font-semibold">{completedItemsCount}</span>
-          <span className="whitespace-nowrap">hoàn thành</span>
-        </div>
-        <div className="inline-flex h-7 items-center gap-x-1.5 rounded-md border border-rose-100 bg-rose-50 px-2.5 text-rose-700">
-          <span className="font-semibold">{overdueItemsCount}</span>
-          <span className="whitespace-nowrap">quá hạn</span>
-        </div>
-      </div>
-    </div>
+}: CalendarToolbarProps) => {
+  const slide = useTempoTransition(spring.selection);
+  const swap = useTempoTransition(transition.swap);
 
-    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToggleUnscheduledCollapsed}
-          className={cn(
-            "h-8 gap-x-1.5 px-3 text-xs font-semibold shadow-sm border",
-            isUnscheduledCollapsed
-              ? "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-              : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800",
-          )}
-        >
-          <CalendarX2 className="h-3.5 w-3.5 shrink-0" />
-          <span>Chưa xếp lịch làm ({filteredUnscheduledCount})</span>
-        </Button>
-
-        <div className="flex h-8 shrink-0 items-center rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm">
-          {(["month", "week", "day"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onChangeViewMode(mode)}
-              className={cn(
-                "h-7 rounded-md px-3 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-100",
-                viewMode === mode && "bg-violet-600 text-white shadow-sm hover:bg-violet-600",
+  return (
+    <ReducedMotionConfig>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-200 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="min-w-0">
+            {/* Tiêu đề đổi theo khoảng xem: mờ qua nhau thay vì nhảy chữ */}
+            <h1 className="relative h-7 overflow-hidden text-xl font-bold tracking-tight text-neutral-900">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={titleLabel}
+                  className="block truncate capitalize"
+                  initial={{ opacity: 0, filter: blur.icon }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, filter: blur.icon }}
+                  transition={swap}
+                >
+                  {titleLabel}
+                </motion.span>
+              </AnimatePresence>
+            </h1>
+            <p className="truncate text-xs text-neutral-500">
+              {rangeLabel}
+              {" · "}
+              <span className="font-semibold text-neutral-700">{scheduledItemsCount}</span> có lịch
+              {completedItemsCount > 0 && (
+                <span className="text-emerald-700"> · <span className="font-semibold">{completedItemsCount}</span> xong</span>
               )}
-            >
-              {mode === "month" ? "Tháng" : mode === "week" ? "Tuần" : "Ngày"}
-            </button>
-          ))}
-        </div>
+              {overdueItemsCount > 0 && (
+                <span className="text-rose-600"> · <span className="font-semibold">{overdueItemsCount}</span> quá hạn</span>
+              )}
+            </p>
+          </div>
 
-        <div className="flex h-8 shrink-0 items-center rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm">
-          <Hint description={previousLabel} side="top">
-            <button
-              type="button"
-              onClick={onPrevious}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-600 transition hover:bg-neutral-100"
-              aria-label={previousLabel}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </Hint>
-          <Hint description="Về hôm nay" side="top">
-            <button
-              type="button"
-              onClick={onToday}
-              className="h-7 rounded-md px-2 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100"
-            >
+          <div className="flex h-8 shrink-0 items-center rounded-lg border border-neutral-200 bg-white p-0.5 shadow-sm">
+            <Hint description={previousLabel} side="top">
+              <button type="button" onClick={onPrevious} aria-label={previousLabel} className={cn(navButtonClassName, "w-7")}>
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </Hint>
+            <button type="button" onClick={onToday} className={cn(navButtonClassName, "px-2.5 text-xs font-semibold text-neutral-800")}>
               Hôm nay
             </button>
-          </Hint>
-          <Hint description={nextLabel} side="top">
-            <button
-              type="button"
-              onClick={onNext}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-600 transition hover:bg-neutral-100"
-              aria-label={nextLabel}
+            <Hint description={nextLabel} side="top">
+              <button type="button" onClick={onNext} aria-label={nextLabel} className={cn(navButtonClassName, "w-7")}>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </Hint>
+          </div>
+        </div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div
+            role="radiogroup"
+            aria-label="Chế độ xem lịch"
+            className="flex h-8 shrink-0 items-center rounded-lg bg-neutral-100 p-0.5"
+          >
+            {VIEW_MODES.map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={viewMode === mode}
+                onClick={() => onChangeViewMode(mode)}
+                className={cn(
+                  "relative h-7 rounded-md px-3 text-xs font-semibold transition-colors duration-200",
+                  viewMode === mode ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900",
+                )}
+              >
+                {viewMode === mode && (
+                  <motion.span
+                    layoutId="calendar-view-mode"
+                    transition={slide}
+                    className="absolute inset-0 rounded-md bg-white shadow-sm ring-1 ring-neutral-200/70"
+                  />
+                )}
+                <span className="relative z-10">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={onToggleUnscheduledCollapsed}
+            aria-pressed={!isUnscheduledCollapsed}
+            className={cn(
+              "flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold shadow-sm transition-colors duration-200",
+              isUnscheduledCollapsed
+                ? "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100",
+            )}
+          >
+            <CalendarX2 className="h-3.5 w-3.5 shrink-0" />
+            Chưa xếp lịch
+            <span
+              className={cn(
+                "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
+                isUnscheduledCollapsed ? "bg-neutral-100 text-neutral-700" : "bg-violet-600 text-white",
+              )}
             >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </Hint>
+              {filteredUnscheduledCount}
+            </span>
+          </button>
         </div>
       </div>
-    </div>
-  </div>
-);
+    </ReducedMotionConfig>
+  );
+};

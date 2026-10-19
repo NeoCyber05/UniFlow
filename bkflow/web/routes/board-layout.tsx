@@ -14,6 +14,7 @@ import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_compon
 
 import { useTitle } from "../lib/use-title";
 import { useView, viewQueryOptions } from "../lib/use-view";
+import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 import NotFoundRoute from "./not-found";
 
 type View = Awaited<ReturnType<typeof loadBoardLayout>>;
@@ -28,6 +29,9 @@ export default function BoardLayoutRoute() {
   useEffect(() => {
     if (view === "list" || view === "calendar") {
       void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/${view}`));
+    }
+    if (view === "calendar") {
+      void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
     }
   }, [boardId, view, queryClient]);
   useTitle(data?.title ?? "Bảng");
@@ -62,12 +66,12 @@ export default function BoardLayoutRoute() {
             data={data.board}
             currentUserId={data.currentUserId}
             semesters={data.semesters}
+            courseFilter={
+              data.isSemesterBoard ? (
+                <CourseFilterBar boardId={boardId} canEdit={data.canEdit} />
+              ) : undefined
+            }
           />
-        }
-        courseFilterBar={
-          data.isSemesterBoard ? (
-            <CourseFilterBar boardId={boardId} canEdit={data.canEdit} />
-          ) : undefined
         }
       >
         <Outlet />

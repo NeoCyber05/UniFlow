@@ -5,6 +5,7 @@ import { useSearchParams } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { CardModal } from "@/components/modals/card-modal";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 
 const QueryParamToastListener = () => {
@@ -37,6 +38,7 @@ export const ModalProvider = () => {
         <QueryParamToastListener />
       </Suspense>
       <CardModal />
+      <SettingsDialog />
     </>
   );
 };

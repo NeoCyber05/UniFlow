@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { updateAppearance } from "@/actions/appearance/update-appearance";
 import { readPageStyle, type PageStyle } from "@/lib/notes/page-style";
-import { createAppearanceQueue, THEME_PRESETS, type ThemePresetId, type AppearanceSaveStatus } from "@/lib/appearance-presets";
+import { createAppearanceQueue, ALL_THEME_PRESETS, type ThemePresetId, type AppearanceSaveStatus } from "@/lib/appearance-presets";
 import { useAuth } from "@/web/lib/auth";
 import {
   type AccentId,
@@ -81,7 +81,7 @@ const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderPr
   );
   const setPageStyle = useCallback((pageStyle: PageStyle) => { void queueRef.current?.update({ pageStyle }); }, []);
   const selectPreset = useCallback((id: ThemePresetId) => {
-    const preset = THEME_PRESETS.find(p => p.id === id);
+    const preset = ALL_THEME_PRESETS.find(p => p.id === id);
     if (preset) void queueRef.current?.update({ accent: preset.accent, background: preset.background });
   }, []);
 

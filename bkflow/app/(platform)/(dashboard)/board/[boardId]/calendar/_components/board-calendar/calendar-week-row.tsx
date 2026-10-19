@@ -1,6 +1,6 @@
 "use client";
 
-import type { DragEvent, MouseEvent, PointerEvent } from "react";
+import { memo, type DragEvent, type MouseEvent, type PointerEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -81,7 +81,7 @@ type CalendarWeekRowProps = {
   onRangeResizeCancel: () => void;
 };
 
-export const CalendarWeekRow = ({
+export const CalendarWeekRow = memo(function CalendarWeekRow({
   weekDays,
   weekIndex,
   mode,
@@ -123,7 +123,7 @@ export const CalendarWeekRow = ({
   onRangeResizeMove,
   onRangeResizeEnd,
   onRangeResizeCancel,
-}: CalendarWeekRowProps) => {
+}: CalendarWeekRowProps) {
   const segments = rangeSegmentsByWeek[weekIndex] ?? [];
   const maxLanes = mode === "month" ? MONTH_RANGE_LANES : WEEK_RANGE_LANES;
 
@@ -212,4 +212,6 @@ export const CalendarWeekRow = ({
       />
     </div>
   );
-};
+});
+
+CalendarWeekRow.displayName = "CalendarWeekRow";

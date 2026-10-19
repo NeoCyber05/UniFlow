@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
+import type { BoardCalendarResponse } from "@/types";
+
 // Data of app/(platform)/(dashboard)/board/[boardId]/calendar/page.tsx.
 export const loadBoardCalendar = async ({ boardId }: { boardId: string }, userId: string, _orgId?: string | null) => {
   const currentMembership = await requireBoardMemberForUser({ boardId, userId });
@@ -33,5 +35,6 @@ export const loadBoardCalendar = async ({ boardId }: { boardId: string }, userId
     lists,
     currentUserId: userId,
     currentBoardMemberId: currentMembership.membership.id,
+    initialCalendarData: undefined as BoardCalendarResponse | undefined,
   } as const;
 };
