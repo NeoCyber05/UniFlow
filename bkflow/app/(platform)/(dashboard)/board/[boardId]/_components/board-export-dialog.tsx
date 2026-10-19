@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "@/web/shims/next-link";
-import { ChartGantt, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -135,26 +134,6 @@ export const BoardExportDialog = ({
             </div>
           </section>
 
-          <section className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Timeline/Gantt
-            </div>
-            <Button
-              asChild
-              variant="outline"
-              className="h-16 w-full justify-start gap-3 px-3"
-            >
-              <Link href={`/board/${boardId}/timeline`}>
-                <ChartGantt className="h-4 w-4 text-neutral-500" />
-                <span className="min-w-0 text-left">
-                  <span className="block font-semibold">Mở view Tiến độ</span>
-                  <span className="block text-xs font-normal text-neutral-500">
-                    Xuất PNG từ toolbar Timeline
-                  </span>
-                </span>
-              </Link>
-            </Button>
-          </section>
 
           <div className="flex items-start gap-2 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-500">
             <Download className="mt-0.5 h-3.5 w-3.5 shrink-0" />

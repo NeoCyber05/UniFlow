@@ -1,6 +1,8 @@
-// Injected only into <UniFlow origin>/capture*. Relays the page's capture messages to the
-// service worker, which checks tab/frame/origin/id before answering. Carries no tokens.
+// Injected into UniFlow pages. Marks the page so the app knows the extension is installed, and
+// relays /capture messages to the service worker, which checks tab/frame/origin/id. Carries no tokens.
 (() => {
+  document.documentElement.dataset.uniflowCapture = chrome.runtime.getManifest().version;
+
   const CHANNEL = "uniflow-capture";
   const FROM_APP = new Set(["CAPTURE_READY", "CAPTURE_SAVED", "CAPTURE_CANCEL"]);
   const post = (message) => window.postMessage({ channel: CHANNEL, v: 1, from: "bridge", ...message }, location.origin);

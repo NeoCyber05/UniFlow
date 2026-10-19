@@ -1,19 +1,46 @@
 {
   "manifest_version": 3,
   "name": "UniFlow Capture",
-  "version": "0.1.0",
-  "description": "Bôi đen tin nhắn trên Slack/Teams web để thêm thành task trong UniFlow.",
+  "version": "0.2.0",
+  "description": "Bôi đen tin nhắn trên Slack, Teams, Messenger, Facebook, Zalo web để thêm thành task trong UniFlow.",
   "minimum_chrome_version": "116",
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
   "background": { "service_worker": "background.js", "type": "module" },
   "permissions": ["storage", "scripting"],
-  "host_permissions": ["https://uniflow-production-ba94.up.railway.app/*"],
-  "optional_host_permissions": [
+  "host_permissions": [
+    "https://uniflow-production-ba94.up.railway.app/*",
     "https://app.slack.com/*",
     "https://teams.microsoft.com/*",
     "https://teams.live.com/*",
     "https://teams.cloud.microsoft/*",
-    "http://localhost/*"
+    "https://www.messenger.com/*",
+    "https://www.facebook.com/*",
+    "https://web.facebook.com/*",
+    "https://chat.zalo.me/*"
   ],
-  "action": { "default_title": "UniFlow Capture: mở lại nháp gần nhất" },
+  "optional_host_permissions": ["http://localhost/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.slack.com/*",
+        "https://teams.microsoft.com/*",
+        "https://teams.live.com/*",
+        "https://teams.cloud.microsoft/*",
+        "https://www.messenger.com/*",
+        "https://www.facebook.com/*",
+        "https://web.facebook.com/*",
+        "https://chat.zalo.me/*"
+      ],
+      "js": ["selection.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://uniflow-production-ba94.up.railway.app/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": { "default_title": "UniFlow Capture: mở lại nháp gần nhất", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
   "options_ui": { "page": "options.html", "open_in_tab": true }
 }

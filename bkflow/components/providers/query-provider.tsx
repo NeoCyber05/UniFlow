@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { useAuth } from "@/web/lib/auth";
+
 export const QueryProvider = ({
+  children
+}: {
+  children: React.ReactNode;
+}) => {
+  const { userId } = useAuth();
+  return <AccountQueries key={userId ?? "signed-out"}>{children}</AccountQueries>;
+};
+
+const AccountQueries = ({
   children
 }: {
   children: React.ReactNode;

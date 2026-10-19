@@ -6,7 +6,7 @@ export const Footer = () => {
             <div className="md:max-w-screen-xl mx-auto flex items-center w-full justify-between">
                 <Logo />
                 <p className="text-xs text-neutral-500">
-                    © {new Date().getFullYear()} HustFlow
+                    © {new Date().getFullYear()} UniFlow
                 </p>
             </div>
         </div>

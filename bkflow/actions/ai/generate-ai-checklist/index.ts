@@ -55,7 +55,7 @@ const AiChecklistResponse = z.object({
 });
 
 const systemPrompt = [
-  "Bạn là trợ lý quản lý dự án cho HustFlow.",
+  "Bạn là trợ lý quản lý dự án cho UniFlow.",
   "Chỉ trả JSON hợp lệ, không markdown, không giải thích.",
   'Định dạng bắt buộc: {"items":["..."]}.',
   "Viết bằng tiếng Việt.",

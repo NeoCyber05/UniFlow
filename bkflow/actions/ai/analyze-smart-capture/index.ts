@@ -4,6 +4,7 @@ import { auth } from "@/server/auth";
 
 import { z } from "zod";
 
+import { getCalendarDays } from "@/lib/ai/assistant/time";
 import { generateAiText } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
 import { getZonedDayKey, validateCaptureAnalysis } from "@/lib/capture/analysis";
@@ -1028,7 +1029,7 @@ const createFallbackSmartCaptureResponse = (rawText: string): AiSmartCaptureResp
 };
 
 const systemPrompt = [
-  "Bạn là trợ lý quản lý dự án cho HustFlow.",
+  "Bạn là trợ lý quản lý dự án cho UniFlow.",
   "Chỉ trả JSON hợp lệ, không markdown wrapper, không giải thích ngoài JSON.",
   'Định dạng bắt buộc: {"isActionable":true,"reason":null,"title":"...","description":"...","checklistItems":["..."],"dueDateIso":null,"assignees":[{"boardMemberId":"...","evidence":"..."}],"labelIds":[],"listId":null}.',
   "Nếu rawText không mô tả một công việc cụ thể, không có mục tiêu/hành động có thể tạo thẻ, hoặc chỉ là lời chào/test/noise, trả isActionable=false, reason ngắn, title rỗng, description rỗng, checklistItems=[], assignees=[], labelIds=[], listId=null.",
@@ -1050,7 +1051,7 @@ const systemPrompt = [
 ].join("\n");
 
 const multiCardSystemPrompt = [
-  "Bạn là trợ lý quản lý dự án cho HustFlow.",
+  "Bạn là trợ lý quản lý dự án cho UniFlow.",
   "Chỉ trả JSON hợp lệ, không markdown wrapper, không giải thích ngoài JSON.",
   'Định dạng bắt buộc: {"isActionable":true,"reason":null,"splitSummary":"...","cards":[{"title":"...","description":"...","checklistItems":["..."],"dueDateIso":null,"assignees":[{"boardMemberId":"...","evidence":"..."}],"labelIds":[],"courseId":null,"listId":null,"sourceExcerpt":"...","splitReason":"..."}]}.',
   "Nếu rawText không mô tả công việc cụ thể, không có mục tiêu/hành động có thể tạo thẻ, hoặc chỉ là lời chào/test/noise, trả isActionable=false, reason ngắn, splitSummary rỗng, cards=[].",
@@ -1087,6 +1088,7 @@ const quickSystemPrompt = [
   "deadline là hạn nộp/hạn chót (nộp, hạn, deadline, trước ...). schedule là lúc dự định làm (học, làm, ôn ... từ ... đến ...). Không lẫn hai loại.",
   "Ngày giờ là giờ địa phương theo timeZone, tính từ reference (ngày tham chiếu kèm thứ). 'hôm nay' là ngày của reference kể cả khi ngày đó đã qua; không tự dời sang tuần sau.",
   "Thứ trong tuần là lần gần nhất tính từ ngày tham chiếu trở đi; 'tuần sau' cộng thêm 7 ngày.",
+  "calendar liệt kê 14 ngày tính từ ngày tham chiếu (nhãn 'hôm nay', 'ngày mai') kèm thứ: tra ngày trong calendar, không tự cộng ngày.",
   "Chỉ có ngày hoặc chỉ có buổi (sáng/chiều/tối) mà không có giờ cụ thể: không bịa giờ, để time/startTime/endTime null.",
   "Giờ 1-11 không kèm sáng/chiều/tối và không suy ra được từ ngữ cảnh: không đoán, trả field đó null và thêm issue hỏi sáng hay chiều. 17h, 19h, 17:30 là giờ 24h rõ ràng.",
   "Lịch theo giờ cần cả startTime và endTime; chỉ có một mốc giờ thì để cả hai null và thêm issue field schedule.",
@@ -1128,6 +1130,7 @@ const analyzeQuick = async (data: QuickInputType, userId: string): Promise<Retur
       system: quickSystemPrompt,
       user: JSON.stringify({
         reference: formatReference(referenceIso, timeZone),
+        calendar: getCalendarDays(new Date(referenceIso), timeZone),
         timeZone,
         courses,
         rawText,

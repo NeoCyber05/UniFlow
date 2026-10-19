@@ -2,6 +2,12 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAssistantTask } from "@/hooks/use-assistant-task";
+import { useLocation } from "react-router";
+import type { AssistantContext } from "@/lib/ai/assistant/context";
+import type { AiOperation } from "@/lib/ai/assistant/policy";
+import { assistantContextKey, snapshotAssistantRequest } from "@/web/lib/assistant-context";
+import { readCalendarLocation } from "@/lib/calendar/calendar-navigation";
 import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
@@ -101,16 +107,40 @@ const clampOffset = (offset: Offset, width: number, height: number): Offset => {
  *
  * @param props.boardId - Định danh bảng làm việc hiện tại.
  */
-export const BoardAssistant = ({ boardId }: { boardId: string }) => {
+export const BoardAssistant = ({ boardId, context: supplied, label, onEditPage }: { boardId?: string; context?: AssistantContext; label?: string; onEditPage?: (text: string) => Promise<boolean | undefined> }) => {
+  const location = useLocation();
+  const card = useAssistantTask(state => state.task);
+  const navigation = readCalendarLocation(new URLSearchParams(location.search));
+  const calendar = Boolean(boardId && location.pathname.endsWith("/calendar"));
+  const context: AssistantContext | null = card ? { kind: "task", cardId: card.id, expectedUpdatedAt: card.updatedAt }
+    : supplied ?? (boardId ? calendar ? { kind: "calendar", boardId, date: navigation.day, filters: { ...(navigation.filters?.selectedCourseIds.length === 1 && { courseId: navigation.filters.selectedCourseIds[0] }), ...(navigation.filters && { includeCompleted: navigation.filters.completedEnabled }) } } : { kind: "board", boardId } : null);
+  if (!context) return null;
+  return <AssistantPanel key={assistantContextKey(context)} boardId={card?.boardId ?? boardId} context={context}
+    contextLabel={card ? `Công việc: ${card.title}` : label ?? (calendar ? `Lịch: ${navigation.day}` : "Bảng công việc")}
+    onEditPage={context.kind === "page" ? onEditPage : undefined} />;
+};
+
+const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardId?: string; context: AssistantContext; contextLabel: string; onEditPage?: (text: string) => Promise<boolean | undefined> }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const openCardModal = useCardModal((state) => state.onOpen);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const pendingOpen = useAssistantTask.getState();
+  const requested = context.kind === "task" && pendingOpen.openTaskId === context.cardId;
+  const [isOpen, setIsOpen] = useState(requested);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [input, setInput] = useState("");
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [input, setInput] = useState(requested ? "Chia công việc này thành các bước tổng quát." : "");
+  const [historyLoaded, setHistoryLoaded] = useState(!boardId || context.kind === "page");
   const [enabled, setEnabled] = useState(true);
+  const [operation, setOperation] = useState<AiOperation>(requested ? "add_checklist" : "answer");
+  const activeTaskId = context.kind === "task" ? context.cardId : null;
+  useEffect(() => {
+    return useAssistantTask.subscribe((request, previous) => {
+      if (request.openSequence !== previous.openSequence && activeTaskId && request.openTaskId === activeTaskId) {
+        setIsOpen(true); setOperation("add_checklist"); setInput("Chia công việc này thành các bước tổng quát.");
+      }
+    });
+  }, [activeTaskId]);
   // Offset measured from the bottom-right corner of the viewport.
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
 
@@ -133,17 +163,18 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
         prepareSendMessagesRequest: ({ messages }) => ({
           body: {
             boardId,
+            ...snapshotAssistantRequest(context, operation),
             timeZone,
             message: messages[messages.length - 1],
           },
         }),
       }),
-    [boardId, timeZone],
+    [boardId, context, operation, timeZone],
   );
 
   const { messages, sendMessage, setMessages, status, stop, error, clearError } =
     useChat<BoardAssistantUIMessage>({
-      id: `board-assistant-${boardId}`,
+      id: `assistant-${assistantContextKey(context)}`,
       transport,
       onError: (chatError) => {
         toast.error(chatError.message || "Trợ lý AI gặp sự cố.");
@@ -151,12 +182,16 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
     });
 
   const isBusy = status === "submitted" || status === "streaming";
+  const stopRef = useRef(stop);
+  useEffect(() => { stopRef.current = stop; }, [stop]);
+  useEffect(() => () => { void stopRef.current(); }, []);
 
   // Load persisted history the first time the panel opens.
   useEffect(() => {
     if (!isOpen || historyLoaded) {
       return;
     }
+    if (!boardId || context.kind === "page") return;
 
     let cancelled = false;
 
@@ -190,7 +225,7 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
     return () => {
       cancelled = true;
     };
-  }, [boardId, historyLoaded, isOpen, setMessages]);
+  }, [boardId, context.kind, historyLoaded, isOpen, setMessages]);
 
   // Refresh board data once a mutation tool finishes successfully.
   useEffect(() => {
@@ -213,11 +248,13 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
 
         const output = part.output as {
           ok: boolean;
+          action?: string;
           card?: { id: string };
           cards?: { id: string }[];
         };
 
-        if (output && output.ok) {
+        // Đề xuất chưa ghi dữ liệu: không cần làm mới.
+        if (output && output.ok && output.action !== "proposal") {
           shouldRefresh = true;
           if (output.card) {
             queryClient.invalidateQueries({ queryKey: ["card", output.card.id] });
@@ -279,10 +316,14 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
       }
 
       clearError();
-      sendMessage({ text: value });
-      setInput("");
+      setInput(value);
+      if (operation === "edit_page" && onEditPage) {
+        void onEditPage(value).then(ok => { if (ok) setInput(current => current === value ? "" : current); });
+      } else {
+        void sendMessage({ text: value });
+      }
     },
-    [clearError, enabled, isBusy, sendMessage],
+    [clearError, enabled, isBusy, sendMessage, operation, onEditPage],
   );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -293,6 +334,7 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
   };
 
   const handleClear = async () => {
+    if (!boardId || context.kind === "page") { void stop(); setMessages([]); return; }
     if (isBusy) {
       stop();
     }
@@ -363,9 +405,10 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
           type="button"
           onClick={() => setIsOpen(true)}
           aria-label="Mở trợ lý AI"
-          className="fixed bottom-5 right-5 z-50 flex size-12 items-center justify-center rounded-xl border border-violet-700 bg-violet-700 text-white shadow-sm transition-colors hover:bg-violet-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-500"
+          className="fixed bottom-5 right-5 z-[60] flex h-12 items-center justify-center gap-2 rounded-xl border border-violet-700 bg-violet-700 px-3 text-white shadow-sm transition-colors hover:bg-violet-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-500"
         >
           <Sparkles className="size-6" />
+          <span>AI</span>
           {isBusy ? (
             <span className="absolute right-1 top-1 size-3 animate-pulse rounded-full bg-emerald-400 ring-2 ring-white" />
           ) : null}
@@ -378,10 +421,10 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Trợ lý AI HustFlow"
+      aria-label="Trợ lý AI UniFlow"
       style={{ right: EDGE_GAP + offset.x, bottom: EDGE_GAP + offset.y }}
       className={cn(
-        "fixed z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
+        "fixed z-[60] flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
         isExpanded
           ? "h-[min(780px,calc(100vh-32px))] w-[min(620px,calc(100vw-32px))]"
           : "h-[min(560px,calc(100vh-32px))] w-[min(390px,calc(100vw-32px))]",
@@ -400,7 +443,7 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Trợ lý UniFlow</p>
           <p className="text-[11px] leading-tight text-white/80">
-            {isBusy ? "Đang xử lý…" : "Quản lý công việc & nhắc deadline"}
+            {contextLabel}{isBusy ? " · Đang xử lý…" : ""}
           </p>
         </div>
         <GripHorizontal className="size-4 text-white/60" />
@@ -478,6 +521,13 @@ export const BoardAssistant = ({ boardId }: { boardId: string }) => {
       </div>
 
       <div className="border-t bg-background p-3">
+        <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">Yêu cầu
+          <select aria-label="Loại yêu cầu AI" value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
+            <option value="answer">Hỏi / Đề xuất</option>
+            {context.kind === "task" && <><option value="edit_task_content">Sửa nội dung · có hoàn tác</option><option value="add_checklist">Chia bước · có hoàn tác</option><option value="set_schedule">Đổi lịch làm · xem trước</option><option value="set_deadline">Đổi hạn nộp · xem trước</option></>}
+            {onEditPage && <option value="edit_page">Sửa/bố trí Trang · có hoàn tác</option>}
+          </select>
+        </label>
         {messages.length === 0 || (!isBusy && messages.length < 2) ? (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {SUGGESTIONS.map((suggestion) => (

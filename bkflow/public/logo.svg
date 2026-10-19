@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="UniFlow logo H Academic checklist">
+  <title>UniFlow — H Academic checklist</title>
+  <desc>Editable vector app icon combining the letter H with a task checklist for HUST students.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d70a2d"/>
+      <stop offset="52%" stop-color="#ce0027"/>
+      <stop offset="100%" stop-color="#b9001e"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd864"/>
+      <stop offset="100%" stop-color="#ffa725"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded app tile -->
+  <rect width="1024" height="1024" rx="200" fill="url(#bg)" />
+  <g id="letter-H" fill="#fff">
+    <rect x="181" y="270" width="147" height="545" rx="27" />
+    <rect x="696" y="270" width="147" height="545" rx="27" />
+    <rect x="150" y="260" width="224" height="74" rx="21" />
+    <rect x="651" y="260" width="224" height="74" rx="21" />
+    <rect x="150" y="769" width="224" height="81" rx="21" />
+    <rect x="651" y="769" width="224" height="81" rx="21" />
+    <rect x="303" y="463" width="420" height="77" rx="19" />
+  </g>
+  <g id="graduation-cap" fill="#fff">
+    <!-- Flat mortarboard above upper right portion of H -->
+    <path d="M505 193 736 118 953 197 737 276z" />
+    <path d="M600 279 735 324 876 276v54c-5 12-85 51-141 51-60 0-135-39-135-51z" />
+    <path d="M905 210v95" fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round" />
+    <circle cx="905" cy="314" r="21" />
+    <path d="M894 333h22l9 56c1 11-4 18-15 18h-11c-11 0-16-7-15-18z" />
+  </g>
+  <g id="task-list" fill="#fff">
+    <rect x="400" y="554" width="75" height="66" rx="13" />
+    <rect x="400" y="639" width="75" height="66" rx="13" />
+    <rect x="400" y="724" width="75" height="66" rx="13" />
+    <rect x="501" y="574" width="147" height="27" rx="13.5" />
+    <rect x="501" y="659" width="147" height="27" rx="13.5" />
+    <rect x="501" y="744" width="147" height="27" rx="13.5" />
+  </g>
+  <g id="completed-checkmarks" fill="none" stroke="#cb0026" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M415 584l15 15 31-30" />
+    <path d="M415 669l15 15 31-30" />
+    <path d="M415 754l15 15 31-30" />
+  </g>
+</svg>

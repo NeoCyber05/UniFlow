@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
 import { usePathname, useRouter } from "@/web/shims/next-navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FolderInput, MoreHorizontal, RotateCcw, Smile, Star, StarOff, Trash2 } from "lucide-react";
+import { Copy, FileText, FolderInput, ListTodo, MoreHorizontal, RotateCcw, Smile, Star, StarOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,16 @@ export const usePageActions = () => {
     await refresh();
   };
 
-  return { updateMeta, trash, deleteForever };
+  // Copies the saved page only (task refs keep their Card.id); never creates or deletes a Card.
+  const duplicate = async (page: PageSummary) => {
+    const response = await fetch("/api/pages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ duplicateOf: page.id }) });
+    if (!response.ok) { toast.error("Chưa nhân bản được trang."); return; }
+    const copy = await response.json() as { id: string };
+    await refresh();
+    router.push(`/pages/${encodeURIComponent(copy.id)}`);
+  };
+
+  return { updateMeta, trash, deleteForever, duplicate };
 };
 
 export const IconPicker = ({ value, onSelect }: { value?: string | null; onSelect: (icon: string | null) => void }) => {
@@ -113,10 +122,91 @@ const MovePageDialog = ({ page, open, onOpenChange }: { page: PageSummary; open:
   </Dialog>;
 };
 
+type ConvertPreview = { revision: string; validCount: number; undatedCount: number; issueMessage: string; target: { ok: boolean; reason?: string }; canConvert: boolean; restorable: boolean; convertedCount: number };
+type ConvertBoard = { id: string; title: string; lists: { id: string; title: string }[] };
+const selectClass = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+
+// Opt-in: legacy deadline blocks of this page become tasks in a personal list; restorable while nothing changed.
+const ConvertDeadlinesDialog = ({ page, open, onOpenChange }: { page: PageSummary; open: boolean; onOpenChange: (open: boolean) => void }) => {
+  const pathname = usePathname();
+  const [boardId, setBoardId] = useState("");
+  const [listId, setListId] = useState("");
+  const [busy, setBusy] = useState(false);
+  // Kept across retries of the same attempt so a lost response cannot create the tasks twice.
+  const requestIdRef = useRef(crypto.randomUUID());
+  const url = `/api/pages/${encodeURIComponent(page.id)}/convert-deadlines`;
+  const { data, error, isFetching, refetch } = useQuery<{ preview: ConvertPreview; boards: ConvertBoard[] }>({
+    queryKey: ["page-convert-deadlines", page.id, boardId, listId], enabled: open,
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`${url}?${new URLSearchParams({ boardId, listId })}`, { signal, cache: "no-store" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Chưa tải được bản xem trước.");
+      return body;
+    },
+  });
+  const preview = data?.preview;
+  const lists = data?.boards.find(board => board.id === boardId)?.lists ?? [];
+
+  const run = async (method: "POST" | "DELETE") => {
+    if (!preview || busy) return;
+    if (method === "DELETE" && !window.confirm("Khôi phục các hạn cũ trong Trang? Các công việc đã tạo sẽ được lưu trữ.")) return;
+    setBusy(true);
+    try {
+      const body = method === "POST"
+        ? { targetBoardId: boardId, targetListId: listId, expectedUpdatedAt: preview.revision, requestId: requestIdRef.current }
+        : { expectedUpdatedAt: preview.revision };
+      const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) { toast.error(result.error ?? "Chưa xử lý được. Trang vẫn được giữ nguyên."); await refetch(); return; }
+      requestIdRef.current = crypto.randomUUID();
+      toast.success(method === "POST" ? `Đã chuyển ${result.converted.length} hạn thành công việc.` : "Đã khôi phục các hạn trong Trang.");
+      onOpenChange(false);
+      // The open editor keeps its own draft state; reload it so it shows the saved content.
+      if (pathname === `/pages/${encodeURIComponent(page.id)}`) window.location.reload();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Chuyển hạn thành công việc</DialogTitle>
+        <DialogDescription>Mỗi hạn có ngày trong Trang sẽ thành một công việc trong danh sách bạn chọn. Hạn chưa có ngày vẫn giữ trong Trang.</DialogDescription>
+      </DialogHeader>
+      {error ? <p role="alert" className="text-sm text-destructive">{error.message}</p>
+        : !preview ? <p role="status" className="text-sm text-muted-foreground">Đang kiểm tra…</p>
+        : <div className="space-y-3 text-sm">
+          <p>{preview.validCount} hạn sẽ được chuyển · {preview.undatedCount} hạn chưa có ngày giữ nguyên{preview.convertedCount ? ` · ${preview.convertedCount} hạn đã chuyển trước đó` : ""}.</p>
+          {preview.issueMessage && <p role="alert" className="text-destructive">{preview.issueMessage}</p>}
+          <label className="grid gap-1">
+            <span className="font-medium">Bảng cá nhân</span>
+            <select value={boardId} onChange={event => { setBoardId(event.target.value); setListId(""); }} className={selectClass}>
+              <option value="">Chọn bảng…</option>
+              {data.boards.map(board => <option key={board.id} value={board.id}>{board.title}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="font-medium">Danh sách</span>
+            <select value={listId} disabled={!boardId} onChange={event => setListId(event.target.value)} className={selectClass}>
+              <option value="">Chọn danh sách…</option>
+              {lists.map(list => <option key={list.id} value={list.id}>{list.title}</option>)}
+            </select>
+          </label>
+          {preview.target.reason === "shared" && <p role="alert" className="text-destructive">Chỉ chuyển được vào bảng cá nhân của bạn.</p>}
+          <div className="flex justify-end gap-2">
+            {preview.restorable && <Button type="button" variant="outline" disabled={busy} onClick={() => void run("DELETE")}>Khôi phục</Button>}
+            <Button type="button" disabled={busy || isFetching || !preview.canConvert} onClick={() => void run("POST")}>Chuyển</Button>
+          </div>
+        </div>}
+    </DialogContent>
+  </Dialog>;
+};
+
 // The "⋯" menu shared by sidebar rows and the editor header.
 export const PageActionsMenu = ({ page, className }: { page: PageSummary; className?: string }) => {
-  const { updateMeta, trash } = usePageActions();
-  const [dialog, setDialog] = useState<"icon" | "move" | null>(null);
+  const { updateMeta, trash, duplicate } = usePageActions();
+  const [dialog, setDialog] = useState<"icon" | "move" | "convert" | null>(null);
 
   return <>
     <DropdownMenu>
@@ -129,6 +219,8 @@ export const PageActionsMenu = ({ page, className }: { page: PageSummary; classN
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setDialog("icon")}><Smile className="size-4" />Đổi icon</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setDialog("move")}><FolderInput className="size-4" />Di chuyển tới…</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => void duplicate(page)}><Copy className="size-4" />Nhân bản trang</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setDialog("convert")}><ListTodo className="size-4" />Chuyển hạn thành công việc…</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={() => void trash(page)}><Trash2 className="size-4" />Chuyển vào thùng rác</DropdownMenuItem>
       </DropdownMenuContent>
@@ -140,6 +232,7 @@ export const PageActionsMenu = ({ page, className }: { page: PageSummary; classN
       </DialogContent>
     </Dialog>
     {dialog === "move" && <MovePageDialog page={page} open onOpenChange={open => setDialog(open ? "move" : null)} />}
+    {dialog === "convert" && <ConvertDeadlinesDialog page={page} open onOpenChange={open => setDialog(open ? "convert" : null)} />}
   </>;
 };
 

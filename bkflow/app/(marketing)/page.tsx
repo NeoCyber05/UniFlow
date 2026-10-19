@@ -49,7 +49,7 @@ const MarketingPage = () => {
                 "max-w-xl text-center text-base leading-relaxed text-neutral-600 md:text-lg",
                 textFont.className
             )}>
-                HustFlow giúp sinh viên quản lý môn học, deadline và ghi chú ở cùng một nơi.
+                UniFlow giúp sinh viên quản lý môn học, deadline và ghi chú ở cùng một nơi.
             </p>
 
             {/* CTA */}

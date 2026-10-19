@@ -18,5 +18,5 @@ export default function NotePageRoute() {
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
 
-  return <NotePageEditor key={data.initialPage.id} initialPage={data.initialPage} tasks={data.tasks} />;
+  return <NotePageEditor key={data.initialPage.id} initialPage={data.initialPage} />;
 }

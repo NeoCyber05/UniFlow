@@ -1,9 +1,9 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import superjson from "superjson";
 
-export const viewQueryOptions = <T>(path: string) =>
+export const viewQueryOptions = <T>(path: string, userId?: string | null) =>
   queryOptions({
-    queryKey: ["view", path],
+    queryKey: userId === undefined ? ["view", path] : ["view", path, userId],
     staleTime: 30_000,
     queryFn: async ({ signal }): Promise<T> => {
       const res = await fetch(`/api/views${path}`, { credentials: "include", signal });
@@ -12,5 +12,5 @@ export const viewQueryOptions = <T>(path: string) =>
     },
   });
 
-export const useView = <T>(path: string, options?: { enabled?: boolean }) =>
-  useQuery({ ...viewQueryOptions<T>(path), enabled: options?.enabled });
+export const useView = <T>(path: string, options?: { enabled?: boolean; userId?: string | null }) =>
+  useQuery({ ...viewQueryOptions<T>(path, options?.userId), enabled: options?.enabled });

@@ -1,8 +1,8 @@
 import { CHANNEL, DEFAULT_UNIFLOW_ORIGIN, SOURCE_HOSTS, createHandler, createStore } from "./protocol.js";
 
-const SELECTION_SCRIPT = "uniflow-selection";
-const BRIDGE_SCRIPT = "uniflow-bridge";
+const DEV_BRIDGE_SCRIPT = "uniflow-dev-bridge";
 
+/** Production unless the developer picked localhost in the options page. */
 const getUniflowOrigin = async () => {
   const { uniflowOrigin = DEFAULT_UNIFLOW_ORIGIN } = await chrome.storage.local.get("uniflowOrigin");
   return (await chrome.permissions.contains({ origins: [`${uniflowOrigin}/*`] })) ? uniflowOrigin : null;
@@ -34,33 +34,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.action.onClicked.addListener(async () => {
-  if (!(await handler.reopenLatest())) chrome.runtime.openOptionsPage();
+  if (!(await handler.reopenLatest())) chrome.tabs.create({ url: `${await getUniflowOrigin() ?? DEFAULT_UNIFLOW_ORIGIN}/capture/welcome` });
 });
 
-/** Content scripts exist only for hosts the user granted; revoking a host removes them. */
-const syncScripts = async () => {
-  const registered = await chrome.scripting.getRegisteredContentScripts();
-  if (registered.length > 0) await chrome.scripting.unregisterContentScripts({ ids: registered.map((script) => script.id) });
-
-  const sourcePatterns = await getGrantedSourcePatterns();
-  const uniflowOrigin = await getUniflowOrigin();
-  const scripts = [];
-  if (sourcePatterns.length > 0) {
-    scripts.push({ id: SELECTION_SCRIPT, matches: sourcePatterns, js: ["selection.js"], allFrames: true, runAt: "document_idle" });
-  }
-  if (uniflowOrigin) {
-    scripts.push({ id: BRIDGE_SCRIPT, matches: [`${uniflowOrigin}/capture*`], js: ["bridge.js"], allFrames: false, runAt: "document_start" });
-  }
-  if (scripts.length > 0) await chrome.scripting.registerContentScripts(scripts);
+/** Production pages get bridge.js from the manifest; a localhost dev origin needs it registered at runtime. */
+const syncDevBridge = async () => {
+  const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [DEV_BRIDGE_SCRIPT] });
+  if (registered.length > 0) await chrome.scripting.unregisterContentScripts({ ids: [DEV_BRIDGE_SCRIPT] });
+  const origin = await getUniflowOrigin();
+  if (!origin || origin === DEFAULT_UNIFLOW_ORIGIN) return;
+  await chrome.scripting.registerContentScripts([
+    { id: DEV_BRIDGE_SCRIPT, matches: [`${origin}/*`], js: ["bridge.js"], runAt: "document_start" },
+  ]);
 };
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  await syncScripts();
-  if (reason === "install") chrome.runtime.openOptionsPage();
+  await syncDevBridge();
+  if (reason === "install") chrome.tabs.create({ url: `${DEFAULT_UNIFLOW_ORIGIN}/capture/welcome` });
 });
-chrome.runtime.onStartup.addListener(syncScripts);
-chrome.permissions.onAdded.addListener(syncScripts);
-chrome.permissions.onRemoved.addListener(syncScripts);
+chrome.runtime.onStartup.addListener(syncDevBridge);
+chrome.permissions.onAdded.addListener(syncDevBridge);
+chrome.permissions.onRemoved.addListener(syncDevBridge);
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && "uniflowOrigin" in changes) void syncScripts();
+  if (area === "local" && "uniflowOrigin" in changes) void syncDevBridge();
 });

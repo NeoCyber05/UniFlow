@@ -40,7 +40,9 @@ import {
 } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
 import { createChecklistItemTool } from "./checklist-tool";
+import { type AiClarification, type AiProposal, applyToolPolicy } from "./policy";
 import { createWorkspaceTools } from "./workspace-tools";
+import { applyAiTaskEdit } from "./task-edits";
 import {
   formatZonedDateTime,
   getWeekdayIndex,
@@ -106,6 +108,7 @@ export type AssistantActionCard = {
  * Dùng để đồng bộ trạng thái UI và thông báo cho người dùng.
  */
 export type AssistantMutationOutput =
+  | { ok: true; action: "task_edited"; card: { id: string; title: string }; edit: { id: string } | null; replayed: boolean }
   | { ok: true; action: "checklist_item_updated"; card: { id: string; title: string }; item: { id: string; title: string; isCompleted: boolean; dueDate: string | null } }
   | { ok: true; action: "created" | "updated"; card: AssistantActionCard; changes?: string[] }
   | { ok: true; action: "batch_created"; cards: AssistantActionCard[]; summary: string }
@@ -126,6 +129,8 @@ export type AssistantMutationOutput =
       blockedCard: { id: string; title: string };
       message: string;
     }
+  | AiProposal
+  | AiClarification
   | { ok: false; error: string };
 
 /**
@@ -274,7 +279,13 @@ export const createAssistantTools = (session: AssistantSession) => {
     return permission.error;
   };
 
-  return {
+  // Mọi công cụ đi qua policy: công cụ ghi chỉ trả đề xuất trừ lệnh UI direct-with-undo đúng mục tiêu.
+  const loadCard = (cardId: string) => db.card.findFirst({
+    where: { id: cardId, archivedAt: null, list: { boardId, archivedAt: null, board: { userId } } },
+    select: { id: true, title: true, description: true, descriptionUpdatedAt: true, updatedAt: true, dueDate: true, deadlineOn: true, scheduledOn: true, scheduledStartAt: true, scheduledEndAt: true },
+  });
+
+  return applyToolPolicy({
     ...createWorkspaceTools(session),
     updateChecklistItem: createChecklistItemTool(session),
     /**
@@ -768,6 +779,10 @@ export const createAssistantTools = (session: AssistantSession) => {
         "Cập nhật hạn chót, ngày bắt đầu, hoặc đánh dấu hoàn thành một thẻ trên bảng. Dùng findCards trước nếu chưa có cardId.",
       inputSchema: z.object({
         cardId: z.string().min(1).describe("ID thẻ cần cập nhật"),
+        scheduledOn: z.string().nullable().optional().describe("Ngày dự định làm YYYY-MM-DD, độc lập với hạn nộp"),
+        scheduledStartAt: isoDateTime.nullable().optional(),
+        scheduledEndAt: isoDateTime.nullable().optional(),
+        deadlineOn: z.string().nullable().optional().describe("Hạn chỉ có ngày YYYY-MM-DD"),
         dueDate: isoDateTime
           .nullable()
           .optional()
@@ -1784,7 +1799,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           action: "dependency_created",
           blockerCard: { id: resolvedBlocker.id, title: resolvedBlocker.title },
           blockedCard: { id: resolvedBlocked.id, title: resolvedBlocked.title },
-          message: `Đã thiết lập liên kết phụ thuộc thành công: thẻ "${resolvedBlocked.title}" phụ thuộc vào thẻ "${resolvedBlocker.title}" (cần hoàn thành "${resolvedBlocker.title}" trước). Bạn có thể xem liên kết này trên chế độ Bảng, Tiến độ hoặc Sơ đồ phụ thuộc.`,
+          message: `Đã thiết lập liên kết phụ thuộc thành công: thẻ "${resolvedBlocked.title}" phụ thuộc vào thẻ "${resolvedBlocker.title}" (cần hoàn thành "${resolvedBlocker.title}" trước). Bạn có thể xem liên kết này trên chế độ Bảng hoặc Sơ đồ phụ thuộc.`,
         };
       },
     }),
@@ -1888,5 +1903,8 @@ export const createAssistantTools = (session: AssistantSession) => {
         };
       },
     }),
-  };
+  }, { context: session.context, operation: session.operation, loadCard,
+    applyEdit: async (edit, target, expectedUpdatedAt, toolCallId) => ({ ok: true, action: "task_edited", card: { id: target.id, title: target.title },
+      ...await applyAiTaskEdit({ ...edit, userId, cardId: target.id, expectedUpdatedAt, requestId: toDeterministicUuid(`${userId}:${toolCallId}`) }) }),
+  });
 };

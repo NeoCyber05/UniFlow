@@ -213,20 +213,38 @@ export const formatIsoWithOffset = (date: Date, timeZone: string): string => {
  * @param days - Số ngày cần sinh lịch tham chiếu (mặc định 14 ngày).
  * @returns Chuỗi markdown liệt kê từng ngày kèm nhãn nhận biết (ví dụ: " (hôm nay)").
  */
-export const buildCalendarReference = (now: Date, timeZone: string, days = 14): string => {
-  const lines: string[] = [];
+export const buildCalendarReference = (now: Date, timeZone: string, days = 14): string =>
+  getCalendarDays(now, timeZone, days)
+    .map(({ date, weekday, label }) => {
+      const [year, month, day] = date.split("-");
+      return `- ${weekday} ${day}/${month}/${year} → ${date}${label ? ` (${label})` : ""}`;
+    })
+    .join("\n");
 
-  for (let index = 0; index < days; index += 1) {
-    const dayStart = getZonedDayStart(now, timeZone, index);
-    const parts = getZonedParts(new Date(dayStart.getTime() + 12 * 3_600_000), timeZone);
-    const label = index === 0 ? " (hôm nay)" : index === 1 ? " (ngày mai)" : "";
+export type CalendarDay = { date: string; weekday: string; label?: "hôm nay" | "ngày mai" };
 
-    lines.push(
-      `- ${VI_WEEKDAYS[parts.weekday]} ${pad(parts.day)}/${pad(parts.month)}/${parts.year} → ${parts.year}-${pad(parts.month)}-${pad(parts.day)}${label}`,
-    );
-  }
+/** `days` calendar days from the day containing `now` in `timeZone` (YYYY-MM-DD, Vietnamese weekday). */
+export const getCalendarDays = (now: Date, timeZone: string, days = 14): CalendarDay[] =>
+  Array.from({ length: days }, (_, index) => {
+    // Noon avoids DST edges when reading the day back.
+    const parts = getZonedParts(new Date(getZonedDayStart(now, timeZone, index).getTime() + 12 * 3_600_000), timeZone);
+    const day: CalendarDay = { date: `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`, weekday: VI_WEEKDAYS[parts.weekday] };
+    if (index === 0) day.label = "hôm nay";
+    if (index === 1) day.label = "ngày mai";
+    return day;
+  });
 
-  return lines.join("\n");
+/** What "now", "hôm nay", "mai", "thứ Sáu" mean for this user: the assistant's getCurrentTime tool result. */
+export const getCurrentTimeInfo = (now: Date, timeZone: string) => {
+  const days = getCalendarDays(now, timeZone);
+  return {
+    now: formatIsoWithOffset(now, timeZone),
+    today: days[0].date,
+    weekday: days[0].weekday,
+    timeZone,
+    utcOffset: formatOffset(getTimeZoneOffsetMs(now, timeZone)),
+    days,
+  };
 };
 
 /**

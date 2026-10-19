@@ -65,7 +65,7 @@ const DescriptionResponse = z.object({
 });
 
 const descriptionSystemPrompt = [
-  "Bạn là trợ lý quản lý dự án cho HustFlow.",
+  "Bạn là trợ lý quản lý dự án cho UniFlow.",
   "Chỉ trả JSON hợp lệ, không giải thích ngoài JSON, không bọc bằng markdown code fence.",
   'Định dạng bắt buộc: {"description":"..."}',
   "Giá trị description phải là Markdown thuần, tiếng Việt rõ ràng, gọn và dễ scan trong Card Modal.",

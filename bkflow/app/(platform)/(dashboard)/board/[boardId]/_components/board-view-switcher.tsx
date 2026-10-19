@@ -6,7 +6,6 @@ import { usePathname } from "@/web/shims/next-navigation";
 import {
   BarChart3,
   CalendarDays,
-  ChartGantt,
   Columns3,
   LayoutPanelLeft,
   List,
@@ -28,7 +27,6 @@ const DEFAULT_VIEW_IDS = [
   "board",
   "list",
   "calendar",
-  "timeline",
   "graph",
   "analytics",
 ] as const;
@@ -73,7 +71,6 @@ const getViewOrderServerSnapshot = () => JSON.stringify(DEFAULT_VIEW_IDS);
 export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps) => {
   const pathname = usePathname();
   const calendarHref = `/board/${boardId}/calendar`;
-  const timelineHref = `/board/${boardId}/timeline`;
   const graphHref = `/board/${boardId}/graph`;
   const analyticsHref = `/board/${boardId}/analytics`;
   const boardHref = `/board/${boardId}`;
@@ -83,7 +80,6 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
   const isBoard = pathname === boardHref;
   const isList = pathname === listHref;
   const isCalendar = pathname === calendarHref;
-  const isTimeline = pathname === timelineHref;
   const isGraph = pathname === graphHref;
   const isAnalytics = pathname === analyticsHref;
   const isSplit = pathname === splitHref;
@@ -131,13 +127,6 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
         canDragToSplit: isBoard,
         splitTooltip: isBoard ? "kéo thả xuống để chia đôi với Bảng" : undefined,
       },
-      timeline: {
-        id: "timeline" as const,
-        href: timelineHref,
-        label: "Tiến độ",
-        icon: ChartGantt,
-        active: isTimeline,
-      },
       graph: {
         id: "graph" as const,
         href: graphHref,
@@ -157,13 +146,11 @@ export const BoardViewSwitcher = ({ boardId, boardType }: BoardViewSwitcherProps
     boardHref,
     listHref,
     calendarHref,
-    timelineHref,
     graphHref,
     analyticsHref,
     isBoard,
     isList,
     isCalendar,
-    isTimeline,
     isGraph,
     isAnalytics,
   ]);

@@ -204,12 +204,23 @@ export const ensureNoteDeadlineNotifications = async ({ userId }: { userId: stri
     select: { pageId: true, blockId: true, title: true, dueAt: true, reminder: true, page: { select: { title: true } } },
     take: 200,
   });
+  // Read after the mirror: a block converted to a Card meanwhile is skipped even if this request saw its old row.
+  const maps = deadlines.length
+    ? await db.noteDeadlineTaskMap.findMany({ where: { userId, pageId: { in: [...new Set(deadlines.map(deadline => deadline.pageId))] } }, select: { pageId: true, blockId: true, restoredAt: true } })
+    : [];
+  const mapped = new Map(maps.map(map => [`${map.pageId}:${map.blockId}`, map.restoredAt]));
 
   await Promise.all(deadlines.map(async (deadline) => {
     const offsetMinutes = parseInt(deadline.reminder, 10);
     if (Number.isNaN(offsetMinutes)) return;
     const triggerTime = new Date(deadline.dueAt.getTime() - offsetMinutes * 60 * 1000);
     if (now < triggerTime) return;
+    // One active source: a converted block reminds via its Card; after restore, a time that passed while it was a Card is not replayed.
+    const key = `${deadline.pageId}:${deadline.blockId}`;
+    if (mapped.has(key)) {
+      const restoredAt = mapped.get(key);
+      if (!restoredAt || triggerTime < restoredAt) return;
+    }
 
     await createNotification({
       recipientUserId: userId,

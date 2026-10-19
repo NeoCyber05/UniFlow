@@ -280,7 +280,7 @@ export const CardItem = memo(function CardItem({
             onContextMenu={canEdit ? handleContextMenu : undefined}
             data-active-card={showMenu || copyDialogOpen ? "true" : undefined}
             className={cn(
-              "group relative flex flex-col justify-between border border-transparent pb-2.5 pt-3 px-3 text-sm bg-white rounded-lg shadow-sm transition-[border-color,box-shadow,background-color] duration-100 !cursor-pointer select-none overflow-hidden",
+              "group relative flex flex-col justify-between border border-neutral-200/80 pb-2.5 pt-3 px-3 text-sm bg-white rounded-lg shadow-sm transition-[border-color,box-shadow,background-color] duration-100 !cursor-pointer select-none overflow-hidden",
               !snapshot.isDragging && "hover:border-violet-200 hover:shadow",
               snapshot.isDragging && "shadow-sm opacity-95 border-violet-300 z-[9999] pointer-events-none",
               (showMenu || copyDialogOpen) && "relative z-[100] ring-2 ring-violet-500 shadow-xl bg-white",

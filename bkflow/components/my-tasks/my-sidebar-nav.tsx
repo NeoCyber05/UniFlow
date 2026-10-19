@@ -249,7 +249,7 @@ export const MySidebarNav = () => {
       {semesterBoardHref && (
         <Link href={semesterBoardHref} onMouseEnter={() => prefetchBoard("list")} onFocus={() => prefetchBoard("list")} onClick={clearBoardFilters} aria-current={isSemesterBoardActive ? "page" : undefined} className={itemClassName(isSemesterBoardActive)}>
           <ListTodo className="h-4 w-4" />
-          Bảng học kỳ
+          Việc cần làm
           <Count value={counts?.today} />
         </Link>
       )}
@@ -296,6 +296,9 @@ export const MySidebarNav = () => {
       )}
 
       <div className="space-y-0.5">
+        <Link href="/settings/appearance" className={itemClassName(pathname === "/settings/appearance")}>
+          <Settings2 aria-hidden="true" className="h-4 w-4" />Cài đặt → Giao diện
+        </Link>
         {context?.personalOrgId && (
           <Link
             href={`/organization/${context.personalOrgId}/activity`}

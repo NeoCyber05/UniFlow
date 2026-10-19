@@ -8,6 +8,8 @@ import { serverActionsPlugin } from "./plugins/server-actions";
 const root = path.resolve(__dirname, "..");
 const PUBLIC_ENV = [
   "NEXT_PUBLIC_APP_URL",
+  /** Store page of the UniFlow Capture extension (Edge Add-ons); empty hides the install button. */
+  "NEXT_PUBLIC_CAPTURE_EXTENSION_URL",
   "NEXT_PUBLIC_PUSHER_CLUSTER",
   "NEXT_PUBLIC_PUSHER_KEY",
   "NEXT_PUBLIC_SENTRY_DSN",

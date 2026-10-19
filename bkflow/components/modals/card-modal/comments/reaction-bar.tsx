@@ -40,7 +40,7 @@ export const ReactionBar = ({
     }
 
     const member = boardMembers?.find((m) => m.userId === reactionUserId);
-    return member ? member.userName : "Người dùng HustFlow";
+    return member ? member.userName : "Người dùng UniFlow";
   };
 
   return (

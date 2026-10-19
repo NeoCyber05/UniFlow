@@ -48,3 +48,7 @@ export const requestCaptureSource = (
 
 export const notifyCapture = (requestId: string, type: "CAPTURE_SAVED" | "CAPTURE_CANCEL", win: BridgeWindow = window) =>
   post(win, type, requestId);
+
+/** Version of the installed UniFlow Capture extension (bridge.js marks <html> at document_start), else null. */
+export const getCaptureExtensionVersion = () =>
+  typeof document === "undefined" ? null : document.documentElement.dataset.uniflowCapture ?? null;

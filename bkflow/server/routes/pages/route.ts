@@ -1,7 +1,9 @@
 import { auth } from "@/server/auth";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { getPersonalNoteScope } from "@/lib/notes/server";
 import { serializeNoteBlocks } from "@/lib/notes/blocks";
+import { canonicalizeConvertedContent } from "@/lib/notes/legacy-task-conversion";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -27,9 +29,21 @@ export async function POST(request: Request) {
   if (!userId) return new Response("Unauthorized", { status: 401 });
   const scope = await getPersonalNoteScope(userId);
   if (!scope) return new Response("Chưa có không gian cá nhân.", { status: 409 });
-  const body = await request.json().catch(() => ({})) as { parentId?: unknown };
+  const body = await request.json().catch(() => ({})) as { parentId?: unknown; duplicateOf?: unknown };
   const parentId = typeof body.parentId === "string" && body.parentId.length <= 100 ? body.parentId : null;
+  const duplicateOf = typeof body.duplicateOf === "string" && body.duplicateOf.length <= 100 ? body.duplicateOf : null;
   try {
+    if (duplicateOf) {
+      // Copies stored content (converted legacy deadlines as their task refs): task blocks keep their Card.id and no Card is created; unsupported documents stay intact.
+      const source = await db.notePage.findFirst({ where: { id: duplicateOf, ...scope, deletedAt: null } });
+      if (!source) return new Response("Không tìm thấy trang.", { status: 404 });
+      // Writes only NotePage: the copy's legacy deadline blocks get NoteDeadline rows (reminders) only if the copy is later edited.
+      const page = await db.notePage.create({
+        data: { ...scope, parentId: source.parentId, title: `${source.title} (bản sao)`.slice(0, 200), content: await canonicalizeConvertedContent(db, { pageId: source.id, content: source.content }), icon: source.icon, style: source.style ?? Prisma.DbNull },
+        select: { id: true },
+      });
+      return Response.json(page, { status: 201 });
+    }
     if (parentId && !await db.notePage.findFirst({ where: { id: parentId, ...scope, deletedAt: null }, select: { id: true } })) {
       return new Response("Không tìm thấy trang cha.", { status: 404 });
     }

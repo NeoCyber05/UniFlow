@@ -67,6 +67,8 @@ export const updateCardService = async (
   { data, userId }: UpdateCardServiceInput,
   database: typeof db = db,
   effects: CardUpdateEffects = defaultEffects,
+  /** Runs inside the write transaction after a successful CAS (e.g. an AI receipt); throwing rolls the write back. */
+  inTransaction?: (tx: Prisma.TransactionClient) => Promise<void>,
 ): Promise<UpdateCardResult> => {
   const {
     id,
@@ -277,7 +279,7 @@ export const updateCardService = async (
       const result = await tx.card.updateMany({
         where: {
           ...cardWhere,
-          ...(metadataChanged && metadataBase ? { updatedAt: metadataBase } : {}),
+          ...((metadataChanged || inTransaction) && metadataBase ? { updatedAt: metadataBase } : {}),
           ...(descriptionChanged ? { descriptionUpdatedAt: descriptionBaseDate! } : {}),
         },
         data: updateData,
@@ -286,6 +288,8 @@ export const updateCardService = async (
       if (result.count > 0 && (reminderConfigChanged || isCompleted !== undefined)) {
         await effects.syncCardReminder(tx, { cardId: id, now: new Date() });
       }
+
+      if (result.count > 0 && inTransaction) await inTransaction(tx);
 
       return result;
     });
@@ -297,7 +301,7 @@ export const updateCardService = async (
         return { error: "Không tìm thấy thẻ." };
       }
 
-      const metadataStale = metadataChanged && metadataBase &&
+      const metadataStale = (metadataChanged || inTransaction) && metadataBase &&
         latest.updatedAt.getTime() !== metadataBase.getTime();
 
       return metadataStale || !descriptionChanged

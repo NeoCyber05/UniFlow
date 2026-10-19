@@ -12,15 +12,15 @@ export const Logo = () => {
         <Link href="/" >
             <div className="hover:opacity-80 transition items-center gap-x-2 hidden md:flex">
                 <Image 
-                    src="/logo.png"
-                    alt="HustFlow Logo"
+                    src="/logo.svg"
+                    alt="UniFlow Logo"
                     height={45}
                     width={45}
                 />
                 <p className={cn("text-2xl font-bold tracking-tight", 
                     headingFont.className)}>
-                    <span className="text-[#041a4e] dark:text-white">Hust</span>
-                    <span className="bg-gradient-to-r from-[#1e70f7] to-[#8f33f5] bg-clip-text text-transparent">Flow</span>
+                    <span className="text-[#041a4e] dark:text-white">Uni</span>
+                    <span className="bg-gradient-to-r from-[#2563eb] to-[#06b6d4] bg-clip-text text-transparent">Flow</span>
                 </p>
             </div>
         </Link>
