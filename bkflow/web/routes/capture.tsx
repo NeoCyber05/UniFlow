@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { CaptureComposer } from "@/components/capture/capture-composer";
 import { Button } from "@/components/ui/button";
-import { CaptureSourceSchema, type CaptureSource } from "@/lib/capture/source";
+import { normalizeCaptureSource, type CaptureSource } from "@/lib/capture/source";
 import { fetcher } from "@/lib/fetcher";
 import type { MyTasksContext } from "@/lib/my-tasks/types";
 
@@ -45,8 +45,11 @@ export default function CaptureRoute() {
       if (!alive) return;
       if (!result.ok) return setLoad({ status: "error", message: UNAVAILABLE[result.reason] ?? UNAVAILABLE_DEFAULT });
       // Data from another context: validate before use.
-      const parsed = CaptureSourceSchema.safeParse(result.source);
-      setLoad(parsed.success ? { status: "ready", source: parsed.data } : { status: "error", message: UNAVAILABLE_DEFAULT });
+      try {
+        setLoad({ status: "ready", source: normalizeCaptureSource(result.source) });
+      } catch {
+        setLoad({ status: "error", message: UNAVAILABLE_DEFAULT });
+      }
     });
     return () => {
       alive = false;
@@ -132,7 +135,6 @@ export default function CaptureRoute() {
           listId={listId || undefined}
           courses={context.courses}
           initialSource={load.source}
-          autoAnalyze
           onCreated={onCreated}
         />
       </div>

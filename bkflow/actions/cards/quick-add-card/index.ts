@@ -4,9 +4,8 @@ import { randomUUID } from "node:crypto";
 
 import { auth } from "@/server/auth";
 
-import { formatSourceDescription } from "@/lib/capture/source";
 import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
-import { CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
+import { CAPTURE_REJECTED, CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { logger } from "@/lib/logger";
@@ -20,7 +19,6 @@ import { QuickAddCard } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const FALLBACK_LIST_TITLE = "Cần làm";
-const DESCRIPTION_MAX_LENGTH = 3_000;
 
 const resolveTargetList = async (boardId: string, listId?: string) => {
   if (listId) {
@@ -51,12 +49,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const description = data.source ? formatSourceDescription(data.source) : "";
-
-  if (description.length > DESCRIPTION_MAX_LENGTH) {
-    // Never truncate the source silently; the composer keeps the draft for the user to shorten.
-    return { error: "Trích đoạn nguồn quá dài. Hãy rút gọn đoạn chọn hoặc bỏ đính kèm nguồn." };
-  }
+  const creationId = data.creationId ?? randomUUID();
 
   try {
     const boardId = data.boardId ?? (await resolveCurrentSemesterBoardId(userId));
@@ -74,43 +67,46 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const list = await resolveTargetList(boardId, data.listId);
 
     if (!list) {
-      return { error: "Không tìm thấy danh sách." };
+      return { error: "Không tìm thấy danh sách.", errorCode: CAPTURE_REJECTED };
     }
 
     const { cards, createdIds } = await createCapturedCardsWithStatus({
       userId,
       boardId,
       drafts: [{
-        creationId: data.creationId ?? randomUUID(),
+        creationId,
         listId: list.id,
         title: data.title,
-        description,
+        description: data.description ?? "",
         courseId: data.courseId ?? null,
         dueDate: data.dueDate ?? null,
         deadlineOn: data.deadlineOn ?? null,
         scheduledOn: data.scheduledOn ?? null,
         scheduledStartAt: data.scheduledStartAt ?? null,
         scheduledEndAt: data.scheduledEndAt ?? null,
-        reminder: data.reminder && data.reminder !== "none" ? data.reminder : null,
+        reminder: data.reminder ?? null,
         checklistItems: data.checklistItems ?? [],
         isImportant: Boolean(data.isImportant),
         myDay: Boolean(data.myDay),
+        labelIds: [],
+        assigneeBoardMemberIds: [],
       }],
     });
 
+    // Sau commit, không throw: lỗi audit/realtime không được làm client tạo id mới.
     await announceCapturedCards({
       cards,
       createdIds,
       boardId,
       userId,
       listTitles: new Map([[list.id, list.title]]),
-      via: "quick-add",
+      origin: "Thêm nhanh",
     });
 
     return { data: cards[0] };
   } catch (error) {
     if (error instanceof CapturedCardsError) {
-      return { error: error.message, ...(error.code ? { errorCode: error.code } : {}) };
+      return { error: error.message, errorCode: error.code ?? CAPTURE_REJECTED };
     }
 
     logger.error("[QUICK_ADD_CARD_ERROR]", error, { action: "quick-add-card", userId });

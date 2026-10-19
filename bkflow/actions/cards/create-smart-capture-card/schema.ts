@@ -1,8 +1,13 @@
 import { z } from "zod";
 
-import { TaskDatesPatchShape, validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { DateOnly, OffsetDateTime, validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { hasUnsafeMarkdownLink } from "@/lib/capture/source";
 
 const DueDateValue = z.union([z.date(), z.string().datetime({ offset: true }), z.null()]);
+const NullableDate = z.optional(z.union([DateOnly, z.null()]));
+const NullableInstant = z.optional(z.union([OffsetDateTime, z.null()]));
+/** Contract nhắc của card: số phút trước hạn; "none"/null = không nhắc. */
+export const ReminderValue = z.optional(z.union([z.string().regex(/^\d{1,6}$/), z.literal("none"), z.null()]));
 
 const SmartCaptureCardDraft = z.object({
   // Stable per submit; becomes Card.id so a retry maps to the same card.
@@ -23,13 +28,17 @@ const SmartCaptureCardDraft = z.object({
         .max(3_000, { message: "Mô tả tối đa 3000 ký tự." })
         .refine((value) => !value.includes("```"), {
           message: "Mô tả không được chứa mã markdown code fence.",
+        })
+        .refine((value) => !hasUnsafeMarkdownLink(value), {
+          message: "Mô tả chứa liên kết không an toàn.",
         }),
   ),
   dueDate: z.optional(DueDateValue),
-  // Hạn chỉ-ngày và lịch làm; không ghi vào startDate legacy.
-  ...TaskDatesPatchShape,
-  /** Offset phút trước hạn như Card.reminder; null = không nhắc. */
-  reminder: z.optional(z.union([z.string().regex(/^\d{1,5}$/, { message: "Mốc nhắc nhở không hợp lệ." }), z.null()])),
+  deadlineOn: NullableDate,
+  scheduledOn: NullableDate,
+  scheduledStartAt: NullableInstant,
+  scheduledEndAt: NullableInstant,
+  reminder: ReminderValue,
   myDay: z.optional(z.boolean()),
   assigneeBoardMemberId: z.optional(z.union([z.string().min(1), z.null()])),
   assigneeBoardMemberIds: z.array(z.string().min(1)).max(20).default([]),
@@ -42,16 +51,16 @@ const SmartCaptureCardDraft = z.object({
   ).max(20).default([]),
 }).superRefine((draft, ctx) => {
   if (draft.dueDate && draft.deadlineOn) {
-    ctx.addIssue({ code: "custom", message: "Hạn nộp chỉ có ngày hoặc có giờ, không đồng thời." });
+    ctx.addIssue({ code: "custom", path: ["deadlineOn"], message: "Hạn nộp chỉ có ngày hoặc có giờ, không đồng thời." });
   }
   const scheduleError = validateTaskSchedule({
     scheduledOn: draft.scheduledOn ?? null,
     scheduledStartAt: draft.scheduledStartAt ?? null,
     scheduledEndAt: draft.scheduledEndAt ?? null,
   });
-  if (scheduleError) ctx.addIssue({ code: "custom", message: scheduleError });
-  if (draft.reminder && !draft.dueDate && !draft.deadlineOn) {
-    ctx.addIssue({ code: "custom", message: "Cần có hạn nộp để đặt nhắc nhở." });
+  if (scheduleError) ctx.addIssue({ code: "custom", path: ["scheduledOn"], message: scheduleError });
+  if (draft.reminder && draft.reminder !== "none" && !draft.dueDate && !draft.deadlineOn) {
+    ctx.addIssue({ code: "custom", path: ["reminder"], message: "Nhắc hạn cần có hạn nộp." });
   }
 });
 

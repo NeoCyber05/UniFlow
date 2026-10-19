@@ -7,6 +7,8 @@ export const REQUEST_TTL_MS = 15 * 60_000;
 /** Deployed UniFlow; granted at install via host_permissions. Options can switch to localhost for dev. */
 export const DEFAULT_UNIFLOW_ORIGIN = "https://uniflow-production-ba94.up.railway.app";
 
+/** Must match CAPTURE_EXTENSION_ADAPTER in bkflow/lib/capture/source.ts. */
+export const TIMESTAMP_ADAPTER = "uniflow-capture-dom";
 const TEXT_MAX = 4_000;
 const URL_MAX = 2_048;
 const TITLE_MAX = 200;
@@ -145,6 +147,7 @@ export const createHandler = ({ store, extensionId, clock, timeZone, randomId, g
       const { anchor, ...fields } = payload;
       const source = Object.fromEntries(Object.entries({
         ...fields,
+        adapter: fields.messageSentAt ? TIMESTAMP_ADAPTER : undefined,
         capturedAt: new Date(now).toISOString(),
         timeZone,
       }).filter(([, value]) => value !== undefined));

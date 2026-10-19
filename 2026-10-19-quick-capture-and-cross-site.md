@@ -197,7 +197,34 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 ## Kết quả khảo sát và thực thi
 
-Chưa thực thi plan. Q3/Q6 chưa được xác nhận bằng Edge/Teams/Slack/mic thật trong lần lập tài liệu này. Người thực thi ghi phiên bản, ngày, môi trường, lệnh, kết quả và giới hạn tại đây; không lưu snippet riêng tư hoặc credentials làm bằng chứng.
+Thực thi ngày 19/10/2026 trong container Linux (Node 22, Chromium 141 headless của Playwright, PostgreSQL 16 cục bộ tạm). Không có Edge, tài khoản Teams/Slack, micro hay `OPENAI_API_KEY`.
+
+### Task 1 — Q3/Q6: **blocked (chưa khảo sát)**
+
+- Q3: chưa thử extension MV3, selection trên Teams/Slack web, popup `/capture` hay login trên Edge. Chưa có origin production đã xác minh. → **Task 8 không triển khai** (gate chưa đạt); WEB-01/02/03/06 chưa đạt.
+- Q6: chưa thử `SpeechRecognition` tiếng Việt trên Edge, quyền mic, luồng audio. → **Task 6 không triển khai**; CAP-05 chưa đạt. Không có nút mic disabled giả hoàn thành.
+- Bước tái hiện: chạy đúng các bullet của Task 1 trên Edge thật với tài khoản thử được phép, ghi phiên bản/host/origin vào đây.
+
+### Đã làm (Task 2, 3, 4, 5, 7) và bằng chứng
+
+| Task | File | Bằng chứng |
+| --- | --- | --- |
+| 2 | `bkflow/lib/capture/draft.ts`, `draft.test.ts` | Unit: manual clear survives reanalysis, stale revision/old draft ignored, response đảo thứ tự, save chỉ xóa snapshot đã gửi, lựa chọn mới lúc đang lưu được giữ |
+| 3 | `bkflow/lib/capture/analysis.ts`, `analysis.test.ts`; `actions/ai/analyze-smart-capture/{index,schema,types}.ts`; `lib/my-tasks/parse-quick-add.ts` (+`deadlineOn`) | Unit fixture: ma trận câu CAP-01 (17h30 hôm nay, 19h–20h mai, tối mai = scheduledOn, thứ ba 17h, không ngày), “5 giờ” có issue, ngày-only không thành 23:59, ngày quá khứ giữ + cảnh báo, hai hạn mâu thuẫn chỉ đánh dấu deadline, JSON sai, course lạ/prompt injection, title JSON/error, DST. Board mode giữ nguyên shape; overload type phân biệt quick/board |
+| 4 | `actions/cards/{quick-add-card,create-smart-capture-card}/*`, `lib/cards/create-captured-cards.ts`, `.test.ts`, `.db.test.ts`, `captured-cards-effects.ts`, `capture-error-codes.ts` | Unit (fake DB) + **PostgreSQL 16 thật** (`CAPTURE_DB_TEST=1`): rollback card+todo+user state khi ghi delivery lỗi giữa transaction, mọi field lưu đúng (deadlineOn/scheduled*/reminder/isImportant/myDay, `startDate` không bị ghi), replay sau commit không tạo bản 2 và không phát effects lần 2, cùng id đổi lịch → conflict, 2 request đồng thời → 1 card, sai user/board/course bị từ chối không ghi. Quick-add giờ đi qua cùng creator (không còn đường insert riêng) |
+| 5 | `components/capture/capture-composer.tsx`, `components/my-tasks/quick-add-bar.tsx` | Reducer tests + harness trình duyệt tạm (Chromium, action mock qua fetch, máy đặt timezone New York): AI off → thêm tay; double Enter/click → 1 request; gõ lúc đang lưu giữ nội dung mới; mất mạng → “Thử lại” gửi lại đúng id/payload cũ; xóa chip → AI không thêm lại; Enter khi AI chạy → hỏi “Chờ AI / Thêm với thông tin hiện có”, kết quả AI trễ bị bỏ; issue “5 giờ” sửa bằng tay; Escape đóng chi tiết; 390px không cuộn ngang; read-only disabled + hint |
+| 7 | `bkflow/lib/capture/source.ts`, `source.test.ts` | Unit: tin cũ dùng sentAt (chỉ từ adapter đã kiểm chứng, MVP chưa có → luôn rỗng), thiếu sentAt phải xác nhận ngày (gắn revision + giá trị), link trang ≠ permalink (“Trang nguồn”), URL không an toàn/selection quá dài bị từ chối, HTML/script/Markdown link `javascript:` inert, nguồn quá dài báo lỗi không truncate. Server từ chối mô tả có link scheme lạ |
+
+Lệnh: `npm test` (284 pass, 0 fail), `npx tsc --noEmit` sạch, `npm run build` thành công, ESLint các file đổi: không lỗi mới (lỗi `"use server"` dòng 2 của `analyze-smart-capture/index.ts` và các warning `_list`, `members` có từ trước). DB: `CAPTURE_DB_TEST=1 DATABASE_URL=<db thử> npx tsx --import ./server/register-aliases.mjs --test lib/cards/create-captured-cards.db.test.ts` → 5/5 pass.
+
+### Giới hạn và phần chưa kiểm
+
+- RED: phần lớn test được viết cùng lúc với code, không có lần chạy RED riêng ghi lại cho từng task.
+- Live AI: chưa chạy sáu câu CAP-01 với model thật (không có key); chỉ có fixture. CAP-01 chưa đủ bằng chứng.
+- Browser: harness dùng action mock, không qua auth Supabase/DB thật; chưa thử IME tiếng Việt thật (chỉ chặn `isComposing`/keyCode 229 trong code), chưa thử screen reader.
+- Task 9 rate limit: repo chưa có limiter; chưa gắn vì plan yêu cầu không bịa quota — cần quyết định quota/user trước.
+- Assignee: quick-add cũ nhận `assigneeUserIds` nhưng không lưu; giữ nguyên hành vi (workspace cá nhân), replay không so assignee.
+- Task 6, 8 và phần live Teams/Slack của Task 9: chưa làm (gate Q3/Q6).
 
 ### 19/10/2026 — Tasks 2, 3, 4, 5, 7 (phạm vi người dùng chọn)
 

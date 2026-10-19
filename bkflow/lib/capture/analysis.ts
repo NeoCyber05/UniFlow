@@ -1,10 +1,24 @@
 import { z } from "zod";
 
-import { TaskDeadlineSchema, TaskScheduleSchema, type TaskDeadline, type TaskSchedule } from "@/lib/cards/task-schedule";
+import { DateOnly, TaskDeadlineSchema, TaskScheduleSchema } from "@/lib/cards/task-schedule";
+import type { CaptureFields } from "@/lib/capture/draft";
 
-import type { CaptureFieldKey, CaptureFields } from "./draft";
+export const CAPTURE_TITLE_MAX_LENGTH = 200;
+export const CAPTURE_CHECKLIST_MAX_ITEMS = 20;
+export const CAPTURE_CHECKLIST_ITEM_MAX_LENGTH = 120;
+const ISSUE_REASON_MAX_LENGTH = 200;
 
-export type CaptureIssue = { field: CaptureFieldKey; reason: string };
+export const CAPTURE_FIELD_KEYS = [
+  "title",
+  "deadline",
+  "schedule",
+  "reminder",
+  "isImportant",
+  "courseId",
+  "checklistItems",
+] as const satisfies readonly (keyof CaptureFields)[];
+
+export type CaptureIssue = { field: keyof CaptureFields; reason: string };
 
 export type CaptureAnalysis = {
   draftId: string;
@@ -16,128 +30,187 @@ export type CaptureAnalysis = {
 export type CaptureAnalysisContext = {
   draftId: string;
   textRevision: number;
-  rawText: string;
-  /** Anchor for "hôm nay"/"mai": verified message time, else capture time. */
+  /** Mốc cho ngày tương đối (thời điểm gửi tin đã kiểm chứng, hoặc lúc capture). */
   referenceIso: string;
-  nowIso: string;
   timeZone: string;
   allowedCourseIds: string[];
-  requiresRelativeDateConfirmation?: boolean;
+  /** Mốc "đã qua"; mặc định referenceIso. */
+  nowIso?: string;
 };
 
-const TITLE_MAX = 200;
-const TODO_MAX = 20;
-const TODO_ITEM_MAX = 120;
-const ISSUE_MAX = 200;
-const FIELD_KEYS: CaptureFieldKey[] = ["title", "deadline", "schedule", "reminder", "isImportant", "courseId", "checklistItems"];
+export class CaptureAnalysisError extends Error {}
 
-// A clock time written in the text ("17h", "17h30", "5 giờ", "19:00"). Without one, any AI hour is invented.
-const HAS_CLOCK_TIME = /\d{1,2}\s*(h|g|giờ|:\d{2})/i;
+const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-export const getLocalDayKey = (iso: string, timeZone: string) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+const offsetMs = (instant: number, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(instant));
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+  const wall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return wall - Math.floor(instant / 1000) * 1000;
+};
 
-const toIso = (value: string | null) => (value ? new Date(value).toISOString() : null);
+/** Giờ tường (YYYY-MM-DD + HH:mm) ở múi giờ IANA → ISO UTC; null khi giờ không tồn tại (DST). */
+export const zonedTimeToIso = (date: string, time: string, timeZone: string): string | null => {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  const wall = Date.UTC(year, month - 1, day, hours, minutes);
+  let instant = wall - offsetMs(wall, timeZone);
+  instant = wall - offsetMs(instant, timeZone);
+  return instant + offsetMs(instant, timeZone) === wall ? new Date(instant).toISOString() : null;
+};
 
-const cleanLine = (value: unknown) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
+export const getZonedDayKey = (iso: string, timeZone: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date(iso));
 
-const normalizeTodos = (value: unknown) => {
-  if (!Array.isArray(value)) return undefined;
+const isDate = (value: unknown): value is string => DateOnly.safeParse(value).success;
+const isTime = (value: unknown): value is string => typeof value === "string" && TIME.test(value);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const cleanLine = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const looksLikeMachineText = (value: string) =>
+  /^[[{]/.test(value) || value.includes("```") || /^(error|lỗi|undefined|null)\b/i.test(value);
+
+const parseTitle = (value: unknown) => {
+  if (typeof value !== "string") return { value: undefined };
+  const title = cleanLine(value);
+  if (!title) return { value: undefined };
+  if (looksLikeMachineText(title)) return { issue: "AI trả tiêu đề không hợp lệ, hãy nhập tiêu đề." };
+  return { value: title.slice(0, CAPTURE_TITLE_MAX_LENGTH) };
+};
+
+const parseDeadline = (value: unknown, timeZone: string) => {
+  if (value === null || value === undefined) return { value: undefined };
+  if (!isRecord(value) || !isDate(value.date)) return { issue: "AI trả hạn nộp không hợp lệ." };
+  if (value.time === null || value.time === undefined || value.time === "") {
+    return { value: { dueDate: null, deadlineOn: value.date } };
+  }
+  if (!isTime(value.time)) return { issue: "AI trả giờ hạn nộp không hợp lệ." };
+  const dueDate = zonedTimeToIso(value.date, value.time, timeZone);
+  if (!dueDate) return { issue: "Giờ hạn nộp không tồn tại ở múi giờ này." };
+  return { value: { dueDate, deadlineOn: null } };
+};
+
+const parseSchedule = (value: unknown, timeZone: string) => {
+  if (value === null || value === undefined) return { value: undefined };
+  if (!isRecord(value) || !isDate(value.date)) return { issue: "AI trả lịch làm không hợp lệ." };
+  const hasStart = value.startTime !== null && value.startTime !== undefined && value.startTime !== "";
+  const hasEnd = value.endTime !== null && value.endTime !== undefined && value.endTime !== "";
+  if (!hasStart && !hasEnd) {
+    return { value: { scheduledOn: value.date, scheduledStartAt: null, scheduledEndAt: null } };
+  }
+  if (!hasStart || !hasEnd) return { issue: "Lịch làm cần cả giờ bắt đầu và giờ kết thúc." };
+  if (!isTime(value.startTime) || !isTime(value.endTime)) return { issue: "AI trả giờ lịch làm không hợp lệ." };
+  const scheduledStartAt = zonedTimeToIso(value.date, value.startTime, timeZone);
+  const scheduledEndAt = zonedTimeToIso(value.date, value.endTime, timeZone);
+  if (!scheduledStartAt || !scheduledEndAt) return { issue: "Giờ lịch làm không tồn tại ở múi giờ này." };
+  const schedule = { scheduledOn: null, scheduledStartAt, scheduledEndAt };
+  const parsed = TaskScheduleSchema.safeParse(schedule);
+  if (!parsed.success) return { issue: parsed.error.issues[0]?.message ?? "Lịch làm không hợp lệ." };
+  return { value: schedule };
+};
+
+const parseChecklist = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const items: string[] = [];
-  for (const raw of value) {
-    const item = cleanLine(raw).slice(0, TODO_ITEM_MAX);
-    if (!item || seen.has(item.toLowerCase())) continue;
-    seen.add(item.toLowerCase());
-    items.push(item);
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const title = cleanLine(item).slice(0, CAPTURE_CHECKLIST_ITEM_MAX_LENGTH);
+    const key = title.toLowerCase();
+    if (!title || seen.has(key) || looksLikeMachineText(title)) continue;
+    seen.add(key);
+    items.push(title);
+    if (items.length >= CAPTURE_CHECKLIST_MAX_ITEMS) break;
   }
-  return items.slice(0, TODO_MAX);
+  return items;
 };
 
-const ModelIssue = z.object({
-  field: z.enum(FIELD_KEYS as [CaptureFieldKey, ...CaptureFieldKey[]]),
-  reason: z.string().transform((value) => cleanLine(value).slice(0, ISSUE_MAX)).pipe(z.string().min(1)),
-});
+const parseIssues = (value: unknown): CaptureIssue[] => {
+  if (!Array.isArray(value)) return [];
+  const keys = new Set<string>(CAPTURE_FIELD_KEYS);
+  return value.flatMap((item) => {
+    if (!isRecord(item) || typeof item.field !== "string" || !keys.has(item.field)) return [];
+    const reason = typeof item.reason === "string" ? cleanLine(item.reason).slice(0, ISSUE_REASON_MAX_LENGTH) : "";
+    return [{ field: item.field as keyof CaptureFields, reason: reason || "Thông tin chưa rõ, hãy kiểm tra lại." }];
+  });
+};
+
+const pastIssue = (fields: Partial<CaptureFields>, context: CaptureAnalysisContext): CaptureIssue[] => {
+  const now = context.nowIso ?? context.referenceIso;
+  const today = getZonedDayKey(now, context.timeZone);
+  const issues: CaptureIssue[] = [];
+  const deadline = fields.deadline;
+  if (deadline && (deadline.dueDate ? deadline.dueDate < new Date(now).toISOString() : deadline.deadlineOn! < today)) {
+    issues.push({ field: "deadline", reason: "Hạn nộp đã ở trong quá khứ, hãy kiểm tra lại ngày." });
+  }
+  const schedule = fields.schedule;
+  if (schedule && (schedule.scheduledEndAt ? schedule.scheduledEndAt < new Date(now).toISOString() : schedule.scheduledOn! < today)) {
+    issues.push({ field: "schedule", reason: "Lịch làm đã ở trong quá khứ, hãy kiểm tra lại ngày." });
+  }
+  return issues;
+};
 
 /**
- * Turns untrusted model JSON into draft fields. Each field is checked on its own: a bad
- * field is dropped (with an issue when the user should look at it) instead of failing all.
+ * Kiểm JSON của model cho quick capture. Giá trị có issue từ model bị bỏ (không bịa thời điểm);
+ * cảnh báo "đã qua" do validator thêm vẫn giữ giá trị để người dùng xem và sửa. draftId/revision lấy
+ * từ request, không từ model.
  */
 export const validateCaptureAnalysis = (raw: unknown, context: CaptureAnalysisContext): CaptureAnalysis => {
+  if (!isRecord(raw)) throw new CaptureAnalysisError("AI chưa trả kết quả hợp lệ.");
+
+  const issues = parseIssues(raw.issues);
+  const flagged = new Set(issues.map((issue) => issue.field));
   const fields: Partial<CaptureFields> = {};
-  const issues: CaptureIssue[] = [];
-  const result = { draftId: context.draftId, textRevision: context.textRevision, fields, issues };
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
-  const model = raw as Record<string, unknown>;
-
-  const flag = (field: CaptureFieldKey, reason: string) => {
-    if (!issues.some((issue) => issue.field === field)) issues.push({ field, reason });
+  const addIssue = (field: keyof CaptureFields, reason: string) => {
+    issues.push({ field, reason });
+    flagged.add(field);
   };
-  const hasClockTime = HAS_CLOCK_TIME.test(context.rawText);
-  const today = getLocalDayKey(context.nowIso, context.timeZone);
-  const now = new Date(context.nowIso).getTime();
 
-  if (Array.isArray(model.issues)) {
-    for (const item of model.issues) {
-      const parsed = ModelIssue.safeParse(item);
-      if (parsed.success) flag(parsed.data.field, parsed.data.reason);
+  const title = parseTitle(raw.title);
+  if (title.issue) addIssue("title", title.issue);
+  else if (title.value && !flagged.has("title")) fields.title = title.value;
+
+  const deadline = parseDeadline(raw.deadline, context.timeZone);
+  if (deadline.issue) addIssue("deadline", deadline.issue);
+  else if (deadline.value && !flagged.has("deadline") && TaskDeadlineSchema.safeParse(deadline.value).success) {
+    fields.deadline = deadline.value;
+  }
+
+  const schedule = parseSchedule(raw.schedule, context.timeZone);
+  if (schedule.issue) addIssue("schedule", schedule.issue);
+  else if (schedule.value && !flagged.has("schedule")) fields.schedule = schedule.value;
+
+  if (raw.isImportant === true && !flagged.has("isImportant")) fields.isImportant = true;
+
+  if (typeof raw.courseId === "string" && raw.courseId) {
+    if (context.allowedCourseIds.includes(raw.courseId)) {
+      if (!flagged.has("courseId")) fields.courseId = raw.courseId;
+    } else {
+      addIssue("courseId", "AI gợi ý môn không thuộc học kỳ này, đã bỏ qua.");
     }
   }
 
-  const title = cleanLine(model.title);
-  if (title && !/^[{[]/.test(title)) fields.title = title.slice(0, TITLE_MAX);
+  const checklistItems = parseChecklist(raw.checklistItems);
+  if (checklistItems.length > 0 && !flagged.has("checklistItems")) fields.checklistItems = checklistItems;
 
-  if (model.deadline === null) fields.deadline = null;
-  else if (model.deadline !== undefined) {
-    const parsed = TaskDeadlineSchema.safeParse(model.deadline);
-    if (!parsed.success) flag("deadline", "Hạn nộp AI đọc được không hợp lệ, hãy chọn lại.");
-    else {
-      let deadline: TaskDeadline = { dueDate: toIso(parsed.data.dueDate), deadlineOn: parsed.data.deadlineOn };
-      if (deadline.dueDate && !hasClockTime) {
-        deadline = { dueDate: null, deadlineOn: getLocalDayKey(deadline.dueDate, context.timeZone) };
-        flag("deadline", "Câu không ghi giờ cụ thể; hạn được giữ theo ngày.");
-      }
-      const past = deadline.dueDate ? new Date(deadline.dueDate).getTime() < now : Boolean(deadline.deadlineOn && deadline.deadlineOn < today);
-      if (past) flag("deadline", "Hạn nộp đã qua, hãy kiểm tra lại ngày.");
-      fields.deadline = deadline.dueDate || deadline.deadlineOn ? deadline : null;
-    }
-  }
+  issues.push(...pastIssue(fields, context));
 
-  if (model.schedule === null) fields.schedule = null;
-  else if (model.schedule !== undefined) {
-    const parsed = TaskScheduleSchema.safeParse(model.schedule);
-    if (!parsed.success) flag("schedule", "Lịch làm AI đọc được không hợp lệ, hãy chọn lại.");
-    else {
-      let schedule: TaskSchedule = {
-        scheduledOn: parsed.data.scheduledOn,
-        scheduledStartAt: toIso(parsed.data.scheduledStartAt),
-        scheduledEndAt: toIso(parsed.data.scheduledEndAt),
-      };
-      if (schedule.scheduledStartAt && !hasClockTime) {
-        schedule = { scheduledOn: getLocalDayKey(schedule.scheduledStartAt, context.timeZone), scheduledStartAt: null, scheduledEndAt: null };
-        flag("schedule", "Câu không ghi giờ cụ thể; lịch làm được giữ theo ngày.");
-      }
-      const past = schedule.scheduledStartAt
-        ? new Date(schedule.scheduledStartAt).getTime() < now
-        : Boolean(schedule.scheduledOn && schedule.scheduledOn < today);
-      if (past) flag("schedule", "Lịch làm đã qua, hãy kiểm tra lại ngày.");
-      fields.schedule = schedule.scheduledOn || schedule.scheduledStartAt ? schedule : null;
-    }
-  }
-
-  if (context.requiresRelativeDateConfirmation) {
-    if (fields.deadline) flag("deadline", "Không rõ ngày gửi tin nhắn; hãy xác nhận ngày hạn.");
-    if (fields.schedule) flag("schedule", "Không rõ ngày gửi tin nhắn; hãy xác nhận ngày làm.");
-  }
-
-  if (typeof model.isImportant === "boolean") fields.isImportant = model.isImportant;
-
-  // An unknown course is just a bad suggestion: drop it, never pass a foreign id on.
-  if (model.courseId === null) fields.courseId = null;
-  else if (typeof model.courseId === "string" && context.allowedCourseIds.includes(model.courseId)) fields.courseId = model.courseId;
-
-  const todos = normalizeTodos(model.checklistItems);
-  if (todos) fields.checklistItems = todos;
-
-  return result;
+  return {
+    draftId: context.draftId,
+    textRevision: context.textRevision,
+    fields,
+    issues: z.array(z.object({ field: z.enum(CAPTURE_FIELD_KEYS), reason: z.string() })).parse(issues),
+  };
 };

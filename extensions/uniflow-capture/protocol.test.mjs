@@ -75,6 +75,7 @@ test("request stores pending draft and opens popup with only an id in the URL", 
     pageUrl: "https://app.slack.com/client/T1/C2",
     pageTitle: "Slack | lop-it",
     messageSentAt: "2026-10-12T03:00:00.000Z",
+    adapter: "uniflow-capture-dom",
     capturedAt: "2026-10-18T03:00:00.000Z",
     timeZone: "Asia/Ho_Chi_Minh",
   });
@@ -107,6 +108,7 @@ test("unparseable message time is dropped, not guessed", async () => {
   const id = ctx.opened[0].url.split("#request=")[1];
   const ready = await ctx.handler.handle(bridge("CAPTURE_READY", id), popupSender);
   assert.equal(ready.source.messageSentAt, undefined);
+  assert.equal(ready.source.adapter, undefined);
 });
 
 test("wrong tab frame origin nonce rejected", async () => {

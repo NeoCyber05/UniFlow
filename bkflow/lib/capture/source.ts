@@ -1,88 +1,167 @@
 import { z } from "zod";
 
-export const CAPTURE_TEXT_MAX_LENGTH = 4_000;
-const PAGE_TITLE_MAX_LENGTH = 200;
-const URL_MAX_LENGTH = 2_048;
+export const CAPTURE_SELECTION_MAX_LENGTH = 4_000;
+export const CAPTURE_PAGE_TITLE_MAX_LENGTH = 200;
+export const CAPTURE_URL_MAX_LENGTH = 2_048;
+export const CAPTURE_DESCRIPTION_MAX_LENGTH = 3_000;
+export const CAPTURE_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
+/**
+ * Adapter được tin để cung cấp thời điểm gửi tin nhắn.
+ * "uniflow-capture-dom": extension đọc timestamp của tin chứa đoạn chọn (Slack [data-ts], Teams time[datetime]),
+ * bỏ khi mơ hồ. Người dùng chọn tin nguồn này; chưa khảo sát trên Slack/Teams thật (plan Task 1).
+ */
+export const CAPTURE_EXTENSION_ADAPTER = "uniflow-capture-dom";
+export const VERIFIED_TIMESTAMP_ADAPTERS: ReadonlySet<string> = new Set([CAPTURE_EXTENSION_ADAPTER]);
+
+/** Query key được giữ lại trong URL nguồn; rỗng = bỏ toàn bộ query. */
+const QUERY_ALLOWLIST: ReadonlySet<string> = new Set();
 
 export const isValidTimeZone = (value: string) => {
   try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
     return true;
   } catch {
     return false;
   }
 };
 
-/** http(s) only, no credentials, no fragment, no query (shortcut: no query allowlist yet, add one when an adapter needs a permalink param). */
-export const sanitizeSourceUrl = (value: string | null | undefined): string | null => {
-  if (!value || value.length > URL_MAX_LENGTH) return null;
+/** Chỉ http/https; bỏ credentials, fragment và query ngoài allowlist. null = URL không an toàn. */
+export const sanitizeCaptureUrl = (value: string): string | null => {
+  if (value.length > CAPTURE_URL_MAX_LENGTH) return null;
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     return null;
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   url.username = "";
   url.password = "";
-  url.search = "";
   url.hash = "";
-  return url.toString();
+  for (const key of Array.from(url.searchParams.keys())) {
+    if (!QUERY_ALLOWLIST.has(key)) url.searchParams.delete(key);
+  }
+  const result = url.toString();
+  return result.length > CAPTURE_URL_MAX_LENGTH ? null : result;
 };
 
-const OptionalUrl = z.optional(z.union([z.string(), z.null()])).transform((value) => sanitizeSourceUrl(value) ?? undefined);
+const SafeUrl = z.string().transform((value, ctx) => {
+  const url = sanitizeCaptureUrl(value.trim());
+  if (!url) {
+    ctx.addIssue({ code: "custom", message: "Liên kết nguồn không hợp lệ." });
+    return z.NEVER;
+  }
+  return url;
+});
+
+const IsoInstant = z.string().datetime({ offset: true });
 
 export const CaptureSourceSchema = z.object({
   selectedText: z.string()
-    .transform((value) => value.trim())
-    .pipe(z.string().min(1).max(CAPTURE_TEXT_MAX_LENGTH)),
-  pageUrl: OptionalUrl,
-  pageTitle: z.optional(z.string().transform((value) => value.replace(/\s+/g, " ").trim()).pipe(z.string().max(PAGE_TITLE_MAX_LENGTH))),
-  /** Only an adapter verified in the Q3 survey may set this; never derived from the page URL. */
-  messagePermalink: OptionalUrl,
-  /** Verified message timestamp from such an adapter; never inferred from capturedAt. */
-  messageSentAt: z.optional(z.string().datetime({ offset: true })),
-  capturedAt: z.string().datetime({ offset: true }),
+    .transform((value) => value.replace(/\r\n/g, "\n").trim())
+    .pipe(z.string()
+      .min(1, { message: "Đoạn chọn trống." })
+      .max(CAPTURE_SELECTION_MAX_LENGTH, { message: "Đoạn chọn quá dài. Vui lòng rút gọn tối đa 4000 ký tự." })),
+  pageUrl: z.optional(z.union([SafeUrl, z.null()])),
+  pageTitle: z.optional(z.union([
+    z.string()
+      .transform((value) => value.replace(/\s+/g, " ").trim())
+      .pipe(z.string().max(CAPTURE_PAGE_TITLE_MAX_LENGTH, { message: "Tiêu đề trang tối đa 200 ký tự." })),
+    z.null(),
+  ])),
+  messagePermalink: z.optional(z.union([SafeUrl, z.null()])),
+  messageSentAt: z.optional(z.union([IsoInstant, z.null()])),
+  /** Adapter cung cấp messageSentAt/messagePermalink; chỉ adapter đã kiểm chứng mới được tin. */
+  adapter: z.optional(z.union([z.string().max(64), z.null()])),
+  capturedAt: IsoInstant,
   timeZone: z.string().refine(isValidTimeZone, { message: "Múi giờ không hợp lệ." }),
 });
 
-export type CaptureSource = z.output<typeof CaptureSourceSchema>;
+export type CaptureSource = {
+  selectedText: string;
+  pageUrl: string | null;
+  pageTitle: string | null;
+  messagePermalink: string | null;
+  messageSentAt: string | null;
+  /** Giữ adapter đã kiểm để server chuẩn hóa lại vẫn tin cùng thời điểm gửi. */
+  adapter?: string | null;
+  capturedAt: string;
+  timeZone: string;
+};
 
-export const normalizeCaptureSource = (input: unknown): CaptureSource => CaptureSourceSchema.parse(input);
+export class CaptureSourceError extends Error {}
 
+/**
+ * Chuẩn hóa nguồn từ trang ngoài. Thời điểm gửi và permalink chỉ được giữ khi adapter đã kiểm chứng
+ * cung cấp; không bao giờ suy từ capturedAt hay pageUrl.
+ */
+export const normalizeCaptureSource = (
+  input: unknown,
+  { verifiedAdapters = VERIFIED_TIMESTAMP_ADAPTERS }: { verifiedAdapters?: ReadonlySet<string> } = {},
+): CaptureSource => {
+  const parsed = CaptureSourceSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new CaptureSourceError(parsed.error.issues[0]?.message ?? "Nguồn không hợp lệ.");
+  }
+  const value = parsed.data;
+  const verified = Boolean(value.adapter && verifiedAdapters.has(value.adapter));
+  return {
+    selectedText: value.selectedText,
+    pageUrl: value.pageUrl ?? null,
+    pageTitle: value.pageTitle || null,
+    messagePermalink: verified ? value.messagePermalink ?? null : null,
+    messageSentAt: verified && value.messageSentAt ? new Date(value.messageSentAt).toISOString() : null,
+    adapter: verified ? value.adapter : null,
+    capturedAt: new Date(value.capturedAt).toISOString(),
+    timeZone: value.timeZone,
+  };
+};
+
+/** Mốc cho "hôm nay/ngày mai": thời điểm gửi tin đã kiểm chứng; thiếu thì người dùng phải xác nhận ngày tuyệt đối. */
 export const getCaptureTimeContext = (source: CaptureSource) => ({
-  referenceIso: new Date(source.messageSentAt ?? source.capturedAt).toISOString(),
+  referenceIso: source.messageSentAt ?? source.capturedAt,
   requiresRelativeDateConfirmation: !source.messageSentAt,
 });
 
-// Snippets come from other sites: escape HTML and Markdown so links/markup stay inert text.
-const escapeText = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/`/g, "'")
-    .replace(/([\\[\]()*_#|~])/g, "\\$1");
+export const getCaptureSourceLabel = (source: Pick<CaptureSource, "messagePermalink">) =>
+  source.messagePermalink ? "Tin nhắn gốc" : "Trang nguồn";
 
-export const formatInZone = (iso: string, timeZone: string) =>
-  new Intl.DateTimeFormat("vi-VN", {
-    timeZone,
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(iso));
+const MARKDOWN_SPECIAL = /[\\`*_{}[\]()<>#+\-.!|~]/g;
 
-/** Description block for a captured task: quoted snippet + labelled source. Not truncated; the caller checks length. */
-export const formatSourceDescription = (source: CaptureSource) => {
-  const quote = escapeText(source.selectedText).split(/\r?\n/).map((line) => `> ${line}`).join("\n");
-  const lines = ["**Trích đoạn**", quote, ""];
-  if (source.messagePermalink) lines.push(`Tin nhắn gốc: ${source.messagePermalink}`);
-  else if (source.pageUrl) lines.push(`Trang nguồn: ${source.pageUrl}`);
-  if (source.pageTitle) lines.push(`Tiêu đề trang: ${escapeText(source.pageTitle)}`);
-  if (source.messageSentAt) lines.push(`Gửi lúc: ${formatInZone(source.messageSentAt, source.timeZone)}`);
-  return lines.join("\n").trim();
+/** Văn bản thuần → Markdown hiển thị đúng chữ, không tạo link/HTML. */
+export const escapeMarkdown = (value: string) => value.replace(MARKDOWN_SPECIAL, (char) => `\\${char}`);
+
+/** Đoạn mô tả có nhãn rõ chứa trích đoạn và nguồn; không truncate âm thầm. */
+export const buildCaptureSourceDescription = (source: CaptureSource) => {
+  const quote = source.selectedText
+    .split("\n")
+    .map((line) => `> ${escapeMarkdown(line)}`)
+    .join("\n");
+  const lines = ["**Trích đoạn nguồn**", "", quote];
+  const link = source.messagePermalink ?? source.pageUrl;
+  if (link) {
+    const title = source.pageTitle ? `${escapeMarkdown(source.pageTitle)} — ` : "";
+    lines.push("", `${getCaptureSourceLabel(source)}: ${title}<${link}>`);
+  } else if (source.pageTitle) {
+    lines.push("", `${getCaptureSourceLabel(source)}: ${escapeMarkdown(source.pageTitle)}`);
+  }
+  return lines.join("\n");
 };
+
+export const getCaptureDescriptionError = (description: string) =>
+  description.length > CAPTURE_DESCRIPTION_MAX_LENGTH
+    ? "Mô tả kèm nguồn vượt 3000 ký tự. Hãy rút gọn đoạn chọn hoặc bỏ đính kèm nguồn."
+    : null;
+
+const LINK_TARGETS = [/\]\(\s*<?([^)\s>]*)/g, /<([a-z][a-z0-9+.-]*:[^>\s]*)>/gi, /^\s*\[[^\]]+\]:\s*<?(\S+?)>?\s*$/gm];
+
+/** Link Markdown (inline, autolink, reference) có scheme khác http/https/mailto. */
+export const hasUnsafeMarkdownLink = (value: string) =>
+  LINK_TARGETS.some((pattern) =>
+    Array.from(value.matchAll(pattern)).some((match) => {
+      const target = match[1].trim().toLowerCase().replace(/[\u0000- ]/g, "");
+      const scheme = target.match(/^([a-z][a-z0-9+.-]*):/)?.[1];
+      return Boolean(scheme) && !["http", "https", "mailto"].includes(scheme!);
+    }),
+  );

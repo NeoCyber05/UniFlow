@@ -5,6 +5,7 @@ import {
   getVNDay,
   getVNDayKey,
   getVNWeekday,
+  type VNDay,
 } from "./vn-day";
 
 export type QuickAddCourse = { id: string; name: string; code: string | null };
@@ -20,8 +21,9 @@ export type ParsedQuickAdd = {
   courseId: string | null;
   assigneeUserIds: string[];
   isImportant: boolean;
+  /** 23:59 VN của ngày @…; giữ cho caller cũ. Caller mới dùng deadlineOn (hạn chỉ-ngày). */
   dueDate: Date | null;
-  /** Cùng hạn ở dạng chỉ-ngày (YYYY-MM-DD, ngày VN); token @ không mang giờ */
+  /** Ngày hạn YYYY-MM-DD (giờ VN) của token @…, không gắn giờ. */
   deadlineOn: string | null;
   /** Chip xem trước dưới ô nhập */
   tokens: QuickAddToken[];
@@ -80,22 +82,22 @@ const matchMember = (raw: string, members: QuickAddMember[]) => {
 const isValidDayOfMonth = (year: number, month: number, day: number) =>
   new Date(Date.UTC(year, month, day)).getUTCDate() === day;
 
-const parseDueToken = (raw: string, now: Date): Date | null => {
+const parseDueToken = (raw: string, now: Date): VNDay | null => {
   const key = raw.toLowerCase();
   const today = getVNDay(now);
 
   if (key === "nay" || key === "homnay") {
-    return getEndOfVNDay(today);
+    return today;
   }
 
   if (key === "mai") {
-    return getEndOfVNDay(addVNDays(today, 1));
+    return addVNDays(today, 1);
   }
 
   if (key in WEEKDAY_TOKENS) {
     const diff = (WEEKDAY_TOKENS[key] - getVNWeekday(today) + 7) % 7;
 
-    return getEndOfVNDay(addVNDays(today, diff));
+    return addVNDays(today, diff);
   }
 
   const match = key.match(/^(\d{1,2})\/(\d{1,2})$/);
@@ -118,7 +120,7 @@ const parseDueToken = (raw: string, now: Date): Date | null => {
     if (!isValidDayOfMonth(year, month, day)) return null;
   }
 
-  return getEndOfVNDay({ year, month, day });
+  return { year, month, day };
 };
 
 const setSingleToken = (tokens: QuickAddToken[], token: QuickAddToken) => {
@@ -144,7 +146,7 @@ export const parseQuickAdd = (
   const assigneeUserIds: string[] = [];
   const tokens: QuickAddToken[] = [];
   let courseId: string | null = null;
-  let dueDate: Date | null = null;
+  let dueDay: VNDay | null = null;
   let isImportant = false;
 
   for (const word of input.trim().split(/\s+/).filter(Boolean)) {
@@ -183,8 +185,8 @@ export const parseQuickAdd = (
       const parsed = parseDueToken(body, now);
 
       if (parsed) {
-        dueDate = parsed;
-        setSingleToken(tokens, { kind: "due", label: formatVNShortDate(parsed) });
+        dueDay = parsed;
+        setSingleToken(tokens, { kind: "due", label: formatVNShortDate(getEndOfVNDay(parsed)) });
         continue;
       }
     }
@@ -197,8 +199,8 @@ export const parseQuickAdd = (
     courseId,
     assigneeUserIds,
     isImportant,
-    dueDate,
-    deadlineOn: dueDate ? getVNDayKey(getVNDay(dueDate)) : null,
+    dueDate: dueDay ? getEndOfVNDay(dueDay) : null,
+    deadlineOn: dueDay ? getVNDayKey(dueDay) : null,
     tokens,
   };
 };

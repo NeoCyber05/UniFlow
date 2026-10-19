@@ -1,8 +1,35 @@
 "use client";
 
-// Quick add is the shared capture composer; this keeps the old import path and props for callers.
-export {
-  CaptureComposer as QuickAddBar,
-  type CaptureComposerProps as QuickAddBarProps,
-  type QuickAddDefaults,
-} from "@/components/capture/capture-composer";
+import { CaptureComposer } from "@/components/capture/capture-composer";
+import type { QuickAddCourse, QuickAddMember } from "@/lib/my-tasks/parse-quick-add";
+
+export type QuickAddDefaults = {
+  myDay?: boolean;
+  isImportant?: boolean;
+  courseId?: string | null;
+  assigneeUserIds?: string[];
+  /** Không gõ @ngày → ghim Hôm nay (tab Việc cần làm) */
+  myDayWhenNoDue?: boolean;
+};
+
+type QuickAddBarProps = {
+  /** Bỏ trống → bảng kỳ hiện tại (server tự tìm) */
+  boardId?: string;
+  listId?: string;
+  courses?: QuickAddCourse[];
+  members?: QuickAddMember[];
+  defaults?: QuickAddDefaults;
+  placeholder?: string;
+  disabled?: boolean;
+  /** Hiện thay cho gợi ý cú pháp khi disabled */
+  disabledHint?: React.ReactNode;
+  /** Slot bên phải ô nhập (vd nút ✨ Smart Capture, chọn bảng) */
+  trailing?: React.ReactNode;
+  onCreated?: () => void;
+  compact?: boolean;
+};
+
+/** Ô thêm nhanh một việc: cú pháp #môn @ngày !, gợi ý AI và chip sửa được, chỉ lưu khi bấm Thêm/Enter. */
+export const QuickAddBar = ({ onCreated, ...props }: QuickAddBarProps) => (
+  <CaptureComposer {...props} onCreated={onCreated ? () => onCreated() : undefined} />
+);
