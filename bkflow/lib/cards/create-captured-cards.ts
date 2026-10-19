@@ -2,7 +2,12 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { CreateSmartCaptureCards } from "@/actions/cards/create-smart-capture-card/schema";
+import { CAPTURE_ALREADY_PROCESSED, CAPTURE_REJECTED } from "@/lib/cards/capture-error-codes";
+import { validateReminderConfig } from "@/lib/cards/card-date-rules";
+import type { TaskDeadline, TaskSchedule } from "@/lib/cards/task-schedule";
+import { serializeTaskDates, toTaskDeadlineStorage, toTaskScheduleStorage } from "@/lib/cards/task-schedule-storage";
 import { db } from "@/lib/db";
+import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import type { CardWithAssignees } from "@/types";
 
 type Database = typeof db;
@@ -10,7 +15,7 @@ type Client = Database | Prisma.TransactionClient;
 
 export type CapturedCardDrafts = z.input<typeof CreateSmartCaptureCards>["drafts"];
 
-export const CAPTURE_ALREADY_PROCESSED = "CAPTURE_ALREADY_PROCESSED";
+export { CAPTURE_ALREADY_PROCESSED, CAPTURE_REJECTED };
 
 export class CapturedCardsError extends Error {
   constructor(message: string, readonly code?: string) {
@@ -42,6 +47,7 @@ const normalizeDueDate = (value: unknown) => {
 
 const CARD_INCLUDE = {
   list: { select: { boardId: true, board: { select: { userId: true } } } },
+  userStates: { select: { userId: true, isImportant: true, myDayAt: true } },
   labels: { include: { label: true }, orderBy: { createdAt: "asc" } },
   checklists: { orderBy: { order: "asc" }, include: { items: { orderBy: { order: "asc" } } } },
   _count: { select: { comments: true, attachments: true } },
@@ -52,7 +58,7 @@ type LoadedCard = Prisma.CardGetPayload<{ include: typeof CARD_INCLUDE }>;
 const loadCards = (client: Client, ids: string[]) =>
   client.card.findMany({ where: { id: { in: ids } }, include: CARD_INCLUDE });
 
-const toCardWithAssignees = ({ list: _list, ...card }: LoadedCard): CardWithAssignees => {
+const toCardWithAssignees = ({ list: _list, userStates: _userStates, ...card }: LoadedCard): CardWithAssignees => {
   const items = card.checklists.flatMap((checklist) => checklist.items);
   return {
     ...card,
@@ -71,23 +77,52 @@ const normalizeDrafts = (
   drafts: z.output<typeof CreateSmartCaptureCards>["drafts"],
   valid: { labels: Set<string>; courses: Set<string> },
 ) =>
-  drafts.map((draft) => ({
-    ...draft,
-    dueDateValue: normalizeDueDate(draft.dueDate),
-    checklistItems: normalizeChecklistItems(draft.checklistItems),
-    labelIds: Array.from(new Set(draft.labelIds)).filter((id) => valid.labels.has(id)),
-    courseId: draft.courseId && valid.courses.has(draft.courseId) ? draft.courseId : null,
-  }));
+  drafts.map((draft) => {
+    const labelIds = Array.from(new Set(draft.labelIds));
+    // Course/label sai quyền hoặc đã xóa là lỗi, không âm thầm bỏ rồi báo thành công.
+    if (labelIds.some((id) => !valid.labels.has(id))) {
+      throw new CapturedCardsError("Không tìm thấy một hoặc nhiều nhãn.");
+    }
+    if (draft.courseId && !valid.courses.has(draft.courseId)) {
+      throw new CapturedCardsError("Môn không hợp lệ.");
+    }
+    const dueDateValue = normalizeDueDate(draft.dueDate);
+    const deadline: TaskDeadline = {
+      dueDate: dueDateValue?.toISOString() ?? null,
+      deadlineOn: dueDateValue ? null : draft.deadlineOn ?? null,
+    };
+    const schedule: TaskSchedule = {
+      scheduledOn: draft.scheduledOn ?? null,
+      scheduledStartAt: draft.scheduledStartAt ? new Date(draft.scheduledStartAt).toISOString() : null,
+      scheduledEndAt: draft.scheduledEndAt ? new Date(draft.scheduledEndAt).toISOString() : null,
+    };
+    const hasDeadline = Boolean(deadline.dueDate || deadline.deadlineOn);
+    return {
+      ...draft,
+      myDay: Boolean(draft.myDay),
+      dueDateValue,
+      deadline,
+      schedule,
+      reminder: hasDeadline && draft.reminder && draft.reminder !== "none" ? draft.reminder : null,
+      checklistItems: normalizeChecklistItems(draft.checklistItems),
+      labelIds,
+      courseId: draft.courseId ?? null,
+    };
+  });
 
-const sameContent = (card: LoadedCard, draft: NormalizedDraft) => {
+const sameContent = (card: LoadedCard, draft: NormalizedDraft, userId: string) => {
   const titles = card.checklists.flatMap((checklist) => checklist.items.map((i) => i.title));
   const labelIds = card.labels.map((l) => l.labelId).sort();
+  const state = card.userStates.find((s) => s.userId === userId);
   return (
     card.title === draft.title &&
     (card.description ?? "") === draft.description &&
     card.listId === draft.listId &&
     (card.courseId ?? null) === draft.courseId &&
-    (card.dueDate?.getTime() ?? null) === (draft.dueDateValue?.getTime() ?? null) &&
+    JSON.stringify(serializeTaskDates(card)) === JSON.stringify({ ...draft.deadline, ...draft.schedule }) &&
+    (card.reminder ?? null) === draft.reminder &&
+    Boolean(state?.isImportant) === draft.isImportant &&
+    Boolean(state?.myDayAt) === draft.myDay &&
     labelIds.join() === [...draft.labelIds].sort().join() &&
     titles.join("\n") === draft.checklistItems.join("\n")
   );
@@ -111,7 +146,7 @@ const findReplay = async (
   if (!inScope || existing.length !== drafts.length) throw new CapturedCardsError(GENERIC_ERROR);
   const byId = new Map(existing.map((c) => [c.id, c]));
   const ordered = drafts.map((d) => byId.get(d.creationId)!);
-  if (!ordered.every((card, i) => sameContent(card, drafts[i]))) {
+  if (!ordered.every((card, i) => sameContent(card, drafts[i], scope.userId))) {
     throw new CapturedCardsError(ALREADY_PROCESSED, CAPTURE_ALREADY_PROCESSED);
   }
   return ordered.map(toCardWithAssignees);
@@ -121,9 +156,10 @@ const isUniqueConflict = (error: unknown) =>
   (error as { code?: string } | null)?.code === "P2002";
 
 /**
- * Atomically creates cards (+labels, +checklist todos) for a board. Idempotent per
- * creationId. The caller does the editor permission check, audit and realtime;
- * `createdIds` tells it which cards are new (not replayed).
+ * Atomically creates cards (+labels, +checklist todos, +reminder deliveries) for a board.
+ * Idempotent per creationId: a retry with identical content replays, changed content conflicts.
+ * The caller does the editor permission check, audit and realtime; `createdIds` tells it which
+ * cards are new (not replayed).
  */
 export const createCapturedCardsWithStatus = async (
   input: { userId: string; boardId: string; drafts: CapturedCardDrafts },
@@ -175,6 +211,17 @@ export const createCapturedCardsWithStatus = async (
   const replayed = await findReplay(database, scope, normalized);
   if (replayed) return { cards: replayed, createdIds: new Set() };
 
+  // Sau replay: retry của bản đã lưu không được hỏng chỉ vì mốc nhắc giờ đã qua.
+  for (const draft of normalized) {
+    const reminderError = validateReminderConfig({
+      dueDate: draft.dueDateValue,
+      deadlineOn: draft.deadline.deadlineOn,
+      reminder: draft.reminder,
+    });
+    if (reminderError) throw new CapturedCardsError(reminderError);
+  }
+  const now = new Date();
+
   try {
     const cards = await database.$transaction(
       async (tx) => {
@@ -200,8 +247,12 @@ export const createCapturedCardsWithStatus = async (
               listId: draft.listId,
               order,
               courseId: draft.courseId,
-              ...(draft.dueDateValue ? { dueDate: draft.dueDateValue } : {}),
-              ...(draft.isImportant ? { userStates: { create: { userId, isImportant: true } } } : {}),
+              ...toTaskDeadlineStorage(draft.deadline),
+              ...toTaskScheduleStorage(draft.schedule),
+              ...(draft.reminder ? { reminder: draft.reminder, reminderSetAt: now } : {}),
+              ...(draft.isImportant || draft.myDay
+                ? { userStates: { create: { userId, isImportant: draft.isImportant, myDayAt: draft.myDay ? now : null } } }
+                : {}),
             },
           });
 
@@ -224,6 +275,10 @@ export const createCapturedCardsWithStatus = async (
                 isCompleted: false,
               })),
             });
+          }
+
+          if (draft.reminder) {
+            await syncCardReminder(tx, { cardId: draft.creationId, now });
           }
         }
 
