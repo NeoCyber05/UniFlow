@@ -316,12 +316,12 @@ export const Header = ({
           onClick={onToggleComplete}
           disabled={!canEdit}
           className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 border-2 shadow-xs",
+            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-[color,background-color,border-color,box-shadow,scale] duration-200 border-2 shadow-xs",
             data.isCompleted 
               ? "bg-emerald-500 border-emerald-500 text-white" 
               : "bg-white border-neutral-300 text-transparent",
             canEdit && !data.isCompleted && "hover:border-emerald-500 hover:text-emerald-500/40",
-            canEdit && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 hover:scale-105",
+            canEdit && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 active:scale-[0.97]",
             !canEdit && "opacity-80 cursor-default",
             animateComplete && "animate-complete-pop"
           )}
@@ -329,7 +329,7 @@ export const Header = ({
         >
           <Check className={cn(
             "h-5 w-5 transition-transform duration-200",
-            data.isCompleted ? "stroke-[3] scale-100" : "stroke-[2] scale-90 hover:scale-100"
+            data.isCompleted ? "stroke-[3] scale-100" : "stroke-[2] scale-90"
           )} />
         </button>
       </Hint>

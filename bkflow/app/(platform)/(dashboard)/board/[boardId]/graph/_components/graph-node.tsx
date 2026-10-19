@@ -107,7 +107,7 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
         onOpenCardModal(card.id);
       }}
       className={cn(
-        "group cursor-pointer rounded-xl border bg-white p-3 shadow-xs transition-all duration-200 select-none",
+        "group cursor-pointer rounded-xl border bg-white p-3 shadow-xs transition-[border-color,box-shadow,background-color,opacity,filter,scale] duration-200 select-none",
         "hover:shadow-md hover:border-violet-300",
         // Status border accents
         card.isCompleted && "border-emerald-200 bg-emerald-50/30",
@@ -259,8 +259,8 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
               onPortClick?.(e, node);
             }}
             className={cn(
-              "absolute -right-2.5 top-1/2 -translate-y-1/2 z-40 flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm ring-2 ring-white cursor-crosshair transition-all duration-150",
-              "hover:scale-125 hover:bg-violet-700 hover:shadow-md",
+              "absolute -right-2.5 top-1/2 -translate-y-1/2 z-40 flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm ring-2 ring-white cursor-crosshair transition-[opacity,background-color,box-shadow,scale] duration-150",
+              "hover:bg-violet-700 hover:shadow-md hover:ring-violet-200",
               isConnectingSource
                 ? "scale-125 bg-violet-700 ring-2 ring-violet-300 animate-pulse"
                 : "opacity-40 group-hover:opacity-100",

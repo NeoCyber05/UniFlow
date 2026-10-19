@@ -574,7 +574,7 @@ export const BoardGraphView = ({
             width: `${layout.width}px`,
             height: `${layout.height}px`,
           }}
-          className="relative transition-transform duration-75"
+          className="relative"
         >
           {/* SVG Edges */}
           <GraphEdges
@@ -605,7 +605,7 @@ export const BoardGraphView = ({
               <div
                 key={node.card.id}
                 className={cn(
-                  isMatchedBySearch && "ring-4 ring-amber-400 rounded-xl animate-bounce",
+                  isMatchedBySearch && "ring-4 ring-amber-400 rounded-xl",
                 )}
               >
                 <GraphNodeComponent
