@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 
-import { ACTION, ENTITY_TYPE, type Prisma } from "@prisma/client";
+import { type Prisma } from "@prisma/client";
 
 import { auth } from "@/server/auth";
 
@@ -11,7 +11,6 @@ import { expandTimetable, IMAGE_IMPORT_TIME_ZONE, type ImageTaskItem } from "@/l
 import { toTaskDeadlineStorage, toTaskScheduleStorage } from "@/lib/cards/task-schedule-storage";
 import { ensureCourse } from "@/lib/courses/course-ref";
 import { HUST_COURSES } from "@/lib/courses/hust-catalog";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -133,13 +132,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const { count } = await db.card.createMany({ data: rows, skipDuplicates: true });
 
     if (count > 0) {
-      await createAuditLog({
-        entityId: boardId,
-        entityTitle: `detail:đã nhập ${count} mục từ ảnh`,
-        entityType: ENTITY_TYPE.BOARD,
-        action: ACTION.CREATE,
-        boardId,
-      });
     }
 
     return { data: { created: count, total: rows.length } };

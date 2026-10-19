@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { triggerChecklistItemMoved } from "@/lib/boards/realtime";
 import { validateChecklistItemMove } from "@/lib/checklists/checklist-access";
 import { createSafeAction } from "@/lib/create-safe-action";
@@ -52,7 +51,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       sourceChecklistId,
       destinationChecklistId,
       itemId,
-      
+
       userId,
       sourceItems,
       destinationItems,
@@ -76,19 +75,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     const verifiedCard = access.sourceChecklist.card;
     const verifiedBoardId = verifiedCard.list.boardId;
-
-    const movedItem = updatedItems.find((item) => item.id === itemId);
-    const itemTitle = movedItem ? movedItem.title : "Mục công việc";
-
-    await createAuditLog({
-      entityId: itemId,
-      entityTitle: `detail:đã di chuyển mục công việc "${itemTitle}" từ danh sách công việc "${access.sourceChecklist.title}" sang danh sách công việc "${access.destinationChecklist.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST_ITEM,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId: verifiedBoardId,
-      cardId: verifiedCard.id,
-    });
 
     await triggerChecklistItemMoved({
       boardId: verifiedBoardId,

@@ -60,9 +60,6 @@ export const useCardMetadataActions = ({
         reminderSetAt: updatedCard.reminderSetAt,
         updatedAt: updatedCard.updatedAt,
       });
-      queryClient.invalidateQueries({
-        queryKey: ["card-logs", updatedCard.id],
-      });
       invalidateBoardCalendar();
 
       if (updatedCard.isCompleted !== data.isCompleted) {

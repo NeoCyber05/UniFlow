@@ -1,9 +1,8 @@
-import { BoardMemberRole } from "@/types";
 "use server";
-import { auth, currentUser } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
+import { BoardMemberRole } from "@/types";
+import { auth, currentUser } from "@/server/auth";
+
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -81,16 +80,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       where: {
         id: existingComment.id,
       },
-    });
-
-    await createAuditLog({
-      entityId: cardId,
-      entityTitle: `detail:đã xóa bình luận trong thẻ "${existingComment.card.title}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.COMMENT,
-      boardId,
-      cardId,
     });
 
     await triggerCommentDeleted({

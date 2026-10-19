@@ -2,11 +2,9 @@
 
 import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerListCreated } from "@/lib/boards/realtime";
@@ -270,14 +268,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     if (!list) {
       return { error: "Sao chép danh sách thất bại." };
     }
-
-    await createAuditLog({
-      entityTitle: list.title,
-      entityId: list.id,
-      entityType: ENTITY_TYPE.LIST,
-      action: ACTION.CREATE,
-      boardId,
-    });
 
     await triggerListCreated({
       boardId,

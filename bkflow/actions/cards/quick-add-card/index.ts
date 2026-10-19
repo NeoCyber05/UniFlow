@@ -96,14 +96,12 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       }],
     });
 
-    // Sau commit, không throw: lỗi audit/realtime không được làm client tạo id mới.
+    // Sau commit, không throw: lỗi realtime không được làm client tạo id mới.
     await announceCapturedCards({
       cards,
       createdIds,
       boardId,
       userId,
-      listTitles: new Map([[list.id, list.title]]),
-      origin: "Thêm nhanh",
     });
 
     return { data: cards[0] };

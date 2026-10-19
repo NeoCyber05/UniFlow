@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -157,35 +155,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   }
 
   if (movedCard) {
-    const lists = await db.list.findMany({
-      where: {
-        id: {
-          in: [movedCard.sourceListId, movedCard.destinationListId],
-        },
-        archivedAt: null,
-      },
-      select: {
-        id: true,
-        title: true,
-      },
-    });
-
-    const sourceList = lists.find((l) => l.id === movedCard!.sourceListId);
-    const destList = lists.find((l) => l.id === movedCard!.destinationListId);
-
-    const sourceTitle = sourceList ? sourceList.title : "Không xác định";
-    const destTitle = destList ? destList.title : "Không xác định";
-
-    await createAuditLog({
-      entityId: movedCard.id,
-      entityTitle: `detail:đã di chuyển thẻ "${movedCard.title}" từ danh sách "${sourceTitle}" tới danh sách "${destTitle}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.MOVE,
-      boardId,
-      cardId: movedCard.id,
-    });
-
     await triggerCardMoved({
       boardId,
       actorUserId: userId,
@@ -202,15 +171,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         .map((card) => card.id),
     });
   } else {
-    await createAuditLog({
-      entityId: boardId,
-      entityTitle: "detail:đã sắp xếp lại thứ tự thẻ",
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.MOVE,
-      boardId,
-    });
-
     await triggerCardReordered({
       boardId,
       actorUserId: userId,

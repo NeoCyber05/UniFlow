@@ -150,7 +150,6 @@ export const CopyCardDialog = ({
       toast.success(`Đã tạo thẻ "${createdCard.title}"`);
       queryClient.invalidateQueries({ queryKey: ["card-copy-options", data.id] });
       queryClient.invalidateQueries({ queryKey: ["card", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", data.id] });
       invalidateSourceCalendar();
       router.refresh();
       onOpenChange(false);

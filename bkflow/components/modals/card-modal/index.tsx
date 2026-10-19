@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useCardModal } from "@/hooks/use-card-modal";
+import { usePathname } from "@/web/shims/next-navigation";
 import { X } from "lucide-react";
 
 import { CardRealtimeSync } from "./card-realtime-sync";
@@ -13,10 +14,20 @@ export const CardModal = () => {
   const storeId = useCardModal((state) => state.id);
   const isOpen = useCardModal((state) => state.isOpen);
   const onClose = useCardModal((state) => state.onClose);
+  const pathname = usePathname();
+  const previousPathname = useRef(pathname);
   const guardRef = useRef<BeforeClose | null>(null);
   // The card actually on screen; it only follows the store once unsaved edits are dealt with.
   const [shownId, setShownId] = useState<string | undefined>(undefined);
   const id = shownId ?? storeId;
+
+  useEffect(() => {
+    if (previousPathname.current !== pathname) {
+      previousPathname.current = pathname;
+      // Description blocks navigation until unsaved edits are handled.
+      onClose();
+    }
+  }, [pathname, onClose]);
 
   useEffect(() => {
     if (!isOpen) {

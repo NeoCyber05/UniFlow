@@ -1,10 +1,8 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { triggerCardUpdated } from "@/lib/cards/realtime";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { resolveCourseRef } from "@/lib/courses/course-ref";
 import { db } from "@/lib/db";
@@ -64,17 +62,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const card = await db.card.update({
       where: { id },
       data: { courseId },
-    });
-
-    await createAuditLog({
-      entityId: card.id,
-      entityTitle: course
-        ? `detail:đã chuyển thẻ "${card.title}" sang môn "${course.name}"`
-        : `detail:đã chuyển thẻ "${card.title}" về Cá nhân`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.UPDATE,
-      boardId,
-      cardId: card.id,
     });
 
     await triggerCardUpdated({

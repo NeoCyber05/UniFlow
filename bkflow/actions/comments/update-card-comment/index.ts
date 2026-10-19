@@ -1,9 +1,7 @@
 "use server";
 
 import { auth, currentUser } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -84,16 +82,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         data: {
           content,
         },
-      });
-
-      await createAuditLog({
-        entityId: cardId,
-        entityTitle: `detail:đã cập nhật bình luận trong thẻ "${existingComment.card.title}"`,
-        entityType: ENTITY_TYPE.CARD,
-        action: ACTION.UPDATE,
-        eventType: AUDIT_EVENT_TYPE.COMMENT,
-        boardId,
-        cardId,
       });
 
       await triggerCommentUpdated({

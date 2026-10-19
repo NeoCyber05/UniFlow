@@ -8,8 +8,7 @@ import { createSafeAction } from "@/lib/create-safe-action";
 
 import { UpdateBoard } from "./schema";
 import { InputType, ReturnType } from "./types";
-import { createAuditLog } from "@/lib/create-audit-log";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+
 import { requireBoardAdmin } from "@/lib/permissions";
 import { triggerBoardUpdated } from "@/lib/boards/realtime";
 
@@ -55,14 +54,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       data: {
         title,
       },
-    });
-
-    await createAuditLog({
-      entityTitle: board.title,
-      entityId: board.id,
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      boardId: board.id,
     });
 
     await triggerBoardUpdated({

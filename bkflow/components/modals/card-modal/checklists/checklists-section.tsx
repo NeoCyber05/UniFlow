@@ -95,14 +95,11 @@ export const ChecklistsSection = ({
     });
   }, [boardId, cardId, localChecklists]);
 
-  const invalidateCard = (includeLogs: boolean) => {
+  const invalidateCard = () => {
     queryClient.invalidateQueries({ queryKey: ["card", cardId] });
     // Todo progress is shown in My Tasks rows; the board preview is patched from localChecklists.
     queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
 
-    if (includeLogs) {
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
-    }
   };
 
   const setItemPending = (itemId: string, pending: boolean) => {
@@ -156,7 +153,7 @@ export const ChecklistsSection = ({
         ? "Danh sách đã thay đổi ở nơi khác, đã tải lại. Hãy sắp xếp lại."
         : error,
     );
-    invalidateCard(false);
+    invalidateCard();
   };
 
   const updateLocalItem = (
@@ -176,7 +173,7 @@ export const ChecklistsSection = ({
   const { execute: executeDeleteChecklist } = useAction(deleteChecklist, {
     onSuccess: (data) => {
       toast.success(`Đã xoá danh sách "${data.title}"`);
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => toast.error(error),
   });
@@ -203,7 +200,7 @@ export const ChecklistsSection = ({
 
       setNewItemTitle("");
       temporaryItemIdRef.current = null;
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => {
       const temporaryItemId = temporaryItemIdRef.current;
@@ -225,7 +222,7 @@ export const ChecklistsSection = ({
   const { execute: executeUpdateChecklist } = useAction(updateChecklist, {
     onSuccess: () => {
       mutationRollbackRef.current = null;
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => {
       rollbackLocalChecklists();
@@ -236,7 +233,7 @@ export const ChecklistsSection = ({
   const { execute: executeRenameItem } = useAction(renameChecklistItem, {
     onSuccess: () => {
       mutationRollbackRef.current = null;
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => {
       rollbackLocalChecklists();
@@ -281,7 +278,7 @@ export const ChecklistsSection = ({
 
       const queued = request.queued;
       toggleRequestsRef.current.delete(item.id);
-      invalidateCard(true);
+      invalidateCard();
 
       if (queued !== null && queued !== item.isCompleted) {
         sendToggleItem(item.id, queued, item.isCompleted);
@@ -299,12 +296,12 @@ export const ChecklistsSection = ({
   const { execute: executeSetDueDate } = useAction(setChecklistItemDueDate, {
     onSuccess: () => {
       mutationRollbackRef.current = null;
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => {
       rollbackLocalChecklists();
       toast.error(error);
-      invalidateCard(false);
+      invalidateCard();
     },
   });
 
@@ -312,7 +309,7 @@ export const ChecklistsSection = ({
     onSuccess: (item) => {
       mutationRollbackRef.current = null;
       setLocalOrderVersion(item.checklistId, item.orderVersion);
-      invalidateCard(true);
+      invalidateCard();
     },
     onError: (error) => {
       rollbackLocalChecklists();
@@ -340,7 +337,7 @@ export const ChecklistsSection = ({
         setLocalOrderVersion(ids[0], sourceOrderVersion);
         setLocalOrderVersion(ids[1], destinationOrderVersion);
       }
-      invalidateCard(false);
+      invalidateCard();
     },
     onError: onOrderError,
   });

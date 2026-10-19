@@ -2,12 +2,11 @@
 
 import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE, NOTIFICATION_TYPE } from "@prisma/client";
+import { NOTIFICATION_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { triggerChecklistDeleted } from "@/lib/boards/realtime";
 
 import { DeleteChecklist } from "./schema";
@@ -85,22 +84,11 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       },
     });
 
-    await createAuditLog({
-      entityId: checklist.id,
-      entityTitle: `detail:đã xóa danh sách công việc "${checklist.title}" khỏi thẻ "${card.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId,
-      cardId: card.id,
-    });
-
     await triggerChecklistDeleted({
       boardId,
       cardId: card.id,
       checklistId: checklist.id,
       actorUserId: userId,
-      includeLogs: true,
     });
 
     revalidatePath(`/board/${boardId}`);

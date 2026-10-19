@@ -1,9 +1,8 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { DUPLICATE_COURSE_ERROR, requireSemesterBoardEditor } from "@/lib/courses/course-guards";
 import { db } from "@/lib/db";
@@ -42,14 +41,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         color,
         order: lastCourse ? lastCourse.order + 1 : 1,
       },
-    });
-
-    await createAuditLog({
-      entityId: boardId,
-      entityTitle: `detail:đã thêm môn học "${course.name}"`,
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      boardId,
     });
 
     return { data: course };

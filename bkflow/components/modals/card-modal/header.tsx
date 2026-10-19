@@ -66,9 +66,6 @@ export const Header = ({
         isCompleted: updatedCard.isCompleted,
         updatedAt: updatedCard.updatedAt,
       });
-      queryClient.invalidateQueries({
-        queryKey: ["card-logs", updatedCard.id],
-      });
       invalidateBoardCalendar();
 
       if (updatedCard.isCompleted !== data.isCompleted) {
@@ -174,9 +171,6 @@ export const Header = ({
         updatedAt: updatedCard.updatedAt,
       });
 
-      queryClient.invalidateQueries({
-        queryKey: ["card-logs", updatedCard.id]
-      });
 
       invalidateBoardCalendar();
       setTitle(updatedCard.title);

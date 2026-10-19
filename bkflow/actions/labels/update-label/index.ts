@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -53,15 +52,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         title,
         color,
       },
-    });
-
-    await createAuditLog({
-      entityId: boardId,
-      entityTitle: `detail:đã cập nhật nhãn "${label.title || label.color}"`,
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.LABEL,
-      boardId: label.boardId,
     });
 
     await triggerLabelUpdated({

@@ -3,7 +3,6 @@ import { AiTaskHistory } from "@/components/ai-assistant/task-edit-controls";
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AuditLog } from "@prisma/client";
 
 import { CardCommentWithReplies, CardWithList } from "@/types";
 import { fetcher } from "@/lib/fetcher";
@@ -14,13 +13,13 @@ import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Header } from "./header";
 import { MetadataSection as Metadata } from "./metadata/metadata-section";
 import { Description } from "./description";
-import { Activity } from "./activity";
 import { CommentsSection as Comments } from "./comments/comments-section";
 import { ChecklistsSection as Checklists } from "./checklists/checklists-section";
 import { AttachmentsSection as Attachments } from "./attachments/attachments-section";
 import { useAssistantTask } from "@/hooks/use-assistant-task";
 import { DependenciesSection as CardDependencies } from "./dependencies/dependencies-section";
 import type { BeforeCloseRef } from "./close-guard";
+import { getCardQueryOptions } from "./card-cache-utils";
 
 const CardMainContent = ({
   cardData,
@@ -84,14 +83,7 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
   const classes = LAYOUT_CLASSES[layout];
 
   const queryClient = useQueryClient();
-  const { data: cachedCard, error, isError, refetch, isFetching } = useQuery<CardWithList>({
-    queryKey: ["card", cardId],
-    queryFn: () => fetcher(`/api/cards/${cardId}`),
-    retry: (count, err) => {
-      const status = (err as Error & { status?: number }).status;
-      return status !== 403 && status !== 404 && count < 2;
-    },
-  });
+  const { data: cachedCard, error, isError, refetch, isFetching } = useQuery(getCardQueryOptions(cardId));
   const status = isError ? (error as Error & { status?: number }).status : undefined;
   const isGone = status === 403 || status === 404;
   // After 403/404 the cached copy is no longer trustworthy, so it is not shown.
@@ -109,11 +101,6 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
     }
   }, [isGone, queryClient, cardId]);
 
-  const { data: auditLogsData } = useQuery<AuditLog[]>({
-    queryKey: ["card-logs", cardId],
-    queryFn: () => fetcher(`/api/cards/${cardId}/logs`),
-  });
-
   const { data: commentsData } = useQuery<CardCommentWithReplies[]>({
     queryKey: ["card-comments", cardId],
     queryFn: () => fetcher(`/api/cards/${cardId}/comments`),
@@ -128,7 +115,7 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
             {cardData?.title || "Chi tiết thẻ"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Chi tiết thẻ và nhật ký hoạt động
+            Nội dung chi tiết thẻ
           </DialogDescription>
         </>
       )}
@@ -170,14 +157,6 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
         </div>
         <div className={classes.side}>
           {cardData && canEdit && <AiTaskHistory cardId={cardData.id} />}
-          {!auditLogsData
-            ? <Activity.Skeleton />
-            : <Activity
-                items={auditLogsData}
-                cardTitle={cardData?.title}
-                memberNames={[]}
-              />
-          }
           <Comments
             cardId={cardId}
             boardId={cardData?.list.boardId}

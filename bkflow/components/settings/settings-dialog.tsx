@@ -4,20 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Bell,
   CalendarCheck,
-  Check,
   Clock,
   Download,
   Flame,
   Info,
   Keyboard,
   Laptop,
-  Monitor,
-  Moon,
   Palette,
   Play,
   SlidersHorizontal,
-  Sparkles,
-  Sun,
   Target,
   Volume2,
   VolumeX,
@@ -36,16 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ACCENTS, BACKGROUNDS } from "@/constants/appearance";
-import {
-  ALL_THEME_PRESETS,
-  getActivePreset,
-  type ThemePreset,
-  type PresetCategory,
-} from "@/lib/appearance-presets";
+import { AppearancePanel } from "./appearance-panel";
 import { useAppearance } from "@/components/providers/appearance-provider";
-import { PageStyleControls } from "@/components/notes/page-style-controls";
-import { useColorMode } from "@/hooks/use-color-mode";
 import { useSettingsModal, type SettingsTab } from "@/hooks/use-settings-modal";
 import { useUser } from "@/web/lib/auth";
 import {
@@ -99,24 +86,11 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
   { id: "account", label: "Tài khoản & Dữ liệu", icon: User },
 ];
 
-const CATEGORIES: { id: PresetCategory | "all"; label: string }[] = [
-  { id: "all", label: "Tất cả" },
-  { id: "featured", label: "Nổi bật" },
-  { id: "study", label: "Học tập HUST" },
-  { id: "nature", label: "Thiên nhiên" },
-  { id: "minimal", label: "Tối giản" },
-  { id: "tech", label: "Kỹ thuật" },
-];
-
 export const SettingsDialog = () => {
   const { isOpen, activeTab, onClose, setTab } = useSettingsModal();
   const appearance = useAppearance();
-  const activePreset = getActivePreset(appearance);
-  const { mode, setMode } = useColorMode();
   const { user } = useUser();
 
-  const [category, setCategory] = useState<PresetCategory | "all">("all");
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Desktop notification state
   const [reminderState, setReminderState] = useState<DesktopReminderState | null>(null);
@@ -306,17 +280,13 @@ export const SettingsDialog = () => {
     }
   };
 
-  const filteredPresets = category === "all"
-    ? ALL_THEME_PRESETS
-    : ALL_THEME_PRESETS.filter((p) => p.category === category);
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] sm:max-h-[85vh] w-[95vw] sm:max-w-4xl p-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-xl border-border/80 shadow-2xl">
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/60 bg-muted/20 shrink-0">
           <div className="flex items-center gap-2">
             <span className="flex size-7 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white shadow-xs">
-              ⚙
+              <SlidersHorizontal aria-hidden="true" className="size-4" />
             </span>
             <div>
               <DialogTitle className="text-xl font-bold tracking-tight">Cài đặt</DialogTitle>
@@ -363,210 +333,12 @@ export const SettingsDialog = () => {
             {activeTab === "appearance" && (
               <motion.div
                 key="appearance"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
               >
-                {/* Chế độ sáng / tối */}
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Chế độ sáng tối</h3>
-                      <p className="text-xs text-muted-foreground">Áp dụng tức thì trên thiết bị này</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 sm:max-w-md">
-                    {(
-                      [
-                        { id: "light", label: "Sáng", Icon: Sun },
-                        { id: "dark", label: "Tối", Icon: Moon },
-                        { id: "system", label: "Hệ thống", Icon: Monitor },
-                      ] as const
-                    ).map(({ id, label, Icon }) => {
-                      const isSelected = mode === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setMode(id)}
-                          className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-medium transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-xs"
-                              : "border-border/60 bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          <Icon className="size-4" />
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                {/* Bộ sưu tập Theme Presets */}
-                <section className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">Bộ sưu tập Giao diện</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {ALL_THEME_PRESETS.length} giao diện được phối sẵn độc quyền cho UniFlow. Lưu theo tài khoản.
-                      </p>
-                    </div>
-                    {appearance.saveStatus && (
-                      <span className="text-xs font-medium text-muted-foreground self-start sm:self-auto">
-                        {appearance.saveStatus === "saving" && "Đang lưu…"}
-                        {appearance.saveStatus === "saved" && "✓ Đã lưu giao diện"}
-                        {appearance.saveStatus === "error" && "Chưa lưu được. Đã khôi phục."}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Category Filter Chips */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                    {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setCategory(cat.id)}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
-                          category === cat.id
-                            ? "bg-foreground text-background"
-                            : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Themes Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {filteredPresets.map((preset: ThemePreset) => {
-                      const isSelected = activePreset === preset.id;
-                      const bgItem = BACKGROUNDS.find((b) => b.id === preset.background);
-                      const accentItem = ACCENTS.find((a) => a.id === preset.accent);
-
-                      return (
-                        <div
-                          key={preset.id}
-                          onClick={() => appearance.selectPreset(preset.id)}
-                          data-accent={preset.accent}
-                          className={`group relative cursor-pointer overflow-hidden rounded-xl border p-3 transition-all duration-200 ${
-                            isSelected
-                              ? "border-primary bg-card ring-2 ring-primary shadow-md"
-                              : "border-border/70 bg-card hover:border-primary/50 hover:shadow-sm"
-                          }`}
-                        >
-                          {/* Mini Mockup Canvas with Background & Accent */}
-                          <div
-                            className="relative mb-2.5 h-24 w-full overflow-hidden rounded-lg border border-border/40 p-2.5 flex flex-col justify-between transition-transform duration-300 group-hover:scale-[1.01]"
-                            style={bgItem?.style}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div
-                                className="h-1.5 w-10 rounded-full"
-                                style={{ backgroundColor: accentItem?.swatch }}
-                              />
-                              <span
-                                className="size-2 rounded-full ring-2 ring-white/60 dark:ring-black/60"
-                                style={{ backgroundColor: accentItem?.swatch }}
-                              />
-                            </div>
-                            <div className="rounded-md border border-border/50 bg-card/90 p-1.5 backdrop-blur-xs shadow-2xs">
-                              <p className="text-[10px] font-semibold truncate text-card-foreground">
-                                Kế hoạch học tập
-                              </p>
-                              <div className="mt-1 flex items-center gap-1">
-                                <span
-                                  className="inline-block size-1.5 rounded-full"
-                                  style={{ backgroundColor: accentItem?.swatch }}
-                                />
-                                <span className="text-[9px] text-muted-foreground">3 việc hôm nay</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Theme Details */}
-                          <div className="flex items-start justify-between gap-1">
-                            <div>
-                              <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                                {preset.label}
-                                {isSelected && (
-                                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-primary/10 text-primary border-primary/30">
-                                    <Check className="size-2.5 mr-0.5" />
-                                    Đang dùng
-                                  </Badge>
-                                )}
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
-                                {preset.description}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                {/* Tùy chỉnh nâng cao (Màu chủ đạo & Hình nền tự do) */}
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex w-full items-center justify-between text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="size-3.5 text-primary" />
-                      Tùy chỉnh màu chủ đạo & họa tiết nền nâng cao
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {showAdvanced ? "Thu gọn ▲" : "Mở rộng ▼"}
-                    </span>
-                  </button>
-
-                  {showAdvanced && (
-                    <div className="mt-4 pt-4 border-t border-border/50 space-y-4">
-                      {/* Accent Palette */}
-                      <div>
-                        <p className="text-xs font-medium text-foreground mb-2">
-                          Màu nhấn chủ đạo (28 sắc màu)
-                        </p>
-                        <div className="grid grid-cols-7 sm:grid-cols-14 gap-1.5">
-                          {ACCENTS.map((acc) => (
-                            <button
-                              key={acc.id}
-                              type="button"
-                              title={acc.label}
-                              onClick={() => appearance.setAccent(acc.id)}
-                              className={`group relative flex size-7 items-center justify-center rounded-lg transition-transform hover:scale-110 cursor-pointer ${
-                                appearance.accent === acc.id ? "ring-2 ring-primary ring-offset-2" : ""
-                              }`}
-                              style={{ backgroundColor: acc.swatch }}
-                            >
-                              {appearance.accent === acc.id && (
-                                <Check className="size-3.5 text-white drop-shadow-sm" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Note Page Style */}
-                      <div className="pt-2">
-                        <p className="text-xs font-medium text-foreground mb-1.5">
-                          Kiểu trang ghi chú mặc định
-                        </p>
-                        <PageStyleControls
-                          value={appearance.pageStyle}
-                          onChange={appearance.setPageStyle}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <AppearancePanel />
               </motion.div>
             )}
 

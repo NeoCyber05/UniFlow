@@ -1,10 +1,9 @@
 "use server";
 
 import { auth, currentUser } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, CardComment, ENTITY_TYPE, NOTIFICATION_TYPE } from "@prisma/client";
+import { CardComment, NOTIFICATION_TYPE } from "@prisma/client";
 
 import { createNotifications } from "@/lib/notifications/create-notification";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -142,18 +141,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     if (notifications.length > 0) {
       await createNotifications(notifications);
     }
-
-    await createAuditLog({
-      entityId: card.id,
-      entityTitle: parentId
-        ? `detail:đã trả lời bình luận trong thẻ "${card.title}"`
-        : `detail:đã bình luận trong thẻ "${card.title}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.COMMENT,
-      boardId,
-      cardId: card.id,
-    });
 
     await triggerCommentCreated({
       boardId,

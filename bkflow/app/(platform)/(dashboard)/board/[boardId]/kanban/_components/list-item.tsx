@@ -9,20 +9,17 @@ import { ListWithCards } from "@/types";
 import { CardForm } from "./card-form";
 import { CardItem } from "./card-item";
 import { ListHeader } from "./list-header";
-import type { KanbanLayout } from "./kanban-layout-toggle";
 
 interface ListItemProps {
   data: ListWithCards;
   index: number;
   canEdit: boolean;
-  layout?: KanbanLayout;
 };
 
 export const ListItem = memo(function ListItem({
   data,
   index,
   canEdit,
-  layout = "columns",
 }: ListItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -63,7 +60,7 @@ export const ListItem = memo(function ListItem({
         <li
           {...provided.draggableProps}
           ref={provided.innerRef}
-          className={cn("shrink-0 select-none", layout === "columns" ? "h-full w-[272px]" : "w-full max-w-3xl")}
+          className="h-full w-[272px] shrink-0 select-none"
         >
           <div
             onContextMenu={handleContextMenu}

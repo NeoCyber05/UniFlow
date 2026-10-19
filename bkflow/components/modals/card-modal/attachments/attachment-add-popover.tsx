@@ -66,7 +66,6 @@ export const AttachmentAddPopover = ({
       );
       patchBoardCardCount(boardId, cardId, "attachments", 1);
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
       toast.success("Đã thêm liên kết đính kèm.", { id: "card-attachment-link" });
       setIsOpen(false);
     },
@@ -102,7 +101,6 @@ export const AttachmentAddPopover = ({
       );
       patchBoardCardCount(boardId, cardId, "attachments", attachments.length);
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
       setUploadProgress(null);
       toast.success(`Đã tải ${attachments.length} file đính kèm.`, { id: "card-attachment-upload" });
       setIsOpen(false);

@@ -1,11 +1,9 @@
 import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import "server-only";
 
-import { BoardType, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { pickCurrentSemester } from "@/lib/semesters";
-import { getOrSeedSemesters } from "@/lib/semesters-db";
 
 import { groupAgendaTasks, type BucketTask, type TaskGroup } from "./buckets";
 import type { MyTask, TaskListResponse } from "./types";
@@ -35,18 +33,6 @@ export const getTodayWindow = (now: Date) => {
     startOfToday: getStartOfVNDay(today),
     endOfToday: getEndOfVNDay(today),
   };
-};
-
-/** Bảng có thuộc học kỳ hiện tại của user không. */
-const isCurrentSemesterBoard = async (boardId: string) => {
-  const board = await db.board.findUnique({
-    where: { id: boardId },
-    select: { userId: true, semesterId: true },
-  });
-
-  if (!board?.semesterId) return false;
-
-  return pickCurrentSemester(await getOrSeedSemesters(board.userId))?.id === board.semesterId;
 };
 
 export const myTaskSelect = (userId: string) => ({
@@ -136,12 +122,11 @@ export const getTodoTasks = async ({
   boardId: string;
   now?: Date;
 }): Promise<TaskListResponse> => {
-  const includeTeam = await isCurrentSemesterBoard(boardId);
   const { startOfToday, endOfToday } = getTodayWindow(now);
   const rows = await db.card.findMany({
     where: {
       AND: [
-        buildTodoBaseWhere({ userId, boardId, includeTeam }),
+        buildTodoBaseWhere({ boardId }),
         {
           OR: [
             { isCompleted: false },

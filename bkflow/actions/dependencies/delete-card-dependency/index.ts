@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { triggerRelatedDependencyCardsUpdated } from "@/lib/cards/realtime";
@@ -11,9 +9,6 @@ import { requireBoardEditor } from "@/lib/permissions";
 
 import { DeleteCardDependency } from "./schema";
 import { InputType, ReturnType } from "./types";
-
-const formatAuditCardMarker = (card: { id: string; title: string }) =>
-  `[card:${card.id}|${card.title.replace(/[\[\]|]/g, " ")}]`;
 
 const handler = async (data: InputType): Promise<ReturnType> => {
   const { userId } = await auth();
@@ -79,16 +74,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       where: {
         id: dependency.id,
       },
-    });
-
-    await createAuditLog({
-      entityId: deletedDependency.id,
-      entityType: ENTITY_TYPE.CARD,
-      entityTitle: `detail:đã xóa liên kết phụ thuộc: thẻ ${formatAuditCardMarker(dependency.blockedCard)} không còn phụ thuộc vào thẻ ${formatAuditCardMarker(dependency.blockerCard)}`,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.DEPENDENCY,
-      boardId,
-      cardId: dependency.blockedCard.id,
     });
 
     await triggerRelatedDependencyCardsUpdated({

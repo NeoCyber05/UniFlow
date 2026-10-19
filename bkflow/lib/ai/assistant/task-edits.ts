@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE, Prisma, type Card } from "@prisma/client";
+import { Prisma, type Card } from "@prisma/client";
 import { z } from "zod";
 
 import { triggerChecklistCreated, triggerChecklistDeleted } from "@/lib/boards/realtime";
@@ -15,7 +15,6 @@ import { TaskDeadlineSchema, TaskScheduleSchema } from "@/lib/cards/task-schedul
 import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import type { UpdateCardInput } from "@/lib/cards/update-card-contract";
 import { createChecklistWithItems } from "@/lib/checklists/checklist-mutations";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -109,12 +108,11 @@ const UNDO_CONFLICT = "Thẻ đã có chỉnh sửa mới hơn sau thay đổi A
 export type TaskEditEffects = {
   card?: CardUpdateEffects;
   checklist: {
-    createAuditLog: typeof createAuditLog;
     triggerChecklistCreated: typeof triggerChecklistCreated;
     triggerChecklistDeleted: typeof triggerChecklistDeleted;
   };
 };
-const defaultEffects: TaskEditEffects = { checklist: { createAuditLog, triggerChecklistCreated, triggerChecklistDeleted } };
+const defaultEffects: TaskEditEffects = { checklist: { triggerChecklistCreated, triggerChecklistDeleted } };
 
 type Client = Prisma.TransactionClient | typeof db;
 const editSelect = { id: true, cardId: true, operation: true, createdAt: true, undoneAt: true } as const;
@@ -218,11 +216,7 @@ export const applyAiTaskEdit = async (input: AiTaskEditInput, effects: TaskEditE
       });
       if ("checklistId" in result) {
         const { checklistId } = result;
-        await runEffect("audit", () => effects.checklist.createAuditLog({
-          entityId: checklistId, entityTitle: `detail:AI đã thêm danh sách công việc "${title}" vào thẻ "${card.title}"`,
-          entityType: ENTITY_TYPE.CHECKLIST, action: ACTION.UPDATE, eventType: AUDIT_EVENT_TYPE.CHECKLIST, boardId, cardId,
-        }));
-        await runEffect("realtime", () => effects.checklist.triggerChecklistCreated({ boardId, cardId, checklistId, actorUserId: userId, includeLogs: true }));
+        await runEffect("realtime", () => effects.checklist.triggerChecklistCreated({ boardId, cardId, checklistId, actorUserId: userId }));
       }
       return { edit: result.edit, replayed: result.replayed };
     } catch (error) {
@@ -316,11 +310,7 @@ export const undoAiTaskEdit = async ({ userId, editId }: { userId: string; editI
       if (already) return already;
       throw error;
     }
-    await runEffect("audit", () => effects.checklist.createAuditLog({
-      entityId: after.checklistId, entityTitle: `detail:đã hoàn tác danh sách công việc AI thêm vào thẻ "${card.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST, action: ACTION.UPDATE, eventType: AUDIT_EVENT_TYPE.CHECKLIST, boardId, cardId: card.id,
-    }));
-    await runEffect("realtime", () => effects.checklist.triggerChecklistDeleted({ boardId, cardId: card.id, checklistId: after.checklistId, actorUserId: userId, includeLogs: true }));
+    await runEffect("realtime", () => effects.checklist.triggerChecklistDeleted({ boardId, cardId: card.id, checklistId: after.checklistId, actorUserId: userId }));
     return done();
   }
 

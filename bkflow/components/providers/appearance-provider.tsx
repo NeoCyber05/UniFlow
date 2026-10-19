@@ -96,7 +96,7 @@ const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderPr
       >
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 -z-10 transition-[background,filter] duration-500 dark:brightness-[0.22] dark:saturate-50"
+          className="pointer-events-none fixed inset-0 -z-10 transition-[background,filter] duration-500 motion-reduce:transition-none dark:brightness-[0.22] dark:saturate-50"
           style={backgroundStyle}
         />
         {children}

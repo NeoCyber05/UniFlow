@@ -85,7 +85,6 @@ export const useCalendarCardActions = ({
       setExpandedDayKey(null);
       invalidateBoardCalendar();
       queryClient.invalidateQueries({ queryKey: ["card", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", data.id] });
     },
     onError: (error) => {
       updateSuccessToastRef.current = null;
@@ -129,7 +128,6 @@ export const useCalendarCardActions = ({
 
       if (cardId) {
         queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-        queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
       }
 
       router.refresh();

@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import {
   INVALID_COURSE_ERROR,
@@ -37,14 +35,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     // Card.courseId có onDelete: SetNull → thẻ của môn chuyển về "Cá nhân"
     const course = await db.course.delete({ where: { id } });
-
-    await createAuditLog({
-      entityId: boardId,
-      entityTitle: `detail:đã xóa môn học "${course.name}"`,
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      boardId,
-    });
 
     return { data: course };
   } catch {

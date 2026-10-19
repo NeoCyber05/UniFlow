@@ -158,7 +158,7 @@ const isUniqueConflict = (error: unknown) =>
 /**
  * Atomically creates cards (+labels, +checklist todos, +reminder deliveries) for a board.
  * Idempotent per creationId: a retry with identical content replays, changed content conflicts.
- * The caller does the editor permission check, audit and realtime; `createdIds` tells it which
+ * The caller does the editor permission check and realtime; `createdIds` tells it which
  * cards are new (not replayed).
  */
 export const createCapturedCardsWithStatus = async (

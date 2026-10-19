@@ -1,4 +1,4 @@
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE, type Card } from "@prisma/client";
+import { type Card } from "@prisma/client";
 
 import type {
   CopyCardInput,
@@ -10,25 +10,14 @@ import { requireBoardEditorForUser, requireBoardMemberForUser } from "@/lib/perm
 import { triggerCardCreated } from "@/lib/boards/realtime";
 import { copyCardLabels } from "@/lib/cards/copy-card-labels";
 
-type CurrentUserLike = {
-  imageUrl: string;
-  fullName: string | null;
-  username: string | null;
-  primaryEmailAddress?: {
-    emailAddress: string;
-  } | null;
-};
-
 type CopyCardServiceInput = {
   data: CopyCardInput;
   userId: string;
-  user: CurrentUserLike;
 };
 
 export const copyCardService = async ({
   data,
   userId,
-  user,
 }: CopyCardServiceInput): Promise<CopyCardResult> => {
   const {
     id,
@@ -305,21 +294,6 @@ export const copyCardService = async ({
           }
         }
       }
-
-      await tx.auditLog.create({
-        data: {
-          boardId: targetBoardId,
-          cardId: createdCard.id,
-          entityId: createdCard.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: `detail:đã sao chép thẻ "${cardToCopy.title}" thành "${createdCard.title}" vào danh sách "${targetList.title}"`,
-          action: ACTION.CREATE,
-          eventType: AUDIT_EVENT_TYPE.CREATE,
-          userId,
-          userImage: user.imageUrl,
-          userName: user.fullName || user.username || user.primaryEmailAddress?.emailAddress || "Thành viên",
-        },
-      });
 
       return createdCard;
     });

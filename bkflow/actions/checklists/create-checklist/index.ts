@@ -2,12 +2,10 @@
 
 import { auth } from "@/server/auth";
 import { revalidatePath } from "@/server/cache";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { triggerChecklistCreated } from "@/lib/boards/realtime";
 
 import { CreateChecklist } from "./schema";
@@ -99,22 +97,11 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       }
     }
 
-    await createAuditLog({
-      entityId: checklist.id,
-      entityTitle: `detail:đã thêm danh sách công việc "${title}" vào thẻ "${card.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId,
-      cardId: card.id,
-    });
-
     await triggerChecklistCreated({
       boardId,
       cardId: card.id,
       checklistId: checklist.id,
       actorUserId: userId,
-      includeLogs: true,
     });
 
     revalidatePath(`/board/${boardId}`);

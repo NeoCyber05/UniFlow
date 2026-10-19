@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -63,23 +62,12 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       createItemWithVersion(tx, { checklistId, title }),
     );
 
-    await createAuditLog({
-      entityId: checklistItem.id,
-      entityTitle: `detail:đã thêm mục công việc "${checklistItem.title}" vào danh sách công việc "${checklist.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST_ITEM,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId,
-      cardId: card.id,
-    });
-
     await triggerChecklistItemCreated({
       boardId,
       cardId: card.id,
       checklistId: checklist.id,
       checklistItemId: checklistItem.id,
       actorUserId: userId,
-      includeLogs: true,
     });
 
     revalidatePath(`/board/${boardId}`);

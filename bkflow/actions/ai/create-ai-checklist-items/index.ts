@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
@@ -164,35 +163,23 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       };
     });
 
-    await createAuditLog({
-      entityId: result.checklist.id,
-      entityTitle: `detail:đã thêm ${result.createdItems.length} mục AI vào danh sách công việc "${result.checklist.title}" của thẻ "${card.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId,
-      cardId: card.id,
-    });
-
     if (result.checklistCreated) {
       await triggerChecklistCreated({
         boardId,
         cardId: card.id,
         checklistId: result.checklist.id,
         actorUserId: userId,
-        includeLogs: false,
       });
     }
 
     await Promise.all(
-      result.createdItems.map((item, index) =>
+      result.createdItems.map((item) =>
         triggerChecklistItemCreated({
           boardId,
           cardId: card.id,
           checklistId: result.checklist.id,
           checklistItemId: item.id,
           actorUserId: userId,
-          includeLogs: index === result.createdItems.length - 1,
         }),
       ),
     );
@@ -209,7 +196,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     logger.error("[CREATE_AI_CHECKLIST_ITEMS_ERROR]", error, {
       action: "create-ai-checklist-items",
       aiFeature: "checklist-generation",
-      
+
       userId,
       boardId,
       cardId,

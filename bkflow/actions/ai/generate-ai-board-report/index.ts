@@ -47,7 +47,7 @@ const systemPrompt = [
   "Không nêu số liệu nếu số liệu đó không có trong context.",
   "Mỗi section completed, risks, actions có 3-6 bullet nếu đủ dữ liệu; nếu ít dữ liệu, có thể ít hơn nhưng phải có ít nhất 1 bullet.",
   "Nếu board ít dữ liệu, summary hoặc bullet phải nói rõ 'chưa đủ dữ liệu' và chỉ đưa gợi ý nhẹ dựa trên dữ liệu hiện có.",
-  "Completed ưu tiên completedCardsInRange và recentActivity; nếu không có, nói chưa ghi nhận hoàn thành trong range.",
+  "Completed dựa vào completedCardsUpdatedInRange: đây là các thẻ hiện đã hoàn thành và được cập nhật trong khoảng báo cáo. updatedAt không phải thời điểm hoàn thành; không kết luận chúng đã hoàn thành trong khoảng này. Nếu rỗng, nói chưa có thẻ hoàn thành được cập nhật trong khoảng báo cáo.",
   "Risks dựa vào overdueCards, unassignedCards, heavyLists, checklistProgress.lowProgressCards và scheduleHealth.",
   "Actions phải bám trực tiếp vào risks. Không gợi ý người phụ trách cụ thể nếu context không chỉ rõ. Không invent deadline mới.",
 ].join("\n");

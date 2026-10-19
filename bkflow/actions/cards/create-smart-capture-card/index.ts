@@ -41,7 +41,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       createdIds,
       boardId,
       userId,
-      listTitles: new Map(lists.map((list) => [list.id, list.title])),
+
     });
 
     revalidatePath(`/board/${boardId}`);

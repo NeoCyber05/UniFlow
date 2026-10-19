@@ -22,9 +22,6 @@ const cardInvalidations = (cardId: string): RealtimeQueryInvalidation[] => [
   {
     queryKey: ["card", cardId],
   },
-  {
-    queryKey: ["card-logs", cardId],
-  },
 ];
 
 export const triggerCardUpdated = async ({

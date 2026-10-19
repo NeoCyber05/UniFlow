@@ -344,7 +344,6 @@ export const triggerCardMoved = async ({
 type ChecklistRealtimeInput = BoardRealtimeInput & {
   cardId: string;
   checklistId: string;
-  includeLogs?: boolean;
 };
 
 type ChecklistItemRealtimeInput = ChecklistRealtimeInput & {
@@ -355,16 +354,10 @@ type ChecklistItemRealtimeInput = ChecklistRealtimeInput & {
 
 const checklistInvalidations = (
   cardId: string,
-  includeLogs = false,
 ): RealtimeQueryInvalidation[] => [
   {
     queryKey: ["card", cardId],
   },
-  ...(includeLogs
-    ? [{
-        queryKey: ["card-logs", cardId],
-      } as RealtimeQueryInvalidation]
-    : []),
 ];
 
 const triggerChecklistEvent = async ({
@@ -375,7 +368,6 @@ const triggerChecklistEvent = async ({
   cardId,
   checklistId,
   actorUserId,
-  includeLogs,
 }: ChecklistRealtimeInput & {
   event:
     | typeof REALTIME_EVENTS.CHECKLIST_CREATED
@@ -393,7 +385,7 @@ const triggerChecklistEvent = async ({
       actorUserId,
       action,
       [timestampField]: new Date().toISOString(),
-      invalidate: checklistInvalidations(cardId, includeLogs),
+      invalidate: checklistInvalidations(cardId),
     });
   } catch (error) {
     console.error("[BOARD_REALTIME_ERROR]", error);
@@ -409,7 +401,6 @@ const triggerChecklistItemEvent = async ({
   checklistId,
   checklistItemId,
   actorUserId,
-  includeLogs,
   assigneeId,
   dueDate,
 }: ChecklistItemRealtimeInput & {
@@ -445,7 +436,7 @@ const triggerChecklistItemEvent = async ({
       ...(assigneeId !== undefined ? { assigneeId } : {}),
       ...(dueDate !== undefined ? { dueDate: dueDateValue } : {}),
       [timestampField]: new Date().toISOString(),
-      invalidate: checklistInvalidations(cardId, includeLogs),
+      invalidate: checklistInvalidations(cardId),
     });
   } catch (error) {
     console.error("[BOARD_REALTIME_ERROR]", error);
@@ -546,7 +537,7 @@ export const triggerChecklistItemReordered = async ({
       actorUserId,
       orderedItemIds,
       reorderedAt: new Date().toISOString(),
-      invalidate: checklistInvalidations(cardId, false),
+      invalidate: checklistInvalidations(cardId),
     });
   } catch (error) {
     console.error("[BOARD_REALTIME_ERROR]", error);
@@ -582,7 +573,7 @@ export const triggerChecklistItemMoved = async ({
       sourceOrderedItemIds,
       destinationOrderedItemIds,
       movedAt: new Date().toISOString(),
-      invalidate: checklistInvalidations(cardId, false),
+      invalidate: checklistInvalidations(cardId),
     });
   } catch (error) {
     console.error("[BOARD_REALTIME_ERROR]", error);

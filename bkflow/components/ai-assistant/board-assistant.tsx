@@ -258,12 +258,10 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           shouldRefresh = true;
           if (output.card) {
             queryClient.invalidateQueries({ queryKey: ["card", output.card.id] });
-            queryClient.invalidateQueries({ queryKey: ["card-logs", output.card.id] });
           }
           if (output.cards) {
             output.cards.forEach((c) => {
               queryClient.invalidateQueries({ queryKey: ["card", c.id] });
-              queryClient.invalidateQueries({ queryKey: ["card-logs", c.id] });
             });
           }
         }

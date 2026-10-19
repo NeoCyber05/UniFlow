@@ -53,7 +53,6 @@ const setup = (opts: { owner?: boolean } = {}) => {
     $transaction: async (fn: any) => fn(database),
   };
   const effects: CardUpdateEffects = {
-    createAuditLog: (async (input: any) => { state.effects.push(`audit:${input.entityTitle}`); }) as any,
     triggerCardUpdated: (async () => { state.effects.push("realtime"); }) as any,
     triggerRelatedDependencyCardsUpdated: (async () => { state.effects.push("related"); }) as any,
     deleteCardReminderNotifications: (async () => { state.effects.push("delete-reminders"); }) as any,
@@ -127,19 +126,21 @@ test("rejects write without board permission", async () => {
 
 test("moving the work schedule keeps deadline and reminder untouched", async () => {
   const { result, state } = await run({
+    dueDateTimezoneOffset: -420,
     scheduledStartAt: "2026-10-20T12:00:00.000Z",
     scheduledEndAt: "2026-10-20T13:00:00.000Z",
     expectedUpdatedAt: T0.toISOString(),
   });
   assert.equal(result.error ?? null, null);
   const data = state.writes[0];
+  assert.equal("dueDateTimezoneOffset" in data, false);
   assert.equal("dueDate" in data, false);
   assert.equal("deadlineOn" in data, false);
   assert.equal("reminderSetAt" in data, false);
   assert.equal(state.card.dueDate?.toISOString(), baseCard.dueDate.toISOString());
   assert.equal(state.card.scheduledStartAt?.toISOString(), "2026-10-20T12:00:00.000Z");
   assert.equal(state.effects.includes("delete-reminders"), false);
-  assert.ok(state.effects.some((e) => e.startsWith("audit:") && e.includes("lịch làm")));
+  assert.deepEqual(state.effects, ["realtime"]);
 });
 
 test("schedule after the deadline is saved, not blocked", async () => {

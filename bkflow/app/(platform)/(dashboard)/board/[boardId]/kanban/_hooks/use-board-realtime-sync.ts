@@ -607,7 +607,6 @@ export const useBoardRealtimeSync = ({
 
     if ("role" in payload && cardModal.isOpen && cardModal.id) {
       queryClient.invalidateQueries({ queryKey: ["card", cardModal.id] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardModal.id] });
     }
 
     if ("orderedListIds" in payload && payload.orderedListIds) {

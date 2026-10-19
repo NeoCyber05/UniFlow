@@ -1,7 +1,17 @@
-import type { QueryClient } from "@tanstack/react-query";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import type { CardWithAssignees, CardWithList } from "@/types";
 import { useBoardStateActionsStore } from "@/hooks/use-board-state-actions-store";
+import { fetcher } from "@/lib/fetcher";
+
+export const getCardQueryOptions = (cardId: string) => queryOptions({
+  queryKey: ["card", cardId],
+  queryFn: (): Promise<CardWithList> => fetcher(`/api/cards/${cardId}`),
+  retry: (count: number, err: Error) => {
+    const status = (err as Error & { status?: number }).status;
+    return status !== 403 && status !== 404 && count < 2;
+  },
+});
 
 type CardQueryClient = QueryClient;
 type RefetchTimer = ReturnType<typeof setTimeout>;

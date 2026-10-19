@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
@@ -93,17 +92,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     });
     relatedDependencyCardIds = await getRelatedDependencyCardIds({
       boardId,
-      
-      sourceCardIds: [card.id],
-    });
 
-    await createAuditLog({
-      entityTitle: `detail:đã khôi phục thẻ "${card.title}" vào danh sách "${card.list.title}"`,
-      entityId: card.id,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.UPDATE,
-      boardId,
-      cardId: card.id,
+      sourceCardIds: [card.id],
     });
 
     await triggerCardCreated({

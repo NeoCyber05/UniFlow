@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -91,15 +90,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           },
         },
       });
-    });
-
-    await createAuditLog({
-      entityTitle: `detail:đã xóa vĩnh viễn thẻ "${card.title}"`,
-      entityId: card.id,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.DELETE,
-      boardId,
-      cardId: card.id,
     });
 
     await triggerCardDeleted({

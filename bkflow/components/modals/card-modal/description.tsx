@@ -266,7 +266,6 @@ export const Description = ({ data, canEdit = true, beforeCloseRef }: Descriptio
           });
           patchCardQueryData(queryClient, updatedCard.id, patch);
           patchBoardCardPreview(data.list.boardId, updatedCard.id, patch);
-          void queryClient.invalidateQueries({ queryKey: ["card-logs", updatedCard.id] });
           void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
           void queryClient.invalidateQueries({ queryKey: ["board-calendar", data.list.boardId] });
           return true;

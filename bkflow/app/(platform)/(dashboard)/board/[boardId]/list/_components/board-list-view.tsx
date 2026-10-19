@@ -1,6 +1,6 @@
-import { BoardMember } from "@/types";
 "use client";
 
+import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
@@ -13,6 +13,7 @@ import { useLocalStorage } from "usehooks-ts";
 import { SmartCaptureDialog } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/smart-capture-dialog";
 import { QuickAddBar, type QuickAddDefaults } from "@/components/my-tasks/quick-add-bar";
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
+import { TaskLayoutSwitcher } from "@/components/my-tasks/task-layout-switcher";
 import { getGroupTone, TaskGroupSection } from "@/components/my-tasks/task-group-section";
 import { TodoInsights } from "@/components/my-tasks/todo-insights";
 import { useBoardCourses } from "@/hooks/use-board-courses";
@@ -197,6 +198,8 @@ export const BoardListView = ({
               </p>
             </div>
 
+            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+            <TaskLayoutSwitcher boardId={boardId} layout="rows" />
             {/* Chế độ nhóm: nền trắng trượt giữa hai lựa chọn */}
             {!isTeamBoard && (
               <ReducedMotionConfig>
@@ -206,8 +209,8 @@ export const BoardListView = ({
                   className="inline-flex shrink-0 items-center self-start rounded-xl bg-neutral-100 p-1 text-xs font-medium"
                 >
                   {([
-                    ["agenda", "Theo thời hạn", CalendarClock],
-                    ["list", "Theo cột", Columns3],
+                    ["agenda", "Nhóm theo hạn", CalendarClock],
+                    ["list", "Nhóm theo cột", Columns3],
                   ] as const).map(([mode, label, Icon]) => (
                     <button
                       key={mode}
@@ -234,6 +237,7 @@ export const BoardListView = ({
                 </div>
               </ReducedMotionConfig>
             )}
+            </div>
           </header>
 
           {/* Chip nhảy nhanh tới nhóm theo độ gấp */}

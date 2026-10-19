@@ -40,7 +40,7 @@ export const getBoardAnalyticsData = async ({
   const rangeStart = getRangeStart(range);
   const now = new Date();
 
-  const [board, lists, auditLogs] = await Promise.all([
+  const [board, lists] = await Promise.all([
     db.board.findFirst({
       where: {
         id: boardId,
@@ -121,30 +121,6 @@ export const getBoardAnalyticsData = async ({
         order: "asc",
       },
     }),
-    includeReportContext
-      ? db.auditLog.findMany({
-          where: {
-            boardId,
-            createdAt: {
-              gte: rangeStart,
-            },
-          },
-          select: {
-            id: true,
-            action: true,
-            eventType: true,
-            entityType: true,
-            entityTitle: true,
-            cardId: true,
-            userName: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 60,
-        })
-      : Promise.resolve([]),
   ]);
 
   const cards = lists.flatMap((list) =>
@@ -284,7 +260,7 @@ export const getBoardAnalyticsData = async ({
           overdue: overdueCards,
           withoutDueDate: cards.filter((card) => !card.dueDate && !card.isCompleted).length,
         },
-        completedCardsInRange: cards
+        completedCardsUpdatedInRange: cards
           .filter((card) => card.isCompleted && card.updatedAt >= rangeStart)
           .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
           .slice(0, 12)
@@ -309,14 +285,6 @@ export const getBoardAnalyticsData = async ({
             .sort((left, right) => right.remainingItems - left.remainingItems)
             .slice(0, 8),
         },
-        recentActivity: auditLogs.slice(0, 25).map((log) => ({
-          action: log.action,
-          eventType: log.eventType,
-          entityType: log.entityType,
-          entityTitle: trimToLength(log.entityTitle, 120),
-          userName: trimToLength(log.userName, 80),
-          createdAt: log.createdAt.toISOString(),
-        })),
       }
     : null;
 

@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { getChecklistItemAccess } from "@/lib/checklists/checklist-access";
@@ -27,7 +26,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       boardId,
       cardId,
       itemId: id,
-      
+
       userId,
     });
 
@@ -48,25 +47,12 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       },
     });
 
-    await createAuditLog({
-      entityId: item.id,
-      entityTitle: isCompleted
-        ? `detail:đã hoàn tất "${access.item.title}" ở thẻ "${access.item.checklist.card.title}"`
-        : `detail:đã đánh dấu "${access.item.title}" là chưa hoàn tất ở thẻ "${access.item.checklist.card.title}"`,
-      entityType: ENTITY_TYPE.CHECKLIST_ITEM,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-      boardId,
-      cardId,
-    });
-
     await triggerChecklistItemToggled({
       boardId: access.item.checklist.card.list.boardId,
       cardId: access.item.checklist.cardId,
       checklistId: access.item.checklistId,
       checklistItemId: item.id,
       actorUserId: userId,
-      includeLogs: true,
     });
 
     revalidatePath(`/board/${boardId}`);

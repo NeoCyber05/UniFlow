@@ -1,7 +1,6 @@
 import { BoardMemberRole } from "@/types";
 import "server-only";
 
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { tool } from "ai";
 import { z } from "zod";
@@ -26,7 +25,6 @@ import {
   triggerCardUpdated,
   triggerRelatedDependencyCardsUpdated,
 } from "@/lib/cards/realtime";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { BOARD_EDITOR_REQUIRED_ERROR, requireBoardEditor } from "@/lib/permissions";
@@ -681,7 +679,6 @@ export const createAssistantTools = (session: AssistantSession) => {
               createdIds,
               boardId,
               userId,
-              listTitles: new Map([[targetList.id, targetList.title]]),
             });
 
             return {
@@ -721,17 +718,6 @@ export const createAssistantTools = (session: AssistantSession) => {
         });
 
         const assignedNames: string[] = [];
-
-
-        await createAuditLog({
-          entityId: card.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: card.title,
-          action: ACTION.CREATE,
-          eventType: AUDIT_EVENT_TYPE.CREATE,
-          boardId,
-          cardId: card.id,
-        });
 
         triggerCardCreated({
           boardId,
@@ -1038,17 +1024,6 @@ export const createAssistantTools = (session: AssistantSession) => {
             },
           });
 
-
-          await createAuditLog({
-            entityId: card.id,
-            entityType: ENTITY_TYPE.CARD,
-            entityTitle: card.title,
-            action: ACTION.CREATE,
-            eventType: AUDIT_EVENT_TYPE.CREATE,
-            boardId,
-            cardId: card.id,
-          });
-
           triggerCardCreated({
             boardId,
             listId: targetList.id,
@@ -1168,17 +1143,6 @@ export const createAssistantTools = (session: AssistantSession) => {
 
           const assignedNames: string[] = [];
 
-
-          await createAuditLog({
-            entityId: card.id,
-            entityType: ENTITY_TYPE.CARD,
-            entityTitle: card.title,
-            action: ACTION.CREATE,
-            eventType: AUDIT_EVENT_TYPE.CREATE,
-            boardId,
-            cardId: card.id,
-          });
-
           triggerCardCreated({
             boardId,
             listId: targetList.id,
@@ -1240,7 +1204,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { title: true } },
-            
           },
         });
 
@@ -1272,16 +1235,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           include: {
             items: true,
           },
-        });
-
-        await createAuditLog({
-          entityId: checklist.id,
-          entityType: ENTITY_TYPE.CHECKLIST,
-          entityTitle: checklist.title,
-          action: ACTION.CREATE,
-          eventType: AUDIT_EVENT_TYPE.CHECKLIST,
-          boardId,
-          cardId,
         });
 
         triggerChecklistCreated({
@@ -1358,7 +1311,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { id: true, title: true } },
-            
           },
         });
 
@@ -1400,16 +1352,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           include: {
             list: { select: { title: true } },
           },
-        });
-
-        await createAuditLog({
-          entityId: card.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: card.title,
-          action: ACTION.UPDATE,
-          eventType: AUDIT_EVENT_TYPE.MOVE,
-          boardId,
-          cardId: card.id,
         });
 
         triggerCardMoved({
@@ -1473,7 +1415,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId, list: { boardId }, archivedAt: null },
           include: {
             list: { select: { title: true } },
-            
           },
         });
 
@@ -1512,16 +1453,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           where: { id: cardId },
           data: updateData,
           include: { list: { select: { title: true } } },
-        });
-
-        await createAuditLog({
-          entityId: cardId,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: updated.title,
-          action: ACTION.UPDATE,
-          eventType: AUDIT_EVENT_TYPE.UPDATE,
-          boardId,
-          cardId,
         });
 
         triggerCardUpdated({
@@ -1594,16 +1525,6 @@ export const createAssistantTools = (session: AssistantSession) => {
           await syncCardReminder(tx, { cardId, now: new Date() });
         });
         await deleteCardReminderNotifications(cardId);
-
-        await createAuditLog({
-          entityId: card.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: card.title,
-          action: ACTION.DELETE,
-          eventType: AUDIT_EVENT_TYPE.DELETE,
-          boardId,
-          cardId: card.id,
-        });
 
         triggerCardDeleted({
           boardId,
@@ -1770,21 +1691,11 @@ export const createAssistantTools = (session: AssistantSession) => {
           };
         }
 
-        const dependency = await db.cardDependency.create({
+        await db.cardDependency.create({
           data: {
             blockerCardId: resolvedBlocker.id,
             blockedCardId: resolvedBlocked.id,
           },
-        });
-
-        await createAuditLog({
-          entityId: dependency.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: `detail:Trợ lý AI đã thiết lập liên kết phụ thuộc: thẻ [card:${resolvedBlocked.id}|${resolvedBlocked.title}] phụ thuộc vào thẻ [card:${resolvedBlocker.id}|${resolvedBlocker.title}]`,
-          action: ACTION.UPDATE,
-          eventType: AUDIT_EVENT_TYPE.DEPENDENCY,
-          boardId,
-          cardId: resolvedBlocked.id,
         });
 
         triggerRelatedDependencyCardsUpdated({
@@ -1876,16 +1787,6 @@ export const createAssistantTools = (session: AssistantSession) => {
             error: `Không tìm thấy liên kết phụ thuộc nào giữa thẻ "${resolvedBlocker.title}" và thẻ "${resolvedBlocked.title}".`,
           };
         }
-
-        await createAuditLog({
-          entityId: resolvedBlocked.id,
-          entityType: ENTITY_TYPE.CARD,
-          entityTitle: `detail:Trợ lý AI đã gỡ bỏ liên kết phụ thuộc giữa thẻ [card:${resolvedBlocked.id}|${resolvedBlocked.title}] và thẻ [card:${resolvedBlocker.id}|${resolvedBlocker.title}]`,
-          action: ACTION.UPDATE,
-          eventType: AUDIT_EVENT_TYPE.DEPENDENCY,
-          boardId,
-          cardId: resolvedBlocked.id,
-        });
 
         triggerRelatedDependencyCardsUpdated({
           boardId,

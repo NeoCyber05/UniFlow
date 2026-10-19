@@ -102,7 +102,7 @@ export const Navbar = () => {
                       <span className="hidden sm:inline">UniFlow</span>
                       <span className="ml-1 hidden text-[10px] font-normal tracking-normal text-muted-foreground lg:inline">HUST</span>
                     </Link>
-                    <BoardSidebarToggle variant="navbar" />
+                    <BoardSidebarToggle />
                 </div>
             </div>
 

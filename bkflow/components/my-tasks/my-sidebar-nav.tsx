@@ -1,18 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMatch } from "react-router";
 import Link from "@/web/shims/next-link";
 import { usePathname } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Semester } from "@prisma/client";
 import {
-  Activity,
   ChevronDown,
   GraduationCap,
   Trash2,
   Settings2,
   CalendarDays,
   ListTodo,
+  Network,
+  BarChart3,
 } from "lucide-react";
 
 import {
@@ -27,6 +29,8 @@ import { TrashDialog } from "@/components/notes/page-actions";
 import { useSettingsModal } from "@/hooks/use-settings-modal";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
+import { useBoardCourses } from "@/hooks/use-board-courses";
+import { getBoardNavigation } from "@/lib/boards/navigation";
 import { useBoardFilters } from "@/hooks/use-board-filters";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
 import { getCourseColor } from "@/lib/courses/course-colors";
@@ -37,6 +41,7 @@ import { viewQueryOptions } from "@/web/lib/use-view";
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 
 const EMPTY_COURSE_IDS: string[] = [];
+const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network, analytics: BarChart3 };
 
 const itemClassName = (isActive: boolean) =>
   cn(
@@ -53,6 +58,7 @@ const Count = ({ value }: { value: number | undefined }) =>
 
 export const MySidebarNav = () => {
   const pathname = usePathname();
+  const boardRoute = useMatch("/board/:boardId/*");
   const queryClient = useQueryClient();
   const { data: context } = useMyTasksContext();
   const { data: counts } = useMyTaskCounts();
@@ -73,36 +79,32 @@ export const MySidebarNav = () => {
   );
   const currentSemester = semesters.find((semester) => semester.id === context?.currentSemesterId);
   const board = context?.board ?? null;
-  const boardId = board?.id;
+  const boardId = boardRoute?.params.boardId ?? board?.id;
+  const { courses } = useBoardCourses(boardId, context && boardId === board?.id ? { boardType: "SEMESTER", courses: context.courses } : undefined);
+  const navigation = boardId ? getBoardNavigation(boardId, pathname) : [];
+  const isTasksActive = navigation.some(item => item.id === "tasks" && item.active);
+  const isCurrentBoard = boardId === board?.id;
   const selectedCourseIds = useBoardFilters((state) =>
     boardId ? state.filtersByBoardId[boardId]?.selectedCourseIds ?? EMPTY_COURSE_IDS : EMPTY_COURSE_IDS
   );
-  const isAtSemesterBoard = board ? pathname.startsWith(`/board/${board.id}`) : false;
-  const calendarHref = board ? `/board/${board.id}/calendar` : null;
-  const isCalendarActive = calendarHref !== null && pathname === calendarHref;
-  const isSemesterBoardActive =
-    (isAtSemesterBoard && !isCalendarActive && selectedCourseIds.length === 0) ||
-    (context?.currentSemesterId ? pathname === `/semester/${context.currentSemesterId}` : false);
   const clearBoardFilters = () => { if (boardId) useBoardFilters.getState().clearFilters(boardId); };
-  const prefetchBoard = (view: "list" | "calendar") => {
+  const prefetchBoard = (href: string) => {
     if (!boardId) return;
     void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/layout`));
-    void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/${view}`));
-    if (view === "calendar") {
+    void queryClient.prefetchQuery(viewQueryOptions(href));
+    if (href.endsWith("/calendar")) {
       void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
     }
   };
 
   const courseHref = (courseKey: string) =>
-    board
-      ? `/board/${board.id}?course=${courseKey}`
+    boardId
+      ? `${navigation[0].href}?course=${courseKey}`
       : context?.currentSemesterId
         ? `/semester/${context.currentSemesterId}`
         : "#";
 
-  const semesterBoardHref = board
-    ? `/board/${board.id}/list`
-    : context?.currentSemesterId
+  const semesterBoardHref = context?.currentSemesterId
       ? `/semester/${context.currentSemesterId}`
       : null;
 
@@ -134,27 +136,33 @@ export const MySidebarNav = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {semesterBoardHref && (
-        <Link href={semesterBoardHref} onMouseEnter={() => prefetchBoard("list")} onFocus={() => prefetchBoard("list")} onClick={clearBoardFilters} aria-current={isSemesterBoardActive ? "page" : undefined} className={itemClassName(isSemesterBoardActive)}>
+      {!boardId && semesterBoardHref && (
+        <Link href={semesterBoardHref} aria-current={pathname === semesterBoardHref ? "page" : undefined} className={itemClassName(pathname === semesterBoardHref)}>
           <ListTodo className="h-4 w-4" />
           Việc cần làm
           <Count value={counts?.today} />
         </Link>
       )}
-      {calendarHref && (
-        <Link href={calendarHref} onMouseEnter={() => prefetchBoard("calendar")} onFocus={() => prefetchBoard("calendar")} onClick={clearBoardFilters} aria-current={isCalendarActive ? "page" : undefined} className={itemClassName(isCalendarActive)}>
-          <CalendarDays className="h-4 w-4" />
-          Lịch
-        </Link>
-      )}
+      {navigation.map(item => {
+        const Icon = NAV_ICONS[item.id];
+        const active = item.active && (item.id !== "tasks" || selectedCourseIds.length === 0);
+        return <Link key={item.id} href={item.href} onMouseEnter={() => prefetchBoard(item.href)} onFocus={() => prefetchBoard(item.href)} onClick={() => {
+          if (item.id === "tasks" || item.id === "calendar") clearBoardFilters();
+          useMobileSidebar.getState().onClose();
+        }} aria-current={active ? "page" : undefined} className={itemClassName(active)}>
+          <Icon aria-hidden="true" className="h-4 w-4" />
+          {item.label}
+          {item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
+        </Link>;
+      })}
       </div>
 
-      {context?.courses && context.courses.length > 0 && (
+      {courses.length > 0 && (
         <div className="space-y-0.5">
           <p className="flex h-7 items-center px-2.5 text-xs font-medium text-muted-foreground">Môn học</p>
-          {context.courses.map((course) => {
+          {courses.map((course) => {
             const isCourseActive =
-              isAtSemesterBoard &&
+              isTasksActive &&
               selectedCourseIds.length === 1 &&
               selectedCourseIds[0] === course.id;
 
@@ -162,13 +170,13 @@ export const MySidebarNav = () => {
               <Link key={course.id} href={courseHref(course.id)} className={itemClassName(isCourseActive)}>
                 <span className={cn("h-2 w-2 shrink-0 rounded-full", getCourseColor(course.color).dot)} />
                 <span className="truncate">{course.name}</span>
-                <Count value={counts?.byCourse[course.id]} />
+                <Count value={isCurrentBoard ? counts?.byCourse[course.id] : undefined} />
               </Link>
             );
           })}
           {(() => {
             const isPersonalActive =
-              isAtSemesterBoard &&
+              isTasksActive &&
               selectedCourseIds.length === 1 &&
               selectedCourseIds[0] === PERSONAL_COURSE_FILTER;
 
@@ -176,7 +184,7 @@ export const MySidebarNav = () => {
               <Link href={courseHref(PERSONAL_COURSE_FILTER)} className={itemClassName(isPersonalActive)}>
                 <span className="h-2 w-2 shrink-0 rounded-full border border-neutral-400" />
                 Cá nhân
-                <Count value={counts?.byCourse[PERSONAL_COURSE_FILTER]} />
+                <Count value={isCurrentBoard ? counts?.byCourse[PERSONAL_COURSE_FILTER] : undefined} />
               </Link>
             );
           })()}
@@ -195,15 +203,6 @@ export const MySidebarNav = () => {
           <Settings2 aria-hidden="true" className="h-4 w-4" />
           Cài đặt
         </button>
-        {context?.personalOrgId && (
-          <Link
-            href={`/organization/${context.personalOrgId}/activity`}
-            className={itemClassName(pathname === `/organization/${context.personalOrgId}/activity`)}
-          >
-            <Activity className="h-4 w-4" />
-            Nhật ký hoạt động
-          </Link>
-        )}
         <button type="button" onClick={() => setTrashOpen(true)} className={itemClassName(false)}>
           <Trash2 className="h-4 w-4" />
           Thùng rác

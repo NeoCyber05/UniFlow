@@ -18,7 +18,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     };
   }
 
-  return copyCardService({ data, userId, user });
+  return copyCardService({ data, userId });
 };
 
 export const copyCard = createSafeAction(CopyCard, handler);

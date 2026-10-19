@@ -1,5 +1,5 @@
-import { BoardMemberRole } from "@/types";
 "use client";
+import { BoardMemberRole } from "@/types";
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -107,7 +107,6 @@ export const BoardTimelineView = ({
       setUpdatingCardId(null);
       pendingUpdateCardIdRef.current = null;
       queryClient.invalidateQueries({ queryKey: ["card", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", data.id] });
     },
     onError: (error) => {
       const cardId = pendingUpdateCardIdRef.current;

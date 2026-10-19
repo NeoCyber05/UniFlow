@@ -139,12 +139,9 @@ export async function GET(
               },
             },
           },
-          include: {
-            items: {
-              orderBy: {
-                order: "asc",
-              },
-            },
+          select: {
+            id: true,
+            title: true,
             card: {
               select: {
                 title: true,

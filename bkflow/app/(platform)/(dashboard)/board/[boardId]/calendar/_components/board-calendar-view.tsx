@@ -17,6 +17,7 @@ import {
 } from "@animate-ui/react/utils/motion";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useCardModal } from "@/hooks/use-card-modal";
+import { useShallow } from "zustand/react/shallow";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { getTodayKey } from "@/lib/calendar/calendar-navigation";
@@ -70,7 +71,7 @@ export const BoardCalendarView = ({
   initialData,
 }: BoardCalendarViewProps) => {
   const router = useRouter();
-  const cardModal = useCardModal();
+  const cardModal = useCardModal(useShallow((state) => ({ onOpen: state.onOpen, onClose: state.onClose })));
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
   const {

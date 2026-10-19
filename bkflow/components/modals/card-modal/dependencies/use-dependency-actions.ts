@@ -25,7 +25,6 @@ export const useDependencyActions = ({
     blockedCardId: string;
   }) => {
     queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-    queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
     queryClient.invalidateQueries({ queryKey: ["card", dependency.blockerCardId] });
     queryClient.invalidateQueries({ queryKey: ["card", dependency.blockedCardId] });
   };

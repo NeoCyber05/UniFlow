@@ -33,10 +33,12 @@ export const ACCENT_IDS = [
 ] as const;
 export type AccentId = (typeof ACCENT_IDS)[number];
 
-export const BACKGROUND_CATEGORIES = ["all", "gradient", "pattern"] as const;
+export const BACKGROUND_CATEGORIES = ["all", "illustration", "gradient", "pattern"] as const;
 export type BackgroundCategory = (typeof BACKGROUND_CATEGORIES)[number];
 
 export const BACKGROUND_IDS = [
+  "scene-spring", "scene-summer", "scene-autumn", "scene-winter",
+  "scene-campus", "scene-library", "scene-hanoi", "scene-observatory",
   // --- Gradients (26) ---
   "glow",
   "aurora",
@@ -142,12 +144,34 @@ export const ACCENTS: { id: AccentId; label: string; swatch: string }[] = [
 export type BackgroundItem = {
   id: BackgroundId;
   label: string;
-  category: "gradient" | "pattern";
+  category: Exclude<BackgroundCategory, "all">;
+  artwork?: string;
   style: CSSProperties;
 };
 
-// 50 hình nền không gian (26 Gradient + 24 Pattern)
+const SCENIC_BACKGROUNDS = [
+  { id: "scene-spring", label: "Vườn xuân", file: "spring", color: "#dcebd9" },
+  { id: "scene-summer", label: "Hạ bên biển", file: "summer", color: "#c2e9ed" },
+  { id: "scene-autumn", label: "Lá thu", file: "autumn", color: "#f6dbb8" },
+  { id: "scene-winter", label: "Đông yên", file: "winter", color: "#cbd9ef" },
+  { id: "scene-campus", label: "Sân trường", file: "campus", color: "#f5d9c0" },
+  { id: "scene-library", label: "Góc thư viện", file: "library", color: "#e9d8b7" },
+  { id: "scene-hanoi", label: "Hà Nội chiều", file: "hanoi", color: "#efb5a1" },
+  { id: "scene-observatory", label: "Trạm ngắm sao", file: "observatory", color: "#292b5b" },
+] as const;
+
+// Existing gradients and patterns stay valid for saved custom appearances.
 export const BACKGROUNDS: BackgroundItem[] = [
+  ...SCENIC_BACKGROUNDS.map(({ id, label, file, color }) => ({
+    id, label, category: "illustration" as const, artwork: `/theme-art/${file}.svg`,
+    style: {
+      backgroundColor: color,
+      backgroundImage: `url("/theme-art/${file}.svg")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    },
+  })),
   // ==========================================
   // --- PHẦN 1: CHUYỂN MÀU (GRADIENTS - 26 LOẠI) ---
   // ==========================================

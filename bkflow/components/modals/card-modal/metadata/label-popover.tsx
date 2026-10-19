@@ -107,9 +107,6 @@ export const LabelPopover = ({
   };
 
   const invalidateCardMetadataQueries = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["card-logs", cardId],
-    });
     invalidateBoardCalendar();
     queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
   };

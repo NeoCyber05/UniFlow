@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -55,14 +54,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
           id: existingList.id,
         },
       });
-    });
-
-    await createAuditLog({
-      entityTitle: `detail:đã xóa vĩnh viễn danh sách "${list.title}"`,
-      entityId: list.id,
-      entityType: ENTITY_TYPE.LIST,
-      action: ACTION.DELETE,
-      boardId,
     });
 
     await triggerListDeleted({

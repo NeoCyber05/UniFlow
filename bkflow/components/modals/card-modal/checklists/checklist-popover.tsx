@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { X } from "lucide-react";
-import { Checklist, ChecklistItem } from "@prisma/client";
+import type { CardWithList } from "@/types";
 
 import { useAction } from "@/hooks/use-action";
 import { createChecklist } from "@/actions/checklists/create-checklist";
@@ -20,12 +20,7 @@ import { Input } from "@/components/ui/input";
 interface ChecklistPopoverProps {
   cardId: string;
   boardId: string;
-  boardChecklists: (Checklist & {
-    items: ChecklistItem[];
-    card: {
-      title: string;
-    };
-  })[];
+  boardChecklists: CardWithList["boardChecklists"];
   children: React.ReactNode;
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
@@ -56,9 +51,6 @@ export const ChecklistPopover = ({
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["card", cardId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["card-logs", cardId],
       });
       setIsOpen(false);
     },

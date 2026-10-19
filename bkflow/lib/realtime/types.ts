@@ -15,9 +15,6 @@ export type RealtimeQueryInvalidation =
       queryKey: ["card", string];
     }
   | {
-      queryKey: ["card-logs", string];
-    }
-  | {
       queryKey: ["card-comments", string];
     };
 

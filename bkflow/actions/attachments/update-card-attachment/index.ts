@@ -1,9 +1,8 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, AttachmentType, ENTITY_TYPE } from "@prisma/client";
+import { AttachmentType } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { triggerAttachmentUpdated } from "@/lib/cards/realtime";
 import { db } from "@/lib/db";
@@ -98,16 +97,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
             name,
             currentName: attachment.name,
           });
-
-    await createAuditLog({
-      entityId: cardId,
-      entityType: ENTITY_TYPE.CARD,
-      entityTitle: `detail:đã cập nhật đính kèm "${updatedAttachment.name}"`,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.ATTACHMENT,
-      boardId,
-      cardId,
-    });
 
     await triggerAttachmentUpdated({
       boardId,

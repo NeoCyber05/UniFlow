@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { triggerRelatedDependencyCardsUpdated } from "@/lib/cards/realtime";
@@ -11,9 +9,6 @@ import { requireBoardEditor } from "@/lib/permissions";
 
 import { CreateCardDependency } from "./schema";
 import { InputType, ReturnType } from "./types";
-
-const formatAuditCardMarker = (card: { id: string; title: string }) =>
-  `[card:${card.id}|${card.title.replace(/[\[\]|]/g, " ")}]`;
 
 const wouldCreateCycle = async ({
   boardId,
@@ -164,16 +159,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         blockerCardId,
         blockedCardId,
       },
-    });
-
-    await createAuditLog({
-      entityId: dependency.id,
-      entityType: ENTITY_TYPE.CARD,
-      entityTitle: `detail:đã thiết lập liên kết phụ thuộc: thẻ ${formatAuditCardMarker(blockedCard)} phụ thuộc vào thẻ ${formatAuditCardMarker(blockerCard)}`,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.DEPENDENCY,
-      boardId,
-      cardId: blockedCard.id,
     });
 
     await triggerRelatedDependencyCardsUpdated({

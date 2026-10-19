@@ -1,11 +1,10 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
+
 import { format } from "date-fns";
 import { revalidatePath } from "@/server/cache";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { db } from "@/lib/db";
 import { getChecklistItemAccess } from "@/lib/checklists/checklist-access";
@@ -14,10 +13,10 @@ import { triggerChecklistItemDueDateUpdated } from "@/lib/boards/realtime";
 import { SetChecklistItemDueDate } from "./schema";
 import { InputType, ReturnType } from "./types";
 
-const formatDueDateForLog = (date: Date) => format(date, "dd/MM/yyyy HH:mm");
+const formatChecklistDueDate = (date: Date) => format(date, "dd/MM/yyyy HH:mm");
 
 const getChecklistDueDateRangeError = (cardDueDate: Date) =>
-  `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${formatDueDateForLog(cardDueDate)}).`;
+  `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${formatChecklistDueDate(cardDueDate)}).`;
 
 const handler = async (data: InputType): Promise<ReturnType> => {
   const { userId } = await auth();
@@ -33,7 +32,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       boardId,
       cardId,
       itemId: id,
-      
+
       userId,
     });
 
@@ -69,23 +68,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       },
     });
 
-    let entityTitle = `detail:đã xoá ngày hết hạn của "${access.item.title}"`;
-    if (dueDate && access.item.dueDate) {
-      entityTitle = `detail:đã đổi ngày hết hạn của "${access.item.title}" thành ${formatDueDateForLog(dueDate)}`;
-    } else if (dueDate) {
-      entityTitle = `detail:đã đặt ngày hết hạn của "${access.item.title}" là ${formatDueDateForLog(dueDate)}`;
-    }
-
-    await createAuditLog({
-      entityId: item.id,
-      entityTitle,
-      entityType: ENTITY_TYPE.CHECKLIST_ITEM,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.DUE_DATE,
-      boardId,
-      cardId,
-    });
-
     await triggerChecklistItemDueDateUpdated({
       boardId: access.item.checklist.card.list.boardId,
       cardId: access.item.checklist.cardId,
@@ -93,7 +75,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       checklistItemId: item.id,
       actorUserId: userId,
       dueDate: item.dueDate,
-      includeLogs: true,
     });
 
     revalidatePath(`/board/${boardId}`);

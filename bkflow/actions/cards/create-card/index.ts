@@ -1,10 +1,8 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
 import { triggerCardCreated } from "@/lib/boards/realtime";
@@ -109,15 +107,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         ...(deadlineOn ? { deadlineOn: toTaskDeadlineStorage({ dueDate: null, deadlineOn }).deadlineOn } : {}),
         ...(scheduledOn || scheduledStartAt ? toTaskScheduleStorage(schedule) : {}),
       },
-    });
-
-    await createAuditLog({
-      entityId: card.id,
-      entityTitle: `detail:đã thêm thẻ "${card.title}" vào danh sách "${list.title}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.CREATE,
-      boardId,
-      cardId: card.id,
     });
 
     await triggerCardCreated({

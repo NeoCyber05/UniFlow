@@ -1,10 +1,9 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, AttachmentType, ENTITY_TYPE } from "@prisma/client";
+import { AttachmentType } from "@prisma/client";
 
 import { createSafeAction } from "@/lib/create-safe-action";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { triggerAttachmentDeleted } from "@/lib/cards/realtime";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -98,16 +97,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       where: {
         id: attachment.id,
       },
-    });
-
-    await createAuditLog({
-      entityId: cardId,
-      entityType: ENTITY_TYPE.CARD,
-      entityTitle: `detail:đã xoá tập tin đính kèm "${deletedAttachment.name}" khỏi thẻ "${attachment.card.title}"`,
-      action: ACTION.UPDATE,
-      eventType: AUDIT_EVENT_TYPE.ATTACHMENT,
-      boardId,
-      cardId,
     });
 
     await triggerAttachmentDeleted({

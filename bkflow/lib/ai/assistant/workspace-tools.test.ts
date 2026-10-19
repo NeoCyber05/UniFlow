@@ -17,8 +17,10 @@ const session: AssistantSession = { boardId: "b1", userId: "u1", role: BoardMemb
 const editing: AssistantSession = { ...session, context: { kind: "task", cardId: "c1", expectedUpdatedAt: "2026-10-18T00:00:00.000Z" }, operation: "edit_task_content" };
 const previousDb = globalThis.prisma;
 let database: Record<string, any>;
+let auditWrites = 0;
 
 beforeEach(() => {
+  auditWrites = 0;
   mock.method(Pusher.prototype, "trigger", async () => ({}));
   database = {
     course: { findMany: async () => [] }, semester: {}, aiNoteEdit: {},
@@ -26,7 +28,7 @@ beforeEach(() => {
     card: { findMany: async () => [], findFirst: async () => ({ id: "c1", title: "Report", list: { title: "Todo" } }) },
     notePage: { findMany: async () => [], findFirst: async () => null },
     noteDeadline: { findMany: async () => [] },
-    auditLog: { create: async () => ({}) },
+    auditLog: { create: async () => { auditWrites += 1; throw new Error("Activity logging has been removed"); } },
   };
   globalThis.prisma = database as unknown as PrismaClient;
 });
@@ -205,21 +207,16 @@ const executeChecklistCommand = async (input: any, scope = editing) => {
 
 test("checklist completion sets the desired state and retries do not toggle it back", async () => {
   const item = checklistFixture();
-  const logs: any[] = [];
-  database.auditLog.create = async ({ data }: any) => { logs.push(data); return data; };
   await signedIn(async () => {
     const input = { cardId: "c1", itemId: "i1", change: { type: "completed", isCompleted: true } };
     const result = await executeChecklistCommand(input);
     assert.equal(result.ok, true);
     assert.equal(item.isCompleted, true);
-    assert.equal(logs.length, 1);
-    assert.equal(logs[0].entityId, "i1");
-    assert.equal(logs[0].userId, "u1");
+    assert.equal(auditWrites, 0);
     assert.equal(result.action, "checklist_item_updated");
     assert.equal(result.card.id, "c1");
     await executeChecklistCommand(input);
     assert.equal(item.isCompleted, true);
-    assert.equal(logs.length, 1);
   });
 });
 

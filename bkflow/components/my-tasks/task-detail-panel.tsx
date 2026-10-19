@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
 import { ExternalLink, Star, Sun, X } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCardQueryOptions } from "@/components/modals/card-modal/card-cache-utils";
 import { CardDetailBody } from "@/components/modals/card-modal/card-detail-body";
 import { CardRealtimeSync } from "@/components/modals/card-modal/card-realtime-sync";
 import { runBeforeClose, type BeforeCloseRef } from "@/components/modals/card-modal/close-guard";
@@ -29,6 +31,10 @@ type TaskDetailPanelOuterProps = TaskDetailPanelProps & {
 type PanelContentProps = TaskDetailPanelProps & { beforeCloseRef: BeforeCloseRef };
 
 const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) => {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void queryClient.prefetchQuery(getCardQueryOptions(taskId));
+  }, [taskId, queryClient]);
   const { data: context, isError, error, refetch, isFetching } = useCardContext(taskId);
   const errorStatus = isError ? (error as Error & { status?: number }).status : undefined;
   const isGone = errorStatus === 403 || errorStatus === 404;

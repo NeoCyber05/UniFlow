@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, AUDIT_EVENT_TYPE, ENTITY_TYPE } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
 import { requireBoardEditor } from "@/lib/permissions";
@@ -87,15 +85,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       error: "Thay đổi thứ tự danh sách thất bại."
     }
   }
-
-  await createAuditLog({
-    entityId: boardId,
-    entityTitle: "detail:đã sắp xếp lại thứ tự danh sách",
-    entityType: ENTITY_TYPE.BOARD,
-    action: ACTION.UPDATE,
-    eventType: AUDIT_EVENT_TYPE.MOVE,
-    boardId,
-  });
 
   await triggerListReordered({
     boardId,

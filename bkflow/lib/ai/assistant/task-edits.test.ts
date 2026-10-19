@@ -8,8 +8,8 @@ const T0 = new Date("2026-10-19T03:00:00Z");
 const previous = globalThis.prisma;
 let state: any;
 const effects: TaskEditEffects = {
-  card: Object.fromEntries(["createAuditLog", "triggerCardUpdated", "triggerRelatedDependencyCardsUpdated", "deleteCardReminderNotifications", "syncCardReminder"].map(key => [key, async () => {}])) as any,
-  checklist: { createAuditLog: async () => {}, triggerChecklistCreated: async () => {}, triggerChecklistDeleted: async () => {} } as any,
+  card: Object.fromEntries(["triggerCardUpdated", "triggerRelatedDependencyCardsUpdated", "deleteCardReminderNotifications", "syncCardReminder"].map(key => [key, async () => {}])) as any,
+  checklist: { triggerChecklistCreated: async () => {}, triggerChecklistDeleted: async () => {} } as any,
 };
 beforeEach(() => {
   state = { owned: true, failReceipt: false, receipts: [], checklists: [], items: [], raceOnTx: false, raceAfterRead: false, reads: 0, card: {

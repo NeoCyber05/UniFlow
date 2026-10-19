@@ -55,7 +55,6 @@ export const AiCardQualityAssistant = ({
 
   const invalidateCard = () => {
     queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-    queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
   };
 
   const resetPreview = () => {

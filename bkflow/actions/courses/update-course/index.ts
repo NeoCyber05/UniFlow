@@ -1,9 +1,8 @@
 "use server";
 
 import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
 import {
   DUPLICATE_COURSE_ERROR,
@@ -44,14 +43,6 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         ...(credits !== undefined ? { credits } : {}),
         ...(color !== undefined ? { color } : {}),
       },
-    });
-
-    await createAuditLog({
-      entityId: boardId,
-      entityTitle: `detail:đã cập nhật môn học "${course.name}"`,
-      entityType: ENTITY_TYPE.BOARD,
-      action: ACTION.UPDATE,
-      boardId,
     });
 
     return { data: course };

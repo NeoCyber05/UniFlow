@@ -1,10 +1,9 @@
-import { ENTITY_TYPE, type Card, type Prisma } from "@prisma/client";
+import { type Card, type Prisma } from "@prisma/client";
 
 import type {
   UpdateCardInput,
   UpdateCardResult,
 } from "@/lib/cards/update-card-contract";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { db } from "@/lib/db";
 import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import { deleteCardReminderNotifications } from "@/lib/notifications/reminder-notifications";
@@ -13,11 +12,6 @@ import {
   triggerCardUpdated,
   triggerRelatedDependencyCardsUpdated,
 } from "@/lib/cards/realtime";
-import {
-  buildUpdateCardAuditMessage,
-  getUpdateCardAuditEventType,
-  UPDATE_CARD_AUDIT_ACTION,
-} from "@/lib/cards/card-audit-messages";
 import {
   buildCardUpdateData,
   getChangedCardFields,
@@ -41,7 +35,6 @@ type UpdateCardServiceInput = {
 
 /** Ranh giới tác dụng phụ, để test thay bằng mock. */
 export type CardUpdateEffects = {
-  createAuditLog: typeof createAuditLog;
   triggerCardUpdated: typeof triggerCardUpdated;
   triggerRelatedDependencyCardsUpdated: typeof triggerRelatedDependencyCardsUpdated;
   deleteCardReminderNotifications: typeof deleteCardReminderNotifications;
@@ -49,7 +42,6 @@ export type CardUpdateEffects = {
 };
 
 const defaultEffects: CardUpdateEffects = {
-  createAuditLog,
   triggerCardUpdated,
   triggerRelatedDependencyCardsUpdated,
   deleteCardReminderNotifications,
@@ -81,7 +73,8 @@ export const updateCardService = async (
     scheduledEndAt,
     isCompleted,
     reminder,
-    dueDateTimezoneOffset,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Strip legacy client-only metadata before the Prisma update.
+    dueDateTimezoneOffset: _dueDateTimezoneOffset,
     descriptionBaseUpdatedAt,
     expectedUpdatedAt,
     ...values
@@ -162,7 +155,6 @@ export const updateCardService = async (
     const scheduledEndChanged = scheduleStorage
       ? hasDateChanged(scheduleStorage.scheduledEndAt as Date | null, currentCard.scheduledEndAt)
       : false;
-    const scheduleChanged = scheduledOnChanged || scheduledStartChanged || scheduledEndChanged;
     const deadlineChanged = dueDateChanged || deadlineOnChanged;
     const reminderChanged = reminder !== undefined && reminder !== currentCard.reminder;
     const reminderConfigChanged = deadlineChanged || reminderChanged;
@@ -328,38 +320,6 @@ export const updateCardService = async (
     ) {
       await effects.deleteCardReminderNotifications(card.id);
     }
-
-    const auditLogMessage = buildUpdateCardAuditMessage({
-      input: {
-        ...values,
-        startDate,
-        dueDate: nextDueDate,
-        isCompleted,
-        dueDateTimezoneOffset,
-      },
-      card,
-      currentCard,
-      startDateChanged,
-      dueDateChanged,
-      deadlineOnChanged,
-      scheduleChanged,
-    });
-
-    await effects.createAuditLog({
-      entityTitle: auditLogMessage,
-      entityId: card.id,
-      entityType: ENTITY_TYPE.CARD,
-      action: UPDATE_CARD_AUDIT_ACTION,
-      eventType: getUpdateCardAuditEventType({
-        startDateChanged,
-        dueDateChanged,
-        reminderConfigChanged,
-        isCompleted,
-        scheduleChanged,
-      }),
-      boardId,
-      cardId: card.id,
-    });
 
     await effects.triggerCardUpdated({
       boardId,

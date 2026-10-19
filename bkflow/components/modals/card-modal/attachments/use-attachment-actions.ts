@@ -42,7 +42,6 @@ export const useAttachmentActions = ({
     onSuccess: (attachment) => {
       patchBoardCardCount(boardId, cardId, "attachments", -1);
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
       toast.success(
         attachment.type === AttachmentType.FILE
           ? "Đã xóa file đính kèm."
@@ -85,7 +84,6 @@ export const useAttachmentActions = ({
         },
       );
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      queryClient.invalidateQueries({ queryKey: ["card-logs", cardId] });
       setEditingId(null);
     },
     onError: (error) => {
