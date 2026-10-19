@@ -19,15 +19,19 @@ export const BoardSidebar = () => {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col shrink-0 h-full overflow-hidden transition-[width] duration-300 ease-in-out z-30",
-        effectiveIsOpen
-          ? "w-60 border-r border-border bg-sidebar"
-          : "w-0 border-r-0"
+        "hidden md:flex flex-col shrink-0 h-full overflow-hidden z-30",
+        // Width snaps (one reflow); only the panel slides. On close the width waits for the slide.
+        effectiveIsOpen ? "w-60" : "w-0 [transition:width_0s_200ms]"
       )}
       aria-label="Thanh điều hướng cá nhân"
       inert={!effectiveIsOpen}
     >
-      <div className="w-60 flex flex-col h-full overflow-hidden">
+      <div
+        className={cn(
+          "w-60 flex flex-col h-full overflow-hidden border-r border-border bg-sidebar transition-transform duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          !effectiveIsOpen && "-translate-x-full"
+        )}
+      >
         {/* Header của Sidebar */}
         <div className="flex h-12 items-center justify-between px-3 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

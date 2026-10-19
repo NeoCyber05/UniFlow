@@ -21,7 +21,7 @@ export const ChecklistProgress = ({
       <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden border border-neutral-200/50 shadow-inner">
         <div
           style={{ width: `${percentage}%` }}
-          className="h-full bg-violet-600 rounded-full transition-all duration-300"
+          className="h-full bg-violet-600 rounded-full transition-[width] duration-300 ease-out"
         />
       </div>
     </div>

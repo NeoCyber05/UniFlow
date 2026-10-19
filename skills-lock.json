@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "animate-ui": {
+      "source": "imskyleen/animate-ui",
+      "sourceType": "github",
+      "skillPath": "skills/animate-ui/SKILL.md",
+      "computedHash": "d77ccda8d8f140af35dc6e90b3158a020a649a8572b9609771dcc017366be52c"
+    }
+  }
+}

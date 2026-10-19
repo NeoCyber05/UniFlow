@@ -133,7 +133,7 @@ export const TimelineBar = ({
               }
             }}
             className={cn(
-              "absolute top-1/2 z-20 h-4 w-4 cursor-pointer touch-none -translate-y-1/2 rotate-45 rounded-[3px] border shadow-sm transition hover:scale-110",
+              "absolute top-1/2 z-20 h-4 w-4 cursor-pointer touch-none -translate-y-1/2 rotate-45 rounded-[3px] border shadow-sm transition hover:shadow-md",
               tone,
               canEdit && canDragMilestone && "cursor-grab active:cursor-grabbing",
               isDragging && "opacity-80 shadow-lg ring-2 ring-neutral-900/10",

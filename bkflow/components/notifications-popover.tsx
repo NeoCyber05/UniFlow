@@ -136,7 +136,7 @@ export const NotificationsPopover = () => {
           <Bell className="h-4.5 w-4.5" />
           {hasUnread && (
             <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping [animation-iteration-count:3] rounded-full bg-blue-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600" />
             </span>
           )}
