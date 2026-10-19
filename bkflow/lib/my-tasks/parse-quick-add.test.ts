@@ -83,6 +83,12 @@ describe("parseQuickAdd", () => {
     assert.deepEqual(parseQuickAdd("x @mai", { now: NOW }).dueDate, endOfVN("2026-10-07"));
   });
 
+  it("token hạn là hạn chỉ-ngày: deadlineOn theo ngày VN, không có giờ", () => {
+    assert.equal(parseQuickAdd("x @mai", { now: NOW }).deadlineOn, "2026-10-07");
+    assert.equal(parseQuickAdd("x @15/10", { now: NOW }).deadlineOn, "2026-10-15");
+    assert.equal(parseQuickAdd("x", { now: NOW }).deadlineOn, null);
+  });
+
   it("@thứ: t6 → thứ Sáu tuần này, t3 (hôm nay) → hôm nay, cn → Chủ nhật, t2 → tuần sau", () => {
     assert.deepEqual(parseQuickAdd("x @t6", { now: NOW }).dueDate, endOfVN("2026-10-09"));
     assert.deepEqual(parseQuickAdd("x @t3", { now: NOW }).dueDate, endOfVN("2026-10-06"));

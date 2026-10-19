@@ -85,10 +85,10 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 **Interfaces:** `CaptureDraft` có `draftId`, `textRevision`, rawText, source; mỗi field là `{value, origin: "manual"|"inferred"|"unset"}`. Field gồm title, deadline (`TaskDeadline`), schedule (`TaskSchedule`), reminder (contract hiện có hoặc null), isImportant, courseId và checklistItems. Null với origin manual là xóa có chủ đích. `mergeCaptureAnalysis(draft, {draftId,textRevision,fields}): CaptureDraft`; `setCaptureField(draft,key,value): CaptureDraft`; `captureReducer(state,event): CaptureState` cho analyze/submit/result.
 
-- [ ] Viết `manual clear survives reanalysis`, `stale revision ignored`, `old draft response ignored`, `save clears only submitted snapshot`: title manual “Bài sửa” giữ nguyên sau AI “Bài A”; deadline manual null không được AI thêm lại; gửi revision 2 rồi nhập revision 3, success không xóa revision 3.
-- [ ] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/draft.test.ts`.
-- [ ] Implement các hàm trên bằng state thuần, không thêm store toàn cục. Mỗi edit text tăng revision; AI chỉ thay inferred/unset, response sau submit không merge lại nháp đã gửi. Khi đổi text, bỏ inference cũ không còn đúng revision, giữ lựa chọn manual.
-- [ ] GREEN: chạy lại lệnh RED, tất cả assertions PASS; thêm trường hợp hai request hoàn thành ngược thứ tự và lựa chọn mới trong lúc đang lưu.
+- [x] Viết `manual clear survives reanalysis`, `stale revision ignored`, `old draft response ignored`, `save clears only submitted snapshot`: title manual “Bài sửa” giữ nguyên sau AI “Bài A”; deadline manual null không được AI thêm lại; gửi revision 2 rồi nhập revision 3, success không xóa revision 3.
+- [x] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/draft.test.ts`.
+- [x] Implement các hàm trên bằng state thuần, không thêm store toàn cục. Mỗi edit text tăng revision; AI chỉ thay inferred/unset, response sau submit không merge lại nháp đã gửi. Khi đổi text, bỏ inference cũ không còn đúng revision, giữ lựa chọn manual.
+- [x] GREEN: chạy lại lệnh RED, tất cả assertions PASS; thêm trường hợp hai request hoàn thành ngược thứ tự và lựa chọn mới trong lúc đang lưu.
 
 ### Task 3: Nhận diện câu ngắn, giữ tương thích Smart Capture
 
@@ -98,10 +98,10 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 Định nghĩa `CaptureAnalysis` trong `lib/capture/analysis.ts` gồm `{draftId: string, textRevision: number, fields: Partial<CaptureFields>, issues: {field: keyof CaptureFields, reason: string}[]}`; `CaptureFields` là map giá trị của các field Task 2, không chứa provenance. `context` có `{draftId, textRevision, referenceIso, timeZone, allowedCourseIds: string[]}`. Action có overload/type phân biệt quick và board để caller cũ không phải đoán union khi đọc `drafts`; trả nguyên revision của request, merge ở client vẫn kiểm state hiện tại.
 
-- [ ] Viết table test `quick sentence matrix` với anchor `2026-10-18T03:00:00Z`, `Asia/Ho_Chi_Minh`: “Nộp bài A trước 17h30 hôm nay” → dueDate `2026-10-18T10:30:00Z`, schedule rỗng; “Học bài A ngày mai từ 19h đến 20h” → start/end `2026-10-19T12:00:00Z`/`13:00:00Z`, deadline rỗng.
-- [ ] Thêm assertions bốn câu còn lại của CAP-01: “tối mai” → scheduledOn `2026-10-19`, chưa bịa giờ; “nộp thứ ba 17h” → dueDate `2026-10-20T10:00:00Z`; “Đọc tài liệu A” không ngày; “5 giờ” có issue sáng/chiều; yêu cầu chia bước chỉ có todo tổng quát sửa được. Test deadline ngày-only không thành 23:59, ngày quá khứ không tự cộng tuần, hai hạn mâu thuẫn chỉ đánh dấu field deadline.
-- [ ] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/analysis.test.ts lib/my-tasks/parse-quick-add.test.ts`.
-- [ ] Mở rộng action đang có, dùng `generateAiText`/`parseAiJson` và provider hiện tại; không sao chép action AI thành endpoint khác. Quick mode không bị minimum-content rule dành cho đoạn board dài chặn câu ngắn hợp lệ; không thay rule board mode âm thầm. Validator dùng `TaskDeadlineSchema`, `TaskScheduleSchema`; course đối chiếu danh sách được phép. Reuse parser cho token, AI cho ngữ nghĩa câu tự nhiên; không viết regex engine hiểu mọi câu tiếng Việt.
+- [x] Viết table test `quick sentence matrix` với anchor `2026-10-18T03:00:00Z`, `Asia/Ho_Chi_Minh`: “Nộp bài A trước 17h30 hôm nay” → dueDate `2026-10-18T10:30:00Z`, schedule rỗng; “Học bài A ngày mai từ 19h đến 20h” → start/end `2026-10-19T12:00:00Z`/`13:00:00Z`, deadline rỗng.
+- [x] Thêm assertions bốn câu còn lại của CAP-01: “tối mai” → scheduledOn `2026-10-19`, chưa bịa giờ; “nộp thứ ba 17h” → dueDate `2026-10-20T10:00:00Z`; “Đọc tài liệu A” không ngày; “5 giờ” có issue sáng/chiều; yêu cầu chia bước chỉ có todo tổng quát sửa được. Test deadline ngày-only không thành 23:59, ngày quá khứ không tự cộng tuần, hai hạn mâu thuẫn chỉ đánh dấu field deadline.
+- [x] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/analysis.test.ts lib/my-tasks/parse-quick-add.test.ts`.
+- [x] Mở rộng action đang có, dùng `generateAiText`/`parseAiJson` và provider hiện tại; không sao chép action AI thành endpoint khác. Quick mode không bị minimum-content rule dành cho đoạn board dài chặn câu ngắn hợp lệ; không thay rule board mode âm thầm. Validator dùng `TaskDeadlineSchema`, `TaskScheduleSchema`; course đối chiếu danh sách được phép. Reuse parser cho token, AI cho ngữ nghĩa câu tự nhiên; không viết regex engine hiểu mọi câu tiếng Việt.
 - [ ] GREEN: chạy lại suite; thêm fixture JSON sai schema, timeout, course lạ, title JSON/error, prompt injection và board-mode tối đa 5 draft. Unit test dùng fixture output xác định; live AI chạy lại sáu câu và ghi kết quả riêng, không coi mock là bằng chứng chất lượng model.
 
 ### Task 4: Tạo task + todo + nhắc trong transaction, retry an toàn
@@ -110,10 +110,10 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 **Interfaces:** mở rộng draft input creator bằng TaskDeadline/TaskSchedule, reminder hợp lệ, myDay và trạng thái quan trọng hiện tại; giữ `creationId` UUID → Card.id. Quick-add nhận `creationId` optional để tương thích callers cũ, composer mới luôn truyền UUID ổn định; resolve board/list như action cũ rồi gọi `createCapturedCardsWithStatus`. Không tạo đường insert card thứ ba.
 
-- [ ] Viết tests `all capture fields survive create and replay`, `todo or reminder failure rolls back whole creation`, `same id changed schedule is conflict`, `foreign ids rejected without leak`, `lost response retries exactly once`. Assert một Card, đúng todo, đúng lịch/ngày-only/reminder; hai request đồng thời không thêm card/checklist thứ hai.
-- [ ] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/cards/create-captured-cards.test.ts`.
-- [ ] Extend validation trước write: ngày thật, start < end, không đồng thời ngày-only/giờ, reminder theo contract 02, course/list/label/member đúng quyền. Không âm thầm filter course/label sai thành thành công. Giữ tương thích `myDay`, `isImportant` và assignee của quick-add; không làm rơi props cũ khi chuyển creator.
-- [ ] Mở rộng transaction hiện có: card, user state, todo và `syncCardReminder` cùng transaction; dùng storage adapters cho DATE/ISO. Replay so sánh toàn bộ nội dung có ý nghĩa mới, gồm priority/myDay/assignee và nguồn mô tả; kiểm UUID trùng khác user/board như hiện tại. Payload/id snapshot đóng băng cho retry; đổi payload sau submit không dùng lại id cũ để ghi đè.
+- [x] Viết tests `all capture fields survive create and replay`, `todo or reminder failure rolls back whole creation`, `same id changed schedule is conflict`, `foreign ids rejected without leak`, `lost response retries exactly once`. Assert một Card, đúng todo, đúng lịch/ngày-only/reminder; hai request đồng thời không thêm card/checklist thứ hai.
+- [x] RED: `npx tsx --import ./server/register-aliases.mjs --test lib/cards/create-captured-cards.test.ts`.
+- [x] Extend validation trước write: ngày thật, start < end, không đồng thời ngày-only/giờ, reminder theo contract 02, course/list/label/member đúng quyền. Không âm thầm filter course/label sai thành thành công. Giữ tương thích `myDay`, `isImportant` và assignee của quick-add; không làm rơi props cũ khi chuyển creator.
+- [x] Mở rộng transaction hiện có: card, user state, todo và `syncCardReminder` cùng transaction; dùng storage adapters cho DATE/ISO. Replay so sánh toàn bộ nội dung có ý nghĩa mới, gồm priority/myDay/assignee và nguồn mô tả; kiểm UUID trùng khác user/board như hiện tại. Payload/id snapshot đóng băng cho retry; đổi payload sau submit không dùng lại id cũ để ghi đè.
 - [ ] Effects chạy sau commit và chỉ cho `createdIds`; lỗi audit/realtime không được khiến client tưởng chưa lưu và tạo id mới. GREEN: suite trên PASS, thêm lỗi effects sau commit và replay không phát effects lần hai. Chạy một test DB tích hợp trên DB thử được phép để chứng minh rollback thật; fake DB không thay thế bước này.
 
 ### Task 5: Composer inline và kết nối toàn bộ callers
@@ -122,9 +122,9 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 **Interfaces:** `CaptureComposer` nhận context board/list/courses/members/defaults và `initialSource?`, callback `onCreated(card)`; QuickAddBar giữ public props hiện tại. Snapshot submit gửi qua action quick-add đã mở rộng ở Task 4. Chỉ một draft/card cho composer quick.
 
-- [ ] Viết reducer tests `analyzing submit requires explicit choice`, `failed save keeps snapshot and id`, `empty title blocks`, `manual create when AI unavailable`; RED bằng lệnh Task 2.
-- [ ] Implement input và chip sửa/xóa hạn, lịch, khoảng nhắc, ưu tiên, course, todo. Nút “Thêm” rõ ràng, Enter theo cùng handler, IME đang composition không submit. Preview ngày tuyệt đối gồm năm và timezone; issue chỉ yêu cầu sửa field mơ hồ, không bắt nhập lại cả form. Thêm khi AI đang chạy cho chọn chờ hoặc “Thêm với thông tin hiện có”.
-- [ ] Khóa submit bằng snapshot synchronously, bắt cả thrown network error và ActionState lỗi; không clear sớm. Khi không rõ đã lưu, retry cùng id/payload; muốn thay nội dung phải kiểm trạng thái lần gửi trước bằng retry trước, tránh tạo bản mới khi bản cũ có thể đã lưu. Thành công chỉ clear snapshot tương ứng và invalidate query/callback như callers cũ.
+- [x] Viết reducer tests `analyzing submit requires explicit choice`, `failed save keeps snapshot and id`, `empty title blocks`, `manual create when AI unavailable`; RED bằng lệnh Task 2.
+- [x] Implement input và chip sửa/xóa hạn, lịch, khoảng nhắc, ưu tiên, course, todo. Nút “Thêm” rõ ràng, Enter theo cùng handler, IME đang composition không submit. Preview ngày tuyệt đối gồm năm và timezone; issue chỉ yêu cầu sửa field mơ hồ, không bắt nhập lại cả form. Thêm khi AI đang chạy cho chọn chờ hoặc “Thêm với thông tin hiện có”.
+- [x] Khóa submit bằng snapshot synchronously, bắt cả thrown network error và ActionState lỗi; không clear sớm. Khi không rõ đã lưu, retry cùng id/payload; muốn thay nội dung phải kiểm trạng thái lần gửi trước bằng retry trước, tránh tạo bản mới khi bản cũ có thể đã lưu. Thành công chỉ clear snapshot tương ứng và invalidate query/callback như callers cũ.
 - [ ] GREEN reducer tests. Browser assertions: AI off/timeout → nhập tay thêm được; sửa/xóa chip → AI về không ghi đè; double click/Enter → một task; gõ nội dung mới khi saving → success giữ nội dung mới. Kiểm today/list/todo/read-only, defaults myDay, course/member, slot trailing; desktop và màn 390px, Tab/Enter/Escape, nhãn screen reader và focus sau lỗi.
 
 ### Task 6: Voice vào chính composer, không tự lưu
@@ -145,10 +145,10 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 **Interfaces:** `CaptureSourceSchema` có selectedText (1–4.000), pageUrl?, pageTitle?, messagePermalink?, messageSentAt?, capturedAt, timeZone. `normalizeCaptureSource(input: unknown): CaptureSource`; `getCaptureTimeContext(source): {referenceIso,requiresRelativeDateConfirmation}`. Provenance “verified message timestamp” chỉ do adapter đã được khảo sát cung cấp; tuyệt đối không suy từ capturedAt.
 
-- [ ] Viết `old message today uses sent date`, `unknown sent date requires confirmation`, `page link is not message permalink`, `unsafe URLs and oversized selection rejected`. Fixture sentAt `2026-10-12T03:00:00Z`, capturedAt `2026-10-18T03:00:00Z`, “hôm nay 17h” phải thành Oct12 17h VN và cảnh báo quá khứ; thiếu sentAt phải xác nhận ngày tuyệt đối trước submit. RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/source.test.ts`.
-- [ ] Implement schema và sanitize URL: chỉ http/https, bỏ credentials, fragment và query không được allowlist; khi không biết permalink thật, lưu nhãn “Trang nguồn”. MVP không có adapter timestamp chắc chắn thì luôn để messageSentAt rỗng; không đọc cả DOM hội thoại để đoán. Giới hạn pageTitle 200, URL 2.048 ký tự là MD của plan.
-- [ ] Lưu trích đoạn + nguồn thành phần mô tả có nhãn rõ, trong giới hạn description 3.000; UI cho xem bản cuối và sửa trước submit. Không âm thầm truncate nguồn vượt giới hạn; yêu cầu rút gọn hoặc bỏ đính kèm nguồn, giữ văn bản nháp. Render plain text/escaped Markdown, không HTML, kiểm URL cả server lẫn lúc mở link. Không thêm bảng nguồn khi description hiện tại đã đáp ứng.
-- [ ] GREEN: suite trên PASS; thêm HTML/script, Markdown link `javascript:`, chỉ dẫn giả system, timezone sai, nguồn quá dài. Việc xác nhận chip gắn revision + giá trị ngày; đổi selection/ngày phân tích phải mất xác nhận cũ. Validate payload server không tin flag timestamp/confirmation từ trang ngoài là bằng chứng quyền.
+- [x] Viết `old message today uses sent date`, `unknown sent date requires confirmation`, `page link is not message permalink`, `unsafe URLs and oversized selection rejected`. Fixture sentAt `2026-10-12T03:00:00Z`, capturedAt `2026-10-18T03:00:00Z`, “hôm nay 17h” phải thành Oct12 17h VN và cảnh báo quá khứ; thiếu sentAt phải xác nhận ngày tuyệt đối trước submit. RED: `npx tsx --import ./server/register-aliases.mjs --test lib/capture/source.test.ts`.
+- [x] Implement schema và sanitize URL: chỉ http/https, bỏ credentials, fragment và query không được allowlist; khi không biết permalink thật, lưu nhãn “Trang nguồn”. MVP không có adapter timestamp chắc chắn thì luôn để messageSentAt rỗng; không đọc cả DOM hội thoại để đoán. Giới hạn pageTitle 200, URL 2.048 ký tự là MD của plan.
+- [x] Lưu trích đoạn + nguồn thành phần mô tả có nhãn rõ, trong giới hạn description 3.000; UI cho xem bản cuối và sửa trước submit. Không âm thầm truncate nguồn vượt giới hạn; yêu cầu rút gọn hoặc bỏ đính kèm nguồn, giữ văn bản nháp. Render plain text/escaped Markdown, không HTML, kiểm URL cả server lẫn lúc mở link. Không thêm bảng nguồn khi description hiện tại đã đáp ứng.
+- [x] GREEN: suite trên PASS; thêm HTML/script, Markdown link `javascript:`, chỉ dẫn giả system, timezone sai, nguồn quá dài. Việc xác nhận chip gắn revision + giá trị ngày; đổi selection/ngày phân tích phải mất xác nhận cũ. Validate payload server không tin flag timestamp/confirmation từ trang ngoài là bằng chứng quyền.
 
 ### Task 8: Extension nội bộ và popup UniFlow có xác thực
 
@@ -199,6 +199,32 @@ Mỗi task logic có vòng RED → GREEN dưới đây. RED phải thất bại 
 
 Chưa thực thi plan. Q3/Q6 chưa được xác nhận bằng Edge/Teams/Slack/mic thật trong lần lập tài liệu này. Người thực thi ghi phiên bản, ngày, môi trường, lệnh, kết quả và giới hạn tại đây; không lưu snippet riêng tư hoặc credentials làm bằng chứng.
 
+### 19/10/2026 — Tasks 2, 3, 4, 5, 7 (phạm vi người dùng chọn)
+
+Môi trường: Windows 11, Node 22, checkout `main` (chưa commit). Không chạy Task 1, 6, 8, 9: cần Edge + Teams/Slack + mic thật.
+
+| Hạng mục | Kết quả | Loại bằng chứng |
+| --- | --- | --- |
+| `lib/capture/draft.ts` (state, provenance, reducer submit/retry) | 15 test PASS | unit |
+| `lib/capture/analysis.ts` (validator output AI, chống bịa giờ, ngày quá khứ, sentAt) | 10 test PASS, gồm ma trận 7 câu | unit, fixture output |
+| `lib/capture/source.ts` (schema nguồn, URL an toàn, mô tả inert) | 5 test PASS | unit |
+| `parseQuickAdd` trả thêm `deadlineOn` ngày-only | 16 test PASS | unit |
+| Creator: hạn ngày-only, lịch, nhắc + `syncCardReminder` trong transaction, myDay, replay so cả lịch/nhắc/ưu tiên, id lạ báo lỗi | 12 test PASS | unit, fake DB |
+| `quick-add-card` dùng creator chung, nhận `creationId`/lịch/nhắc/todo/nguồn | tsc PASS | — |
+| `analyze-smart-capture` mode `quick` (board mode giữ nguyên shape) | tsc PASS | — |
+| `CaptureComposer` thay QuickAddBar (giữ props), chip sửa/xóa, chi tiết, nút Thêm, IME, retry cùng id | tsc + build PASS | — |
+| `npm test` / `npm run build` | 271 PASS / PASS | — |
+
+Chưa kiểm (giữ checkbox mở): live AI sáu câu CAP-01 (Task 3); test DB tích hợp rollback thật — DB duy nhất là Supabase production (Task 4); browser assertions desktop/390px/IME/AI timeout (Task 5).
+
+Quyết định khi thực thi:
+- AI chỉ chạy khi bấm nút đũa phép (không tự gọi khi gõ) để không tốn quota; parser token vẫn chạy tức thì.
+- Lỗi HTTP không phải 401 từ `callAction` mang `errorCode: "TRANSPORT"` → composer coi là "chưa rõ đã lưu", giữ id, chặn gửi nội dung mới cho tới khi thử lại lần trước.
+- Issue (giờ mơ hồ, ngày đã qua, không rõ ngày gửi) chặn Thêm cho tới khi người dùng "Giữ như vậy" hoặc sửa field.
+- Course/label sai ở creator giờ báo lỗi thay vì lọc âm thầm (ảnh hưởng cả Smart Capture nhiều thẻ).
+- URL nguồn bỏ toàn bộ query (chưa có allowlist), trích đoạn được escape HTML/Markdown trước khi vào mô tả.
+- Chưa có rate limit cho action AI/tạo task (thuộc Task 9).
+
 ## Tài liệu nền cho khảo sát
 
 Đối chiếu ngày 19/10/2026; các API dưới đây chỉ là cơ sở thiết kế, không chứng minh tương thích với môi trường thực tế:
@@ -210,3 +236,16 @@ Chưa thực thi plan. Q3/Q6 chưa được xác nhận bằng Edge/Teams/Slack/
 - [Chrome messaging](https://developer.chrome.com/docs/extensions/develop/concepts/messaging): xác minh message ở trust boundary.
 - [MDN postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage): exact target origin và kiểm source/origin.
 - [MDN SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition): kiểm khả năng trình duyệt và xử lý nhận dạng phía dịch vụ; không mặc định audio ở local.
+
+### 19/10/2026 — Task 8 (extension, chạy trước khảo sát Task 1 theo yêu cầu người dùng)
+
+Người dùng dùng Edge, chọn làm extension ngay, cài unpacked; phát hành Edge Add-ons (miễn phí) sau. Người dùng yêu cầu tự lấy ngày của tin cũ: `selection.js` đọc timestamp của tin chứa đoạn chọn (`time[datetime]` / `[data-ts]`, bỏ khi mơ hồ), đưa vào `messageSentAt` làm mốc cho AI; composer hiện giờ gửi để đối chiếu. Đây là heuristic DOM, chưa phải adapter đã khảo sát.
+
+| Hạng mục | Kết quả |
+| --- | --- |
+| `extensions/uniflow-capture/` (manifest, background, protocol, selection, bridge, options, README) | `protocol.test.mjs` 11 PASS; `node --check` mọi file |
+| `web/lib/capture-bridge.ts` | 6 test PASS |
+| `web/routes/capture.tsx` + route `/capture` (login trong popup, xác nhận tài khoản, chọn cột, AI tự chạy) | tsc + build PASS |
+| `npm test` | 278 PASS |
+
+Chưa kiểm: cài unpacked trên Edge thật, Slack/Teams thật (selector timestamp, frame, CSP), login Google trong popup (redirect cần nằm trong allowlist Supabase), worker restart thật, thu hồi quyền. Test `no transfer before trusted button click` chưa có (logic nằm trong `selection.js`, cần DOM).

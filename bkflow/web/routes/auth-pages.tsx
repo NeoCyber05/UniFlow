@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 
 import { supabase } from "../lib/supabase";
 
-const AuthForm = ({ mode }: { mode: "sign-in" | "sign-up" }) => {
+/** `next`: where to land after signing in (e.g. the capture popup keeps its request). */
+export const AuthForm = ({ mode, next }: { mode: "sign-in" | "sign-up"; next?: string }) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,11 +26,11 @@ const AuthForm = ({ mode }: { mode: "sign-in" | "sign-up" }) => {
     setBusy(false);
     if (error) return setMessage(error.message);
     if (isSignUp && !data.session) return setMessage("Kiểm tra email để xác nhận tài khoản, rồi đăng nhập.");
-    navigate("/my/today", { replace: true });
+    navigate(next ?? "/my/today", { replace: true });
   };
 
   const google = () =>
-    supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin } });
+    supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: next ? location.origin + next : location.origin } });
 
   return (
     <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-sm">

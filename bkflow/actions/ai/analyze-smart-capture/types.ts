@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { CaptureAnalysis } from "@/lib/capture/analysis";
 import { ActionState } from "@/lib/create-safe-action";
 
 import { AnalyzeSmartCapture } from "./schema";
@@ -47,4 +48,4 @@ export type SmartCaptureAnalysis = {
 };
 
 export type InputType = z.infer<typeof AnalyzeSmartCapture>;
-export type ReturnType = ActionState<InputType, SmartCaptureAnalysis>;
+export type ReturnType = ActionState<InputType, SmartCaptureAnalysis | CaptureAnalysis>;

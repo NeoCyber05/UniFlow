@@ -1,14 +1,16 @@
 "use server";
 
-import { auth } from "@/server/auth";
-import { ACTION, ENTITY_TYPE } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
+import { auth } from "@/server/auth";
+
+import { formatSourceDescription } from "@/lib/capture/source";
+import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
+import { CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import { db } from "@/lib/db";
-import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { logger } from "@/lib/logger";
 import { requireBoardEditorForUser } from "@/lib/permissions";
-import { triggerCardCreated } from "@/lib/boards/realtime";
-import { isCourseInBoard } from "@/lib/courses/course-guards";
 import {
   NO_CURRENT_SEMESTER_ERROR,
   resolveCurrentSemesterBoardId,
@@ -18,6 +20,7 @@ import { QuickAddCard } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const FALLBACK_LIST_TITLE = "Cần làm";
+const DESCRIPTION_MAX_LENGTH = 3_000;
 
 const resolveTargetList = async (boardId: string, listId?: string) => {
   if (listId) {
@@ -48,9 +51,12 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const { title, courseId, dueDate } = data;
-  const assigneeUserIds = Array.from(new Set(data.assigneeUserIds ?? []));
-  let card;
+  const description = data.source ? formatSourceDescription(data.source) : "";
+
+  if (description.length > DESCRIPTION_MAX_LENGTH) {
+    // Never truncate the source silently; the composer keeps the draft for the user to shorten.
+    return { error: "Trích đoạn nguồn quá dài. Hãy rút gọn đoạn chọn hoặc bỏ đính kèm nguồn." };
+  }
 
   try {
     const boardId = data.boardId ?? (await resolveCurrentSemesterBoardId(userId));
@@ -71,59 +77,46 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Không tìm thấy danh sách." };
     }
 
-    if (courseId && !(await isCourseInBoard(courseId, boardId))) {
-      return { error: "Môn không hợp lệ." };
+    const { cards, createdIds } = await createCapturedCardsWithStatus({
+      userId,
+      boardId,
+      drafts: [{
+        creationId: data.creationId ?? randomUUID(),
+        listId: list.id,
+        title: data.title,
+        description,
+        courseId: data.courseId ?? null,
+        dueDate: data.dueDate ?? null,
+        deadlineOn: data.deadlineOn ?? null,
+        scheduledOn: data.scheduledOn ?? null,
+        scheduledStartAt: data.scheduledStartAt ?? null,
+        scheduledEndAt: data.scheduledEndAt ?? null,
+        reminder: data.reminder && data.reminder !== "none" ? data.reminder : null,
+        checklistItems: data.checklistItems ?? [],
+        isImportant: Boolean(data.isImportant),
+        myDay: Boolean(data.myDay),
+      }],
+    });
+
+    await announceCapturedCards({
+      cards,
+      createdIds,
+      boardId,
+      userId,
+      listTitles: new Map([[list.id, list.title]]),
+      via: "quick-add",
+    });
+
+    return { data: cards[0] };
+  } catch (error) {
+    if (error instanceof CapturedCardsError) {
+      return { error: error.message, ...(error.code ? { errorCode: error.code } : {}) };
     }
 
-    const lastCard = await db.card.findFirst({
-      where: { listId: list.id, archivedAt: null },
-      orderBy: { order: "desc" },
-      select: { order: true },
-    });
+    logger.error("[QUICK_ADD_CARD_ERROR]", error, { action: "quick-add-card", userId });
 
-    const hasUserState = Boolean(data.isImportant || data.myDay);
-
-    card = await db.card.create({
-      data: {
-        title,
-        listId: list.id,
-        order: lastCard ? lastCard.order + 1 : 1,
-        ...(courseId ? { courseId } : {}),
-        ...(dueDate ? { dueDate } : {}),
-        ...(hasUserState
-          ? {
-              userStates: {
-                create: {
-                  userId,
-                  isImportant: Boolean(data.isImportant),
-                  myDayAt: data.myDay ? new Date() : null,
-                },
-              },
-            }
-          : {}),
-      },
-    });
-
-    await createAuditLog({
-      entityId: card.id,
-      entityTitle: `detail:đã thêm thẻ "${card.title}" vào danh sách "${list.title}"`,
-      entityType: ENTITY_TYPE.CARD,
-      action: ACTION.CREATE,
-      boardId,
-      cardId: card.id,
-    });
-
-    await triggerCardCreated({
-      boardId,
-      listId: list.id,
-      cardId: card.id,
-      actorUserId: userId,
-    });
-  } catch {
     return { error: "Tạo việc thất bại." };
   }
-
-  return { data: card };
 };
 
 export const quickAddCard = createSafeAction(QuickAddCard, handler);

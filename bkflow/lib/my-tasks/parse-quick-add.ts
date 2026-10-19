@@ -3,6 +3,7 @@ import {
   formatVNShortDate,
   getEndOfVNDay,
   getVNDay,
+  getVNDayKey,
   getVNWeekday,
 } from "./vn-day";
 
@@ -20,6 +21,8 @@ export type ParsedQuickAdd = {
   assigneeUserIds: string[];
   isImportant: boolean;
   dueDate: Date | null;
+  /** Cùng hạn ở dạng chỉ-ngày (YYYY-MM-DD, ngày VN); token @ không mang giờ */
+  deadlineOn: string | null;
   /** Chip xem trước dưới ô nhập */
   tokens: QuickAddToken[];
 };
@@ -195,6 +198,7 @@ export const parseQuickAdd = (
     assigneeUserIds,
     isImportant,
     dueDate,
+    deadlineOn: dueDate ? getVNDayKey(getVNDay(dueDate)) : null,
     tokens,
   };
 };

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "UniFlow Capture",
+  "version": "0.1.0",
+  "description": "Bôi đen tin nhắn trên Slack/Teams web để thêm thành task trong UniFlow.",
+  "minimum_chrome_version": "116",
+  "background": { "service_worker": "background.js", "type": "module" },
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["https://uniflow-production-ba94.up.railway.app/*"],
+  "optional_host_permissions": [
+    "https://app.slack.com/*",
+    "https://teams.microsoft.com/*",
+    "https://teams.live.com/*",
+    "https://teams.cloud.microsoft/*",
+    "http://localhost/*"
+  ],
+  "action": { "default_title": "UniFlow Capture: mở lại nháp gần nhất" },
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}

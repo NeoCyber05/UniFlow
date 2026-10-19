@@ -19,6 +19,7 @@ import MyRoute from "./routes/my";
 import PagesRoute, { PagesLayoutRoute } from "./routes/pages";
 import NotePageRoute from "./routes/page";
 import ReminderDeliveryRoute from "./routes/reminder-delivery";
+import CaptureRoute from "./routes/capture";
 import SemesterRoute from "./routes/semester";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
@@ -36,6 +37,8 @@ export const router = createBrowserRouter([
   {
     element: <Root />,
     children: [
+      // Extension popup: handles its own sign-in so the pending request survives login.
+      { path: "/capture", element: <CaptureRoute /> },
       {
         element: <RedirectIfSignedIn />,
         children: [

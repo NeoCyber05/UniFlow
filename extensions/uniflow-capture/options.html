@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniFlow Capture — Cài đặt</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; max-width: 560px; margin: 32px auto; padding: 0 16px; color: #1f2937; }
+    h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 24px; }
+    input[type=url] { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+    button { margin-top: 8px; padding: 6px 12px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+    label.host { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+    .muted { color: #64748b; font-size: 12px; }
+    #status { min-height: 20px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>UniFlow Capture</h1>
+  <p class="muted">Bôi đen tin nhắn trên trang web được bật bên dưới, bấm “Thêm vào UniFlow” để mở cửa sổ thêm task.
+    Extension chỉ đọc đoạn bạn bôi đen và giờ gửi của tin nhắn đó, sau khi bạn bấm nút.</p>
+
+  <h2>1. Địa chỉ UniFlow</h2>
+  <form id="origin-form">
+    <input id="origin" type="url" required placeholder="https://uniflow-production-ba94.up.railway.app" aria-label="Địa chỉ UniFlow">
+    <button type="submit">Lưu và cấp quyền</button>
+  </form>
+
+  <h2>2. Bật trên trang</h2>
+  <div id="hosts"></div>
+  <p class="muted">Bỏ chọn để thu hồi quyền; các tab đang mở cần tải lại để gỡ hẳn nút.</p>
+
+  <p id="status" role="status"></p>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

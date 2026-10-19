@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const DueDateValue = z.union([z.date(), z.string().datetime(), z.null()]);
+import { TaskDatesPatchShape, validateTaskSchedule } from "@/lib/cards/task-schedule";
+
+const DueDateValue = z.union([z.date(), z.string().datetime({ offset: true }), z.null()]);
 
 const SmartCaptureCardDraft = z.object({
   // Stable per submit; becomes Card.id so a retry maps to the same card.
@@ -24,6 +26,11 @@ const SmartCaptureCardDraft = z.object({
         }),
   ),
   dueDate: z.optional(DueDateValue),
+  // Hạn chỉ-ngày và lịch làm; không ghi vào startDate legacy.
+  ...TaskDatesPatchShape,
+  /** Offset phút trước hạn như Card.reminder; null = không nhắc. */
+  reminder: z.optional(z.union([z.string().regex(/^\d{1,5}$/, { message: "Mốc nhắc nhở không hợp lệ." }), z.null()])),
+  myDay: z.optional(z.boolean()),
   assigneeBoardMemberId: z.optional(z.union([z.string().min(1), z.null()])),
   assigneeBoardMemberIds: z.array(z.string().min(1)).max(20).default([]),
   labelIds: z.array(z.string().min(1)).max(20).default([]),
@@ -33,6 +40,19 @@ const SmartCaptureCardDraft = z.object({
       .transform((value) => value.replace(/\s+/g, " ").trim())
       .pipe(z.string().max(120)),
   ).max(20).default([]),
+}).superRefine((draft, ctx) => {
+  if (draft.dueDate && draft.deadlineOn) {
+    ctx.addIssue({ code: "custom", message: "Hạn nộp chỉ có ngày hoặc có giờ, không đồng thời." });
+  }
+  const scheduleError = validateTaskSchedule({
+    scheduledOn: draft.scheduledOn ?? null,
+    scheduledStartAt: draft.scheduledStartAt ?? null,
+    scheduledEndAt: draft.scheduledEndAt ?? null,
+  });
+  if (scheduleError) ctx.addIssue({ code: "custom", message: scheduleError });
+  if (draft.reminder && !draft.dueDate && !draft.deadlineOn) {
+    ctx.addIssue({ code: "custom", message: "Cần có hạn nộp để đặt nhắc nhở." });
+  }
 });
 
 export const CreateSmartCaptureCards = z.object({
