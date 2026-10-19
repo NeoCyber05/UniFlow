@@ -4,7 +4,7 @@ import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, CalendarClock, Columns3, ListFilter, Sparkles } from "lucide-react";
+import { AlertCircle, CalendarClock, Columns3, ListFilter, Plus, Sparkles } from "lucide-react";
 import { useSearchParams } from "@/web/shims/next-navigation";
 import { useLocalStorage } from "usehooks-ts";
 
@@ -103,12 +103,14 @@ export const BoardListView = ({
       : storedGroupMode;
 
   const { taskId, openTask, closeTask } = useTaskPanelParam();
-  const { courses } = useBoardCourses(boardId);
+  const { courseOptions } = useBoardCourses(boardId);
   const filters = useBoardFilters((state) => state.filtersByBoardId[boardId] ?? emptyBoardFilters);
   const clearFilters = useBoardFilters((state) => state.clearFilters);
 
   const [openByGroup, setOpenByGroup] = useLocalStorage<Record<string, boolean>>(TODO_GROUPS_STORAGE_KEY, {});
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addingListId, setAddingListId] = useState<string | null>(null);
 
   // Dữ liệu theo cột Kanban
   const { data: listData } = useQuery<TaskListResponse>({
@@ -152,10 +154,10 @@ export const BoardListView = ({
   };
 
   return (
-    <div className="flex h-full items-start gap-4 overflow-hidden p-4">
-      <div className="h-full min-w-0 flex-1 overflow-y-auto rounded-2xl bg-white/95 p-5 shadow-sm backdrop-blur styled-scrollbar">
-        <div className="mx-auto max-w-3xl space-y-5">
-          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-100 pb-3">
+    <div className="flex h-full items-stretch overflow-hidden bg-white/95 backdrop-blur">
+      <div className="h-full min-w-0 flex-1 overflow-y-auto styled-scrollbar">
+        <div className="mx-auto max-w-3xl space-y-5 px-5 pb-24 sm:px-8">
+          <header className="sticky top-0 z-10 -mx-5 flex flex-col gap-3 border-b border-neutral-100 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-8 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
               <h1 className="flex items-center gap-2 text-xl font-bold text-neutral-900">
                 <ListFilter className="h-5 w-5 text-violet-600" />
@@ -193,9 +195,19 @@ export const BoardListView = ({
                   )}
                 >
                   <Columns3 className="h-3.5 w-3.5 text-neutral-500" />
-                  Cột Kanban
+                  Theo cột
                 </button>
               </div>
+            )}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="inline-flex items-center gap-1.5 self-start rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 sm:self-auto"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Thêm việc
+              </button>
             )}
           </header>
 
@@ -209,23 +221,36 @@ export const BoardListView = ({
           {groupMode === "agenda" ? (
             /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
             <>
-              {canEdit && (
+              {canEdit && (adding ? (
                 <QuickAddBar
+                  variant="card"
                   boardId={boardId}
-                  courses={courses}
+                  courses={courseOptions}
                   defaults={quickAddDefaults}
+                  placeholder="Tên việc, vd: nộp bài giải tích @mai ! #toán"
+                  onCancel={() => setAdding(false)}
                   trailing={
                     <button
                       type="button"
                       onClick={() => setCaptureOpen(true)}
                       title="Smart Capture: dán ghi chú dài, AI tách thành nhiều việc"
-                      className="rounded-md p-1 text-violet-500 hover:bg-violet-50 cursor-pointer"
+                      className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
                     >
-                      <Sparkles className="h-4 w-4" />
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Smart Capture
                     </button>
                   }
                 />
-              )}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAdding(true)}
+                  className="flex w-full items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-3.5 py-3 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
+                >
+                  <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
+                  Thêm việc…
+                </button>
+              ))}
 
               {!hasAnyAgendaTask ? (
                 <p className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
@@ -272,14 +297,26 @@ export const BoardListView = ({
                   showWhenEmpty
                   header={
                     canEdit ? (
-                      <QuickAddBar
-                        compact
-                        boardId={boardId}
-                        listId={group.key}
-                        courses={isTeamBoard ? undefined : courses}
-                        members={isTeamBoard ? assignableMembers : undefined}
-                        placeholder={`Thêm việc vào "${group.label}"…`}
-                      />
+                      addingListId === group.key ? (
+                        <QuickAddBar
+                          variant="card"
+                          boardId={boardId}
+                          listId={group.key}
+                          courses={isTeamBoard ? undefined : courseOptions}
+                          members={isTeamBoard ? assignableMembers : undefined}
+                          placeholder={`Tên việc trong "${group.label}"`}
+                          onCancel={() => setAddingListId(null)}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAddingListId(group.key)}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-neutral-400 transition-colors hover:bg-violet-50 hover:text-violet-700"
+                        >
+                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          Thêm việc vào {group.label}
+                        </button>
+                      )
                     ) : null
                   }
                 />
@@ -293,7 +330,7 @@ export const BoardListView = ({
         <TaskDetailPanel
           taskId={taskId}
           onClose={closeTask}
-          desktopClassName="top-0 h-full"
+          desktopClassName="top-0 h-full rounded-none border-0 border-l shadow-none"
         />
       )}
 

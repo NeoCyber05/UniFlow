@@ -107,6 +107,8 @@ model Card {
   scheduledStartAt     DateTime?
   scheduledEndAt       DateTime?
   isCompleted          Boolean   @default(false)
+  /// EVENT: lịch để xem (buổi học TKB), không có checkbox, không tính là việc
+  kind                 CardKind  @default(TASK)
   reminder             String?
   reminderSetAt        DateTime?
   reminderGeneration   String?
@@ -133,6 +135,11 @@ model Card {
   @@index([listId])
   @@index([listId, archivedAt, order])
   @@index([courseId])
+}
+
+enum CardKind {
+  TASK
+  EVENT
 }
 
 // Thiết bị nhận Web Push của một tài khoản; endpoint là duy nhất để nhiều tab không tạo thêm bản ghi.

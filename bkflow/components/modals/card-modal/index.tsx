@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useCardModal } from "@/hooks/use-card-modal";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 
 import { CardRealtimeSync } from "./card-realtime-sync";
 import { CardDetailBody } from "./card-detail-body";
@@ -50,24 +50,25 @@ export const CardModal = () => {
     });
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          requestClose();
-        }
-      }}
-    >
+    <>
       <CardRealtimeSync cardId={id} isOpen={isOpen} />
-      <DialogContent
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        className="sm:max-w-5xl w-[calc(100%-2rem)] h-[min(760px,calc(100vh-4rem))] rounded-2xl p-0 overflow-hidden shadow-2xl border border-neutral-200 flex flex-col"
+      <aside
+        aria-label="Chi tiết việc"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !event.defaultPrevented) requestClose();
+        }}
+        className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-border bg-background shadow-xl sm:w-[480px] xl:w-[560px]"
       >
-        {id && isOpen ? (
-          <CardDetailBody key={id} cardId={id} layout="dialog" onClose={onClose} beforeCloseRef={guardRef} />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+        <div className="flex justify-end border-b border-neutral-100 px-3 py-2">
+          <button type="button" onClick={requestClose} aria-label="Đóng" className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {id ? <CardDetailBody key={id} cardId={id} layout="panel" onClose={onClose} beforeCloseRef={guardRef} /> : null}
+      </aside>
+    </>
   );
 };

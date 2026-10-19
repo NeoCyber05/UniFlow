@@ -9,6 +9,8 @@ export type MyTask = TaskSchedule & {
   id: string;
   title: string;
   isCompleted: boolean;
+  /** EVENT = lịch để xem, không có checkbox */
+  kind: "TASK" | "EVENT";
   dueDate: string | null;
   updatedAt: string;
   myDayAt: string | null;

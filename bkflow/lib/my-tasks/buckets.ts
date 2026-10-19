@@ -14,6 +14,8 @@ export type BucketTask = {
   /** Hạn chỉ-ngày YYYY-MM-DD (loại trừ dueDate) */
   deadlineOn?: string | null;
   isCompleted: boolean;
+  /** Sự kiện (buổi học): caller chỉ đưa vào sự kiện của hôm nay */
+  isEvent?: boolean;
   updatedAt: Date;
   /** CardUserState.myDayAt của user hiện tại */
   myDayAt: Date | null;
@@ -56,6 +58,8 @@ export const isPinnedToday = (task: BucketTask, now: Date) =>
 
 /** Mỗi việc thuộc đúng một nhóm; null = không hiển thị (đã xong trước hôm nay). */
 export const getAgendaGroupKey = (task: BucketTask, now: Date): AgendaGroupKey | null => {
+  if (task.isEvent) return "today";
+
   if (task.isCompleted) {
     return isSameVNDay(task.updatedAt, now) ? "done" : null;
   }

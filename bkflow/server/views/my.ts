@@ -22,7 +22,7 @@ export const loadMy = async ({ view, error }: { view: string; error?: string }, 
     const permission = await requireBoardMemberForUser({ boardId, userId });
     if (permission.error || !permission.membership) return { notFound: true } as const;
 
-    const destination = getPersonalBoardDestination(view, boardId);
+    const destination = view === "today" && error ? null : getPersonalBoardDestination(view, boardId); // error redirects land here; don't bounce back
     if (destination) {
       const separator = destination.includes("?") ? "&" : "?";
       return { redirect: error ? `${destination}${separator}error=${encodeURIComponent(error)}` : destination } as const;
@@ -32,7 +32,6 @@ export const loadMy = async ({ view, error }: { view: string; error?: string }, 
     const data = await getTodoTasks({ userId, boardId, now });
     return {
       boardId,
-      view: view === "courses" ? "courses" : "today",
       context,
       data,
       now: now.toISOString(),

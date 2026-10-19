@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
+import { withCatalogCourses } from "@/lib/courses/hust-catalog";
+
 import { parseQuickAdd, toSearchKey } from "./parse-quick-add";
 
 const NOW = new Date("2026-10-06T03:00:00Z"); // Thứ Ba 6/10/2026, 10:00 giờ VN
@@ -58,6 +60,34 @@ describe("parseQuickAdd", () => {
     const result = parseQuickAdd("Ôn #giaitich", { courses: COURSES, now: NOW });
     assert.equal(result.courseId, null);
     assert.equal(result.title, "Ôn #giaitich");
+  });
+
+  it("#tên không khớp môn nào → loại tự đặt (id ảo custom:)", () => {
+    const result = parseQuickAdd("Viết báo cáo #Đồ_án", { courses: COURSES, now: NOW });
+    assert.equal(result.courseId, "custom:Đồ án");
+    assert.equal(result.title, "Viết báo cáo");
+    assert.deepEqual(result.tokens, [{ kind: "course", label: "Đồ án" }]);
+  });
+
+  it("không có danh sách môn (không phải bảng học kỳ) → # giữ nguyên", () => {
+    assert.equal(parseQuickAdd("x #abc", { now: NOW }).title, "x #abc");
+  });
+
+  it("mã có x khớp một chữ số; danh mục HUST gộp sau môn của bảng", () => {
+    const courses = withCatalogCourses(COURSES);
+    assert.equal(parseQuickAdd("Chạy #PE2101", { courses, now: NOW }).courseId, "catalog:PE2x01");
+    assert.equal(parseQuickAdd("Chạy #triet", { courses, now: NOW }).courseId, "catalog:SSH1111");
+    // IT3011 đã có trong bảng → dùng môn của bảng, không trùng mục danh mục
+    assert.equal(parseQuickAdd("Lab #IT3011", { courses, now: NOW }).courseId, "c-ctdl");
+  });
+
+  it("mã HP đứng riêng trong tiêu đề tự gắn môn, giữ chữ", () => {
+    const courses = withCatalogCourses(COURSES);
+    const result = parseQuickAdd("Nộp BT SSH1111, chương 2", { courses, now: NOW });
+    assert.equal(result.courseId, "catalog:SSH1111");
+    assert.equal(result.title, "Nộp BT SSH1111, chương 2");
+    // # đi sau vẫn thắng
+    assert.equal(parseQuickAdd("SSH1111 #IT3011", { courses, now: NOW }).courseId, "c-ctdl");
   });
 
   it("+tên khớp đầu từ trong tên thành viên", () => {

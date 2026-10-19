@@ -6,6 +6,7 @@ import { ACTION, ENTITY_TYPE } from "@prisma/client";
 import { triggerCardUpdated } from "@/lib/cards/realtime";
 import { createAuditLog } from "@/lib/create-audit-log";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { resolveCourseRef } from "@/lib/courses/course-ref";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
 
@@ -19,7 +20,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const { id, boardId, courseId } = data;
+  const { id, boardId } = data;
 
   try {
     const permission = await requireBoardEditor({ boardId, userId });
@@ -42,6 +43,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     if (!currentCard) {
       return { error: "Không tìm thấy thẻ." };
     }
+
+    const courseId = await resolveCourseRef(boardId, data.courseId);
 
     if (currentCard.courseId === courseId) {
       return { data: currentCard };

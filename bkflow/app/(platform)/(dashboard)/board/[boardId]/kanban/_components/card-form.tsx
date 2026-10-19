@@ -58,6 +58,7 @@ const createEmptyCardShape = ({
   deadlineOn: null,
   scheduledOn: null,
   scheduledStartAt: null,
+  kind: "TASK",
   scheduledEndAt: null,
   isCompleted: false,
   reminder: null,

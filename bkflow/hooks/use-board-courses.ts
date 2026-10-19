@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetcher } from "@/lib/fetcher";
 import type { BoardCourse, BoardCoursesResponse } from "@/lib/courses/board-courses";
+import { withCatalogCourses } from "@/lib/courses/hust-catalog";
 
 const EMPTY_COURSES: BoardCourse[] = [];
 
@@ -32,10 +33,18 @@ export const useBoardCourses = (
     [courses],
   );
 
+  const isSemesterBoard = query.data?.boardType === "SEMESTER";
+  // Lựa chọn khi gắn môn: bảng học kỳ có thêm danh mục HUST (id ảo, server tạo Course khi lưu)
+  const courseOptions = useMemo(
+    () => (isSemesterBoard ? withCatalogCourses(courses) : courses),
+    [isSemesterBoard, courses],
+  );
+
   return {
     courses,
+    courseOptions,
     courseById,
-    isSemesterBoard: query.data?.boardType === "SEMESTER",
+    isSemesterBoard,
     isLoading: query.isLoading,
   };
 };

@@ -8,6 +8,7 @@ import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
 import { CAPTURE_REJECTED, CapturedCardsError, createCapturedCardsWithStatus } from "@/lib/cards/create-captured-cards";
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { resolveCourseRef } from "@/lib/courses/course-ref";
 import { logger } from "@/lib/logger";
 import { requireBoardEditorForUser } from "@/lib/permissions";
 import {
@@ -70,6 +71,8 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: "Không tìm thấy danh sách.", errorCode: CAPTURE_REJECTED };
     }
 
+    const courseId = await resolveCourseRef(boardId, data.courseId);
+
     const { cards, createdIds } = await createCapturedCardsWithStatus({
       userId,
       boardId,
@@ -78,7 +81,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         listId: list.id,
         title: data.title,
         description: data.description ?? "",
-        courseId: data.courseId ?? null,
+        courseId,
         dueDate: data.dueDate ?? null,
         deadlineOn: data.deadlineOn ?? null,
         scheduledOn: data.scheduledOn ?? null,

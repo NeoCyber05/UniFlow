@@ -7,6 +7,7 @@ import {
   getVNWeekday,
   type VNDay,
 } from "./vn-day";
+import { customCourseId } from "@/lib/courses/hust-catalog";
 
 export type QuickAddCourse = { id: string; name: string; code: string | null };
 export type QuickAddMember = { userId: string; userName: string };
@@ -53,19 +54,28 @@ export const toSearchKey = (value: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-const matchCourse = (raw: string, courses: QuickAddCourse[]) => {
+/** `x` giữa hai chữ số trong mã (PE2x01) khớp một chữ số bất kỳ. */
+const codeMatches = (code: string, key: string) =>
+  toSearchKey(code) === key || new RegExp(`^${toSearchKey(code).replace(/(?<=\d)x(?=\d)/g, "\\d")}$`).test(key);
+
+const matchCourseByCode = (raw: string, courses: QuickAddCourse[]) => {
+  const key = toSearchKey(raw);
+  return key ? courses.filter((course) => course.code && codeMatches(course.code, key)) : [];
+};
+
+/** Mã khớp thì lấy mã; không thì tiền tố tên. Trả mọi môn khớp để caller phân biệt 0 / 1 / mơ hồ. */
+const matchCourses = (raw: string, courses: QuickAddCourse[]) => {
   const key = toSearchKey(raw);
 
-  if (!key) return null;
+  if (!key) return [];
 
-  const byCode = courses.filter((course) => course.code && toSearchKey(course.code) === key);
+  const byCode = matchCourseByCode(raw, courses);
 
-  if (byCode.length === 1) return byCode[0];
-
-  const byName = courses.filter((course) => toSearchKey(course.name).startsWith(key));
-
-  return byName.length === 1 ? byName[0] : null;
+  return byCode.length > 0 ? byCode : courses.filter((course) => toSearchKey(course.name).startsWith(key));
 };
+
+// Mã HP đứng riêng trong tiêu đề (SSH1111, PE2101), không cần #
+const COURSE_CODE_WORD = /^[a-z]{2,4}\d[\dx]{2,4}$/i;
 
 const matchMember = (raw: string, members: QuickAddMember[]) => {
   const key = toSearchKey(raw);
@@ -135,7 +145,8 @@ const setSingleToken = (tokens: QuickAddToken[], token: QuickAddToken) => {
 
 /**
  * Tách token khỏi chuỗi thêm nhanh. Token không nhận dạng được giữ nguyên trong tiêu đề.
- * `#môn` (mã khớp chính xác, hoặc tiền tố tên khớp duy nhất), `+tên` (đầu từ, khớp duy nhất),
+ * `#môn` (mã khớp chính xác, hoặc tiền tố tên khớp duy nhất; không khớp gì → loại tự đặt),
+ * mã HP đứng riêng trong tiêu đề cũng tự gắn môn (giữ chữ trong tiêu đề), `+tên` (đầu từ, khớp duy nhất),
  * `!` đứng riêng, `@nay|mai|t2..t7|cn|dd/mm` → hạn 23:59 giờ VN.
  */
 export const parseQuickAdd = (
@@ -160,11 +171,19 @@ export const parseQuickAdd = (
     const body = word.slice(1);
 
     if (prefix === "#" && body) {
-      const course = matchCourse(body, courses);
+      const matched = matchCourses(body, courses);
 
-      if (course) {
-        courseId = course.id;
-        setSingleToken(tokens, { kind: "course", label: course.code ?? course.name });
+      if (matched.length === 1) {
+        courseId = matched[0].id;
+        setSingleToken(tokens, { kind: "course", label: matched[0].code ?? matched[0].name });
+        continue;
+      }
+
+      // Không khớp môn nào → loại tự đặt (`#Đồ_án` → "Đồ án"); chỉ khi có danh sách môn (bảng học kỳ)
+      if (matched.length === 0 && courses.length > 0 && /\p{L}/u.test(body)) {
+        const name = body.replace(/_/g, " ");
+        courseId = customCourseId(name);
+        setSingleToken(tokens, { kind: "course", label: name });
         continue;
       }
     }
@@ -188,6 +207,16 @@ export const parseQuickAdd = (
         dueDay = parsed;
         setSingleToken(tokens, { kind: "due", label: formatVNShortDate(getEndOfVNDay(parsed)) });
         continue;
+      }
+    }
+
+    if (!courseId) {
+      const code = word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      const matched = COURSE_CODE_WORD.test(code) ? matchCourseByCode(code, courses) : [];
+
+      if (matched.length === 1) {
+        courseId = matched[0].id;
+        setSingleToken(tokens, { kind: "course", label: matched[0].code ?? matched[0].name });
       }
     }
 
