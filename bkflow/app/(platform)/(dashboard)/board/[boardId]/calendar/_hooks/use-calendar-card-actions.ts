@@ -61,6 +61,32 @@ export const useCalendarCardActions = ({
     return getCardRevision(queryClient, cardId, ...times);
   }, [query.data?.boardId, queryClient]);
 
+  // Dời thẻ ngay trên cache như Việc cần làm; lỗi thì onError refetch để hoàn tác.
+  const patchCalendarCache = useCallback((input: UpdateCardInput) => {
+    const queryKey = ["board-calendar", query.data?.boardId];
+    const patch: Partial<BoardCalendarCardItem> = {
+      ...(input.startDate !== undefined ? { startDate: input.startDate?.toISOString() ?? null } : {}),
+      // Hạn có giờ và hạn chỉ-ngày loại trừ nhau (giống card-update-service).
+      ...(input.dueDate !== undefined ? { dueDate: input.dueDate?.toISOString() ?? null, ...(input.dueDate ? { deadlineOn: null } : {}) } : {}),
+      ...(input.deadlineOn !== undefined ? { deadlineOn: input.deadlineOn, ...(input.deadlineOn ? { dueDate: null } : {}) } : {}),
+      ...(input.scheduledOn !== undefined ? { scheduledOn: input.scheduledOn } : {}),
+      ...(input.scheduledStartAt !== undefined ? { scheduledStartAt: input.scheduledStartAt } : {}),
+      ...(input.scheduledEndAt !== undefined ? { scheduledEndAt: input.scheduledEndAt } : {}),
+      ...(input.isCompleted !== undefined ? { isCompleted: input.isCompleted } : {}),
+    };
+
+    void queryClient.cancelQueries({ queryKey });
+    queryClient.setQueriesData<BoardCalendarResponse>(
+      { queryKey },
+      (current) => current && {
+        ...current,
+        items: current.items.map((item) =>
+          item.type === "card" && item.cardId === input.id ? { ...item, ...patch } : item
+        ),
+      },
+    );
+  }, [query.data?.boardId, queryClient]);
+
   // Bước kế trong hàng đợi chạy sau khi request trước kết thúc để revision luôn mới nhất.
   const dispatchNextRef = useRef<() => void>(() => undefined);
 
@@ -153,6 +179,7 @@ export const useCalendarCardActions = ({
   return {
     executeUpdateCard: ((rawInput: UpdateCardInput) => {
       setSaveError(null);
+      patchCalendarCache(rawInput);
       queueRef.current.push({ input: rawInput });
       dispatchNextRef.current();
     }) as (input: UpdateCardInput) => void,
@@ -183,6 +210,7 @@ export const useCalendarCardActions = ({
       updateSuccessToastRef.current = successMessage ?? null;
       const input: UpdateCardInput = { id: cardId, boardId: query.data?.boardId ?? "", ...patch };
       setSaveError(null);
+      patchCalendarCache(input);
       queueRef.current.push({ input });
       dispatchNextRef.current();
     },

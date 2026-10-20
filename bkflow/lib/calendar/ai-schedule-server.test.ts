@@ -59,6 +59,16 @@ test("generation is read-only, scopes IDs and busy sessions, and stamps server r
   assert.equal(fake.writes.length, 0);
 });
 
+test("drops slots outside free hours but keeps the valid ones", async () => {
+  const fake = fakeDb();
+  const preview = await generateSchedulePreview(input, "u", fake.database, async () => JSON.stringify({ summary: "Xếp", slots: [
+    { ...slots[0], reason: "" },
+    { cardId: "b", startsAt: "2030-01-10T20:00:00+07:00", endsAt: "2030-01-10T21:00:00+07:00", reason: "" },
+  ] }), now);
+  assert.deepEqual(preview.slots.map(slot => slot.cardId), ["a"]);
+  assert.match(preview.summary, /bỏ 1 buổi/);
+});
+
 test("rejects non-owners before reading tasks or calling AI", async () => {
   const fake = fakeDb({ owner: false });
   await assert.rejects(() => generateSchedulePreview(input, "u", fake.database, async () => { assert.fail("AI must not be called"); }, now));

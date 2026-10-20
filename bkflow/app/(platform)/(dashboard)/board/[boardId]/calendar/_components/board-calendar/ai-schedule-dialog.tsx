@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Dialog } from "@animate-ui/react/primitives/radix-ui/dialog";
 import { Fade } from "@animate-ui/react/primitives/effects/fade";
-import { Collapsible } from "@animate-ui/react/primitives/radix-ui/collapsible";
-import { toCssTiming, transition, useShouldReduceMotion, useTempoTransition } from "@animate-ui/react/utils/motion";
-import { AlertCircle, ArrowLeft, ArrowRight, CalendarCheck2, CalendarDays, Check, ChevronDown, Clock3, ListTodo, Loader2, ShieldCheck, Sparkles, WandSparkles, X } from "lucide-react";
+import { ShimmeringText } from "@animate-ui/react/primitives/texts/shimmering";
+import { blur, ease, ReducedMotionConfig, scale, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
+import { AlertCircle, ArrowLeft, ArrowRight, CalendarCheck2, CalendarDays, Check, Clock3, ListTodo, Loader2, ShieldCheck, Sparkles, WandSparkles, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { generateAiSchedule } from "@/actions/ai/generate-ai-schedule";
@@ -22,7 +23,76 @@ type Props = { boardId: string; cards: BoardCalendarUnscheduledCard[]; disabled:
 const dateLabel = (value: string) => new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", weekday: "long", day: "2-digit", month: "2-digit" }).format(new Date(value));
 const timeLabel = (value: string) => new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 const checkboxClass = "size-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring disabled:cursor-not-allowed";
-const dayLabel = (value: string) => value ? value.split("-").reverse().join("/") : "Chọn ngày";
+const RANGE_PRESETS = [{ label: "Hôm nay", days: 0 }, { label: "3 ngày", days: 2 }, { label: "7 ngày", days: 6 }, { label: "14 ngày", days: 13 }];
+const LOADING_STEPS = ["Đọc lịch đang có", "Cân nhắc deadline", "Xếp từng buổi làm"];
+// Which row lights up in each day column of the loading grid.
+const LOADING_GRID = [0, 2, 1, 0, 2, 1, 0];
+
+const ScheduleLoading = ({ count }: { count: number }) => {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setStep(current => Math.min(current + 1, LOADING_STEPS.length - 1)), 1800);
+    return () => clearInterval(id);
+  }, []);
+  const pop = useTempoTransition(spring.checkPop);
+  const fade = useTempoTransition(transition.fade);
+  return (
+    <ReducedMotionConfig>
+      <div role="status" className="flex min-h-80 flex-col items-center justify-center px-4 py-10 text-center md:h-full md:min-h-0">
+        <div aria-hidden="true" className="relative">
+          <div className="absolute -inset-6 rounded-[2rem] bg-primary/10 blur-2xl" />
+          <div className="relative grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-background p-3 shadow-sm">
+            {LOADING_GRID.map((row, day) => (
+              <div key={day} className="flex flex-col gap-1.5">
+                <span className="mx-auto mb-0.5 h-1 w-3 rounded-full bg-muted-foreground/25" />
+                {[0, 1, 2].map(cell => (
+                  <span key={cell} className="relative h-5 w-6 rounded-[5px] bg-muted">
+                    {cell === row && (
+                      <motion.span className="absolute inset-0 rounded-[5px] bg-primary"
+                        initial={{ opacity: 0, scale: scale.icon }}
+                        animate={{ opacity: [0, 1, 1, 0], scale: [scale.icon, 1, 1, scale.icon] }}
+                        // shortcut: decorative loop ignores AnimateUIProvider tempo; move onto scaleTransition if tempo is ever set.
+                        transition={{ duration: 3.2, times: [0, 0.15, 0.75, 1], delay: day * 0.2, repeat: Infinity, ease: ease.out }} />
+                    )}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <h3 className="mt-9 text-xl font-semibold tracking-tight">
+          <ShimmeringText text="Đang sắp xếp một kế hoạch vừa sức" duration={1.4} color="var(--foreground)" shimmeringColor="var(--primary)" />
+        </h3>
+        <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">Tìm khoảng trống cho {count} công việc của bạn.</p>
+        <ol className="mt-6 w-full max-w-[15rem] space-y-2.5 text-left text-sm">
+          {LOADING_STEPS.map((label, index) => {
+            const done = index < step;
+            const active = index === step;
+            return (
+              <li key={label} className={cn("flex items-center gap-3 transition-colors duration-300", !done && !active && "text-muted-foreground/60")}>
+                <span className={cn("relative flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-300",
+                  done ? "border-primary bg-primary text-primary-foreground" : active ? "border-primary/40 text-primary" : "border-border")}>
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {done ? (
+                      <motion.span key="done" initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }} animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: pop }}>
+                        <Check className="size-3" strokeWidth={3} />
+                      </motion.span>
+                    ) : active ? (
+                      <motion.span key="active" exit={{ opacity: 0, transition: fade }}>
+                        <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
+                      </motion.span>
+                    ) : null}
+                  </AnimatePresence>
+                </span>
+                {label}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </ReducedMotionConfig>
+  );
+};
 
 export const AiScheduleDialog = ({ boardId, cards, disabled }: Props) => {
   const [open, setOpen] = useState(false);
@@ -60,8 +130,6 @@ export const AiScheduleDialog = ({ boardId, cards, disabled }: Props) => {
 
 const SchedulePlanner = ({ boardId, cards: initialCards, onBusyChange, onClose }: Omit<Props, "disabled"> & { onBusyChange: (busy: boolean) => void; onClose: () => void }) => {
   const queryClient = useQueryClient();
-  const disclosureTiming = toCssTiming(useTempoTransition(transition.disclosure));
-  const reduceMotion = useShouldReduceMotion();
   const [cards] = useState(initialCards);
   const [selected, setSelected] = useState(() => cards.slice(0, AI_SCHEDULE_TASK_LIMIT).map(card => card.cardId));
   const [preferences, setPreferences] = useState<SchedulePreferencesInput>(() => {
@@ -135,16 +203,7 @@ const SchedulePlanner = ({ boardId, cards: initialCards, onBusyChange, onClose }
         <Fade key={phase} className="grid md:h-[min(560px,calc(92dvh_-_150px))] md:grid-cols-[minmax(0,1fr)_280px]">
           <main className="min-w-0 px-5 py-5 sm:px-7 md:min-h-0 md:overflow-y-auto">
             {phase === "loading" ? (
-              <div role="status" className="flex min-h-80 flex-col items-center justify-center px-4 py-10 text-center md:h-full md:min-h-0">
-                <div className="relative mb-6 flex size-20 items-center justify-center rounded-2xl border border-primary/15 bg-primary/5 text-primary">
-                  <CalendarDays aria-hidden="true" className="size-8" strokeWidth={1.5} />
-                  <span className="absolute -bottom-2 -right-2 flex size-8 items-center justify-center rounded-full border-4 border-popover bg-primary text-primary-foreground">
-                    <Loader2 aria-hidden="true" className="size-3.5 animate-spin motion-reduce:animate-pulse" />
-                  </span>
-                </div>
-                <h3 className="text-xl font-semibold tracking-tight">Đang sắp xếp một kế hoạch vừa sức</h3>
-                <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Tìm khoảng trống, cân nhắc deadline và dành thời gian cho {selected.length} công việc của bạn.</p>
-              </div>
+              <ScheduleLoading count={selected.length} />
             ) : preview ? (
               <>
                 <div className="mb-7 flex items-start justify-between gap-3">
@@ -206,84 +265,55 @@ const SchedulePlanner = ({ boardId, cards: initialCards, onBusyChange, onClose }
                 )}
               </>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Lên kế hoạch cùng AI</p>
                   <h3 className="max-w-md text-2xl font-semibold leading-tight tracking-tight">Bạn muốn làm việc theo nhịp nào?</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Chọn thời gian rảnh, thêm mong muốn. Phần sắp xếp để AI lo.</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Chọn khung giờ rảnh, phần sắp xếp để AI lo.</p>
                 </div>
 
-                <div>
-                  <label htmlFor="ai-schedule-prompt" className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
-                    Mong muốn của bạn <span className="text-xs font-normal text-muted-foreground">Tùy chọn</span>
-                  </label>
-                  <div className="rounded-xl border border-input bg-background shadow-sm transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
-                    <textarea id="ai-schedule-prompt" rows={3} maxLength={1500}
-                      value={prompt} onChange={event => setPrompt(event.target.value)}
-                      placeholder="Tôi muốn tập trung việc khó vào buổi sáng, chừa 15 phút nghỉ giữa các việc…"
-                      className="block w-full resize-none bg-transparent px-4 pb-2 pt-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground" />
-                    <div className="flex items-center justify-between px-4 pb-3 text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5 text-[11px]"><Sparkles aria-hidden="true" className="size-3" /> Viết tự nhiên như bạn nghĩ</span>
-                      <span className="text-[10px] tabular-nums">{prompt.length}/1500</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {["Ưu tiên buổi sáng", "Chừa 15 phút nghỉ", "Việc khó làm trước"].map(suggestion => (
-                      <button key={suggestion} type="button"
-                        onClick={() => setPrompt(current => `${current}${current ? ". " : ""}${suggestion}`.slice(0, 1500))}
-                        className="rounded-md bg-muted/70 px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-ring">
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <fieldset className="space-y-3">
-                  <legend className="mb-3 text-sm font-medium">Thời gian làm việc</legend>
-                  <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
-                    {[{ label: "Hôm nay", days: 0 }, { label: "7 ngày tới", days: 6 }].map(preset => {
+                <fieldset>
+                  <legend className="mb-2.5 flex items-center gap-2 text-sm font-medium"><CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" /> Trong</legend>
+                  <div className="grid grid-cols-4 gap-1 rounded-xl bg-muted/60 p-1">
+                    {RANGE_PRESETS.map(preset => {
                       const first = getVNDayKey(today);
                       const last = getVNDayKey(addVNDays(today, preset.days));
                       const active = preferences.fromDay === first && preferences.toDay === last;
                       return <button key={preset.label} type="button" aria-pressed={active}
                         onClick={() => setPreferences(current => ({ ...current, fromDay: first, toDay: last }))}
-                        className={cn("flex-1 rounded-md px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring", active ? "bg-popover text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                        className={cn("rounded-lg px-2 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring", active ? "bg-popover text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                         {preset.label}
                       </button>;
                     })}
                   </div>
-                  <Collapsible.Root>
-                    <Collapsible.Trigger asChild>
-                      <button type="button" className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left focus-visible:outline-2 focus-visible:outline-ring">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                          <span className="min-w-0 text-xs">
-                            <span className="block font-medium">{dayLabel(preferences.fromDay)} – {dayLabel(preferences.toDay)}</span>
-                            <span className="mt-1 block text-muted-foreground">{preferences.dayStart} – {preferences.dayEnd} mỗi ngày · GMT+7</span>
-                          </span>
-                        </span>
-                        <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-primary">Chỉnh <ChevronDown aria-hidden="true" style={{ transitionDuration: reduceMotion ? "0ms" : `${disclosureTiming.duration}ms`, transitionTimingFunction: disclosureTiming.easing }} className="size-3 transition-transform group-data-[state=open]:rotate-180 motion-reduce:transition-none" /></span>
-                      </button>
-                    </Collapsible.Trigger>
-                    <Collapsible.Content>
-                  <div className="grid min-w-0 grid-cols-2 gap-3 pb-1 pt-4">
-                    <label className="min-w-0 space-y-1.5 text-xs text-muted-foreground">Từ ngày
-                      <Input aria-label="Từ ngày" type="date" required value={preferences.fromDay} onChange={event => changePreference("fromDay", event.target.value)} className="h-10 bg-background text-foreground" />
-                    </label>
-                    <label className="min-w-0 space-y-1.5 text-xs text-muted-foreground">Đến ngày
-                      <Input aria-label="Đến ngày" type="date" required min={preferences.fromDay} value={preferences.toDay} onChange={event => changePreference("toDay", event.target.value)} className="h-10 bg-background text-foreground" />
-                    </label>
-                    <label className="min-w-0 space-y-1.5 text-xs text-muted-foreground">Bắt đầu
-                      <Input type="time" required value={preferences.dayStart} onChange={event => changePreference("dayStart", event.target.value)} className="h-10 bg-background text-foreground" />
-                    </label>
-                    <label className="min-w-0 space-y-1.5 text-xs text-muted-foreground">Kết thúc
-                      <Input type="time" required value={preferences.dayEnd} onChange={event => changePreference("dayEnd", event.target.value)} className="h-10 bg-background text-foreground" />
-                    </label>
-                  </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Chọn tối đa 31 ngày. Giờ Việt Nam (GMT+7).</p>
-                    </Collapsible.Content>
-                  </Collapsible.Root>
                 </fieldset>
+
+                <fieldset>
+                  <legend className="mb-2.5 flex w-full items-center gap-2 text-sm font-medium"><Clock3 aria-hidden="true" className="size-4 text-muted-foreground" /> Giờ rảnh mỗi ngày <span className="ml-auto text-xs font-normal text-muted-foreground">GMT+7</span></legend>
+                  <div className="flex items-center gap-2">
+                    <Input type="time" required aria-label="Bắt đầu" value={preferences.dayStart} onChange={event => changePreference("dayStart", event.target.value)} className="h-10 flex-1 bg-background text-center tabular-nums" />
+                    <span aria-hidden="true" className="text-muted-foreground">→</span>
+                    <Input type="time" required aria-label="Kết thúc" value={preferences.dayEnd} onChange={event => changePreference("dayEnd", event.target.value)} className="h-10 flex-1 bg-background text-center tabular-nums" />
+                  </div>
+                </fieldset>
+
+                <div>
+                  <label htmlFor="ai-schedule-prompt" className="mb-2.5 flex items-center gap-2 text-sm font-medium">
+                    <Sparkles aria-hidden="true" className="size-4 text-muted-foreground" /> Mong muốn <span className="ml-auto text-xs font-normal text-muted-foreground">Tùy chọn</span>
+                  </label>
+                  <textarea id="ai-schedule-prompt" rows={2} maxLength={1500}
+                    value={prompt} onChange={event => setPrompt(event.target.value)}
+                    placeholder="Việc khó vào buổi sáng, chừa 15 phút nghỉ…"
+                    className="block w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm leading-relaxed shadow-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20" />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {["Ưu tiên buổi sáng", "Chừa 15 phút nghỉ", "Việc khó làm trước"].map(suggestion => (
+                      <button key={suggestion} type="button"
+                        onClick={() => setPrompt(current => `${current}${current ? ". " : ""}${suggestion}`.slice(0, 1500))}
+                        className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+                        + {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </main>
@@ -309,10 +339,10 @@ const SchedulePlanner = ({ boardId, cards: initialCards, onBusyChange, onClose }
               <>
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <h3 className="flex items-center gap-2 text-sm font-semibold"><ListTodo aria-hidden="true" className="size-4 text-muted-foreground" /> Công việc</h3>
-                  <span className="rounded-md bg-background px-2 py-1 text-xs font-medium tabular-nums ring-1 ring-border">{selected.length}/{cards.length}</span>
+                  <span className="rounded-md bg-background px-2 py-1 text-xs font-medium tabular-nums ring-1 ring-border">{selected.length}/{Math.min(cards.length, AI_SCHEDULE_TASK_LIMIT)}</span>
                 </div>
                 <div className="mb-3 flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Theo bộ lọc hiện tại</span>
+                  <span>Tối đa {AI_SCHEDULE_TASK_LIMIT} việc mỗi lần</span>
                   <button type="button" disabled={busy}
                     onClick={() => setSelected(selected.length ? [] : cards.slice(0, AI_SCHEDULE_TASK_LIMIT).map(card => card.cardId))}
                     className="rounded px-1 py-1 font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">
@@ -333,14 +363,8 @@ const SchedulePlanner = ({ boardId, cards: initialCards, onBusyChange, onClose }
                     </label>
                   ))}
                 </div>
-                <p className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">Tối đa {AI_SCHEDULE_TASK_LIMIT} việc mỗi lần xếp lịch.</p>
               </>
             )}
-
-            <details className="mt-5 border-t border-border pt-4 text-[11px] text-muted-foreground">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded py-1 font-medium focus-visible:outline-2 focus-visible:outline-ring"><span className="inline-flex items-center gap-1.5"><ShieldCheck aria-hidden="true" className="size-3.5" /> Cách AI xếp lịch</span><ChevronDown aria-hidden="true" className="size-3" /></summary>
-              <p className="mt-2 leading-relaxed">Ưu tiên deadline, tránh lịch làm đã có. Lịch chỉ có ngày giữ trọn ngày. AI ước lượng thời lượng, mặc định 60 phút khi chưa rõ. Hạn nộp được giữ nguyên.</p>
-            </details>
           </aside>
         </Fade>
       </div>

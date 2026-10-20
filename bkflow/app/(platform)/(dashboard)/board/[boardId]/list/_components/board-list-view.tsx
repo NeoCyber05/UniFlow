@@ -16,17 +16,20 @@ import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
 import { TaskLayoutSwitcher } from "@/components/my-tasks/task-layout-switcher";
 import { getGroupTone, TaskGroupSection } from "@/components/my-tasks/task-group-section";
 import { TodoInsights } from "@/components/my-tasks/todo-insights";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBoardCourses } from "@/hooks/use-board-courses";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
 import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { filterableCardMatchesBoardFilters, PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
+import { getListStatus } from "@/lib/boards/list-status";
 import { fetcher } from "@/lib/fetcher";
 import { todoTaskMatchesFilters } from "@/lib/my-tasks/todo-filters";
 import {
   boardTasksQueryKey,
   MY_TASKS_ROOT_KEY,
   type MyTask,
+  type MyTaskGroup,
   type TaskListResponse,
 } from "@/lib/my-tasks/types";
 import { cn } from "@/lib/utils";
@@ -114,7 +117,13 @@ export const BoardListView = ({
   const [openByGroup, setOpenByGroup] = useLocalStorage<Record<string, boolean>>(TODO_GROUPS_STORAGE_KEY, {});
   const [captureOpen, setCaptureOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [addingListId, setAddingListId] = useState<string | null>(null);
+  const [addListId, setAddListId] = useState<string>();
+
+  // Một ô thêm duy nhất, chọn cột lúc tạo; cột "Xong" không nhận việc mới
+  const addableLists = lists.filter((list) => getListStatus(list.title) !== "done");
+  const addTargets = addableLists.length > 0 ? addableLists : lists;
+  const targetListId =
+    addListId ?? (addTargets.find((list) => getListStatus(list.title) === "todo") ?? addTargets[0])?.id;
 
   // Dữ liệu theo cột Kanban
   const { data: listData } = useQuery<TaskListResponse>({
@@ -125,17 +134,23 @@ export const BoardListView = ({
   });
 
   // Dữ liệu theo thời hạn (Agenda + Việc nhóm) cho học kỳ
-  const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, groupMode === "agenda");
+  const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, !isTeamBoard);
 
-  // Lọc theo cột
-  const columnGroups = useMemo(
-    () =>
-      (listData?.groups ?? []).map((group) => ({
-        ...group,
-        tasks: group.tasks.filter((task) => matchesFilters(task, filters, currentBoardMemberId)),
-      })),
-    [listData?.groups, filters, currentBoardMemberId],
-  );
+  // Lọc theo cột; việc đã tích và cột "Xong" gộp vào một nhóm Xong ở cuối
+  const columnGroups = useMemo(() => {
+    const open: MyTaskGroup[] = [];
+    const done: MyTask[] = [];
+    for (const group of listData?.groups ?? []) {
+      const tasks = group.tasks.filter((task) => matchesFilters(task, filters, currentBoardMemberId));
+      if (getListStatus(group.label) === "done") {
+        done.push(...tasks);
+        continue;
+      }
+      done.push(...tasks.filter((task) => task.isCompleted));
+      open.push({ ...group, tasks: tasks.filter((task) => !task.isCompleted) });
+    }
+    return [...open, { key: "done", label: "Xong", collapsed: true, tasks: done }];
+  }, [listData?.groups, filters, currentBoardMemberId]);
 
   // Lọc theo thời hạn
   const allAgendaGroups = useMemo(() => agendaData?.groups ?? [], [agendaData?.groups]);
@@ -153,7 +168,7 @@ export const BoardListView = ({
   const pendingAgendaGroups = agendaGroups.filter((group) => group.key !== "done" && group.tasks.length > 0);
   const pendingCount = pendingAgendaGroups.reduce((sum, group) => sum + group.tasks.length, 0);
   const overdueCount = agendaGroups.find((group) => group.key === "overdue")?.tasks.length ?? 0;
-  const showInsights = groupMode === "agenda" && !taskId && hasAnyAgendaTask;
+  const showInsights = !isTeamBoard && !taskId && hasAnyAgendaTask;
   const slide = useTempoTransition(spring.selection);
 
   // Chip nhảy tới nhóm: mở nhóm nếu đang gập rồi cuộn tới
@@ -190,7 +205,7 @@ export const BoardListView = ({
               </h1>
               <p className="mt-1 text-sm text-neutral-500">
                 <span className="capitalize">{formatToday()}</span>
-                {groupMode === "agenda" && hasAnyAgendaTask && (
+                {!isTeamBoard && hasAnyAgendaTask && (
                   <>
                     {" · "}còn {pendingCount} việc
                     {overdueCount > 0 && <span className="font-semibold text-rose-600"> · {overdueCount} quá hạn</span>}
@@ -269,40 +284,60 @@ export const BoardListView = ({
             </div>
           )}
 
-          {groupMode === "agenda" ? (
-            /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
-            <>
-              {canEdit && (adding ? (
-                <QuickAddBar
-                  variant="card"
-                  boardId={boardId}
-                  courses={courseOptions}
-                  defaults={quickAddDefaults}
-                  placeholder="Tên việc, vd: nộp bài giải tích @mai ! #toán"
-                  onCancel={() => setAdding(false)}
-                  trailing={
+          {canEdit && (adding ? (
+            <QuickAddBar
+              variant="card"
+              boardId={boardId}
+              listId={targetListId}
+              courses={isTeamBoard ? undefined : courseOptions}
+              members={isTeamBoard ? assignableMembers : undefined}
+              defaults={groupMode === "agenda" ? quickAddDefaults : undefined}
+              placeholder="Tên việc, vd: nộp bài giải tích @mai ! #toán"
+              onCancel={() => setAdding(false)}
+              trailing={
+                <div className="ml-auto flex items-center gap-1">
+                  {addTargets.length > 1 && (
+                    <Select value={targetListId} onValueChange={setAddListId}>
+                      <SelectTrigger aria-label="Thêm vào cột" className="h-8 w-auto gap-1.5 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {addTargets.map((list) => (
+                          <SelectItem key={list.id} value={list.id}>
+                            {list.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {!isTeamBoard && (
                     <button
                       type="button"
                       onClick={() => setCaptureOpen(true)}
                       title="Smart Capture: dán ghi chú dài, AI tách thành nhiều việc"
-                      className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       Smart Capture
                     </button>
-                  }
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAdding(true)}
-                  className="flex w-full items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-3.5 py-3 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
-                >
-                  <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
-                  Thêm việc…
-                </button>
-              ))}
+                  )}
+                </div>
+              }
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-3.5 py-3 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
+            >
+              <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
+              Thêm việc…
+            </button>
+          ))}
 
+          {groupMode === "agenda" ? (
+            /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
+            <>
               {!hasAnyAgendaTask ? (
                 <p className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
                   Không có việc nào. Thêm việc ở ô phía trên.
@@ -334,7 +369,7 @@ export const BoardListView = ({
           ) : (
             /* --- CHẾ ĐỘ 2: THEO CỘT KANBAN --- */
             <>
-              {columnGroups.length === 0 && (
+              {(listData?.groups ?? []).length === 0 && (
                 <p className="py-10 text-center text-sm text-neutral-500">Bảng chưa có cột nào.</p>
               )}
               {columnGroups.map((group) => (
@@ -345,31 +380,9 @@ export const BoardListView = ({
                   onOpen={openTask}
                   showAssignees={isTeamBoard}
                   showBoardChip={false}
-                  showWhenEmpty
-                  header={
-                    canEdit ? (
-                      addingListId === group.key ? (
-                        <QuickAddBar
-                          variant="card"
-                          boardId={boardId}
-                          listId={group.key}
-                          courses={isTeamBoard ? undefined : courseOptions}
-                          members={isTeamBoard ? assignableMembers : undefined}
-                          placeholder={`Tên việc trong "${group.label}"`}
-                          onCancel={() => setAddingListId(null)}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAddingListId(group.key)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-neutral-400 transition-colors hover:bg-violet-50 hover:text-violet-700"
-                        >
-                          <Plus className="h-4 w-4" aria-hidden="true" />
-                          Thêm việc vào {group.label}
-                        </button>
-                      )
-                    ) : null
-                  }
+                  showWhenEmpty={group.key !== "done"}
+                  isOpen={openByGroup[group.key] ?? !group.collapsed}
+                  onOpenChange={(open) => setOpenByGroup((current) => ({ ...current, [group.key]: open }))}
                 />
               ))}
             </>

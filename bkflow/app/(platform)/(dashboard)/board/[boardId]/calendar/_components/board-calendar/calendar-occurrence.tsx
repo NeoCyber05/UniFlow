@@ -100,7 +100,7 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
             : "cursor-grab active:cursor-grabbing",
           getOccurrenceTone(occurrence, courseTone),
           draggingOccurrenceId === occurrence.id && "opacity-60 ring-2 ring-violet-300",
-          (isUpdatingCardDate || isUpdatingChecklistItemDueDate) && "cursor-wait opacity-70",
+          (isUpdatingCardDate || isUpdatingChecklistItemDueDate) && "cursor-wait",
           className,
         )}
       >

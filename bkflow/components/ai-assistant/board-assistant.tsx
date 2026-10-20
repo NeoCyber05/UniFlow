@@ -13,12 +13,14 @@ import {
   ArrowUp,
   Bot,
   GripHorizontal,
+  ImagePlus,
   Maximize2,
   Minimize2,
   Minus,
   Sparkles,
   Square,
   Trash2,
+  X,
 } from "lucide-react";
 import { useRouter } from "@/web/shims/next-navigation";
 import {
@@ -37,6 +39,8 @@ import { useCardModal } from "@/hooks/use-card-modal";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
 import { cn } from "@/lib/utils";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
+
+import { compressImage } from "@/components/capture/image-import-dialog";
 
 import { AssistantMessage } from "./assistant-message";
 
@@ -147,6 +151,12 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ảnh đính kèm (data URL đã nén), gửi cùng câu hỏi
+  const [image, setImage] = useState<string | null>(null);
+  const attachImage = (file: File) => {
+    void compressImage(file).then(setImage).catch(() => toast.error("Không đọc được ảnh."));
+  };
   const dragRef = useRef<{ startX: number; startY: number; origin: Offset } | null>(null);
   const handledToolCalls = useRef(new Set<string>());
 
@@ -309,19 +319,24 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
     (text: string) => {
       const value = text.trim();
 
-      if (!value || isBusy || !enabled) {
+      if ((!value && !image) || isBusy || !enabled) {
         return;
       }
 
       clearError();
       setInput(value);
       if (operation === "edit_page" && onEditPage) {
+        if (!value) return;
         void onEditPage(value).then(ok => { if (ok) setInput(current => current === value ? "" : current); });
       } else {
-        void sendMessage({ text: value });
+        void sendMessage({
+          text: value,
+          ...(image ? { files: [{ type: "file" as const, mediaType: "image/jpeg", url: image }] } : {}),
+        });
+        setImage(null);
       }
     },
-    [clearError, enabled, isBusy, sendMessage, operation, onEditPage],
+    [clearError, enabled, isBusy, sendMessage, operation, onEditPage, image],
   );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -546,13 +561,53 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             event.preventDefault();
             submit(input);
           }}
-          className="flex items-end gap-2 rounded-xl border bg-muted/30 px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20"
+          className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20"
         >
+          {image && (
+            <div className="relative basis-full pt-1">
+              <img src={image} alt="Ảnh đính kèm" className="h-16 rounded-lg border object-cover" />
+              <button
+                type="button"
+                onClick={() => setImage(null)}
+                aria-label="Bỏ ảnh"
+                className="absolute left-1 top-2 rounded-full bg-background/90 p-0.5 text-muted-foreground shadow hover:text-rose-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!enabled || isBusy}
+            aria-label="Đính kèm ảnh"
+            title="Đính kèm ảnh (hoặc dán ảnh vào ô)"
+            className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-violet-600 disabled:opacity-40"
+          >
+            <ImagePlus className="size-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) attachImage(file);
+              event.target.value = "";
+            }}
+          />
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={(event) => {
+              const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith("image/"));
+              if (!file) return;
+              event.preventDefault();
+              attachImage(file);
+            }}
             rows={1}
             maxLength={2000}
             disabled={!enabled}
@@ -571,7 +626,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           ) : (
             <button
               type="submit"
-              disabled={!input.trim() || !enabled}
+              disabled={(!input.trim() && !image) || !enabled}
               aria-label="Gửi"
               className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-sky-500 text-white disabled:opacity-40"
             >
