@@ -2,6 +2,7 @@
 
 import { CheckSquare, Clock, Paperclip, Tag } from "lucide-react";
 
+import { useBoardCourses } from "@/hooks/use-board-courses";
 import type { CardWithList } from "@/types";
 import { ChecklistPopover } from "../checklists/checklist-popover";
 import { LabelPopover } from "./label-popover";
@@ -36,6 +37,9 @@ export const MetadataActionRow = ({
   onClearSchedule,
   onClearLegacyStart,
 }: MetadataActionRowProps) => {
+  // Bảng học kỳ đã có Danh mục (môn) để phân loại; nhãn chỉ hiện khi việc đã gắn nhãn từ trước.
+  const { isSemesterBoard } = useBoardCourses(boardId);
+
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1">
       {/* Ngày Button (Only shown when no schedule is set) */}
@@ -61,7 +65,7 @@ export const MetadataActionRow = ({
       )}
 
       {/* Nhãn Button (Only shown when card has no labels) */}
-      {!hasLabels && (
+      {!hasLabels && !isSemesterBoard && (
         <LabelPopover
           cardId={data.id}
           boardId={boardId}
@@ -78,7 +82,7 @@ export const MetadataActionRow = ({
         </LabelPopover>
       )}
 
-      {/* Việc cần làm Button */}
+      {/* Checklist Button */}
       <ChecklistPopover
         cardId={data.id}
         boardId={boardId}
@@ -89,7 +93,7 @@ export const MetadataActionRow = ({
           className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
         >
           <CheckSquare className="h-3.5 w-3.5 text-neutral-500" />
-          Việc cần làm
+          Checklist
         </button>
       </ChecklistPopover>
 

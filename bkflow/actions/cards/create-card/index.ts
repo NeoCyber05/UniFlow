@@ -55,7 +55,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     if (courseId && !(await isCourseInBoard(courseId, boardId))) {
       return {
-        error: "Môn không hợp lệ.",
+        error: "Danh mục không hợp lệ.",
       };
     }
 

@@ -34,7 +34,7 @@ export const viewsRoute = new Hono()
   .get("/board/:boardId/list", async (c) => {
     const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardList({ boardId: c.req.param("boardId") }, userId));
+    return json(await loadBoardList({ boardId: c.req.param("boardId"), group: c.req.query("group") }, userId));
   })
   .get("/board/:boardId/split", async (c) => {
     const { userId } = await auth();

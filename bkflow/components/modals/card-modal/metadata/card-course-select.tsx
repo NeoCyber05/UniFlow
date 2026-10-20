@@ -66,7 +66,7 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit }: CardCou
 
   return (
     <div className="flex flex-col gap-y-1.5">
-      <span className="text-xs font-semibold text-neutral-600 pl-0.5">Môn</span>
+      <span className="text-xs font-semibold text-neutral-600 pl-0.5">Danh mục</span>
       {canEdit ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild disabled={isLoading}>

@@ -5,14 +5,17 @@ import type { loadBoardList } from "@/server/views/board-list";
 import { BoardListView } from "@/app/(platform)/(dashboard)/board/[boardId]/list/_components/board-list-view";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { boardListViewPath } from "../lib/prefetch-route";
 import { useView } from "../lib/use-view";
 
 type View = Awaited<ReturnType<typeof loadBoardList>>;
 
 export default function BoardListRoute() {
   const { boardId } = useParams<{ boardId: string }>();
-  const error = useSearchParams()[0].get("error") ?? undefined;
-  const { data } = useView<View>(`/board/${boardId}/list`);
+  const searchParams = useSearchParams()[0];
+  const error = searchParams.get("error") ?? undefined;
+  const group = searchParams.get("group");
+  const { data } = useView<View>(boardListViewPath(boardId ?? "", group));
 
   if (!data) return <Skeleton className="m-4 h-64" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;

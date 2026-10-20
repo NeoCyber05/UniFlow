@@ -62,6 +62,7 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
               },
               select: {
                 isImportant: true,
+                myDayAt: true,
               },
             },
             createdAt: true,
@@ -139,6 +140,7 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
       ...card,
       assignees: [],
       isImportant: userStates[0]?.isImportant ?? false,
+      myDayAt: userStates[0]?.myDayAt ?? null,
       checklistProgress: checklistProgressByCardId.get(card.id) ?? {
         total: 0,
         completed: 0,

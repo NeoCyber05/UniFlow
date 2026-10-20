@@ -1,6 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { CountingNumber } from "@animate-ui/react/primitives/texts/counting-number";
 
 import type { Kpis, SchedulePoint } from "../_types";
 import { legendColors, scheduleGradients } from "../_lib/chart-formatters";
@@ -14,18 +15,18 @@ export const ScheduleHealthChart = ({
   kpis: Kpis;
   data: SchedulePoint[];
 }) => {
-  const hasScheduleHealth = data.some((item) => item.value > 0);
+  const total = data.reduce((sum, item) => sum + item.value, 0);
 
-  if (!hasScheduleHealth) {
+  if (total === 0) {
     return <EmptyState label="Chưa có dữ liệu hạn chót của thẻ." />;
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-4">
-      <div className="relative h-[220px] w-[220px] flex items-center justify-center flex-shrink-0">
-        <div className="absolute flex flex-col items-center justify-center text-center">
-          <span className="text-2xl font-bold text-neutral-900">{kpis.completionRate}%</span>
-          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Hoàn thành</span>
+    <div className="flex flex-col items-center gap-5">
+      <div className="relative h-[180px] w-[180px] shrink-0">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+          <CountingNumber number={kpis.totalCards} className="text-2xl font-bold tabular-nums text-neutral-900" />
+          <span className="mt-0.5 text-[11px] font-medium text-neutral-500">tổng số thẻ</span>
         </div>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -53,9 +54,11 @@ export const ScheduleHealthChart = ({
               cy="50%"
               dataKey="value"
               nameKey="name"
-              innerRadius={68}
-              outerRadius={92}
+              innerRadius={62}
+              outerRadius={84}
               paddingAngle={3}
+              cornerRadius={4}
+              stroke="none"
               isAnimationActive={false}
             >
               {data.map((entry, index) => (
@@ -71,17 +74,22 @@ export const ScheduleHealthChart = ({
         </ResponsiveContainer>
       </div>
 
-      <div className="flex-1 w-full space-y-3.5">
+      <ul className="grid w-full grid-cols-2 gap-2">
         {data.map((item, index) => (
-          <div key={item.name} className="flex items-center justify-between border-b border-neutral-100 pb-1.5 last:border-0 last:pb-0">
-            <div className="flex items-center gap-2.5">
-              <span className="h-3 w-3 rounded-full shadow-xs" style={{ backgroundColor: legendColors[index] }} />
-              <span className="text-xs font-semibold text-neutral-600">{item.name}</span>
+          <li key={item.name} className="rounded-xl bg-neutral-50 px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: legendColors[index] }} />
+              <span className="truncate text-xs text-neutral-500">{item.name}</span>
             </div>
-            <span className="text-xs font-bold text-neutral-800">{item.value} thẻ</span>
-          </div>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums text-neutral-900">
+              {item.value}
+              <span className="ml-1 text-xs font-normal text-neutral-400">
+                · {Math.round((item.value / total) * 100)}%
+              </span>
+            </p>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 };

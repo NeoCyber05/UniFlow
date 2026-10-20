@@ -729,7 +729,7 @@ export const SmartCaptureDialog = ({
                         <div className="space-y-2">
                           <label htmlFor="smart-capture-course" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                             <GraduationCap className="h-3.5 w-3.5" />
-                            Môn
+                            Danh mục
                           </label>
                           <select
                             id="smart-capture-course"

@@ -60,6 +60,8 @@ import { CalendarWeekView } from "./calendar-week-view";
 import { ExpandedDayPanel } from "./expanded-day-panel";
 import { useCalendarResize } from "../_hooks/use-calendar-resize";
 import { useCalendarDnd } from "../_hooks/use-calendar-dnd";
+import { useCalendarGridSize } from "../_hooks/use-calendar-grid-size";
+import { ColumnResizeHandles } from "./board-calendar/grid-resize-handles";
 
 export const BoardCalendarView = ({
   boardId,
@@ -219,6 +221,7 @@ export const BoardCalendarView = ({
   const currentMonth = anchorDate;
   const maxVisibleDesktop = viewMode === "month" ? MONTH_VISIBLE_DESKTOP : WEEK_VISIBLE_DESKTOP;
   const maxVisibleMobile = viewMode === "month" ? MONTH_VISIBLE_MOBILE : WEEK_VISIBLE_MOBILE;
+  const grid = useCalendarGridSize(viewMode);
   const selectedCreateDayLabel = createDialogDay
     ? formatDayTitle(createDialogDay)
     : "";
@@ -349,6 +352,8 @@ export const BoardCalendarView = ({
     occurrencesById,
     dayViewBlocksById,
     scheduleCard,
+    executeUpdateCard,
+    setUpdateSuccessToast,
     executeSetChecklistItemDueDate,
     isUpdatingCardDate,
     isUpdatingChecklistItemDueDate,
@@ -520,6 +525,7 @@ export const BoardCalendarView = ({
     onRangeResizeMove: handleRangeResizeMove,
     onRangeResizeEnd: handleRangeResizeEnd,
     onRangeResizeCancel: resetRangeResize,
+    grid,
   };
 
 
@@ -553,9 +559,9 @@ export const BoardCalendarView = ({
         onToday={goToToday}
         onNext={goToNext}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4" style={grid.gridStyle}>
         {viewMode === "month" && (
-          <div className="grid grid-cols-7 rounded-t-xl border border-b-0 border-neutral-200 bg-neutral-50/80">
+          <div className="relative grid [grid-template-columns:var(--cal-cols)] rounded-t-xl border border-b-0 border-neutral-200 bg-neutral-50/80">
             {WEEK_DAYS.map((day, dayIndex) => (
               <div
                 key={day}
@@ -567,6 +573,7 @@ export const BoardCalendarView = ({
                 {day}
               </div>
             ))}
+            <ColumnResizeHandles grid={grid} />
           </div>
         )}
 
@@ -674,6 +681,7 @@ export const BoardCalendarView = ({
       exit={{ opacity: 0, x: 16, transition: dismiss }}
     >
     <UnscheduledPanel
+      boardId={boardId}
       lists={lists}
       variant={variant}
       isCollapsed={isUnscheduledCollapsed}

@@ -4,7 +4,7 @@ import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, CalendarClock, Columns3, ListTodo, Plus, Sparkles } from "lucide-react";
+import { AlertCircle, CalendarClock, Layers, ListTodo, Plus, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { useSearchParams } from "@/web/shims/next-navigation";
@@ -121,10 +121,11 @@ export const BoardListView = ({
     queryKey: boardTasksQueryKey(boardId),
     queryFn: () => fetcher(`/api/boards/${boardId}/tasks`),
     initialData,
+    enabled: groupMode === "list",
   });
 
   // Dữ liệu theo thời hạn (Agenda + Việc nhóm) cho học kỳ
-  const { data: agendaData } = useTodoTasks(boardId, initialAgendaData);
+  const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, groupMode === "agenda");
 
   // Lọc theo cột
   const columnGroups = useMemo(
@@ -198,19 +199,20 @@ export const BoardListView = ({
               </p>
             </div>
 
-            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
             <TaskLayoutSwitcher boardId={boardId} layout="rows" />
+            {!isTeamBoard && <span aria-hidden="true" className="h-5 w-px bg-neutral-200" />}
             {/* Chế độ nhóm: nền trắng trượt giữa hai lựa chọn */}
             {!isTeamBoard && (
               <ReducedMotionConfig>
                 <div
                   role="radiogroup"
                   aria-label="Cách nhóm việc"
-                  className="inline-flex shrink-0 items-center self-start rounded-xl bg-neutral-100 p-1 text-xs font-medium"
+                  className="inline-flex shrink-0 items-center rounded-xl bg-neutral-100 p-1 text-xs font-medium"
                 >
                   {([
-                    ["agenda", "Nhóm theo hạn", CalendarClock],
-                    ["list", "Nhóm theo cột", Columns3],
+                    ["agenda", "Theo hạn", CalendarClock],
+                    ["list", "Theo cột", Layers],
                   ] as const).map(([mode, label, Icon]) => (
                     <button
                       key={mode}

@@ -2,12 +2,12 @@ import type { ListStatus } from "@/lib/boards/list-status";
 import { cn } from "@/lib/utils";
 
 const PILL: Record<ListStatus, string> = {
-  todo: "bg-slate-100 text-slate-700 ring-slate-300",
-  doing: "bg-sky-100 text-sky-800 ring-sky-300",
-  review: "bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-300",
-  blocked: "bg-rose-100 text-rose-800 ring-rose-300",
-  done: "bg-lime-100 text-lime-800 ring-lime-300",
-  other: "bg-amber-50 text-amber-800 ring-amber-300",
+  todo: "task-badge-neutral",
+  doing: "task-badge-info",
+  review: "task-badge-review",
+  blocked: "task-badge-warning",
+  done: "task-badge-success",
+  other: "task-badge-neutral",
 };
 
 /** Icon trạng thái kiểu Linear: vòng tròn rỗng → nửa → gần đầy → dấu tích. */
@@ -50,4 +50,4 @@ export const ListStatusIcon = ({ status, className }: { status: ListStatus; clas
 );
 
 export const listStatusPillClassName = (status: ListStatus) =>
-  cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 ring-1 ring-inset", PILL[status]);
+  cn("task-badge gap-1.5 px-2", PILL[status]);

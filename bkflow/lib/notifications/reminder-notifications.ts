@@ -141,6 +141,7 @@ export const ensureDueReminderNotifications = async ({
   });
 
   const now = Date.now();
+  const due: Parameters<typeof notifyCardReminder>[0][] = [];
 
   await Promise.all(
     cards.map(async (card) => {
@@ -177,7 +178,7 @@ export const ensureDueReminderNotifications = async ({
         return;
       }
 
-      await notifyCardReminder({
+      due.push({
         card,
         recipientUserId: userId,
         triggerTime: at,
@@ -193,6 +194,21 @@ export const ensureDueReminderNotifications = async ({
       });
     }),
   );
+
+  // One lookup instead of one per card; createNotification still dedupes (and swallows P2002) on a race.
+  const existingKeys = await findExistingDedupeKeys(due.map((item) => item.dedupeKey));
+  await Promise.all(due.filter((item) => !existingKeys.has(item.dedupeKey)).map(notifyCardReminder));
+};
+
+const findExistingDedupeKeys = async (keys: string[]) => {
+  if (!keys.length) return new Set<string>();
+
+  const rows = await db.notification.findMany({
+    where: { dedupeKey: { in: keys } },
+    select: { dedupeKey: true },
+  });
+
+  return new Set(rows.map((row) => row.dedupeKey));
 };
 
 // Deadline blocks in personal note pages reuse the card reminder notification.
@@ -210,18 +226,23 @@ export const ensureNoteDeadlineNotifications = async ({ userId }: { userId: stri
     : [];
   const mapped = new Map(maps.map(map => [`${map.pageId}:${map.blockId}`, map.restoredAt]));
 
-  await Promise.all(deadlines.map(async (deadline) => {
+  const due = deadlines.flatMap((deadline) => {
     const offsetMinutes = parseInt(deadline.reminder, 10);
-    if (Number.isNaN(offsetMinutes)) return;
+    if (Number.isNaN(offsetMinutes)) return [];
     const triggerTime = new Date(deadline.dueAt.getTime() - offsetMinutes * 60 * 1000);
-    if (now < triggerTime) return;
+    if (now < triggerTime) return [];
     // One active source: a converted block reminds via its Card; after restore, a time that passed while it was a Card is not replayed.
     const key = `${deadline.pageId}:${deadline.blockId}`;
     if (mapped.has(key)) {
       const restoredAt = mapped.get(key);
-      if (!restoredAt || triggerTime < restoredAt) return;
+      if (!restoredAt || triggerTime < restoredAt) return [];
     }
 
+    return [{ deadline, triggerTime, dedupeKey: `note-reminder:${userId}:${deadline.pageId}:${deadline.blockId}:${deadline.dueAt.getTime()}:${deadline.reminder}` }];
+  });
+  const existingKeys = await findExistingDedupeKeys(due.map((item) => item.dedupeKey));
+
+  await Promise.all(due.filter((item) => !existingKeys.has(item.dedupeKey)).map(async ({ deadline, triggerTime, dedupeKey }) => {
     await createNotification({
       recipientUserId: userId,
       type: NOTIFICATION_TYPE.CARD_REMINDER,
@@ -233,7 +254,7 @@ export const ensureNoteDeadlineNotifications = async ({ userId }: { userId: stri
       triggerTime,
       reminderLabel: reminderLabels[deadline.reminder] || "",
       pageId: deadline.pageId,
-      dedupeKey: `note-reminder:${userId}:${deadline.pageId}:${deadline.blockId}:${deadline.dueAt.getTime()}:${deadline.reminder}`,
+      dedupeKey,
     });
   }));
 };

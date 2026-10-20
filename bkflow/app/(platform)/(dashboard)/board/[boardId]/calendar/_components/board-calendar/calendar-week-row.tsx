@@ -1,10 +1,12 @@
 "use client";
 
-import { memo, type DragEvent, type MouseEvent, type PointerEvent } from "react";
+import { memo, type CSSProperties, type DragEvent, type MouseEvent, type PointerEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
+import type { CalendarGridSizeControls } from "../../_hooks/use-calendar-grid-size";
 import { CalendarDayCell } from "./calendar-day-cell";
+import { ColumnResizeHandles, RowResizeHandle } from "./grid-resize-handles";
 import { CalendarRangeOverflows } from "./calendar-range-overflows";
 import { CalendarRangeSegmentItem } from "./calendar-range-segment";
 import {
@@ -79,6 +81,7 @@ type CalendarWeekRowProps = {
   onRangeResizeMove: (event: PointerEvent<HTMLButtonElement>) => void;
   onRangeResizeEnd: (event: PointerEvent<HTMLButtonElement>) => void;
   onRangeResizeCancel: () => void;
+  grid: CalendarGridSizeControls;
 };
 
 export const CalendarWeekRow = memo(function CalendarWeekRow({
@@ -123,17 +126,22 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
   onRangeResizeMove,
   onRangeResizeEnd,
   onRangeResizeCancel,
+  grid,
 }: CalendarWeekRowProps) {
   const segments = rangeSegmentsByWeek[weekIndex] ?? [];
   const maxLanes = mode === "month" ? MONTH_RANGE_LANES : WEEK_RANGE_LANES;
+  const rowHeight = grid.rowHeights[weekIndex];
 
   return (
     <div
       key={`week-row:${weekIndex}`}
+      style={rowHeight ? ({ "--cal-row-h": `${rowHeight}px` } as CSSProperties) : undefined}
       className={cn(
-        "relative grid grid-cols-7 bg-white",
+        "relative grid bg-white",
+        mode === "month" && "[grid-template-columns:var(--cal-cols,repeat(7,minmax(0,1fr)))]",
         mode === "month" && weekIndex === weekRowsLength - 1 && "rounded-b-lg",
-        mode === "week" && "grid-cols-1 gap-2 bg-transparent md:grid-cols-7",
+        mode === "week" && "grid-cols-1 gap-2 bg-transparent md:[grid-template-columns:var(--cal-cols,repeat(7,minmax(0,1fr)))]",
+        rowHeight && "md:min-h-[var(--cal-row-h)]",
       )}
     >
       {weekDays.map((day, dayIndex) => (
@@ -141,6 +149,7 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
           key={day.toISOString()}
           day={day}
           index={weekIndex * 7 + dayIndex}
+          rowHeight={rowHeight}
           viewMode={viewMode}
           variant={variant}
           currentMonth={currentMonth}
@@ -210,6 +219,8 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
         mode={mode}
         onSetExpandedDayKey={onSetExpandedDayKey}
       />
+      {mode === "week" && <ColumnResizeHandles grid={grid} />}
+      <RowResizeHandle grid={grid} weekIndex={weekIndex} />
     </div>
   );
 });

@@ -11,6 +11,7 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: env("DATABASE_URL"),
+    // CLI (db push/migrate) đi qua direct connection, không qua transaction pooler 6543
+    url: env("DIRECT_URL"),
   },
 });

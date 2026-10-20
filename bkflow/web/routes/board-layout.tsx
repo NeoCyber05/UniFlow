@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from "react";
-import { Navigate, Outlet, useMatch, useParams } from "react-router";
+import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,8 +13,8 @@ import { BoardNavbar } from "@/app/(platform)/(dashboard)/board/[boardId]/_compo
 import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-shell";
 
 import { useTitle } from "../lib/use-title";
-import { useView, viewQueryOptions } from "../lib/use-view";
-import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
+import { prefetchRouteViews } from "../lib/prefetch-route";
+import { useView } from "../lib/use-view";
 import NotFoundRoute from "./not-found";
 
 type View = Awaited<ReturnType<typeof loadBoardLayout>>;
@@ -23,17 +23,11 @@ export default function BoardLayoutRoute() {
   const { boardId = "" } = useParams<{ boardId: string }>();
   const { data, error, refetch } = useView<View>(`/board/${boardId}/layout`);
   const queryClient = useQueryClient();
-  const match = useMatch("/board/:boardId/:view");
-  const view = match?.params.view;
+  const { pathname, search } = useLocation();
   // Start content loading alongside the layout, before Outlet can mount.
   useEffect(() => {
-    if (view === "list" || view === "calendar") {
-      void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/${view}`));
-    }
-    if (view === "calendar") {
-      void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
-    }
-  }, [boardId, view, queryClient]);
+    prefetchRouteViews(queryClient, pathname, search);
+  }, [pathname, search, queryClient]);
   useTitle(data?.title ?? "Bảng");
 
   if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">Chưa tải được bảng. <button type="button" className="underline" onClick={() => void refetch()}>Thử lại</button></div>;
@@ -44,7 +38,7 @@ export default function BoardLayoutRoute() {
   return (
     <div
       className="relative h-screen flex flex-col overflow-hidden bg-no-repeat bg-cover bg-center"
-      style={{ backgroundImage: `url(${data.board.imageFullUrl})` }}
+      style={data.isSemesterBoard ? undefined : { backgroundImage: `url(${data.board.imageFullUrl})` }}
     >
       <BoardCoursesHydrator
         boardId={boardId}
@@ -58,7 +52,7 @@ export default function BoardLayoutRoute() {
       <Suspense fallback={null}>
         <ImportantFilterFromUrl boardId={boardId} />
       </Suspense>
-      <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+      {!data.isSemesterBoard && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
 
       <BoardShell
         boardNavbar={

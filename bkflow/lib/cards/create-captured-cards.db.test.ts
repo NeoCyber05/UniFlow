@@ -119,7 +119,7 @@ describe("createCapturedCards on a real database", { skip: !enabled && "set CAPT
   test("wrong user, board or course is rejected without writes", async () => {
     const id = randomUUID();
     await assert.rejects(() => createCapturedCardsWithStatus({ userId: `${userId}-other`, boardId, drafts: [draft(id)] }));
-    await assert.rejects(() => createCapturedCardsWithStatus({ userId, boardId, drafts: [draft(id, { courseId: foreignCourseId })] }), /Môn không hợp lệ/);
+    await assert.rejects(() => createCapturedCardsWithStatus({ userId, boardId, drafts: [draft(id, { courseId: foreignCourseId })] }), /Danh mục không hợp lệ/);
     assert.deepEqual(await countFor(id), { cards: 0, items: 0, states: 0, deliveries: 0 });
   });
 });

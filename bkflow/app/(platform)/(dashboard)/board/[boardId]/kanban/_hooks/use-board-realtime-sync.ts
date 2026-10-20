@@ -328,7 +328,7 @@ export const useBoardRealtimeSync = ({
             // /api/cards/[id] không có trạng thái riêng của user → giữ ⭐ đang hiển thị
             cards: [
               ...cardsWithoutTemporaryMatch,
-              { ...fetchedCard, isImportant: existingCard?.isImportant ?? false },
+              { ...fetchedCard, isImportant: existingCard?.isImportant ?? false, myDayAt: existingCard?.myDayAt ?? null },
             ].sort((a, b) => a.order - b.order),
           };
         });

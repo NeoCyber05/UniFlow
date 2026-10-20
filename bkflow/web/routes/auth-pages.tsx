@@ -17,7 +17,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 
 import { supabase } from "../lib/supabase";
 
@@ -122,13 +121,8 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       {/* Brand Header */}
       <div className="flex flex-col items-center text-center space-y-2 mb-6">
         <div className="flex items-center gap-2 mb-1">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-violet-600 text-lg font-bold text-white shadow-md shadow-violet-500/30">
-            u
-          </span>
+          <img src="/logo.svg" alt="" aria-hidden="true" className="size-9" />
           <span className="text-2xl font-bold tracking-tight text-foreground">uniflow</span>
-          <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/20 font-semibold">
-            HUST
-          </Badge>
         </div>
         <h1 className="text-xl font-bold tracking-tight text-foreground">
           {isSignUp ? "Tạo tài khoản UniFlow" : "Chào mừng bạn trở lại!"}

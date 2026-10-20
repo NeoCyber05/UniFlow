@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
+import { AlarmClock, ArrowDownAZ, ArrowUpAZ } from "lucide-react";
 
 import type { OverdueCardInsight } from "../_types";
 import { formatDate } from "../_lib/chart-formatters";
@@ -28,7 +28,9 @@ export const OverdueCardsPanel = ({
 
   return (
     <ChartPanel
-      title={`Danh sách thẻ quá hạn (${sortedOverdueCards.length})`}
+      title={`Thẻ quá hạn (${sortedOverdueCards.length})`}
+      description="Bấm vào thẻ để mở chi tiết"
+      icon={AlarmClock}
       action={
         sortedOverdueCards.length > 1 && (
           <button
@@ -48,7 +50,7 @@ export const OverdueCardsPanel = ({
       }
     >
       {sortedOverdueCards.length > 0 ? (
-        <div className="max-h-[290px] overflow-y-auto pr-1 space-y-2.5 styled-scrollbar">
+        <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1 styled-scrollbar">
           {sortedOverdueCards.map((card) => (
             <CardInsightButton
               key={card.id}

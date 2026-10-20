@@ -36,13 +36,13 @@ export const ChecklistPopover = ({
 }: ChecklistPopoverProps) => {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState("Việc cần làm");
+  const [title, setTitle] = useState("Checklist");
   const [copyFromChecklistId, setCopyFromChecklistId] = useState("");
 
   const onOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setTitle("Việc cần làm");
+      setTitle("Checklist");
       setCopyFromChecklistId("");
     }
   };
@@ -82,7 +82,7 @@ export const ChecklistPopover = ({
           {/* Header */}
           <div className="relative pb-2 border-b border-neutral-100 flex items-center justify-between">
             <span className="text-sm font-semibold text-neutral-700 mx-auto">
-              Thêm danh sách việc cần làm
+              Thêm checklist
             </span>
             <PopoverClose asChild>
               <button
@@ -105,7 +105,7 @@ export const ChecklistPopover = ({
               </label>
               <Input
                 id="checklist-title"
-                placeholder="Việc cần làm"
+                placeholder="Checklist"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isLoading}

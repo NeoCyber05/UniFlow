@@ -73,7 +73,7 @@ export const resolveAssistantContext = async (
     if (error) return fail(403, error);
     if (context.kind === "calendar" && context.filters.courseId) {
       const course = await db.course.findFirst({ where: { id: context.filters.courseId, boardId: context.boardId }, select: { id: true } });
-      if (!course) return fail(403, "Bộ lọc môn học không thuộc bảng này.");
+      if (!course) return fail(403, "Bộ lọc danh mục không thuộc bảng này.");
     }
     boardId = context.boardId;
     prompt = context.kind === "calendar"

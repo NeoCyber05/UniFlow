@@ -17,7 +17,7 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
 
   const semesters = await getOrSeedSemesters(personalOrgId);
   const currentSemester = pickCurrentSemester(semesters);
-  const boardId = currentSemester ? await resolveCurrentSemesterBoardId(userId) : null;
+  const boardId = currentSemester ? await resolveCurrentSemesterBoardId(userId, currentSemester) : null;
 
   const [boardData, courses] = boardId
     ? await Promise.all([

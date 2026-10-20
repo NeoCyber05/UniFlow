@@ -13,7 +13,7 @@ export default function PrivacyRoute() {
 
       <section className="space-y-2">
         <h2 className="text-base font-semibold text-neutral-900">UniFlow lưu gì</h2>
-        <p>Tài khoản (email, tên), và nội dung bạn tạo: học kỳ, môn, task, ghi chú, lịch, nhắc hạn. Dữ liệu chỉ dùng để chạy ứng dụng cho chính bạn, không bán và không dùng cho quảng cáo.</p>
+        <p>Tài khoản (email, tên), và nội dung bạn tạo: học kỳ, danh mục, task, ghi chú, lịch, nhắc hạn. Dữ liệu chỉ dùng để chạy ứng dụng cho chính bạn, không bán và không dùng cho quảng cáo.</p>
       </section>
 
       <section className="space-y-2">

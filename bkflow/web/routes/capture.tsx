@@ -282,9 +282,9 @@ const CaptureForm = ({ requestId, source }: { requestId: string; source: Capture
               {REMINDERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </Field>
-          <Field label="Môn" adornment={aiMark("courseId")}>
-            <select aria-label="Môn" value={form.courseId} onChange={(event) => edit("courseId", event.target.value)} className={fieldClass}>
-              <option value="">Không môn</option>
+          <Field label="Danh mục" adornment={aiMark("courseId")}>
+            <select aria-label="Danh mục" value={form.courseId} onChange={(event) => edit("courseId", event.target.value)} className={fieldClass}>
+              <option value="">Không có danh mục</option>
               {courses.map((course) => <option key={course.id} value={course.id}>{course.code ?? course.name}</option>)}
             </select>
           </Field>

@@ -3,6 +3,7 @@
 import { useRef, useState, type DragEvent } from "react";
 import { toast } from "sonner";
 
+import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
 import type { InputType as SetChecklistItemDueDateInput } from "@/actions/checklists/set-checklist-item-due-date/types";
 import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
 import {
@@ -50,6 +51,8 @@ type UseCalendarDndOptions = {
   occurrencesById: Record<string, CalendarOccurrence>;
   dayViewBlocksById: Record<string, DayViewBlock>;
   scheduleCard: (cardId: string, intent: ScheduleIntent, successMessage?: string) => void;
+  executeUpdateCard: (input: UpdateCardInput) => void;
+  setUpdateSuccessToast: (message: string | null) => void;
   executeSetChecklistItemDueDate: (input: SetChecklistItemDueDateInput) => void;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
@@ -67,6 +70,8 @@ export const useCalendarDnd = ({
   occurrencesById,
   dayViewBlocksById,
   scheduleCard,
+  executeUpdateCard,
+  setUpdateSuccessToast,
   executeSetChecklistItemDueDate,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
@@ -110,7 +115,6 @@ export const useCalendarDnd = ({
       isUpdatingCardDate ||
       isUpdatingChecklistItemDueDate ||
       occurrence.kind === "range" ||
-      (isCalendarCardItem(occurrence.item) && occurrence.item.displayKind !== undefined && occurrence.item.displayKind !== "work") ||
       (!isCalendarCardItem(occurrence.item) && !isCalendarChecklistItem(occurrence.item))
     ) {
       event.preventDefault();
@@ -346,7 +350,24 @@ export const useCalendarDnd = ({
       return;
     }
 
-    // Chỉ dời lịch làm; hạn nộp và nhắc giữ nguyên.
+    // Kéo mốc hạn nộp thì dời hạn (giữ giờ); hạn chỉ-ngày thì đổi ngày.
+    if (item.displayKind === "deadline") {
+      const deadlineAt = parseCalendarDate(item.deadlineAt ?? item.dueDate);
+
+      setUpdateSuccessToast("Đã dời hạn nộp");
+      executeUpdateCard(item.deadlineOn || !deadlineAt
+        ? { id: item.cardId, boardId, deadlineOn: targetDayKey }
+        : { id: item.cardId, boardId, dueDate: copyDateToDay(deadlineAt, targetDay) });
+      return;
+    }
+
+    if (item.displayKind === "legacy-start" && currentStartDate) {
+      setUpdateSuccessToast("Đã dời ngày bắt đầu");
+      executeUpdateCard({ id: item.cardId, boardId, startDate: copyDateToDay(currentStartDate, targetDay) });
+      return;
+    }
+
+    // Buổi làm: chỉ dời lịch làm; hạn nộp và nhắc giữ nguyên.
     if (item.scheduledStartAt && currentStartDate) {
       const shiftMs = Date.parse(`${targetDayKey}T00:00:00Z`) - Date.parse(`${sourceDayKey}T00:00:00Z`);
 

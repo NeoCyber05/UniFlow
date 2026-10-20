@@ -3,9 +3,9 @@ import { BoardType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireBoardEditor } from "@/lib/permissions";
 
-export const COURSE_UNSUPPORTED_BOARD_ERROR = "Bảng này không hỗ trợ môn học.";
-export const INVALID_COURSE_ERROR = "Môn không hợp lệ.";
-export const DUPLICATE_COURSE_ERROR = "Môn này đã có trong học kỳ.";
+export const COURSE_UNSUPPORTED_BOARD_ERROR = "Bảng này không hỗ trợ danh mục.";
+export const INVALID_COURSE_ERROR = "Danh mục không hợp lệ.";
+export const DUPLICATE_COURSE_ERROR = "Danh mục này đã có trong học kỳ.";
 
 type GuardInput = {
   boardId: string;

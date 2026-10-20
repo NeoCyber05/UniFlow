@@ -142,8 +142,8 @@ export const CardBadges = ({
         )}
         {!card.dueDate && card.isCompleted && (
           <Hint description="Thẻ đã hoàn thành" side="bottom">
-            <span className="inline-flex h-7 items-center gap-x-1 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs font-semibold shadow-xs">
-              <CheckSquare className="h-3 w-3.5 text-emerald-600 shrink-0" />
+            <span className="task-badge task-badge-success h-7 px-2">
+              <CheckSquare aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               Hoàn thành
             </span>
           </Hint>
@@ -153,37 +153,37 @@ export const CardBadges = ({
             description={`Đang bị chặn bởi ${unresolvedBlockerCount} công việc`}
             side="bottom"
           >
-            <div className="flex items-center gap-x-1 text-xs text-amber-700 py-0.5 px-1.5 rounded bg-amber-50 border border-amber-200">
-              <LockKeyhole className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+            <div className="task-badge task-badge-warning">
+              <LockKeyhole aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span className="font-semibold leading-none">{unresolvedBlockerCount}</span>
             </div>
           </Hint>
         )}
         {card._count && card._count.comments > 0 && (
           <Hint description={`${card._count.comments} bình luận`} side="bottom">
-            <div className="flex items-center gap-x-1 text-xs text-neutral-400 hover:text-neutral-600 transition-colors py-0.5 px-1.5 rounded bg-neutral-50 hover:bg-neutral-100/70 border border-neutral-100">
-              <MessageSquare className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0" />
-              <span className="font-semibold text-neutral-500 leading-none">{card._count.comments}</span>
+            <div className="task-badge task-badge-neutral">
+              <MessageSquare aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-none">{card._count.comments}</span>
             </div>
           </Hint>
         )}
         {hasAttachments && (
           <Hint description={`${attachmentCount} tệp đính kèm`} side="bottom">
-            <div className="flex items-center gap-x-1 text-xs text-neutral-400 hover:text-neutral-600 transition-colors py-0.5 px-1.5 rounded bg-neutral-50 hover:bg-neutral-100/70 border border-neutral-100">
-              <Paperclip className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0" />
-              <span className="font-semibold text-neutral-500 leading-none">{attachmentCount}</span>
+            <div className="task-badge task-badge-neutral">
+              <Paperclip aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-none">{attachmentCount}</span>
             </div>
           </Hint>
         )}
         {hasChecklistProgress && (
           <Hint description={`${checklistCompletedItems}/${checklistTotalItems} mục hoàn thành`} side="bottom">
             <div className={cn(
-              "flex items-center gap-x-1 text-xs py-0.5 px-1.5 rounded border transition-colors",
+              "task-badge",
               isChecklistAllDone
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                : "bg-neutral-50 border-neutral-100 text-neutral-500 hover:bg-neutral-100/70",
+                ? "task-badge-success"
+                : "task-badge-neutral",
             )}>
-              <CheckSquare className={cn("h-3.5 w-3.5 flex-shrink-0", isChecklistAllDone ? "text-emerald-600" : "text-neutral-400")} />
+              <CheckSquare aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span className="font-semibold leading-none">
                 {checklistCompletedItems}/{checklistTotalItems}
               </span>

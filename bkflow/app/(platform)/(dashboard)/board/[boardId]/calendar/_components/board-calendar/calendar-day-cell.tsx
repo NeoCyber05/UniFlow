@@ -26,6 +26,8 @@ import type {
 type CalendarDayCellProps = {
   day: Date;
   index: number;
+  /** Chiều cao hàng tuần đã co giãn (px), nếu có. */
+  rowHeight?: number;
   viewMode: ViewMode;
   variant: "default" | "split";
   currentMonth: Date;
@@ -77,6 +79,7 @@ type CalendarDayCellProps = {
 export const CalendarDayCell = memo(function CalendarDayCell({
   day,
   index,
+  rowHeight,
   viewMode,
   variant,
   currentMonth,
@@ -114,7 +117,6 @@ export const CalendarDayCell = memo(function CalendarDayCell({
   const dayKey = getDayKey(day);
   const dayOccurrences = occurrencesByDay[dayKey] ?? [];
   const dayRangeOccurrences = rangeOccurrencesByDay[dayKey] ?? [];
-  const desktopOverflow = Math.max(dayOccurrences.length - maxVisibleDesktop, 0);
   const mobileOverflow = Math.max(dayOccurrences.length - maxVisibleMobile, 0);
 
   const dayIndex = index % 7;
@@ -137,6 +139,12 @@ export const CalendarDayCell = memo(function CalendarDayCell({
     pt = 36 + (maxVisibleLane + 1) * (RANGE_LANE_HEIGHT + RANGE_LANE_GAP);
   }
 
+  // Hàng đã co giãn: số thẻ vừa chiều cao (đệm 16 + đầu ô 32 + nút "+N" 28, mỗi thẻ 28 + khoảng 4).
+  const visibleDesktop = rowHeight
+    ? Math.max(1, Math.floor((rowHeight - 76 - pt) / 32))
+    : maxVisibleDesktop;
+  const desktopOverflow = Math.max(dayOccurrences.length - visibleDesktop, 0);
+
   const markerListStyle: CalendarMarkerListStyle | undefined = pt > 0
     ? viewMode === "month"
       ? { paddingTop: `${pt}px` }
@@ -157,6 +165,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
         viewMode === "month" && index % 7 === 6 && "border-r-0",
         viewMode === "week" && "min-h-[132px] rounded-lg border md:min-h-[360px]",
         viewMode === "week" && index > 0 && "mt-2 md:mt-0",
+        rowHeight && "md:min-h-0",
         viewMode === "month" && index % 7 >= 5 && "bg-neutral-50/50",
         viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "bg-neutral-50/80 text-neutral-400",
         isCalendarToday(day) && "bg-violet-50/40 ring-1 ring-inset ring-violet-300",
@@ -232,7 +241,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
             onClearSchedule={onClearSchedule}
           />,
         )}
-        {dayOccurrences.slice(0, maxVisibleDesktop).map((occurrence, occurrenceIndex) =>
+        {dayOccurrences.slice(0, visibleDesktop).map((occurrence, occurrenceIndex) =>
           <CalendarOccurrenceItem
             key={occurrence.id}
             occurrence={occurrence}
@@ -284,6 +293,7 @@ function areCalendarDayCellPropsEqual(
 ): boolean {
   if (prev.day.getTime() !== next.day.getTime()) return false;
   if (prev.index !== next.index) return false;
+  if (prev.rowHeight !== next.rowHeight) return false;
   if (prev.viewMode !== next.viewMode) return false;
   if (prev.variant !== next.variant) return false;
   if (prev.currentMonth.getTime() !== next.currentMonth.getTime()) return false;

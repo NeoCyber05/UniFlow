@@ -56,7 +56,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       : null;
 
     if (courseId && !course) {
-      return { error: "Môn không hợp lệ." };
+      return { error: "Danh mục không hợp lệ." };
     }
 
     const card = await db.card.update({
@@ -75,7 +75,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     return { data: card };
   } catch {
-    return { error: "Cập nhật môn của thẻ thất bại." };
+    return { error: "Cập nhật danh mục của thẻ thất bại." };
   }
 };
 

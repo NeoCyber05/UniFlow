@@ -66,20 +66,27 @@ export const CardModal = () => {
   return (
     <>
       <CardRealtimeSync cardId={id} isOpen={isOpen} />
-      <aside
+      {/* Not a Radix modal: the AI assistant (z-60) must stay usable while a card is open. */}
+      <div
+        aria-hidden="true"
+        onClick={requestClose}
+        className="fixed inset-0 z-40 bg-neutral-950/45 animate-in fade-in-0 duration-150 motion-reduce:animate-none"
+      />
+      <div
+        role="dialog"
         aria-label="Chi tiết việc"
         onKeyDown={(event) => {
           if (event.key === "Escape" && !event.defaultPrevented) requestClose();
         }}
-        className="fixed right-0 top-14 bottom-0 z-40 flex w-full flex-col border-l border-border bg-background shadow-xl sm:w-[480px] xl:w-[560px]"
+        className="fixed inset-0 z-40 m-auto flex h-full w-full flex-col overflow-hidden bg-background shadow-2xl animate-in fade-in-0 zoom-in-[0.97] duration-200 motion-reduce:animate-none md:h-[min(780px,calc(100dvh-4rem))] md:w-[min(940px,calc(100vw-4rem))] md:rounded-2xl md:border md:border-border"
       >
-        <div className="flex justify-end border-b border-neutral-100 px-3 py-2">
+        <div className="flex justify-end px-3 pt-3">
           <button type="button" onClick={requestClose} aria-label="Đóng" className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
             <X className="h-4 w-4" />
           </button>
         </div>
-        {id ? <CardDetailBody key={id} cardId={id} layout="panel" onClose={onClose} beforeCloseRef={guardRef} /> : null}
-      </aside>
+        {id ? <CardDetailBody key={id} cardId={id} layout="dialog" onClose={onClose} beforeCloseRef={guardRef} /> : null}
+      </div>
     </>
   );
 };
