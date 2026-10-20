@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +41,7 @@ export const FormPopover = ({
 
   const { execute, fieldErrors } = useAction(createBoard, {
     onSuccess: (data) => {
-      toast.success("Tạo bảng thành công!");
+      toast.success(tr("board.createSuccess"));
       closeRef.current?.click();
       router.push(`/board/${data.id}`);
     },
@@ -72,7 +73,7 @@ export const FormPopover = ({
         sideOffset={sideOffset}
       >
         <div className="text-sm font-semibold text-center text-neutral-700 pb-3">
-          Tạo bảng dự án nhóm
+          {tr("board.createTeamTitle")}
         </div>
         <PopoverClose ref={closeRef} asChild>
           <Button
@@ -90,15 +91,15 @@ export const FormPopover = ({
             />
             <FormInput
               id="title"
-              label="Tên dự án / kế hoạch"
-              placeholder="Đồ án tốt nghiệp"
+              label={tr("board.nameLabel")}
+              placeholder={tr("board.namePlaceholder")}
               type="text"
               errors={fieldErrors}
               className="rounded-lg text-sm"
             />
           </div>
           <FormSubmit className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-lg h-9 font-medium">
-            Tạo bảng dự án
+            {tr("board.createButton")}
           </FormSubmit>
         </form>
       </PopoverContent>

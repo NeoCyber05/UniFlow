@@ -11,6 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { tr } from "@/lib/i18n";
 
 interface ConfirmModalProps {
   children: React.ReactNode;
@@ -23,8 +24,8 @@ interface ConfirmModalProps {
 export const ConfirmModal = ({
   children,
   onConfirm,
-  title = "Xác nhận hành động",
-  description = "Hành động này không thể hoàn tác.",
+  title = tr("common.confirmTitle"),
+  description = tr("common.confirmDesc"),
   disabled,
 }: ConfirmModalProps) => {
   const handleConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -53,7 +54,7 @@ export const ConfirmModal = ({
               disabled={disabled}
               className="w-full sm:w-auto h-9 rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 cursor-pointer font-medium"
             >
-              Hủy
+              {tr("common.cancel")}
             </Button>
           </DialogClose>
           <Button
@@ -62,7 +63,7 @@ export const ConfirmModal = ({
             disabled={disabled}
             className="w-full sm:w-auto h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium cursor-pointer"
           >
-            Xác nhận
+            {tr("common.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

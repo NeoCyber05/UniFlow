@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -30,15 +31,15 @@ export const PersonalWorkspaceView = ({ initialContext, initialData, initialNow,
   const tasks = data.groups.flatMap(group => group.tasks);
 
   // Re-enter the server route to authorize the new semester before showing its editable data.
-  if (semesterChanged) return <p role="status" className="py-12 text-center text-sm text-muted-foreground">Đang chuyển học kỳ…</p>;
+  if (semesterChanged) return <p role="status" className="py-12 text-center text-sm text-muted-foreground">{tr("tasks.switchingSemester")}</p>;
 
   return <div className="personal-workspace mx-auto w-full max-w-6xl">
     <header className="mb-7 flex items-start justify-between gap-4">
-      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Hôm nay</h1></div>
-      <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label="Làm mới công việc"><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button></div>
+      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tr("common.today")}</h1></div>
+      <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label={tr("tasks.refresh")}><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button></div>
     </header>
     {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
-    {isError && <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">Chưa làm mới được công việc. Đang hiển thị dữ liệu đã tải. <button className="underline" onClick={() => void refetch()}>Thử lại</button></div>}
+    {isError && <div role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{tr("tasks.refreshError")}<button className="underline" onClick={() => void refetch()}>{tr("common.retry")}</button></div>}
     <TodayView tasks={tasks} boardId={boardId} now={now} canEdit={canEdit} courses={courses} onOpen={openTask} />
     {taskId && <TaskDetailPanel taskId={taskId} onClose={() => openTask(null)} desktopClassName="fixed right-4 top-16 z-40 h-[calc(100dvh-5rem)] max-w-[calc(100vw-2rem)] shadow-xl" />}
     <BoardAssistant boardId={boardId} />

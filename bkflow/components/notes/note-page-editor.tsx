@@ -1,5 +1,6 @@
 "use client";
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
+import { tr } from "@/lib/i18n";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
@@ -47,7 +48,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   const [blocks, setBlocks] = useState(initial.blocks);
   const [style, setStyle] = useState(initial.style);
   const [updatedAt, setUpdatedAt] = useState(page.updatedAt);
-  const summary = { id: page.id, title: title.trim() || "Trang chưa đặt tên", parentId: live?.parentId ?? page.parentId ?? null, updatedAt, icon, isFavorite };
+  const summary = { id: page.id, title: title.trim() || tr("notes.page.untitled"), parentId: live?.parentId ?? page.parentId ?? null, updatedAt, icon, isFavorite };
   const [saved, setSaved] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -101,7 +102,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
         body: JSON.stringify(body),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error ?? "Không lưu được trang.");
+      if (!response.ok) throw new Error(result.error ?? tr("notes.page.saveError"));
       versionRef.current = result.page.updatedAt;
       if (JSON.parse(savedSignatureRef.current).title !== draft.title) void queryClient.invalidateQueries({ queryKey: NOTE_PAGES_KEY });
       savedSignatureRef.current = currentSignature;
@@ -110,7 +111,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       syncLinkedTasks(body.content);
       return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không lưu được trang.");
+      setError(cause instanceof Error ? cause.message : tr("notes.page.saveError"));
       setSaved(false);
       return false;
     } finally {
@@ -137,7 +138,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       const link = event.target.closest("a[href]") as HTMLAnchorElement | null;
       if (!link || link.target === "_blank" || link.getAttribute("href")?.startsWith("#") || signature(draftRef.current) === savedSignatureRef.current) return;
       event.preventDefault(); event.stopPropagation();
-      if (saveRunningRef.current) { setError("Trang đang lưu. Vui lòng mở lại liên kết sau khi lưu xong."); return; }
+      if (saveRunningRef.current) { setError(tr("notes.page.savingBlocked")); return; }
       void saveChanges().then(success => { if (success) window.location.assign(link.href); });
     };
     window.addEventListener("beforeunload", beforeUnload);
@@ -159,15 +160,15 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       const send = async (extra: object) => {
         const response = await fetch(`/api/pages/${page.id}/ai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: requestPrompt, expectedUpdatedAt: versionRef.current, requestId, operation: "edit_page", ...extra }) });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error ?? "AI chưa chỉnh được trang.");
+        if (!response.ok) throw new Error(result.error ?? tr("notes.ai.editError"));
         return result;
       };
       // A retry after a confirmed send repeats that exact payload, so a committed change is replayed.
       let result = await send(aiAttemptRef.current.confirmed ?? {});
       if (result.preview) {
         // Large change or removal of task/deadline blocks: apply only after explicit confirmation.
-        if (!window.confirm("AI đề xuất thay đổi lớn (xoá khối công việc/hạn hoặc viết lại hơn nửa trang). Công việc thật không bị xoá. Áp dụng thay đổi này?")) {
-          setError("Chưa áp dụng thay đổi của AI. Trang vẫn được giữ nguyên.");
+        if (!window.confirm(tr("notes.ai.bigChangeConfirm"))) {
+          setError(tr("notes.ai.notApplied"));
           return;
         }
         aiAttemptRef.current.confirmed = { operation: "replace_content", confirmed: true, document: result.preview.document, expectedUpdatedAt: result.preview.expectedUpdatedAt };
@@ -182,7 +183,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       setHistory(current => [result.change, ...current.filter(change => change.id !== result.change.id)]); setPrompt("");
       syncLinkedTasks(result.page.content);
       return true;
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "AI chưa chỉnh được trang."); return false; }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : tr("notes.ai.editError")); return false; }
     finally { aiRequestRef.current = false; setAiBusy(false); }
   };
 
@@ -195,20 +196,20 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       if (!(await saveChanges())) return;
       const response = await fetch(`/api/pages/${page.id}/undo`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changeId }) });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Không hoàn tác được thay đổi.");
+      if (!response.ok) throw new Error(result.error ?? tr("notes.undo.failed"));
       setTitle(result.page.title); setBlocks(parseNoteBlocks(result.page.content)); setStyle(result.page.style ?? null);
       versionRef.current = result.page.updatedAt; setUpdatedAt(result.page.updatedAt);
       const draft = { title: result.page.title, blocks: parseNoteBlocks(result.page.content), style: result.page.style ?? null };
       draftRef.current = draft; savedSignatureRef.current = signature(draft); setSaved(true);
       setHistory(current => current.map(change => change.id === changeId ? { ...change, undoneAt: new Date().toISOString() } : change));
       syncLinkedTasks(result.page.content);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Không hoàn tác được thay đổi."); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : tr("notes.undo.failed")); }
     finally { aiRequestRef.current = false; setAiBusy(false); }
   };
 
   const effectiveStyle = style ?? defaultStyle;
   const replacePreserved = () => {
-    if (!window.confirm("Thay nội dung gốc bằng một trang trống? Nội dung hiện tại sẽ bị ghi đè khi lưu.")) return;
+    if (!window.confirm(tr("notes.page.resetConfirm"))) return;
     preservedRef.current = false;
     setPreserved(false);
     setBlocks([{ id: crypto.randomUUID(), type: "paragraph", text: "" }]);
@@ -227,45 +228,45 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   // Cancels SidebarShell's main padding so the page bar spans the content area.
   return <div className="-mx-4 -mt-7 sm:-mx-7 lg:-mx-10 lg:-mt-9">
     <div className="sticky top-14 z-20 flex h-11 items-center gap-2 bg-background/90 px-4 backdrop-blur sm:px-6">
-      <nav aria-label="Đường dẫn" className="flex min-w-0 items-center gap-0.5 text-sm text-muted-foreground">
-        <Link href="/pages" className="shrink-0 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">Trang của tôi</Link>
+      <nav aria-label={tr("notes.page.breadcrumbLabel")} className="flex min-w-0 items-center gap-0.5 text-sm text-muted-foreground">
+        <Link href="/pages" className="shrink-0 rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{tr("notes.page.myPages")}</Link>
         {ancestors.map(ancestor => <span key={ancestor.id} className="flex min-w-0 items-center gap-0.5">
           <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
-          <Link href={`/pages/${encodeURIComponent(ancestor.id)}`} className="flex max-w-40 items-center gap-1 truncate rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{ancestor.icon && <span aria-hidden="true">{ancestor.icon}</span>}<span className="truncate">{ancestor.title || "Trang chưa đặt tên"}</span></Link>
+          <Link href={`/pages/${encodeURIComponent(ancestor.id)}`} className="flex max-w-40 items-center gap-1 truncate rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{ancestor.icon && <span aria-hidden="true">{ancestor.icon}</span>}<span className="truncate">{ancestor.title || tr("notes.page.untitled")}</span></Link>
         </span>)}
         <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" />
-        <span aria-current="page" className="flex min-w-0 items-center gap-1 px-1.5 text-foreground">{icon && <span aria-hidden="true">{icon}</span>}<span className="truncate">{title.trim() || "Trang chưa đặt tên"}</span></span>
+        <span aria-current="page" className="flex min-w-0 items-center gap-1 px-1.5 text-foreground">{icon && <span aria-hidden="true">{icon}</span>}<span className="truncate">{title.trim() || tr("notes.page.untitled")}</span></span>
       </nav>
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <span className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex" aria-live="polite">
-          {saving ? <><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />Đang lưu…</> : saved ? <><Check aria-hidden="true" className="size-3.5" />Đã lưu</> : "Chưa lưu"}
-          <span className="sr-only">Cập nhật lúc {new Date(updatedAt).toLocaleTimeString("vi-VN")}</span>
+          {saving ? <><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{tr("notes.page.saving")}</> : saved ? <><Check aria-hidden="true" className="size-3.5" />{tr("notes.page.saved")}</> : tr("notes.page.unsaved")}
+          <span className="sr-only">{tr("notes.page.updatedAt", { time: new Date(updatedAt).toLocaleTimeString("vi-VN") })}</span>
         </span>
         {!trashed && <>
           {!preserved && <>
           <Popover>
-            <PopoverTrigger className={toolbarButton} aria-label="Nhờ AI chỉnh trang"><Sparkles aria-hidden="true" className="size-4 text-violet-600" /><span className="hidden md:inline">AI</span></PopoverTrigger>
+            <PopoverTrigger className={toolbarButton} aria-label={tr("notes.ai.askButton")}><Sparkles aria-hidden="true" className="size-4 text-violet-600" /><span className="hidden md:inline">AI</span></PopoverTrigger>
             <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
-              <p className="mb-2 text-sm font-medium">Nhờ AI chỉnh trang</p>
+              <p className="mb-2 text-sm font-medium">{tr("notes.ai.askButton")}</p>
               <div className="flex gap-2">
-                <Input aria-label="Yêu cầu AI chỉnh nội dung" value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void runAiEdit(); }} placeholder="Ví dụ: chia thành các mục ôn tập" />
-                <Button onClick={() => void runAiEdit()} disabled={saving || aiBusy || !prompt.trim()}>{aiBusy ? <LoaderCircle className="animate-spin" /> : "Áp dụng"}</Button>
+                <Input aria-label={tr("notes.ai.promptLabel")} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void runAiEdit(); }} placeholder={tr("notes.ai.promptPlaceholder")} />
+                <Button onClick={() => void runAiEdit()} disabled={saving || aiBusy || !prompt.trim()}>{aiBusy ? <LoaderCircle className="animate-spin" /> : tr("common.apply")}</Button>
               </div>
-              {!!history.length && <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-2.5 py-1.5 text-xs"><span>{new Date(change.createdAt).toLocaleString("vi-VN")}</span>{change.undoneAt ? <span className="text-muted-foreground">Đã hoàn tác</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" /> Hoàn tác</Button>}</li>)}</ul>}
+              {!!history.length && <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-2.5 py-1.5 text-xs"><span>{new Date(change.createdAt).toLocaleString("vi-VN")}</span>{change.undoneAt ? <span className="text-muted-foreground">{tr("notes.undo.done")}</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" />{tr("notes.undo.button")}</Button>}</li>)}</ul>}
             </PopoverContent>
           </Popover>
           <Popover>
-            <PopoverTrigger className={toolbarButton} aria-label="Kiểu trang"><Type aria-hidden="true" className="size-4" /></PopoverTrigger>
+            <PopoverTrigger className={toolbarButton} aria-label={tr("notes.style.title")}><Type aria-hidden="true" className="size-4" /></PopoverTrigger>
             <PopoverContent align="end" className="max-h-[70vh] w-80 overflow-y-auto">
               <fieldset disabled={aiBusy}><PageStyleControls value={effectiveStyle} onChange={next => { if (!aiBusy) setStyle(next); }} /></fieldset>
-              <Button type="button" variant="link" className="mt-2 px-0" onClick={() => setStyle(null)}>Dùng kiểu mặc định của tôi</Button>
+              <Button type="button" variant="link" className="mt-2 px-0" onClick={() => setStyle(null)}>{tr("notes.style.useDefault")}</Button>
             </PopoverContent>
           </Popover>
           </>}
-          <button type="button" className={toolbarButton} aria-pressed={reading} aria-label={reading ? "Quay lại viết" : "Chế độ đọc"} onClick={() => setReading(value => !value)}>
+          <button type="button" className={toolbarButton} aria-pressed={reading} aria-label={reading ? tr("notes.mode.edit") : tr("notes.mode.read")} onClick={() => setReading(value => !value)}>
             {reading ? <PencilLine aria-hidden="true" className="size-4" /> : <BookOpen aria-hidden="true" className="size-4" />}
           </button>
-          <button type="button" className={toolbarButton} aria-pressed={isFavorite} aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"} onClick={() => void updateMeta(page.id, { isFavorite: !isFavorite })}>
+          <button type="button" className={toolbarButton} aria-pressed={isFavorite} aria-label={isFavorite ? tr("notes.favorite.remove") : tr("notes.favorite.add")} onClick={() => void updateMeta(page.id, { isFavorite: !isFavorite })}>
             <Star aria-hidden="true" className={cn("size-4", isFavorite && "fill-amber-400 text-amber-400")} />
           </button>
           <PageActionsMenu page={summary} className="size-8 rounded-md text-muted-foreground hover:bg-muted" />
@@ -274,12 +275,12 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
     </div>
 
     {trashed && <div role="alert" className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">
-      Trang này đang ở thùng rác.
-      <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>Khôi phục</Button>
+      {tr("notes.trash.notice")}
+      <Button type="button" size="sm" variant="outline" onClick={() => void updateMeta(page.id, { restore: true }).then(ok => { if (ok) setTrashed(false); })}>{tr("common.restore")}</Button>
     </div>}
     {preserved && <div role="alert" className="mx-auto mt-3 flex max-w-3xl flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm">
-      Trang dùng định dạng chưa hỗ trợ. Nội dung gốc được giữ nguyên và không tự lưu.
-      {!trashed && <Button type="button" size="sm" variant="outline" onClick={replacePreserved}>Thay bằng trang trống</Button>}
+      {tr("notes.page.unsupported")}
+      {!trashed && <Button type="button" size="sm" variant="outline" onClick={replacePreserved}>{tr("notes.page.replaceBlank")}</Button>}
     </div>}
     {error && <p role="alert" className="mx-auto mt-3 max-w-3xl rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">{error}</p>}
 
@@ -289,26 +290,26 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
           <Popover open={iconOpen} onOpenChange={setIconOpen}>
             <PopoverTrigger asChild>
               {icon
-                ? <button type="button" disabled={trashed || reading} aria-label="Đổi icon trang" className="mb-3 rounded-lg p-1 text-6xl leading-none hover:bg-black/5 dark:hover:bg-white/10">{icon}</button>
-                : <button type="button" disabled={trashed || reading} className="mb-2 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-sm text-muted-foreground opacity-0 hover:bg-muted focus-visible:opacity-100 group-hover/cover:opacity-100 disabled:hidden"><Smile aria-hidden="true" className="size-4" />Thêm icon</button>}
+                ? <button type="button" disabled={trashed || reading} aria-label={tr("notes.page.iconAria")} className="mb-3 rounded-lg p-1 text-6xl leading-none hover:bg-black/5 dark:hover:bg-white/10">{icon}</button>
+                : <button type="button" disabled={trashed || reading} className="mb-2 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-sm text-muted-foreground opacity-0 hover:bg-muted focus-visible:opacity-100 group-hover/cover:opacity-100 disabled:hidden"><Smile aria-hidden="true" className="size-4" />{tr("notes.page.addIcon")}</button>}
             </PopoverTrigger>
             <PopoverContent align="start" className="w-80">
               <IconPicker value={icon} onSelect={next => { void updateMeta(page.id, { icon: next }); setIconOpen(false); }} />
             </PopoverContent>
           </Popover>
           <AutoTextarea
-            aria-label="Tên trang"
+            aria-label={tr("notes.page.titleLabel")}
             readOnly={reading || trashed || preserved}
             value={title}
             maxLength={200}
             onChange={event => setTitle(event.target.value.replace(/\n/g, " "))}
-            onBlur={() => { if (!title.trim()) setTitle("Trang mới"); }}
+            onBlur={() => { if (!title.trim()) setTitle(tr("notes.page.newPage")); }}
             onKeyDown={event => {
               if (event.key !== "Enter") return;
               event.preventDefault();
               document.querySelector<HTMLElement>("[data-block-input]")?.focus();
             }}
-            placeholder="Trang chưa đặt tên"
+            placeholder={tr("notes.page.untitled")}
             className="text-[2.5em] font-bold leading-tight tracking-tight placeholder:text-muted-foreground"
           />
         </div>

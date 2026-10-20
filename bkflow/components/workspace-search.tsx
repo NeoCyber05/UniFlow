@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
+import { tr } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/messages/vi";
 import { useAuth } from "@/web/lib/auth";
 import { usePathname, useSearchParams } from "@/web/shims/next-navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { parseRecentItems, rememberSearchItem, type SearchReference, type WorkspaceSearchItem } from "@/lib/search/workspace-search";
 import { useCardModal } from "@/hooks/use-card-modal";
 
-const labels = { card: "Công việc", course: "Học phần", board: "Bảng", note: "Ghi chú", page: "Trang" };
+const labels: Record<string, MessageKey> = { card: "search.kindTask", course: "search.kindCourse", board: "search.kindBoard", note: "search.kindNote", page: "search.kindPage" };
 
 export const WorkspaceSearch = () => {
   const { userId } = useAuth();
@@ -90,14 +92,14 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
   };
 
   return <Dialog open={open} onOpenChange={changeOpen}>
-    <DialogTrigger asChild><Button variant="outline" aria-label="Tìm nhanh toàn workspace" className="w-full max-w-md justify-start gap-2 text-muted-foreground">
-      <Search aria-hidden="true" className="size-4 shrink-0" /><span className="hidden sm:inline">Tìm công việc, học phần, trang…</span><span className="sm:hidden">Tìm nhanh</span><kbd className="ml-auto hidden text-xs md:inline">Ctrl/⌘ K</kbd>
+    <DialogTrigger asChild><Button variant="outline" aria-label={tr("search.title")} className="w-full max-w-md justify-start gap-2 text-muted-foreground">
+      <Search aria-hidden="true" className="size-4 shrink-0" /><span className="hidden sm:inline">{tr("search.placeholder")}</span><span className="sm:hidden">{tr("search.quick")}</span><kbd className="ml-auto hidden text-xs md:inline">Ctrl/⌘ K</kbd>
     </Button></DialogTrigger>
     <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] gap-3 sm:max-w-xl">
-      <DialogTitle>Tìm nhanh toàn workspace</DialogTitle>
-      <DialogDescription>Tìm trong workspace đang chọn. Dùng ↑ ↓ và Enter để mở, Esc để đóng.</DialogDescription>
-      <Input autoFocus value={query} aria-label="Từ khóa tìm kiếm" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls={listId} aria-activedescendant={chosen ? `${listId}-${chosen.type}-${chosen.id}` : undefined}
-        placeholder="Tên việc, mã học phần, nội dung ghi chú…" onChange={event => { setQuery(event.target.value); setActive(0); }}
+      <DialogTitle>{tr("search.title")}</DialogTitle>
+      <DialogDescription>{tr("search.hint")}</DialogDescription>
+      <Input autoFocus value={query} aria-label={tr("search.inputLabel")} role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls={listId} aria-activedescendant={chosen ? `${listId}-${chosen.type}-${chosen.id}` : undefined}
+        placeholder={tr("search.inputPlaceholder")} onChange={event => { setQuery(event.target.value); setActive(0); }}
         onKeyDown={event => {
           if (event.nativeEvent.isComposing) return;
           if (["ArrowDown", "ArrowUp"].includes(event.key)) {
@@ -108,14 +110,14 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
             document.getElementById(`${listId}-${chosen.type}-${chosen.id}`)?.click();
           }
         }} />
-      {!enabled ? <p role="status">Chọn workspace để tìm kiếm.</p> : loading ? <p role="status">Đang tìm…</p> : isError ? <div role="alert">Chưa tải được kết quả. <Button variant="link" onClick={() => void refetch()}>Thử lại</Button></div> : <>
-        {!query.trim() && <p className="text-xs text-muted-foreground">{data?.items.length ? "Mục gần đây và lối điều hướng" : "Đi đến"}</p>}
-        <div id={listId} role="listbox" aria-label="Kết quả tìm kiếm" className="max-h-[50dvh] overflow-y-auto">
+      {!enabled ? <p role="status">{tr("search.pickWorkspace")}</p> : loading ? <p role="status">{tr("search.searching")}</p> : isError ? <div role="alert">{tr("search.loadError")}<Button variant="link" onClick={() => void refetch()}>{tr("common.retry")}</Button></div> : <>
+        {!query.trim() && <p className="text-xs text-muted-foreground">{data?.items.length ? tr("search.recentGroup") : tr("search.goTo")}</p>}
+        <div id={listId} role="listbox" aria-label={tr("search.results")} className="max-h-[50dvh] overflow-y-auto">
           {items.map(item => <a key={`${item.type}:${item.id}`} id={`${listId}-${item.type}-${item.id}`} role="option" aria-selected={chosen === item} href={item.href} onClick={() => remember(item)}
             className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 focus-visible:outline-2 focus-visible:outline-ring ${chosen === item ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}>
-            <span className="min-w-0 flex-1"><span className="block truncate font-medium">{item.title}</span><span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span></span><span className="shrink-0 text-xs text-muted-foreground">{labels[item.type]}</span>
+            <span className="min-w-0 flex-1"><span className="block truncate font-medium">{item.title}</span><span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span></span><span className="shrink-0 text-xs text-muted-foreground">{tr(labels[item.type])}</span>
           </a>)}
-          {!items.length && <p role="status" className="py-6 text-center text-muted-foreground">Chưa tìm thấy. Thử tên ngắn hơn hoặc mã học phần.</p>}
+          {!items.length && <p role="status" className="py-6 text-center text-muted-foreground">{tr("search.noResults")}</p>}
         </div>
       </>}
     </DialogContent>

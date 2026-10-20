@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { tr } from "@/lib/i18n";
 import Link from "@/web/shims/next-link";
 import { ExternalLink, Star, Sun, X } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
@@ -49,13 +50,13 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-1 border-b border-neutral-100 px-3 py-2">
         <p className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500">
-          {context?.boardTitle ?? "Đang tải…"}
+          {context?.boardTitle ?? tr("common.loading")}
         </p>
         <button
           type="button"
           disabled={!context}
           onClick={() => context && void setMyDay(taskId, !isPinned)}
-          title={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
+          title={isPinned ? tr("task.unpin") : tr("task.pin")}
           className={cn("rounded-md p-1.5 text-neutral-400 hover:bg-amber-50 hover:text-amber-500", isPinned && "text-amber-500")}
         >
           <Sun className="h-4 w-4" />
@@ -64,7 +65,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
           type="button"
           disabled={!context}
           onClick={() => context && void setImportant(taskId, !context.isImportant)}
-          title={context?.isImportant ? "Bỏ đánh dấu quan trọng" : "Đánh dấu quan trọng"}
+          title={context?.isImportant ? tr("task.unmarkImportant") : tr("task.markImportant")}
           className="rounded-md p-1.5 text-neutral-400 hover:bg-amber-50 hover:text-amber-500"
         >
           <Star className={cn("h-4 w-4", context?.isImportant && "fill-amber-400 text-amber-400")} />
@@ -72,7 +73,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
         {context && (
           <Link
             href={`/board/${context.boardId}?cardId=${taskId}`}
-            title="Mở trong bảng"
+            title={tr("task.openInBoard")}
             className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
           >
             <ExternalLink className="h-4 w-4" />
@@ -81,7 +82,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
         <button
           type="button"
           onClick={requestClose}
-          aria-label="Đóng"
+          aria-label={tr("common.close")}
           className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
         >
           <X className="h-4 w-4" />
@@ -96,19 +97,19 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
         <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="text-sm font-medium text-neutral-700">
             {errorStatus === 403
-              ? "Bạn không còn quyền truy cập việc này."
+              ? tr("task.noAccess")
               : errorStatus === 404
-                ? "Việc không tồn tại hoặc đã bị xóa."
-                : "Không tải được việc. Kiểm tra kết nối rồi thử lại."}
+                ? tr("task.notFound")
+                : tr("task.loadError")}
           </p>
           <div className="flex gap-2">
             {!isGone && (
               <Button type="button" size="sm" disabled={isFetching} onClick={() => void refetch()}>
-                Thử lại
+                {tr("common.retry")}
               </Button>
             )}
             <Button type="button" size="sm" variant="outline" onClick={onClose}>
-              Đóng
+              {tr("common.close")}
             </Button>
           </div>
         </div>
@@ -173,7 +174,7 @@ export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetai
   return (
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent side="right" showCloseButton={false} className="w-full gap-0 p-0 sm:max-w-full">
-        <SheetTitle className="sr-only">Chi tiết việc</SheetTitle>
+        <SheetTitle className="sr-only">{tr("task.detailTitle")}</SheetTitle>
         <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} />
       </SheetContent>
     </Sheet>

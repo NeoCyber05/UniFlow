@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type SettingsTab = "appearance" | "workflow" | "notifications" | "shortcuts" | "account";
+export type SettingsTab = "appearance" | "workflow" | "notifications" | "shortcuts" | "language" | "account";
 
 interface SettingsModalStore {
   isOpen: boolean;

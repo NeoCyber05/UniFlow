@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Check, Pencil, Trash2 } from "lucide-react";
@@ -78,7 +79,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
 
   const { execute: executeCreate, isLoading: isCreating } = useAction(createCourse, {
     onSuccess: (course) => {
-      toast.success(`Đã thêm môn "${course.name}".`);
+      toast.success(tr("course.added", { name: course.name }));
       void refreshCourses().then(() => resetForm([course.color]));
     },
     onError: (error) => toast.error(error),
@@ -86,7 +87,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
 
   const { execute: executeUpdate, isLoading: isUpdating } = useAction(updateCourse, {
     onSuccess: () => {
-      toast.success("Đã cập nhật môn học.");
+      toast.success(tr("course.updated"));
       void refreshCourses().then(() => resetForm());
     },
     onError: (error) => toast.error(error),
@@ -94,7 +95,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
 
   const { execute: executeDelete, isLoading: isDeleting } = useAction(deleteCourse, {
     onSuccess: (course) => {
-      toast.success(`Đã xóa môn "${course.name}".`);
+      toast.success(tr("course.deleted", { name: course.name }));
       if (selectedCourseIds?.includes(course.id)) {
         toggleCourse(boardId, course.id);
       }
@@ -135,7 +136,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
     };
 
     if (payload.credits !== null && Number.isNaN(payload.credits)) {
-      toast.error("Số tín chỉ không hợp lệ.");
+      toast.error(tr("course.creditsInvalid"));
       return;
     }
 
@@ -169,16 +170,16 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
     >
       <DialogContent className="sm:max-w-lg rounded-xl bg-white p-6 text-neutral-900">
         <DialogHeader>
-          <DialogTitle>Môn học trong kỳ</DialogTitle>
+          <DialogTitle>{tr("course.inSemester")}</DialogTitle>
           <DialogDescription>
-            Mỗi thẻ thuộc một môn (hoặc Cá nhân). Màu môn hiển thị trên kanban, timeline và lịch.
+            {tr("course.colorHint")}
           </DialogDescription>
         </DialogHeader>
 
         <ul className="max-h-64 space-y-1 overflow-y-auto">
           {courses.length === 0 && (
             <li className="rounded-lg border border-dashed border-neutral-200 px-3 py-4 text-center text-sm text-neutral-500">
-              Chưa có môn nào. Thêm môn đầu tiên bên dưới.
+              {tr("course.emptyList")}
             </li>
           )}
           {courses.map((course, index) => (
@@ -195,22 +196,22 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
               {course.credits !== null && (
                 <span className="text-xs text-neutral-400">{course.credits} TC</span>
               )}
-              <Button type="button" variant="ghost" size="icon-sm" title="Lên" disabled={isBusy || index === 0} onClick={() => move(index, -1)}>
+              <Button type="button" variant="ghost" size="icon-sm" title={tr("course.moveUp")} disabled={isBusy || index === 0} onClick={() => move(index, -1)}>
                 <ArrowUp className="h-3.5 w-3.5" />
               </Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="Xuống" disabled={isBusy || index === courses.length - 1} onClick={() => move(index, 1)}>
+              <Button type="button" variant="ghost" size="icon-sm" title={tr("course.moveDown")} disabled={isBusy || index === courses.length - 1} onClick={() => move(index, 1)}>
                 <ArrowDown className="h-3.5 w-3.5" />
               </Button>
-              <Button type="button" variant="ghost" size="icon-sm" title="Sửa" disabled={isBusy} onClick={() => startEdit(course)}>
+              <Button type="button" variant="ghost" size="icon-sm" title={tr("common.edit")} disabled={isBusy} onClick={() => startEdit(course)}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
               <ConfirmModal
-                title={`Xóa môn "${course.name}"?`}
-                description="Các thẻ của môn này sẽ chuyển về Cá nhân."
+                title={tr("course.deleteTitle", { name: course.name })}
+                description={tr("course.deleteDesc")}
                 onConfirm={() => executeDelete({ id: course.id, boardId })}
                 disabled={isBusy}
               >
-                <Button type="button" variant="ghost" size="icon-sm" title="Xóa" disabled={isBusy} className="hover:bg-rose-50">
+                <Button type="button" variant="ghost" size="icon-sm" title={tr("common.delete")} disabled={isBusy} className="hover:bg-rose-50">
                   <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                 </Button>
               </ConfirmModal>
@@ -220,12 +221,12 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
 
         <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-neutral-100 bg-neutral-50/70 p-3">
           <p className="text-xs font-semibold text-neutral-600">
-            {editingId ? "Sửa môn" : "Thêm môn"}
+            {editingId ? tr("course.editTitle") : tr("course.add")}
           </p>
           <Input
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            placeholder="Tên môn, vd: Giải tích 1"
+            placeholder={tr("course.namePlaceholder")}
             disabled={isBusy}
             autoFocus
           />
@@ -233,7 +234,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
             <Input
               value={form.code}
               onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-              placeholder="Mã HP, vd: MI1111"
+              placeholder={tr("course.codePlaceholder")}
               disabled={isBusy}
             />
             <Input
@@ -242,11 +243,11 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
               max={10}
               value={form.credits}
               onChange={(event) => setForm((current) => ({ ...current, credits: event.target.value }))}
-              placeholder="Tín chỉ"
+              placeholder={tr("course.credits")}
               disabled={isBusy}
             />
           </div>
-          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Màu môn">
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={tr("course.color")}>
             {COURSE_COLOR_KEYS.map((key) => (
               <button
                 key={key}
@@ -268,11 +269,11 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
           <div className="flex justify-end gap-2">
             {editingId && (
               <Button type="button" variant="ghost" size="sm" onClick={() => resetForm()} disabled={isBusy}>
-                Hủy
+                {tr("common.cancel")}
               </Button>
             )}
             <Button type="submit" size="sm" disabled={isBusy || !form.name.trim()} className="bg-violet-600 hover:bg-violet-700">
-              {editingId ? "Lưu" : "Thêm môn"}
+              {editingId ? tr("common.save") : tr("course.add")}
             </Button>
           </div>
         </form>

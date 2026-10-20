@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/web/shims/next-link";
+import { tr } from "@/lib/i18n";
 import Image from "@/web/shims/next-image";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +38,7 @@ export const Sidebar = ({
             <Image
               fill
               src={user.imageUrl}
-              alt={user?.fullName || "Sinh viên"}
+              alt={user?.fullName || tr("sidebar.studentAlt")}
               className="object-cover"
             />
           ) : (
@@ -47,7 +48,7 @@ export const Sidebar = ({
           )}
         </div>
         <p className="truncate text-sm font-semibold text-foreground">
-          {user?.fullName || "Không gian của tôi"}
+          {user?.fullName || tr("sidebar.myWorkspace")}
         </p>
       </Link>
 

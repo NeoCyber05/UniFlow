@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { Check, Plus, Search } from "lucide-react";
 
 import { customCourseId, isCourseRef, parseCourseRef } from "@/lib/courses/hust-catalog";
@@ -24,7 +25,7 @@ export const CoursePicker = ({
   courses,
   value,
   onChange,
-  noneLabel = "Không môn",
+  noneLabel = tr("course.none"),
 }: {
   courses: PickerCourse[];
   value: string | null;
@@ -86,8 +87,8 @@ export const CoursePicker = ({
             if (first) onChange(first.id);
             else if (canCreate) onChange(customCourseId(trimmed));
           }}
-          placeholder="Tìm mã hoặc tên môn…"
-          aria-label="Tìm môn"
+          placeholder={tr("course.pickSearch")}
+          aria-label={tr("course.pickLabel")}
           className="w-full bg-transparent text-xs outline-none placeholder:text-neutral-400"
         />
       </label>
@@ -101,8 +102,8 @@ export const CoursePicker = ({
             {noneLabel}
           </button>
         )}
-        {group("Trong học kỳ", inSemester)}
-        {group("Danh mục HUST", catalog)}
+        {group(tr("course.inSemesterGroup"), inSemester)}
+        {group(tr("course.hustGroup"), catalog)}
         {canCreate && (
           <button
             type="button"
@@ -110,10 +111,10 @@ export const CoursePicker = ({
             className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium text-violet-700 hover:bg-violet-50"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            Tạo loại “{trimmed}”
+            {tr("course.createType", { name: trimmed })}
           </button>
         )}
-        {!first && !canCreate && <p className="px-2 py-3 text-center text-xs text-neutral-400">Không có môn phù hợp.</p>}
+        {!first && !canCreate && <p className="px-2 py-3 text-center text-xs text-neutral-400">{tr("course.noMatch")}</p>}
       </div>
     </div>
   );

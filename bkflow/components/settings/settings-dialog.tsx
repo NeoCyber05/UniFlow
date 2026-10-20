@@ -10,8 +10,11 @@ import {
   Info,
   Keyboard,
   Laptop,
+  Languages,
+  Check,
   Palette,
   Play,
+  Settings,
   SlidersHorizontal,
   Target,
   Volume2,
@@ -35,6 +38,8 @@ import { AppearancePanel } from "./appearance-panel";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { useSettingsModal, type SettingsTab } from "@/hooks/use-settings-modal";
 import { useUser } from "@/web/lib/auth";
+import { LOCALES, tr, useLocale } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/messages/vi";
 import {
   getDesktopReminderState,
   enableDesktopReminders,
@@ -78,19 +83,20 @@ const playChimeSound = () => {
   }
 };
 
-const TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
-  { id: "appearance", label: "Giao diện", icon: Palette },
-  { id: "workflow", label: "Kế hoạch & Học tập", icon: CalendarCheck },
-  { id: "notifications", label: "Thông báo & Nhắc việc", icon: Bell },
-  { id: "shortcuts", label: "Phím tắt & Tiện ích", icon: Keyboard },
-  { id: "account", label: "Tài khoản & Dữ liệu", icon: User },
+const TABS: { id: SettingsTab; labelKey: MessageKey; icon: typeof Palette }[] = [
+  { id: "appearance", labelKey: "settings.tab.appearance", icon: Palette },
+  { id: "workflow", labelKey: "settings.tab.workflow", icon: CalendarCheck },
+  { id: "notifications", labelKey: "settings.tab.notifications", icon: Bell },
+  { id: "shortcuts", labelKey: "settings.tab.shortcuts", icon: Keyboard },
+  { id: "language", labelKey: "settings.tab.language", icon: Languages },
+  { id: "account", labelKey: "settings.tab.account", icon: User },
 ];
 
 export const SettingsDialog = () => {
   const { isOpen, activeTab, onClose, setTab } = useSettingsModal();
   const appearance = useAppearance();
   const { user } = useUser();
-
+  const { locale, setLocale } = useLocale();
 
   // Desktop notification state
   const [reminderState, setReminderState] = useState<DesktopReminderState | null>(null);
@@ -160,58 +166,58 @@ export const SettingsDialog = () => {
     setSoundEnabled(next);
     localStorage.setItem("uniflow-sound", next ? "enabled" : "disabled");
     if (next) playChimeSound();
-    toast.success(next ? "Đã bật âm thanh nhắc việc" : "Đã tắt âm thanh nhắc việc");
+    toast.success(next ? tr("settings.toast.soundOn") : tr("settings.toast.soundOff"));
   };
 
   const handleReminderAdvanceChange = (mins: string) => {
     setReminderAdvance(mins);
     localStorage.setItem("uniflow-reminder-lead", mins);
-    toast.success("Đã cập nhật thời gian nhắc trước hạn");
+    toast.success(tr("settings.toast.leadUpdated"));
   };
 
   const handleDailyGoalChange = (goal: string) => {
     setDailyGoal(goal);
     localStorage.setItem("uniflow-daily-goal", goal);
-    toast.success(`Đã đặt mục tiêu ${goal} việc hoàn thành mỗi ngày`);
+    toast.success(tr("settings.toast.dailyGoal", { goal }));
   };
 
   const toggleAutoRollover = () => {
     const next = !autoRollover;
     setAutoRollover(next);
     localStorage.setItem("uniflow-auto-rollover", next ? "enabled" : "disabled");
-    toast.success(next ? "Đã bật tự động dời việc quá hạn sang Hôm nay" : "Đã tắt tự động dời việc quá hạn");
+    toast.success(next ? tr("settings.toast.rolloverOn") : tr("settings.toast.rolloverOff"));
   };
 
   const handleStartOfWeekChange = (val: string) => {
     setStartOfWeek(val);
     localStorage.setItem("uniflow-start-of-week", val);
-    toast.success(`Đã đặt ngày đầu tuần là ${val === "monday" ? "Thứ Hai" : "Chủ Nhật"}`);
+    toast.success(tr("settings.toast.startOfWeek", { day: val === "monday" ? tr("settings.weekday.monday") : tr("settings.weekday.sunday") }));
   };
 
   const handleDefaultScreenChange = (val: string) => {
     setDefaultScreen(val);
     localStorage.setItem("uniflow-default-screen", val);
-    toast.success("Đã lưu màn hình khởi động mặc định");
+    toast.success(tr("settings.toast.defaultScreenSaved"));
   };
 
   const handleListDensityChange = (val: string) => {
     setListDensity(val);
     localStorage.setItem("uniflow-list-density", val);
-    toast.success(`Đã chuyển mật độ danh sách sang ${val === "standard" ? "Tiêu chuẩn" : "Tinh gọn"}`);
+    toast.success(tr("settings.toast.density", { mode: val === "standard" ? tr("settings.density.standard") : tr("settings.density.compact") }));
   };
 
   const toggleMorningReminder = () => {
     const next = !morningReminder;
     setMorningReminder(next);
     localStorage.setItem("uniflow-morning-reminder", next ? "enabled" : "disabled");
-    toast.success(next ? "Đã bật nhắc điểm danh sáng (07:30)" : "Đã tắt nhắc điểm danh sáng");
+    toast.success(next ? tr("settings.toast.morningOn") : tr("settings.toast.morningOff"));
   };
 
   const toggleEveningReminder = () => {
     const next = !eveningReminder;
     setEveningReminder(next);
     localStorage.setItem("uniflow-evening-reminder", next ? "enabled" : "disabled");
-    toast.success(next ? "Đã bật nhắc tổng kết tối (21:30)" : "Đã tắt nhắc tổng kết tối");
+    toast.success(next ? tr("settings.toast.eveningOn") : tr("settings.toast.eveningOff"));
   };
 
   const toggleDesktopPush = async () => {
@@ -219,19 +225,19 @@ export const SettingsDialog = () => {
     try {
       if (reminderState === "enabled") {
         await disableDesktopReminders();
-        toast.info("Đã tắt thông báo trên máy này");
+        toast.info(tr("settings.toast.pushOff"));
       } else {
         const result = await enableDesktopReminders();
         if (result.state === "enabled") {
-          toast.success("Đã bật thông báo trên máy này thành công!");
+          toast.success(tr("settings.toast.pushOn"));
         } else if (result.state === "denied") {
-          toast.error("Trình duyệt đang chặn quyền thông báo");
+          toast.error(tr("settings.toast.pushBlocked"));
         } else {
-          toast.error("Không thể kết nối đến máy chủ thông báo");
+          toast.error(tr("settings.toast.pushConnectFail"));
         }
       }
     } catch {
-      toast.error("Lỗi khi thay đổi cài đặt thông báo");
+      toast.error(tr("settings.toast.pushError"));
     } finally {
       setBusyReminder(false);
       refreshNotificationState();
@@ -274,24 +280,24 @@ export const SettingsDialog = () => {
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      toast.success("Đã xuất dữ liệu thành công");
+      toast.success(tr("settings.toast.exportOk"));
     } catch {
-      toast.error("Không thể xuất dữ liệu");
+      toast.error(tr("settings.toast.exportFail"));
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] sm:max-h-[85vh] w-[95vw] sm:max-w-4xl p-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-xl border-border/80 shadow-2xl">
+      <DialogContent className="max-h-[90vh] sm:max-h-[85vh] w-[95vw] sm:max-w-4xl p-0 overflow-hidden flex flex-col bg-background border-border/80 shadow-2xl">
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/60 bg-muted/20 shrink-0">
           <div className="flex items-center gap-2">
             <span className="flex size-7 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white shadow-xs">
-              <SlidersHorizontal aria-hidden="true" className="size-4" />
+              <Settings aria-hidden="true" className="size-4" />
             </span>
             <div>
-              <DialogTitle className="text-xl font-bold tracking-tight">Cài đặt</DialogTitle>
+              <DialogTitle className="text-xl font-bold tracking-tight">{tr("settings.title")}</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Tùy chỉnh giao diện, kế hoạch học tập, thông báo và không gian làm việc UniFlow
+                {tr("settings.description")}
               </DialogDescription>
             </div>
           </div>
@@ -313,7 +319,7 @@ export const SettingsDialog = () => {
                   }`}
                 >
                   <Icon className="size-3.5" />
-                  {tab.label}
+                  {tr(tab.labelKey)}
                   {isActive && (
                     <motion.div
                       layoutId="settings-active-tab"
@@ -328,7 +334,8 @@ export const SettingsDialog = () => {
         </DialogHeader>
 
         {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+        {/* relative: giữ input sr-only (radio chủ đề) trong vùng cuộn, tránh focus làm cuộn cả hộp thoại */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
           <AnimatePresence mode="wait">
             {activeTab === "appearance" && (
               <motion.div
@@ -357,23 +364,23 @@ export const SettingsDialog = () => {
                     <div className="space-y-0.5">
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <Target className="size-4 text-primary" />
-                        Mục tiêu học tập hàng ngày
+                        {tr("settings.goal.title")}
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        Đặt số lượng công việc muốn hoàn thành mỗi ngày để duy trì chuỗi học tập (Streak)
+                        {tr("settings.goal.desc")}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[11px] gap-1">
                       <Flame className="size-3 text-amber-500" />
-                      Chuỗi học tập
+                      {tr("settings.goal.streak")}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { goal: "3", label: "3 việc / ngày", desc: "Nhẹ nhàng, việc cốt lõi" },
-                      { goal: "5", label: "5 việc / ngày", desc: "Tiêu chuẩn (Khuyên dùng)" },
-                      { goal: "7", label: "7 việc / ngày", desc: "Nỗ lực cao, mùa thi" },
+                      { goal: "3", label: tr("settings.goal.lowLabel"), desc: tr("settings.goal.lowDesc") },
+                      { goal: "5", label: tr("settings.goal.midLabel"), desc: tr("settings.goal.midDesc") },
+                      { goal: "7", label: tr("settings.goal.highLabel"), desc: tr("settings.goal.highDesc") },
                     ].map((item) => (
                       <button
                         key={item.goal}
@@ -397,10 +404,10 @@ export const SettingsDialog = () => {
                   <div className="space-y-0.5">
                     <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <Clock className="size-4 text-primary" />
-                      Tự động dời việc quá hạn sang Hôm nay
+                      {tr("settings.rollover.title")}
                     </h4>
                     <p className="text-xs text-muted-foreground max-w-lg">
-                      Khi mở ứng dụng vào ngày mới, tự động đưa các việc chưa xong của ngày hôm trước vào danh sách &quot;Hôm nay&quot; để bạn không bỏ lỡ bài tập.
+                      {tr("settings.rollover.desc")}
                     </p>
                   </div>
                   <Button
@@ -410,7 +417,7 @@ export const SettingsDialog = () => {
                     onClick={toggleAutoRollover}
                     className="shrink-0 cursor-pointer"
                   >
-                    {autoRollover ? "Đang bật" : "Đã tắt"}
+                    {autoRollover ? tr("settings.common.on") : tr("settings.common.off")}
                   </Button>
                 </div>
 
@@ -421,17 +428,17 @@ export const SettingsDialog = () => {
                     <div>
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <CalendarCheck className="size-4 text-primary" />
-                        Ngày bắt đầu tuần
+                        {tr("settings.startOfWeek.title")}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Áp dụng cho giao diện Lịch và kế hoạch tuần
+                        {tr("settings.startOfWeek.desc")}
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { id: "monday", label: "Thứ Hai (HUST)" },
-                        { id: "sunday", label: "Chủ Nhật" },
+                        { id: "monday", label: tr("settings.weekday.mondayHust") },
+                        { id: "sunday", label: tr("settings.weekday.sunday") },
                       ].map((item) => (
                         <button
                           key={item.id}
@@ -454,17 +461,17 @@ export const SettingsDialog = () => {
                     <div>
                       <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <SlidersHorizontal className="size-4 text-primary" />
-                        Mật độ hiển thị danh sách
+                        {tr("settings.density.title")}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Độ thoáng của các thẻ bài tập và công việc
+                        {tr("settings.density.desc")}
                       </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { id: "standard", label: "Tiêu chuẩn" },
-                        { id: "compact", label: "Tinh gọn" },
+                        { id: "standard", label: tr("settings.density.standard") },
+                        { id: "compact", label: tr("settings.density.compact") },
                       ].map((item) => (
                         <button
                           key={item.id}
@@ -487,18 +494,18 @@ export const SettingsDialog = () => {
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
                   <div>
                     <h4 className="text-sm font-semibold text-foreground">
-                      Màn hình khởi động mặc định
+                      {tr("settings.defaultScreen.title")}
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                      Màn hình hiển thị đầu tiên khi bạn mở UniFlow
+                      {tr("settings.defaultScreen.desc")}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "today", label: "Hôm nay", desc: "/my/today" },
-                      { id: "courses", label: "Học phần", desc: "/my/courses" },
-                      { id: "board", label: "Bảng học kỳ", desc: "/board" },
+                      { id: "today", label: tr("settings.screen.today"), desc: "/my/today" },
+                      { id: "courses", label: tr("settings.screen.courses"), desc: "/my/courses" },
+                      { id: "board", label: tr("settings.screen.board"), desc: "/board" },
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -535,24 +542,24 @@ export const SettingsDialog = () => {
                       <div className="flex items-center gap-2">
                         <Laptop className="size-4 text-primary" />
                         <h4 className="text-sm font-semibold text-foreground">
-                          Thông báo trình duyệt & thiết bị
+                          {tr("settings.push.title")}
                         </h4>
                         {reminderState === "enabled" ? (
                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
-                            Đang hoạt động
+                            {tr("settings.push.active")}
                           </Badge>
                         ) : reminderState === "denied" ? (
                           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[10px]">
-                            Bị chặn
+                            {tr("settings.push.blocked")}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-muted text-muted-foreground text-[10px]">
-                            Chưa bật
+                            {tr("settings.push.off")}
                           </Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Nhận chuông báo và popup nhắc hạn công việc, đồ án và lịch thi ngay cả khi đã đóng tab UniFlow.
+                        {tr("settings.push.desc")}
                       </p>
                     </div>
 
@@ -565,10 +572,10 @@ export const SettingsDialog = () => {
                       className="shrink-0 cursor-pointer"
                     >
                       {busyReminder
-                        ? "Đang xử lý…"
+                        ? tr("settings.common.processing")
                         : reminderState === "enabled"
-                        ? "Tắt thông báo"
-                        : "Bật thông báo"}
+                        ? tr("settings.push.disable")
+                        : tr("settings.push.enable")}
                     </Button>
                   </div>
 
@@ -576,7 +583,7 @@ export const SettingsDialog = () => {
                     <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive flex items-start gap-2">
                       <Info className="size-4 shrink-0 mt-0.5" />
                       <span>
-                        Trình duyệt đang chặn quyền gửi thông báo. Hãy bấm vào biểu tượng ổ khóa bên cạnh thanh địa chỉ URL để cấp quyền &quot;Thông báo&quot; cho UniFlow.
+                        {tr("settings.push.blockedHelp")}
                       </span>
                     </div>
                   )}
@@ -586,19 +593,19 @@ export const SettingsDialog = () => {
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-semibold text-foreground">Thời gian nhắc trước hạn</h4>
+                      <h4 className="text-sm font-semibold text-foreground">{tr("settings.lead.title")}</h4>
                       <p className="text-xs text-muted-foreground">
-                        Chọn thời điểm UniFlow gửi thông báo nhắc bạn trước khi đến hạn chót (Deadline)
+                        {tr("settings.lead.desc")}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { mins: "15", label: "Trước 15 phút" },
-                      { mins: "60", label: "Trước 1 giờ" },
-                      { mins: "1440", label: "Trước 1 ngày" },
-                      { mins: "2880", label: "Trước 2 ngày" },
+                      { mins: "15", label: tr("settings.lead.m15") },
+                      { mins: "60", label: tr("settings.lead.h1") },
+                      { mins: "1440", label: tr("settings.lead.d1") },
+                      { mins: "2880", label: tr("settings.lead.d2") },
                     ].map((opt) => (
                       <button
                         key={opt.mins}
@@ -621,18 +628,18 @@ export const SettingsDialog = () => {
                   <div className="space-y-0.5">
                     <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <Clock className="size-4 text-primary" />
-                      Lịch điểm danh & tổng kết ngày
+                      {tr("settings.digest.title")}
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                      Nhận thông báo tóm tắt lịch học buổi sáng và rà soát bài tập buổi tối
+                      {tr("settings.digest.desc")}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
                       <div>
-                        <p className="text-xs font-semibold text-foreground">Điểm danh sáng (07:30)</p>
-                        <p className="text-[11px] text-muted-foreground">Nhắc các môn học và deadline trong ngày</p>
+                        <p className="text-xs font-semibold text-foreground">{tr("settings.digest.morningTitle")}</p>
+                        <p className="text-[11px] text-muted-foreground">{tr("settings.digest.morningDesc")}</p>
                       </div>
                       <Button
                         type="button"
@@ -641,14 +648,14 @@ export const SettingsDialog = () => {
                         onClick={toggleMorningReminder}
                         className="h-8 text-xs shrink-0 cursor-pointer"
                       >
-                        {morningReminder ? "Bật" : "Tắt"}
+                        {morningReminder ? tr("settings.common.enable") : tr("settings.common.disable")}
                       </Button>
                     </div>
 
                     <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
                       <div>
-                        <p className="text-xs font-semibold text-foreground">Tổng kết tối (21:30)</p>
-                        <p className="text-[11px] text-muted-foreground">Kiểm tra việc hoàn thành và bài vở ngày mai</p>
+                        <p className="text-xs font-semibold text-foreground">{tr("settings.digest.eveningTitle")}</p>
+                        <p className="text-[11px] text-muted-foreground">{tr("settings.digest.eveningDesc")}</p>
                       </div>
                       <Button
                         type="button"
@@ -657,7 +664,7 @@ export const SettingsDialog = () => {
                         onClick={toggleEveningReminder}
                         className="h-8 text-xs shrink-0 cursor-pointer"
                       >
-                        {eveningReminder ? "Bật" : "Tắt"}
+                        {eveningReminder ? tr("settings.common.enable") : tr("settings.common.disable")}
                       </Button>
                     </div>
                   </div>
@@ -672,10 +679,10 @@ export const SettingsDialog = () => {
                       ) : (
                         <VolumeX className="size-4 text-muted-foreground" />
                       )}
-                      Âm thanh nhắc nhở
+                      {tr("settings.sound.title")}
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                      Phát âm thanh nhẹ nhàng chuông 2 nốt khi công việc đến hạn
+                      {tr("settings.sound.desc")}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -685,10 +692,10 @@ export const SettingsDialog = () => {
                       size="sm"
                       onClick={playChimeSound}
                       className="flex items-center gap-1.5 cursor-pointer text-xs"
-                      title="Nghe thử âm thanh chuông báo"
+                      title={tr("settings.sound.previewTitle")}
                     >
                       <Play className="size-3 text-primary" />
-                      Nghe thử
+                      {tr("settings.sound.preview")}
                     </Button>
                     <Button
                       type="button"
@@ -697,7 +704,7 @@ export const SettingsDialog = () => {
                       onClick={toggleSound}
                       className="cursor-pointer text-xs"
                     >
-                      {soundEnabled ? "Đang bật" : "Đã tắt"}
+                      {soundEnabled ? tr("settings.common.on") : tr("settings.common.off")}
                     </Button>
                   </div>
                 </div>
@@ -717,16 +724,16 @@ export const SettingsDialog = () => {
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Keyboard className="size-4 text-primary" />
-                    Phím tắt hữu ích
+                    {tr("settings.shortcuts.title")}
                   </h4>
                   <div className="divide-y divide-border/50 text-xs">
                     {[
-                      { key: "⌘ / Ctrl + K", desc: "Mở thanh tìm kiếm toàn không gian UniFlow" },
-                      { key: "⌘ / Ctrl + B", desc: "Ẩn / Hiện thanh điều hướng Sidebar" },
-                      { key: "T", desc: "Chuyển nhanh về màn hình 'Hôm nay'" },
-                      { key: "L", desc: "Chuyển nhanh sang chế độ 'Lịch'" },
-                      { key: "N", desc: "Mở ô nhập nhanh công việc mới" },
-                      { key: "Esc", desc: "Đóng cửa sổ hoặc chi tiết thẻ hiện tại" },
+                      { key: "⌘ / Ctrl + K", desc: tr("settings.shortcuts.search") },
+                      { key: "⌘ / Ctrl + B", desc: tr("settings.shortcuts.sidebar") },
+                      { key: "T", desc: tr("settings.shortcuts.today") },
+                      { key: "L", desc: tr("settings.shortcuts.calendar") },
+                      { key: "N", desc: tr("settings.shortcuts.newTask") },
+                      { key: "Esc", desc: tr("settings.shortcuts.close") },
                     ].map((sc) => (
                       <div key={sc.key} className="py-2.5 flex items-center justify-between">
                         <span className="text-muted-foreground">{sc.desc}</span>
@@ -743,17 +750,59 @@ export const SettingsDialog = () => {
                   <div className="flex items-center gap-2">
                     <Zap className="size-4 text-amber-500" />
                     <h4 className="text-sm font-semibold text-foreground">
-                      Tiện ích UniFlow Quick Capture
+                      {tr("settings.capture.title")}
                     </h4>
                     <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
                       Chrome Extension
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Bôi đen tin nhắn giao bài tập từ giảng viên hoặc nhóm đồ án trên <strong>Microsoft Teams</strong>, <strong>BK E-learning</strong>, hay <strong>Messenger</strong>, sau đó nhấn phím tắt hoặc chuột phải để AI tự động trích xuất hạn chót và môn học vào UniFlow.
+                    {tr("settings.capture.p1")} <strong>Microsoft Teams</strong>, <strong>BK E-learning</strong>, {tr("settings.capture.or")} <strong>Messenger</strong>{tr("settings.capture.p2")}
                   </p>
                   <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-                    💡 Bạn có thể kiểm tra tiện ích tại thư mục <code className="font-mono text-primary">extensions/uniflow-capture</code> trong bộ cài đặt.
+                    💡 {tr("settings.capture.folder1")} <code className="font-mono text-primary">extensions/uniflow-capture</code> {tr("settings.capture.folder2")}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "language" && (
+              <motion.div
+                key="language"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Languages className="size-4 text-primary" />
+                      {tr("settings.language.title")}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {tr("settings.language.description")}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LOCALES.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setLocale(item.id);
+                          toast.success(tr("settings.language.saved"));
+                        }}
+                        className={`flex items-center justify-between rounded-xl border p-3 text-sm font-medium transition-all cursor-pointer ${
+                          locale === item.id
+                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
+                            : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        }`}
+                      >
+                        {item.label}
+                        {locale === item.id && <Check className="size-4" />}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -779,16 +828,16 @@ export const SettingsDialog = () => {
                   </div>
                   <div className="space-y-1 min-w-0 flex-1">
                     <p className="text-base font-semibold text-foreground truncate">
-                      {user?.fullName || "Sinh viên Bách Khoa"}
+                      {user?.fullName || tr("settings.account.fallbackName")}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {user?.primaryEmailAddress?.emailAddress || "Chưa thiết lập email"}
+                      {user?.primaryEmailAddress?.emailAddress || tr("settings.account.noEmail")}
                     </p>
                     <div className="flex items-center gap-2 pt-1">
                       <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/30">
-                        Sinh viên HUST
+                        {tr("settings.account.badge")}
                       </Badge>
-                      <span className="text-[11px] text-muted-foreground">• Đồng bộ đám mây</span>
+                      <span className="text-[11px] text-muted-foreground">{tr("settings.account.cloudSync")}</span>
                     </div>
                   </div>
                 </div>
@@ -797,10 +846,10 @@ export const SettingsDialog = () => {
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Download className="size-4 text-primary" />
-                    Sao lưu & Xuất dữ liệu
+                    {tr("settings.backup.title")}
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Tải về bản sao lưu dự phòng toàn bộ cấu hình giao diện, kế hoạch học tập và thông tin cá nhân của bạn dưới định dạng JSON chuẩn.
+                    {tr("settings.backup.desc")}
                   </p>
                   <Button
                     type="button"
@@ -810,13 +859,13 @@ export const SettingsDialog = () => {
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <Download className="size-3.5" />
-                    Xuất dữ liệu (.json)
+                    {tr("settings.backup.button")}
                   </Button>
                 </div>
 
                 {/* App Version Info */}
                 <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center text-xs text-muted-foreground">
-                  UniFlow Student Planner v2.4 (HUST Edition) • Giữ nhịp học tập Bách Khoa
+                  {tr("settings.footer.version")}
                 </div>
               </motion.div>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { usePathname } from "@/web/shims/next-navigation";
 import { AnimatePresence, motion } from "motion/react";
 import * as PopoverPrimitive from "@animate-ui/react/primitives/radix-ui/popover";
@@ -61,7 +62,7 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
         fullName: course.name,
         dotClassName: getCourseColor(course.color).dot,
       })),
-      { id: PERSONAL_COURSE_FILTER, label: "Cá nhân", fullName: "Việc không thuộc môn nào", dotClassName: "" },
+      { id: PERSONAL_COURSE_FILTER, label: tr("common.personal"), fullName: tr("course.noCourseTasks"), dotClassName: "" },
     ],
     [courses],
   );
@@ -127,16 +128,16 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
             )}
           </span>
         </button>
-        {/* Chọn nhanh một môn duy nhất, hữu ích khi có nhiều môn */}
+        {/* Chọn nhanh một danh mục duy nhất; absolute để không chiếm chỗ làm cắt tên */}
         <button
           type="button"
           onClick={() => {
             setSelectedCourses(boardId, [option.id]);
             setOpen(false);
           }}
-          className="mr-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 opacity-0 transition-opacity duration-200 hover:bg-violet-100 focus-visible:opacity-100 group-hover/row:opacity-100"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-violet-700 opacity-0 shadow-sm transition-opacity duration-200 hover:bg-violet-100 focus-visible:opacity-100 group-hover/row:opacity-100"
         >
-          Chỉ môn này
+          {tr("course.onlyThis")}
         </button>
       </div>
     );
@@ -162,7 +163,7 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
                 <span className="max-w-[9rem] truncate" title={option.fullName}>{option.label}</span>
                 <button
                   type="button"
-                  aria-label={`Bỏ lọc ${option.label}`}
+                  aria-label={tr("course.clearFilter", { label: option.label })}
                   onClick={() => toggleCourse(boardId, option.id)}
                   className="flex h-5 w-5 items-center justify-center rounded-full text-neutral-500 transition-colors duration-200 hover:bg-neutral-100 hover:text-neutral-900"
                 >
@@ -216,11 +217,11 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
                       />
                     ))}
                   </span>
-                  Tất cả môn
+                  {tr("course.all")}
                 </>
               ) : (
                 <>
-                  Môn học
+                  {tr("course.title")}
                   <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-neutral-900">
                     {selected.length}
                   </span>
@@ -242,7 +243,7 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
                     autoFocus
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Tìm môn học…"
+                    placeholder={tr("course.searchPlaceholder")}
                     className="h-10 w-full bg-transparent text-[13px] outline-none placeholder:text-neutral-400"
                   />
                 </div>
@@ -250,20 +251,20 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
               <div role="menu" className="max-h-72 overflow-y-auto p-1.5 styled-scrollbar">
                 {courseOptions.length > 0 && (
                   <p className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                    Môn học · {courses.length}
+                    {tr("course.title")} · {courses.length}
                   </p>
                 )}
                 {courseOptions.map(renderRow)}
                 {personalOption && (
                   <>
                     <p className="px-2 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                      Khác
+                      {tr("course.other")}
                     </p>
                     {renderRow(personalOption)}
                   </>
                 )}
                 {filtered.length === 0 && (
-                  <p className="px-2 py-6 text-center text-xs text-neutral-500">Không có môn nào khớp “{query}”.</p>
+                  <p className="px-2 py-6 text-center text-xs text-neutral-500">{tr("course.noMatchQuery", { query })}</p>
                 )}
               </div>
               <div className="flex items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50/80 px-2 py-1.5">
@@ -273,7 +274,7 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
                   onClick={() => setSelectedCourses(boardId, [])}
                   className="rounded-md px-2 py-1 text-xs font-medium text-neutral-600 transition-colors duration-200 hover:bg-neutral-200/70 disabled:pointer-events-none disabled:opacity-40"
                 >
-                  Hiện tất cả
+                  {tr("course.showAll")}
                 </button>
                 {canEdit && (
                   <button
@@ -285,7 +286,7 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
                     className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-600 transition-colors duration-200 hover:bg-neutral-200/70"
                   >
                     <Settings2 className="h-3.5 w-3.5" />
-                    {courses.length === 0 ? "Thêm môn học" : "Quản lý môn"}
+                    {courses.length === 0 ? tr("course.add") : tr("course.manage")}
                   </button>
                 )}
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { tr } from "@/lib/i18n";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -60,7 +61,7 @@ export const TaskLabels = ({ labels, mode }: TaskLabelsProps) => {
           <PopoverTrigger asChild>
             <button
               type="button"
-              aria-label={`Xem thêm ${hidden.length} nhãn`}
+              aria-label={tr("tasks.labels.more", { count: hidden.length })}
               className="inline-flex h-5 items-center rounded-full bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-600 ring-1 ring-neutral-200 hover:bg-neutral-200"
             >
               +{hidden.length}
