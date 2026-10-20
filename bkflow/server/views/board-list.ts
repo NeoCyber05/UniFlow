@@ -7,29 +7,30 @@ import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/list/page.tsx.
 export const loadBoardList = async ({ boardId, group }: { boardId: string; group?: string }, userId: string) => {
-  const permission = await requireBoardMemberForUser({ boardId, userId });
+  const [permission, board] = await Promise.all([
+    requireBoardMemberForUser({ boardId, userId }),
+    db.board.findFirst({
+      where: { id: boardId, userId },
+      select: {
+        boardType: true,
+        userId: true,
+        lists: {
+          where: { archivedAt: null },
+          orderBy: { order: "asc" },
+          select: { id: true, title: true },
+        },
+        labels: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, title: true, color: true },
+        },
+      },
+    }),
+  ]);
 
   if (permission.error || !permission.membership) {
     const message = permission.error || "Bạn không có quyền truy cập bảng này.";
     return { redirect: `/my/today?error=${encodeURIComponent(message)}` } as const;
   }
-
-  const board = await db.board.findUnique({
-    where: { id: boardId },
-    select: {
-      boardType: true,
-      userId: true,
-      lists: {
-        where: { archivedAt: null },
-        orderBy: { order: "asc" },
-        select: { id: true, title: true },
-      },
-      labels: {
-        orderBy: { createdAt: "asc" },
-        select: { id: true, title: true, color: true },
-      },
-    },
-  });
 
   if (!board) {
     return { redirect: "/my/today" } as const;

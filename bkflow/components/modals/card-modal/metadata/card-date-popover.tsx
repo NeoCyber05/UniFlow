@@ -18,6 +18,7 @@ import {
 } from "@/lib/cards/task-dates-form";
 import { addVNDays, getVNDay, getVNDayKey } from "@/lib/my-tasks/vn-day";
 import { cn } from "@/lib/utils";
+import { getDefaultReminder } from "@/web/lib/local-prefs";
 import type { CardWithList } from "@/types";
 
 interface CardDatePopoverProps {
@@ -70,9 +71,14 @@ export const CardDatePopover = ({
   onClearLegacyStart,
 }: CardDatePopoverProps) => {
   const [form, setForm] = useState<TaskDatesForm>(() => taskDatesToForm(data));
+  const patchForm = (patch: Partial<TaskDatesForm>) => setForm((current) => {
+    const next = { ...current, ...patch };
+    // Thẻ vừa có hạn nộp và chưa chọn nhắc: dùng mức nhắc mặc định trong Cài đặt > Thông báo.
+    if (!current.deadlineDate && next.deadlineDate && next.reminder === "none") next.reminder = getDefaultReminder();
+    return next;
+  });
   const set = (key: keyof TaskDatesForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((current) => ({ ...current, [key]: event.target.value }));
-  const patchForm = (patch: Partial<TaskDatesForm>) => setForm((current) => ({ ...current, ...patch }));
+    patchForm({ [key]: event.target.value });
   const preview = buildTaskDatesPatch(form);
   const hasSchedule = Boolean(form.scheduleStartDate);
 

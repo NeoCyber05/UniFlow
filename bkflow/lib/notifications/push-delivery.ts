@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import webpush from "web-push";
 
 import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
+import { sendChannelMessage, type ChannelMessage, type ExternalChannel } from "@/lib/notifications/channels";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { OPEN_DELIVERY_STATUSES, getReminderTime } from "@/lib/notifications/reminder-deliveries";
@@ -57,6 +58,7 @@ export const sendPush = async (target: PushTarget, payload: PushPayload): Promis
 export type ReminderBatchDeps = {
   db: Pick<typeof db, "reminderDelivery" | "webPushSubscription">;
   send: (target: PushTarget, payload: PushPayload) => Promise<SendResult>;
+  sendChannel: (channel: ExternalChannel, endpoint: string, message: ChannelMessage) => Promise<SendResult>;
   notifyInApp: typeof notifyCardReminder;
   newToken: () => string;
   log: (message: string, context: Record<string, unknown>) => void;
@@ -65,6 +67,7 @@ export type ReminderBatchDeps = {
 export const defaultDeps: ReminderBatchDeps = {
   db,
   send: sendPush,
+  sendChannel: sendChannelMessage,
   notifyInApp: notifyCardReminder,
   newToken: () => randomBytes(32).toString("base64url"),
   log: (message, context) => logger.info(message, context),
@@ -160,24 +163,36 @@ export const runReminderBatch = async (
       continue;
     }
 
+    const dueDate = getTaskDeadlineAt({
+      dueDate: delivery.card.dueDate?.toISOString() ?? null,
+      deadlineOn: delivery.card.deadlineOn?.toISOString().slice(0, 10) ?? null,
+    })!;
+
     // Cùng dedupeKey với GET /api/notifications nên hai đường không tạo hai thông báo.
     await deps.notifyInApp({
       card: delivery.card,
       recipientUserId: delivery.recipientUserId,
       triggerTime: at,
-      dueDate: getTaskDeadlineAt({
-        dueDate: delivery.card.dueDate?.toISOString() ?? null,
-        deadlineOn: delivery.card.deadlineOn?.toISOString().slice(0, 10) ?? null,
-      })!,
+      dueDate,
       dedupeKey: getCardReminderKey({ recipientUserId: delivery.recipientUserId, cardId: delivery.cardId, generation: delivery.generation }),
     });
 
+    const { channel = "webpush", endpoint } = delivery.subscription;
+    const board = delivery.card.list.board;
     let result: SendResult;
     try {
-      result = await deps.send(
-        { endpoint: delivery.subscription.endpoint, p256dh: delivery.subscription.p256dh, auth: delivery.subscription.auth },
-        { deliveryId: delivery.id, bindingId: delivery.subscription.bindingId, displayToken },
-      );
+      result = channel === "webpush"
+        ? await deps.send(
+          { endpoint, p256dh: delivery.subscription.p256dh, auth: delivery.subscription.auth },
+          { deliveryId: delivery.id, bindingId: delivery.subscription.bindingId, displayToken },
+        )
+        : await deps.sendChannel(channel as ExternalChannel, endpoint, {
+          title: delivery.card.title,
+          dueAt: dueDate,
+          boardTitle: board.title,
+          listTitle: delivery.card.list.title,
+          url: `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/board/${board.id}?cardId=${delivery.cardId}`,
+        });
     } catch {
       if (await finish({ status: "unknown", errorCode: "send_error" })) counts.unknown += 1;
       deps.log("reminder.unknown", { deliveryId: delivery.id });

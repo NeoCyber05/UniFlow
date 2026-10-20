@@ -14,6 +14,7 @@ before(() => {
   fs.mkdirSync(`${dist}/assets`, { recursive: true });
   fs.writeFileSync(`${dist}/index.html`, "<html>spa-shell</html>");
   fs.writeFileSync(`${dist}/assets/app.js`, "console.log(1)");
+  fs.writeFileSync(`${dist}/assets/big.js`, "console.log(1);".repeat(500));
   fs.writeFileSync(`${dist}/sw.js`, "self.addEventListener('push',()=>{})");
   app.get("/api/ping", (c) => c.text("pong"));
   mountSpa(app, dist);
@@ -39,6 +40,20 @@ test("keeps api routes and 404s unknown api paths without html", async () => {
   const res = await app.request("/api/unknown");
   assert.equal(res.status, 404);
   assert.ok(!(await res.text()).includes("spa-shell"));
+});
+
+test("caches hashed assets forever and makes the shell revalidate", async () => {
+  assert.match((await app.request("/assets/app.js")).headers.get("cache-control") ?? "", /immutable/);
+  for (const p of ["/", "/board/abc", "/sw.js"]) {
+    assert.equal((await app.request(p)).headers.get("cache-control"), "no-cache");
+  }
+});
+
+test("gzips large assets when the client accepts it", async () => {
+  const res = await app.request("/assets/big.js", { headers: { "Accept-Encoding": "gzip" } });
+  assert.equal(res.headers.get("content-encoding"), "gzip");
+  const body = Buffer.from(await res.arrayBuffer());
+  assert.equal((await import("node:zlib")).gunzipSync(body).toString(), "console.log(1);".repeat(500));
 });
 
 test("serves the service worker as javascript, not the SPA shell", async () => {

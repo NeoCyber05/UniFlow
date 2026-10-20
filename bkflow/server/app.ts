@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { logger as honoLogger } from "hono/logger";
 
 import { createActionsRoute } from "./actions";
@@ -8,7 +9,7 @@ import { authenticate, runWithAuth } from "./auth";
 import { mountRoutes } from "./mount-routes";
 import { viewsRoute } from "./views";
 
-export const PUBLIC_API = [/^\/api\/health$/, /^\/api\/webhook$/, /^\/api\/uploadthing(\/.*)?$/, /^\/api\/push\/display$/];
+export const PUBLIC_API = [/^\/api\/health$/, /^\/api\/webhook$/, /^\/api\/uploadthing(\/.*)?$/, /^\/api\/push\/display$/, /^\/api\/telegram\/webhook$/];
 
 export const createApp = async () => {
   const app = new Hono();
@@ -27,6 +28,9 @@ export const createApp = async () => {
     return runWithAuth(requestAuth, next);
   });
 
+  // Only buffered JSON routes: gzip would hold back chunks of streaming responses (AI chat) until the end.
+  app.use("/api/views/*", compress());
+  app.use("/api/actions/*", compress());
   app.route("/api/actions", createActionsRoute(actionRegistry));
   app.route("/api/views", viewsRoute);
   await mountRoutes(app);

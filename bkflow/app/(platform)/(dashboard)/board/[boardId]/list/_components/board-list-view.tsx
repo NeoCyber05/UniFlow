@@ -187,7 +187,7 @@ export const BoardListView = ({
 
   return (
     <div className="flex h-full items-start gap-4 overflow-hidden p-4">
-      <div className="h-full min-w-0 flex-1 overflow-y-auto rounded-2xl bg-white/95 p-5 shadow-sm backdrop-blur styled-scrollbar md:p-6">
+      <div className="h-full min-w-0 flex-1 overflow-y-auto p-5 styled-scrollbar md:p-6">
         <div
           className={cn(
             "mx-auto",
@@ -326,7 +326,7 @@ export const BoardListView = ({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-3.5 py-3 text-left text-sm text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
+              className="flex w-full items-center gap-2 rounded-xl border border-white/40 glass-row px-3.5 py-3 text-left text-sm text-neutral-600 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
             >
               <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
               Thêm việc…
@@ -337,11 +337,11 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
             <>
               {!hasAnyAgendaTask ? (
-                <p className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
+                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
                   Không có việc nào. Thêm việc ở ô phía trên.
                 </p>
               ) : !hasVisibleAgendaTask ? (
-                <div className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
+                <div className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
                   Không có việc khớp bộ lọc.{" "}
                   <button
                     type="button"
@@ -368,7 +368,7 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 2: THEO CỘT KANBAN --- */
             <>
               {(listData?.groups ?? []).length === 0 && (
-                <p className="py-10 text-center text-sm text-neutral-500">Bảng chưa có cột nào.</p>
+                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">Bảng chưa có cột nào.</p>
               )}
               {columnGroups.map((group) => (
                 <TaskGroupSection

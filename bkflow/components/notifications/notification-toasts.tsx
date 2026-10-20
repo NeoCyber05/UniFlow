@@ -9,6 +9,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { NotificationItem } from "@/components/notifications/types";
 import { getReminderNotificationDisplay } from "@/components/notifications/notification-display";
 import { useOpenNotification } from "@/components/notifications/use-open-notification";
+import { playNotificationSound } from "@/web/lib/local-prefs";
 
 const SHOWN_STORAGE_KEY = "shown-notification-toasts";
 const AUTO_DISMISS_MS = 5600;
@@ -153,6 +154,7 @@ export const NotificationToasts = () => {
     });
 
     nextItems.forEach((notification) => scheduleToast(notification.id));
+    playNotificationSound();
   }, [
     isStorageReady,
     persistShownIds,

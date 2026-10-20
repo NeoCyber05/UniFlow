@@ -66,6 +66,7 @@ const setup = (overrides: { delivery?: any; card?: any; sub?: any } = {}) => {
   const deps = (send: any = result()) => ({
     db: database,
     send,
+    sendChannel: async () => ({ statusCode: 200 }),
     notifyInApp: async (input: any) => { state.notified.push(input.dedupeKey); },
     newToken: () => "tok",
     log: () => {},
@@ -194,4 +195,25 @@ test("a live lease is left alone", async () => {
   const out = await runReminderBatch({ now: NOW }, deps());
   assert.equal(out.claimed, 0);
   assert.equal(row(state).status, "sending");
+});
+
+test("external channel rows go to sendChannel with the card message, not Web Push", async () => {
+  const { state, deps } = setup({ sub: { channel: "slack", endpoint: "https://hooks.slack.com/services/x", p256dh: "", auth: "" } });
+  const calls: any[] = [];
+  const out = await runReminderBatch({ now: NOW }, {
+    ...deps(),
+    sendChannel: async (channel: any, endpoint: any, message: any) => { calls.push({ channel, endpoint, message }); return { statusCode: 200 }; },
+  } as any);
+  assert.equal(out.accepted, 1);
+  assert.equal(state.sent.length, 0);
+  assert.equal(calls[0].channel, "slack");
+  assert.equal(calls[0].message.title, "Nộp báo cáo");
+  assert.match(calls[0].message.url, /\/board\/b\?cardId=c1$/);
+});
+
+test("a removed webhook (410) deactivates the channel", async () => {
+  const { state, deps } = setup({ sub: { channel: "discord", endpoint: "https://discord.com/api/webhooks/1/a" } });
+  await runReminderBatch({ now: NOW }, { ...deps(), sendChannel: async () => ({ statusCode: 410 }) } as any);
+  assert.equal(row(state).status, "failed");
+  assert.equal(state.sub.active, false);
 });

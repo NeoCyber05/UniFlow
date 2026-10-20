@@ -9,6 +9,7 @@ import { NoWorkspaceState } from "@/components/my-tasks/no-workspace-state";
 import { MyTasksView } from "@/components/my-tasks/my-tasks-view";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
 
+import { myViewPath } from "../lib/prefetch-route";
 import { useTitle } from "../lib/use-title";
 import { useView } from "../lib/use-view";
 import NotFoundRoute from "./not-found";
@@ -22,7 +23,7 @@ export default function MyRoute() {
   // Board views only redirect; skip the server round-trip when the sidebar already knows the board.
   const cachedBoardId = useQueryClient().getQueryData<MyTasksContext>(MY_TASKS_CONTEXT_KEY)?.board?.id;
   const fastRedirect = !error && cachedBoardId ? getPersonalBoardDestination(view, cachedBoardId) : null;
-  const { data } = useView<View>(`/my/${view}${error ? `?error=${encodeURIComponent(error)}` : ""}`, { enabled: !fastRedirect });
+  const { data } = useView<View>(myViewPath(view, error), { enabled: !fastRedirect });
   useTitle("Không gian cá nhân");
 
   if (fastRedirect) return <Navigate to={fastRedirect} replace />;

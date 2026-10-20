@@ -149,10 +149,12 @@ enum CardKind {
   EVENT
 }
 
-// Thiết bị nhận Web Push của một tài khoản; endpoint là duy nhất để nhiều tab không tạo thêm bản ghi.
+// Nơi nhận nhắc của một tài khoản; endpoint là duy nhất để nhiều tab không tạo thêm bản ghi.
+// channel: webpush (thiết bị) | slack | teams | discord (endpoint = webhook URL) | telegram (endpoint = "telegram:<chatId>").
 model WebPushSubscription {
   id        String   @id @default(uuid())
   userId    String
+  channel   String   @default("webpush")
   endpoint  String   @unique @db.Text
   p256dh    String
   auth      String

@@ -21,7 +21,7 @@ export default function BoardKanbanRoute() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       <BoardCardModalFromUrl />
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/95 px-5 py-4 shadow-sm">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl glass-surface px-5 py-4 shadow-sm">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-neutral-900">
           <ListTodo aria-hidden="true" className="h-6 w-6 text-violet-600" />
           Việc cần làm

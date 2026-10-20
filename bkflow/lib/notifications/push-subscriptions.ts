@@ -49,11 +49,21 @@ export const upsertPushSubscription = async (
   database: SubscriptionDb = db,
   deps: Deps = { syncSubscriptionReminders },
   now: Date = new Date(),
-  retry = true,
 ): Promise<UpsertResult> => {
   const parsed = parsePushSubscriptionInput(input);
   if ("error" in parsed) return parsed;
+  return saveSubscription(userId, { ...parsed, channel: "webpush" }, database, deps, now);
+};
 
+/** Upsert theo endpoint; dùng chung cho Web Push và kênh ngoài (Slack/Teams/Discord/Telegram, p256dh/auth rỗng). */
+export const saveSubscription = async (
+  userId: string,
+  parsed: PushSubscriptionInput & { channel: string },
+  database: SubscriptionDb = db,
+  deps: Deps = { syncSubscriptionReminders },
+  now: Date = new Date(),
+  retry = true,
+): Promise<UpsertResult> => {
   try {
     return await database.$transaction(async (tx) => {
       const existing = await tx.webPushSubscription.findUnique({ where: { endpoint: parsed.endpoint } });
@@ -74,11 +84,11 @@ export const upsertPushSubscription = async (
         });
         sub = await tx.webPushSubscription.update({
           where: { id: existing.id },
-          data: { userId, p256dh: parsed.p256dh, auth: parsed.auth, bindingId: randomUUID(), active: true },
+          data: { userId, channel: parsed.channel, p256dh: parsed.p256dh, auth: parsed.auth, bindingId: randomUUID(), active: true },
         });
       } else {
         sub = await tx.webPushSubscription.create({
-          data: { userId, endpoint: parsed.endpoint, p256dh: parsed.p256dh, auth: parsed.auth, bindingId: randomUUID() },
+          data: { userId, channel: parsed.channel, endpoint: parsed.endpoint, p256dh: parsed.p256dh, auth: parsed.auth, bindingId: randomUUID() },
         });
       }
 
@@ -88,7 +98,7 @@ export const upsertPushSubscription = async (
   } catch (error) {
     // Two tabs registering the same endpoint at once: the loser retries and finds the winner's row.
     if (retry && (error as { code?: string }).code === "P2002") {
-      return upsertPushSubscription(userId, input, database, deps, now, false);
+      return saveSubscription(userId, parsed, database, deps, now, false);
     }
     throw error;
   }

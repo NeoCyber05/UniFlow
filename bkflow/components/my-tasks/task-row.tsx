@@ -62,7 +62,7 @@ export const TaskRow = memo(function TaskRow({
         if (!(event.target as HTMLElement).closest("button,a,input,[role=dialog]")) onOpen(task.id);
       }}
       className={cn(
-        "group flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-3 py-2.5 transition hover:border-violet-200 hover:shadow-sm",
+        "group flex cursor-pointer items-center gap-3 rounded-xl border glass-row px-3 py-2.5 transition hover:border-violet-200 hover:shadow-sm",
         isSelected ? "border-violet-300 ring-2 ring-violet-100" : "border-neutral-200",
       )}
     >

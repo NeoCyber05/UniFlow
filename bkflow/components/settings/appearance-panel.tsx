@@ -9,6 +9,7 @@ import { useAppearance } from "@/components/providers/appearance-provider";
 import { PageStyleControls } from "@/components/notes/page-style-controls";
 import { useColorMode } from "@/hooks/use-color-mode";
 import { cn } from "@/lib/utils";
+import { StartScreenSetting } from "./start-screen-setting";
 import { ThemeGallery } from "./theme-gallery";
 
 export const AppearancePanel = () => {
@@ -65,5 +66,6 @@ export const AppearancePanel = () => {
         </div>
       </div>
     </details>
+    <StartScreenSetting />
   </div>;
 };

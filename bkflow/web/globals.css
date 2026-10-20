@@ -723,7 +723,20 @@
 }
 
 .dark .workspace-wallpaper::after {
-  background: color-mix(in oklab, var(--background) 78%, transparent);
+  background: color-mix(in oklab, var(--background) 50%, transparent);
+}
+
+/* Frosted surfaces keep the wallpaper visible behind content (Microsoft To Do style). */
+@layer components {
+  .glass-surface {
+    background-color: color-mix(in oklab, var(--card) 40%, transparent);
+    backdrop-filter: blur(12px) saturate(1.2);
+  }
+
+  .glass-row {
+    background-color: color-mix(in oklab, var(--card) 82%, transparent);
+    backdrop-filter: blur(8px);
+  }
 }
 
 @layer base {

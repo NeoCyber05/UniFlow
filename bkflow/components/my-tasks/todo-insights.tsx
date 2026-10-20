@@ -122,7 +122,7 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
         </section>
 
         {/* 7 ngày tới */}
-        <section className="rounded-2xl border border-neutral-200 bg-white p-4">
+        <section className="rounded-2xl border border-white/40 glass-row p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-neutral-900">{tr("insights.next7")}</h3>
             <Link
@@ -158,7 +158,7 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
 
         {/* Theo môn học: bấm để lọc nhanh */}
         {stats.courses.length > 0 && (
-          <section className="rounded-2xl border border-neutral-200 bg-white p-4">
+          <section className="rounded-2xl border border-white/40 glass-row p-4">
             <h3 className="mb-2 text-sm font-bold text-neutral-900">{tr("insights.byCourse")}</h3>
             <div className="flex flex-col">
               {stats.courses.map((course) => (

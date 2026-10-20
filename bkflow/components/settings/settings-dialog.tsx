@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
+  AlarmClock,
   Bell,
-  CalendarCheck,
-  Clock,
   Download,
-  Flame,
   Info,
   Keyboard,
   Laptop,
@@ -14,9 +12,8 @@ import {
   Check,
   Palette,
   Play,
+  PlugZap,
   Settings,
-  SlidersHorizontal,
-  Target,
   Volume2,
   VolumeX,
   User,
@@ -35,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppearancePanel } from "./appearance-panel";
+import { NotificationChannels } from "./notification-channels";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { useSettingsModal, type SettingsTab } from "@/hooks/use-settings-modal";
 import { useUser } from "@/web/lib/auth";
@@ -46,46 +44,24 @@ import {
   disableDesktopReminders,
   type DesktopReminderState,
 } from "@/web/lib/desktop-notifications";
+import {
+  getDefaultReminder,
+  isSoundEnabled,
+  playChime,
+  setDefaultReminder,
+  setSoundEnabled as saveSoundEnabled,
+} from "@/web/lib/local-prefs";
 
-const playChimeSound = () => {
-  if (typeof window === "undefined") return;
-  try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    const now = ctx.currentTime;
-
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = "sine";
-    osc1.frequency.setValueAtTime(523.25, now);
-    gain1.gain.setValueAtTime(0.12, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.3);
-
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(659.25, now + 0.1);
-    gain2.gain.setValueAtTime(0.15, now + 0.1);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now + 0.1);
-    osc2.stop(now + 0.45);
-  } catch {
-    // audio context blocked or unsupported
-  }
-};
+const LEAD_OPTIONS: { value: string; labelKey: MessageKey }[] = [
+  { value: "none", labelKey: "settings.lead.none" },
+  { value: "15", labelKey: "settings.lead.m15" },
+  { value: "60", labelKey: "settings.lead.h1" },
+  { value: "1440", labelKey: "settings.lead.d1" },
+  { value: "2880", labelKey: "settings.lead.d2" },
+];
 
 const TABS: { id: SettingsTab; labelKey: MessageKey; icon: typeof Palette }[] = [
   { id: "appearance", labelKey: "settings.tab.appearance", icon: Palette },
-  { id: "workflow", labelKey: "settings.tab.workflow", icon: CalendarCheck },
   { id: "notifications", labelKey: "settings.tab.notifications", icon: Bell },
   { id: "shortcuts", labelKey: "settings.tab.shortcuts", icon: Keyboard },
   { id: "language", labelKey: "settings.tab.language", icon: Languages },
@@ -102,54 +78,9 @@ export const SettingsDialog = () => {
   const [reminderState, setReminderState] = useState<DesktopReminderState | null>(null);
   const [busyReminder, setBusyReminder] = useState(false);
 
-  // Sound toggle (local preference)
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("uniflow-sound") !== "disabled";
-  });
-
-  // Default reminder advance minutes (local preference)
-  const [reminderAdvance, setReminderAdvance] = useState(() => {
-    if (typeof window === "undefined") return "60";
-    return localStorage.getItem("uniflow-reminder-lead") || "60";
-  });
-
-  // Workflow preferences (local preference)
-  const [dailyGoal, setDailyGoal] = useState(() => {
-    if (typeof window === "undefined") return "5";
-    return localStorage.getItem("uniflow-daily-goal") || "5";
-  });
-
-  const [autoRollover, setAutoRollover] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("uniflow-auto-rollover") !== "disabled";
-  });
-
-  const [startOfWeek, setStartOfWeek] = useState(() => {
-    if (typeof window === "undefined") return "monday";
-    return localStorage.getItem("uniflow-start-of-week") || "monday";
-  });
-
-  const [defaultScreen, setDefaultScreen] = useState(() => {
-    if (typeof window === "undefined") return "today";
-    return localStorage.getItem("uniflow-default-screen") || "today";
-  });
-
-  const [listDensity, setListDensity] = useState(() => {
-    if (typeof window === "undefined") return "standard";
-    return localStorage.getItem("uniflow-list-density") || "standard";
-  });
-
-  // Daily study digest notifications
-  const [morningReminder, setMorningReminder] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("uniflow-morning-reminder") !== "disabled";
-  });
-
-  const [eveningReminder, setEveningReminder] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("uniflow-evening-reminder") !== "disabled";
-  });
+  // Tùy chọn theo thiết bị; nơi đọc: notification-toasts (âm thanh), card-date-popover (nhắc mặc định), start-screen-setting (màn hình khởi động).
+  const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled);
+  const [reminderAdvance, setReminderAdvance] = useState(getDefaultReminder);
 
   const refreshNotificationState = useCallback(() => {
     getDesktopReminderState().then(setReminderState, () => setReminderState("unsupported"));
@@ -164,60 +95,15 @@ export const SettingsDialog = () => {
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
-    localStorage.setItem("uniflow-sound", next ? "enabled" : "disabled");
-    if (next) playChimeSound();
+    saveSoundEnabled(next);
+    if (next) playChime();
     toast.success(next ? tr("settings.toast.soundOn") : tr("settings.toast.soundOff"));
   };
 
-  const handleReminderAdvanceChange = (mins: string) => {
-    setReminderAdvance(mins);
-    localStorage.setItem("uniflow-reminder-lead", mins);
+  const handleReminderAdvanceChange = (value: string) => {
+    setReminderAdvance(value);
+    setDefaultReminder(value);
     toast.success(tr("settings.toast.leadUpdated"));
-  };
-
-  const handleDailyGoalChange = (goal: string) => {
-    setDailyGoal(goal);
-    localStorage.setItem("uniflow-daily-goal", goal);
-    toast.success(tr("settings.toast.dailyGoal", { goal }));
-  };
-
-  const toggleAutoRollover = () => {
-    const next = !autoRollover;
-    setAutoRollover(next);
-    localStorage.setItem("uniflow-auto-rollover", next ? "enabled" : "disabled");
-    toast.success(next ? tr("settings.toast.rolloverOn") : tr("settings.toast.rolloverOff"));
-  };
-
-  const handleStartOfWeekChange = (val: string) => {
-    setStartOfWeek(val);
-    localStorage.setItem("uniflow-start-of-week", val);
-    toast.success(tr("settings.toast.startOfWeek", { day: val === "monday" ? tr("settings.weekday.monday") : tr("settings.weekday.sunday") }));
-  };
-
-  const handleDefaultScreenChange = (val: string) => {
-    setDefaultScreen(val);
-    localStorage.setItem("uniflow-default-screen", val);
-    toast.success(tr("settings.toast.defaultScreenSaved"));
-  };
-
-  const handleListDensityChange = (val: string) => {
-    setListDensity(val);
-    localStorage.setItem("uniflow-list-density", val);
-    toast.success(tr("settings.toast.density", { mode: val === "standard" ? tr("settings.density.standard") : tr("settings.density.compact") }));
-  };
-
-  const toggleMorningReminder = () => {
-    const next = !morningReminder;
-    setMorningReminder(next);
-    localStorage.setItem("uniflow-morning-reminder", next ? "enabled" : "disabled");
-    toast.success(next ? tr("settings.toast.morningOn") : tr("settings.toast.morningOff"));
-  };
-
-  const toggleEveningReminder = () => {
-    const next = !eveningReminder;
-    setEveningReminder(next);
-    localStorage.setItem("uniflow-evening-reminder", next ? "enabled" : "disabled");
-    toast.success(next ? tr("settings.toast.eveningOn") : tr("settings.toast.eveningOff"));
   };
 
   const toggleDesktopPush = async () => {
@@ -261,15 +147,8 @@ export const SettingsDialog = () => {
           pageStyle: appearance.pageStyle,
         },
         preferences: {
-          dailyGoal,
-          autoRollover,
-          startOfWeek,
-          defaultScreen,
-          listDensity,
-          reminderAdvance,
+          defaultReminder: reminderAdvance,
           soundEnabled,
-          morningReminder,
-          eveningReminder,
         },
       };
 
@@ -349,183 +228,6 @@ export const SettingsDialog = () => {
               </motion.div>
             )}
 
-            {activeTab === "workflow" && (
-              <motion.div
-                key="workflow"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
-                {/* Daily Goal Setting */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                        <Target className="size-4 text-primary" />
-                        {tr("settings.goal.title")}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {tr("settings.goal.desc")}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[11px] gap-1">
-                      <Flame className="size-3 text-amber-500" />
-                      {tr("settings.goal.streak")}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { goal: "3", label: tr("settings.goal.lowLabel"), desc: tr("settings.goal.lowDesc") },
-                      { goal: "5", label: tr("settings.goal.midLabel"), desc: tr("settings.goal.midDesc") },
-                      { goal: "7", label: tr("settings.goal.highLabel"), desc: tr("settings.goal.highDesc") },
-                    ].map((item) => (
-                      <button
-                        key={item.goal}
-                        type="button"
-                        onClick={() => handleDailyGoalChange(item.goal)}
-                        className={`rounded-xl border p-3 text-left transition-all cursor-pointer ${
-                          dailyGoal === item.goal
-                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                            : "border-border/60 bg-muted/20 hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <p className="text-xs font-semibold">{item.label}</p>
-                        <p className="text-[10px] mt-0.5 text-muted-foreground">{item.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Auto Rollover Tasks */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Clock className="size-4 text-primary" />
-                      {tr("settings.rollover.title")}
-                    </h4>
-                    <p className="text-xs text-muted-foreground max-w-lg">
-                      {tr("settings.rollover.desc")}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant={autoRollover ? "default" : "outline"}
-                    size="sm"
-                    onClick={toggleAutoRollover}
-                    className="shrink-0 cursor-pointer"
-                  >
-                    {autoRollover ? tr("settings.common.on") : tr("settings.common.off")}
-                  </Button>
-                </div>
-
-                {/* Start of Week & Default Screen Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Start of week */}
-                  <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                        <CalendarCheck className="size-4 text-primary" />
-                        {tr("settings.startOfWeek.title")}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {tr("settings.startOfWeek.desc")}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "monday", label: tr("settings.weekday.mondayHust") },
-                        { id: "sunday", label: tr("settings.weekday.sunday") },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleStartOfWeekChange(item.id)}
-                          className={`rounded-xl border p-2.5 text-xs font-medium transition-all cursor-pointer ${
-                            startOfWeek === item.id
-                              ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                              : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Task list density */}
-                  <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                        <SlidersHorizontal className="size-4 text-primary" />
-                        {tr("settings.density.title")}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {tr("settings.density.desc")}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "standard", label: tr("settings.density.standard") },
-                        { id: "compact", label: tr("settings.density.compact") },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleListDensityChange(item.id)}
-                          className={`rounded-xl border p-2.5 text-xs font-medium transition-all cursor-pointer ${
-                            listDensity === item.id
-                              ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                              : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Default screen on launch */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground">
-                      {tr("settings.defaultScreen.title")}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {tr("settings.defaultScreen.desc")}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: "today", label: tr("settings.screen.today"), desc: "/my/today" },
-                      { id: "courses", label: tr("settings.screen.courses"), desc: "/my/courses" },
-                      { id: "board", label: tr("settings.screen.board"), desc: "/board" },
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => handleDefaultScreenChange(item.id)}
-                        className={`rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
-                          defaultScreen === item.id
-                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                            : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                        }`}
-                      >
-                        <p className="text-xs font-medium">{item.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
             {activeTab === "notifications" && (
               <motion.div
                 key="notifications"
@@ -589,84 +291,45 @@ export const SettingsDialog = () => {
                   )}
                 </div>
 
-                {/* Reminder Lead Time */}
+                {/* External integrations */}
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground">{tr("settings.lead.title")}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {tr("settings.lead.desc")}
-                      </p>
-                    </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <PlugZap className="size-4 text-primary" aria-hidden="true" />
+                      {tr("settings.channels.title")}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tr("settings.channels.desc")}</p>
+                  </div>
+                  <NotificationChannels />
+                </div>
+
+                {/* Default reminder lead */}
+                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <AlarmClock className="size-4 text-primary" aria-hidden="true" />
+                      {tr("settings.lead.title")}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tr("settings.lead.desc")}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { mins: "15", label: tr("settings.lead.m15") },
-                      { mins: "60", label: tr("settings.lead.h1") },
-                      { mins: "1440", label: tr("settings.lead.d1") },
-                      { mins: "2880", label: tr("settings.lead.d2") },
-                    ].map((opt) => (
+                  <div role="radiogroup" aria-label={tr("settings.lead.title")} className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {LEAD_OPTIONS.map((opt) => (
                       <button
-                        key={opt.mins}
+                        key={opt.value}
                         type="button"
-                        onClick={() => handleReminderAdvanceChange(opt.mins)}
+                        role="radio"
+                        aria-checked={reminderAdvance === opt.value}
+                        onClick={() => handleReminderAdvanceChange(opt.value)}
                         className={`rounded-xl border p-2.5 text-xs font-medium transition-all cursor-pointer ${
-                          reminderAdvance === opt.mins
+                          reminderAdvance === opt.value
                             ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
                             : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         }`}
                       >
-                        {opt.label}
+                        {tr(opt.labelKey)}
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                {/* Daily Digest Reminders (Morning & Evening) */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-4">
-                  <div className="space-y-0.5">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Clock className="size-4 text-primary" />
-                      {tr("settings.digest.title")}
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {tr("settings.digest.desc")}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
-                      <div>
-                        <p className="text-xs font-semibold text-foreground">{tr("settings.digest.morningTitle")}</p>
-                        <p className="text-[11px] text-muted-foreground">{tr("settings.digest.morningDesc")}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant={morningReminder ? "default" : "outline"}
-                        size="sm"
-                        onClick={toggleMorningReminder}
-                        className="h-8 text-xs shrink-0 cursor-pointer"
-                      >
-                        {morningReminder ? tr("settings.common.enable") : tr("settings.common.disable")}
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/20">
-                      <div>
-                        <p className="text-xs font-semibold text-foreground">{tr("settings.digest.eveningTitle")}</p>
-                        <p className="text-[11px] text-muted-foreground">{tr("settings.digest.eveningDesc")}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant={eveningReminder ? "default" : "outline"}
-                        size="sm"
-                        onClick={toggleEveningReminder}
-                        className="h-8 text-xs shrink-0 cursor-pointer"
-                      >
-                        {eveningReminder ? tr("settings.common.enable") : tr("settings.common.disable")}
-                      </Button>
-                    </div>
                   </div>
                 </div>
 
@@ -690,7 +353,7 @@ export const SettingsDialog = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={playChimeSound}
+                      onClick={playChime}
                       className="flex items-center gap-1.5 cursor-pointer text-xs"
                       title={tr("settings.sound.previewTitle")}
                     >

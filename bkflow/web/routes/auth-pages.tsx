@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { getStartPath } from "../lib/local-prefs";
 import { supabase } from "../lib/supabase";
 
 const translateAuthError = (msg: string): string => {
@@ -71,7 +72,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       ? await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: location.origin + (next ?? "/my/today") },
+          options: { emailRedirectTo: location.origin + (next ?? getStartPath()) },
         })
       : await supabase.auth.signInWithPassword({ email, password });
 
@@ -88,7 +89,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       });
     }
 
-    navigate(next ?? "/my/today", { replace: true });
+    navigate(next ?? getStartPath(), { replace: true });
   };
 
   const google = async () => {
@@ -97,7 +98,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: next ? location.origin + next : location.origin + "/my/today" },
+        options: { redirectTo: next ? location.origin + next : location.origin + getStartPath() },
       });
       if (error) {
         setMessage({ type: "error", text: translateAuthError(error.message) });

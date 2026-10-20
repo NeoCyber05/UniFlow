@@ -24,6 +24,9 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
 });
 
+// A deploy removes the old lazy route chunks; a tab opened before it reloads to get the new index.html.
+window.addEventListener("vite:preloadError", () => window.location.reload());
+
 installAuthFetch();
 const root = createRoot(document.getElementById("root")!);
 if (!supabaseConfigured) {
