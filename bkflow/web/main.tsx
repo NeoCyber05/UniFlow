@@ -9,6 +9,7 @@ import { RouterProvider } from "react-router";
 import { Toaster } from "sonner";
 
 import { QueryProvider } from "@/components/providers/query-provider";
+import { LocaleBoundary } from "@/lib/i18n";
 
 import { router } from "./router";
 import { installAuthFetch } from "./lib/auth-fetch";
@@ -36,7 +37,9 @@ if (!supabaseConfigured) {
     <AuthProvider>
       <QueryProvider>
         <Toaster />
-        <RouterProvider router={router} />
+        <LocaleBoundary>
+          <RouterProvider router={router} />
+        </LocaleBoundary>
       </QueryProvider>
     </AuthProvider>
   </StrictMode>,

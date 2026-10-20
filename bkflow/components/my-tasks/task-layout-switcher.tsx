@@ -1,6 +1,7 @@
 "use client";
 
 import { Columns3, Rows3 } from "lucide-react";
+import { tr } from "@/lib/i18n";
 
 import { getTaskLayoutHref, type TaskLayout } from "@/lib/my-tasks/task-layout";
 import { cn } from "@/lib/utils";
@@ -11,10 +12,10 @@ export const TaskLayoutSwitcher = ({ boardId, layout }: { boardId: string; layou
   const searchParams = useSearchParams();
 
   return (
-    <nav aria-label="Bố cục việc cần làm" className="inline-flex shrink-0 self-start rounded-xl bg-neutral-100 p-1 text-xs font-medium">
+    <nav aria-label={tr("tasks.layoutLabel")} className="inline-flex shrink-0 rounded-xl bg-neutral-100 p-1 text-xs font-medium">
       {([
-        ["rows", "Hàng", Rows3],
-        ["columns", "Cột", Columns3],
+        ["rows", tr("tasks.layoutRows"), Rows3],
+        ["columns", tr("tasks.layoutColumns"), Columns3],
       ] as const).map(([value, label, Icon]) => (
         <Link
           key={value}

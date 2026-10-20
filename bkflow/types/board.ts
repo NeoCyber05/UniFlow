@@ -15,6 +15,8 @@ export type CardWithAssignees = Card & {
   unresolvedBlockerCount?: number;
   /** ⭐ của user hiện tại */
   isImportant?: boolean;
+  /** Ghim "Hôm nay" của user hiện tại */
+  myDayAt?: Date | string | null;
   _count?: {
     comments: number;
     attachments: number;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { tr } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, Link2, LoaderCircle, Search, Unlink } from "lucide-react";
 
@@ -66,12 +67,12 @@ const TaskPicker = ({ blockId, onChoose }: { blockId: string; onChoose: (task: P
     <label className="flex h-8 items-center gap-2 rounded-md border bg-background px-2 text-sm">
       <Search aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       {/* data-block-input: the editor focuses it only right after the block is inserted. */}
-      <input data-block-input={blockId} value={query} maxLength={100} onChange={event => setQuery(event.target.value)} placeholder="Tìm công việc để liên kết…" aria-label="Tìm công việc để liên kết" className="min-w-0 flex-1 bg-transparent outline-none" />
+      <input data-block-input={blockId} value={query} maxLength={100} onChange={event => setQuery(event.target.value)} placeholder={tr("notes.task.searchPlaceholder")} aria-label={tr("notes.task.searchLabel")} className="min-w-0 flex-1 bg-transparent outline-none" />
       {state.loading && <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin text-muted-foreground" />}
     </label>
-    {term && !state.loading && <ul role="listbox" aria-label="Kết quả công việc" className="mt-1 max-h-60 overflow-y-auto">
-      {state.failed ? <li className="px-2 py-1.5 text-sm text-muted-foreground">Chưa tìm được. Hãy thử lại.</li>
-        : !state.items.length ? <li className="px-2 py-1.5 text-sm text-muted-foreground">Không có công việc phù hợp.</li>
+    {term && !state.loading && <ul role="listbox" aria-label={tr("notes.task.results")} className="mt-1 max-h-60 overflow-y-auto">
+      {state.failed ? <li className="px-2 py-1.5 text-sm text-muted-foreground">{tr("notes.task.searchError")}</li>
+        : !state.items.length ? <li className="px-2 py-1.5 text-sm text-muted-foreground">{tr("notes.task.noResults")}</li>
         : state.items.map(item => <li key={item.id} role="option" aria-selected={false}>
           <button type="button" onClick={() => onChoose(item)} className="flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
             <span className="w-full truncate font-medium">{item.title}</span>
@@ -97,7 +98,7 @@ export const LinkedTaskBlock = ({ block, resolved, onRemove, onChoose }: {
 
   let body: ReactNode;
   if (resolved.state === "empty") {
-    body = onChoose ? <TaskPicker blockId={block.id} onChoose={onChoose} /> : <span className="text-muted-foreground">Chưa chọn công việc.</span>;
+    body = onChoose ? <TaskPicker blockId={block.id} onChoose={onChoose} /> : <span className="text-muted-foreground">{tr("notes.task.none")}</span>;
   } else if (resolved.state === "available" || resolved.state === "picked") {
     const due = resolved.state === "available" ? formatDue(resolved.task) : null;
     const done = resolved.state === "available" && resolved.task.isCompleted;
@@ -107,22 +108,22 @@ export const LinkedTaskBlock = ({ block, resolved, onRemove, onChoose }: {
       </button>
       {resolved.state === "available" ? <span className="flex items-center gap-1 text-xs text-muted-foreground">
         {done ? <CheckCircle2 aria-hidden="true" className="size-3.5 text-emerald-600" /> : <Circle aria-hidden="true" className="size-3.5" />}
-        {done ? "Đã hoàn thành" : "Chưa hoàn thành"}{due && ` · Hạn ${due}`}
-      </span> : <span className="truncate text-xs text-muted-foreground">{resolved.subtitle} · Chưa lưu</span>}
+        {done ? tr("notes.status.done") : tr("notes.status.open")}{due && tr("notes.task.dueSuffix", { due })}
+      </span> : <span className="truncate text-xs text-muted-foreground">{resolved.subtitle}{tr("notes.task.unsaved")}</span>}
     </div>;
   } else if (resolved.state === "unavailable") {
-    body = <span className="text-muted-foreground">Công việc không còn khả dụng.</span>;
+    body = <span className="text-muted-foreground">{tr("notes.task.unavailable")}</span>;
   } else if (resolved.state === "error") {
-    body = <span className="text-muted-foreground">Chưa tải được công việc. <button type="button" onClick={refetch} className="font-medium text-violet-600 hover:underline">Thử lại</button></span>;
+    body = <span className="text-muted-foreground">{tr("notes.task.loadError")}<button type="button" onClick={refetch} className="font-medium text-violet-600 hover:underline">{tr("common.retry")}</button></span>;
   } else {
-    body = <span className="flex items-center gap-1.5 text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{resolved.state === "checking" ? "Đang kiểm tra công việc…" : "Đang chờ lưu để tải công việc…"}</span>;
+    body = <span className="flex items-center gap-1.5 text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{resolved.state === "checking" ? tr("notes.task.checking") : tr("notes.task.waitingSave")}</span>;
   }
 
   return <div className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
-    <Link2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-violet-600" /><span className="sr-only">Công việc liên kết:</span>
+    <Link2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-violet-600" /><span className="sr-only">{tr("notes.task.linkedLabel")}</span>
     {body}
     {onRemove && resolved.state !== "empty" && <button type="button" onClick={onRemove} className="ml-auto flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
-      <Unlink aria-hidden="true" className="size-3.5" />Gỡ liên kết
+      <Unlink aria-hidden="true" className="size-3.5" />{tr("notes.task.unlink")}
     </button>}
   </div>;
 };

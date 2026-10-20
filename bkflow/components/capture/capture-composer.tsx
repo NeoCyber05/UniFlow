@@ -57,7 +57,7 @@ const FIELD_LABELS: Record<keyof CaptureFields, string> = {
   schedule: "Lịch làm",
   reminder: "Nhắc",
   isImportant: "Ưu tiên",
-  courseId: "Môn",
+  courseId: "Danh mục",
   checklistItems: "Việc cần làm",
 };
 
@@ -312,7 +312,7 @@ export const CaptureComposer = ({
   const issues = draft.issues;
   const hasPreview = Boolean(rawText.trim()) || detailsOpen;
   const mustConfirmDates = needsDateConfirmation(draft) && !isDateConfirmed(draft);
-  const hint = members ? "+tên  ! quan trọng  @mai  @t6  @15/10" : "#môn  ! quan trọng  @mai  @t6  @15/10";
+  const hint = members ? "+tên  ! quan trọng  @mai  @t6  @15/10" : "#danh_mục  ! quan trọng  @mai  @t6  @15/10";
   const courseLabel = getCourseOptionLabel(courses, values.courseId);
 
   if (variant === "card") {
@@ -382,7 +382,7 @@ export const CaptureComposer = ({
               </PickerChip>
             )}
             {courses && courses.length > 0 && (
-              <PickerChip icon={BookOpen} label={courseLabel ?? "Môn"} active={Boolean(courseLabel)} onClear={() => setField("courseId", null)}>
+              <PickerChip icon={BookOpen} label={courseLabel ?? "Danh mục"} active={Boolean(courseLabel)} onClear={() => setField("courseId", null)}>
                 <CoursePicker courses={courses} value={values.courseId} onChange={(value) => setField("courseId", value)} />
               </PickerChip>
             )}
@@ -658,9 +658,9 @@ const CaptureDetails = ({
 
       {courses && courses.length > 0 && (
         <div className="grid content-start gap-1">
-          <span className="font-medium">Môn</span>
+          <span className="font-medium">Danh mục</span>
           <div>
-            <PickerChip icon={BookOpen} label={getCourseOptionLabel(courses, values.courseId) ?? "Chọn môn"} active={Boolean(values.courseId)} onClear={() => setField("courseId", null)}>
+            <PickerChip icon={BookOpen} label={getCourseOptionLabel(courses, values.courseId) ?? "Chọn danh mục"} active={Boolean(values.courseId)} onClear={() => setField("courseId", null)}>
               <CoursePicker courses={courses} value={values.courseId} onChange={(value) => setField("courseId", value)} />
             </PickerChip>
           </div>

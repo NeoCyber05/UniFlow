@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,30 +11,30 @@ import { useCardModal } from "@/hooks/use-card-modal";
 
 const showCardOpenError = (status?: number) => {
   if (status === 404) {
-    toast.error("Thẻ không tồn tại hoặc đã bị xóa.");
+    toast.error(tr("notif.openCardNotFound"));
     return;
   }
 
   if (status === 403) {
-    toast.error("Bạn không có quyền truy cập thẻ này.");
+    toast.error(tr("notif.openCardNoAccess"));
     return;
   }
 
-  toast.error("Có lỗi xảy ra khi tải dữ liệu thẻ.");
+  toast.error(tr("notif.openCardError"));
 };
 
 const showBoardOpenError = (status?: number) => {
   if (status === 404) {
-    toast.error("Bảng không tồn tại hoặc đã bị xóa.");
+    toast.error(tr("notif.openBoardNotFound"));
     return;
   }
 
   if (status === 403) {
-    toast.error("Bạn không có quyền truy cập bảng này.");
+    toast.error(tr("notif.openBoardNoAccess"));
     return;
   }
 
-  toast.error("Có lỗi xảy ra khi tải dữ liệu bảng.");
+  toast.error(tr("notif.openBoardError"));
 };
 
 export const useOpenNotification = () => {

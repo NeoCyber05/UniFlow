@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import { tr } from "@/lib/i18n";
 import { useEffect } from "react";
 import { usePathname } from "@/web/shims/next-navigation";
 
@@ -34,7 +35,7 @@ export const MobileSidebar = () => {
         className="block md:hidden mr-2"
         variant="ghost"
         size="sm"
-        aria-label="Mở điều hướng"
+        aria-label={tr("nav.openMenu")}
         aria-expanded={isOpen}
       >
         <Menu className="h-4 w-4" />
@@ -44,7 +45,7 @@ export const MobileSidebar = () => {
           side="left"
           className="overflow-y-auto bg-sidebar p-4 pt-10"
         >
-          <SheetTitle className="sr-only">Điều hướng cá nhân</SheetTitle>
+          <SheetTitle className="sr-only">{tr("nav.personalNav")}</SheetTitle>
           <Sidebar
             storageKey="t-sidebar-mobile-state"
           />

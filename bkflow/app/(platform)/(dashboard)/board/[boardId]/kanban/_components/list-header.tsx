@@ -228,7 +228,7 @@ export const ListHeader = ({
       )}
       <div className="flex items-center gap-x-1">
         <Hint description={`${data.cards.length} thẻ`} side="top" sideOffset={6}>
-          <span className="inline-flex h-7 min-w-7 cursor-default items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums text-neutral-500">
+          <span className="task-badge task-badge-neutral h-7 min-w-7 cursor-default justify-center">
             {data.cards.length}
           </span>
         </Hint>

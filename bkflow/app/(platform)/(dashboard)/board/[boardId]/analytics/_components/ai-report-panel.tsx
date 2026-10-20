@@ -1,11 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { Clipboard, RefreshCw, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Effect } from "@animate-ui/react/primitives/effects/effect";
+import {
+  blur,
+  scale,
+  spring,
+  transition,
+  useShouldReduceMotion,
+  useTempoTransition,
+} from "@animate-ui/react/utils/motion";
+import { AlertTriangle, Check, CheckCircle2, Clipboard, Lightbulb, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { generateAiBoardReport } from "@/actions/ai/generate-ai-board-report";
 import type { AiBoardReport } from "@/actions/ai/generate-ai-board-report/types";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAction } from "@/hooks/use-action";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +24,144 @@ import type { ReportRange } from "../_types";
 import { formatReportMarkdown, reportRangeLabels } from "../_lib/ai-report-markdown";
 import { ChartPanel } from "./chart-panel";
 import { ReportBullets } from "./report-bullets";
+
+const RANGES: ReportRange[] = ["7d", "30d"];
+
+const RangeToggle = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ReportRange;
+  onChange: (range: ReportRange) => void;
+  disabled: boolean;
+}) => {
+  const selectionSpring = useTempoTransition(spring.selection);
+
+  return (
+    <div role="radiogroup" aria-label="Khoảng thời gian" className="inline-flex h-9 rounded-xl bg-neutral-100 p-1">
+      {RANGES.map((item) => (
+        <button
+          key={item}
+          type="button"
+          role="radio"
+          aria-checked={value === item}
+          onClick={() => onChange(item)}
+          disabled={disabled}
+          className={cn(
+            "relative rounded-lg px-3 text-xs font-semibold transition-colors disabled:opacity-50",
+            value === item ? "text-violet-700" : "text-neutral-500 hover:text-neutral-800",
+          )}
+        >
+          {value === item && (
+            <motion.span
+              layoutId="ai-report-range"
+              className="absolute inset-0 rounded-lg bg-white shadow-xs"
+              transition={selectionSpring}
+            />
+          )}
+          <span className="relative">{reportRangeLabels[item]}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const CopyButton = ({ onCopy }: { onCopy: () => Promise<boolean> }) => {
+  const [copied, setCopied] = useState(false);
+  const reduce = useShouldReduceMotion();
+  const swap = useTempoTransition(transition.swap);
+  const pressSpring = useTempoTransition(spring.press);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const hidden = { opacity: 0, filter: blur.icon, transform: `scale(${reduce ? 1 : scale.icon})` };
+  const shown = { opacity: 1, filter: "blur(0px)", transform: "scale(1)" };
+
+  return (
+    <motion.button
+      type="button"
+      onClick={async () => setCopied(await onCopy())}
+      initial={{ transform: "scale(1)" }}
+      whileTap={{ transform: reduce ? "scale(1)" : `scale(${scale.press})` }}
+      transition={pressSpring}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-600 shadow-xs transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+    >
+      <span className="relative h-3.5 w-3.5">
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.span
+            key={copied ? "check" : "copy"}
+            className="absolute inset-0"
+            initial={hidden}
+            animate={shown}
+            exit={{ ...hidden, transition: swap }}
+            transition={swap}
+          >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Clipboard className="h-3.5 w-3.5" />}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+      {copied ? "Đã copy" : "Copy"}
+    </motion.button>
+  );
+};
+
+const ReportSkeleton = () => (
+  <div aria-busy className="space-y-4">
+    <div className="space-y-3 rounded-2xl border border-violet-100 bg-violet-50/40 p-5">
+      <Skeleton className="h-4 w-32 bg-violet-100" />
+      <Skeleton className="h-4 w-full bg-violet-100/80" />
+      <Skeleton className="h-4 w-4/5 bg-violet-100/80" />
+      <div className="grid grid-cols-2 gap-2 pt-2 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-14 rounded-xl bg-white/80" />
+        ))}
+      </div>
+    </div>
+    <div className="grid gap-3 lg:grid-cols-3">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="space-y-3 rounded-2xl border border-neutral-200/70 p-4">
+          <Skeleton className="h-8 w-1/2 bg-neutral-100" />
+          <Skeleton className="h-3.5 w-full bg-neutral-100" />
+          <Skeleton className="h-3.5 w-5/6 bg-neutral-100" />
+          <Skeleton className="h-3.5 w-2/3 bg-neutral-100" />
+        </div>
+      ))}
+    </div>
+    <p className="flex items-center justify-center gap-2 text-xs font-medium text-violet-700">
+      <RefreshCw className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+      Đang tổng hợp dữ liệu và viết báo cáo...
+    </p>
+  </div>
+);
+
+const EmptyReport = () => (
+  <div className="flex flex-col items-center rounded-2xl border border-dashed border-violet-200 bg-gradient-to-b from-violet-50/60 to-white px-6 py-8 text-center">
+    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-violet-700 text-white shadow-md">
+      <Sparkles className="h-6 w-6" />
+    </span>
+    <h3 className="mt-4 text-sm font-semibold text-neutral-900">Để AI tóm tắt tiến độ giúp bạn</h3>
+    <p className="mt-1 max-w-md text-sm text-neutral-500">
+      Chọn khoảng thời gian rồi bấm tạo báo cáo. AI chỉ tóm tắt từ dữ liệu thật của bảng, không tự tạo số liệu mới.
+    </p>
+    <div className="mt-4 flex flex-wrap justify-center gap-2">
+      {[
+        { label: "Việc đã xong", icon: CheckCircle2, className: "text-emerald-600" },
+        { label: "Rủi ro cần chú ý", icon: AlertTriangle, className: "text-rose-600" },
+        { label: "Gợi ý hành động", icon: Lightbulb, className: "text-violet-600" },
+      ].map(({ label, icon: Icon, className }) => (
+        <span key={label} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
+          <Icon className={cn("h-3.5 w-3.5", className)} />
+          {label}
+        </span>
+      ))}
+    </div>
+  </div>
+);
 
 export const AiReportPanel = ({
   boardId,
@@ -22,12 +171,16 @@ export const AiReportPanel = ({
   const [range, setRange] = useState<ReportRange>("7d");
   const [report, setReport] = useState<AiBoardReport | null>(null);
   const [reportRange, setReportRange] = useState<ReportRange>("7d");
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [panelError, setPanelError] = useState("");
+  const reduce = useShouldReduceMotion();
+  const pressSpring = useTempoTransition(spring.press);
 
   const { execute, isLoading } = useAction(generateAiBoardReport, {
     onSuccess: (data) => {
       setReport(data);
       setReportRange(range);
+      setGeneratedAt(new Date());
       setPanelError("");
     },
     onError: (error) => {
@@ -46,118 +199,120 @@ export const AiReportPanel = ({
 
   const handleCopy = async () => {
     if (!report) {
-      return;
+      return false;
     }
 
     try {
       await navigator.clipboard.writeText(formatReportMarkdown(report, reportRange));
+      return true;
     } catch {
       toast.error("Không thể copy báo cáo. Hãy thử lại.");
+      return false;
     }
   };
 
   return (
     <ChartPanel
       title="Báo cáo AI"
-      className="border-sky-100 bg-white"
+      description="Tóm tắt tiến độ từ dữ liệu của bảng"
+      icon={Sparkles}
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="inline-flex h-8 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
-            {(["7d", "30d"] as ReportRange[]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setRange(item)}
-                disabled={isLoading}
-                className={cn(
-                  "rounded-md px-3 text-xs font-bold transition disabled:opacity-50",
-                  range === item
-                    ? "bg-white text-sky-700 shadow-xs"
-                    : "text-neutral-500 hover:text-neutral-800",
-                )}
-              >
-                {reportRangeLabels[item]}
-              </button>
-            ))}
-          </div>
-          <button
+          <RangeToggle value={range} onChange={setRange} disabled={isLoading} />
+          <motion.button
             type="button"
             onClick={handleGenerate}
             disabled={isLoading}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-sky-600 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-60"
+            initial={{ transform: "scale(1)" }}
+            whileTap={{ transform: reduce ? "scale(1)" : `scale(${scale.press})` }}
+            transition={pressSpring}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-500 to-violet-700 px-4 text-xs font-semibold text-white shadow-sm transition-shadow hover:shadow-md disabled:cursor-wait disabled:opacity-60"
           >
             {isLoading ? (
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <RefreshCw className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {isLoading ? "Đang tạo..." : "Tạo báo cáo bằng AI"}
-          </button>
+            {isLoading ? "Đang tạo..." : report ? "Tạo lại báo cáo" : "Tạo báo cáo bằng AI"}
+          </motion.button>
         </div>
       }
     >
-      <div className="space-y-4">
-        {!report && !isLoading && !panelError && (
-          <div className="rounded-xl border border-dashed border-sky-200 bg-sky-50/50 px-4 py-6 text-sm font-medium text-sky-800">
-            Chọn khoảng thời gian rồi tạo báo cáo. AI chỉ tóm tắt từ dữ liệu backend đã query và không tự tạo số liệu mới.
-          </div>
-        )}
+      {isLoading ? (
+        <ReportSkeleton />
+      ) : (
+        <div className="space-y-4">
+          {panelError && (
+            <div className="flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              {panelError}
+            </div>
+          )}
 
-        {isLoading && (
-          <div className="flex min-h-32 items-center justify-center rounded-xl border border-sky-100 bg-sky-50/50 text-sm font-semibold text-sky-700">
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            Đang tổng hợp dữ liệu và tạo báo cáo...
-          </div>
-        )}
+          {!report && !panelError && <EmptyReport />}
 
-        {panelError && !isLoading && (
-          <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            {panelError}
-          </div>
-        )}
-
-        {report && !isLoading && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-sky-100 bg-sky-50/60 p-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold uppercase tracking-wide text-sky-700">
-                  Tổng quan {reportRangeLabels[reportRange]}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+          {report && (
+            // Keyed so a regenerated report comes in again: fade, 8px rise, out of a light blur.
+            <Effect key={generatedAt?.getTime()} fade slide={{ offset: 8 }} blur={{ initialBlur: 4 }} className="space-y-4">
+              <section className="relative overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-white p-5">
+                <Sparkles aria-hidden className="pointer-events-none absolute -right-4 -top-4 h-28 w-28 text-violet-100" />
+                <div className="relative flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                      Tổng quan {reportRangeLabels[reportRange]}
+                    </span>
+                    {generatedAt && (
+                      <span className="text-xs text-neutral-500">
+                        Tạo lúc {generatedAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                  <CopyButton onCopy={handleCopy} />
+                </div>
+                <p className="relative mt-3 max-w-4xl text-[15px] leading-7 text-neutral-800">
                   {report.summary}
                 </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 text-xs font-bold text-sky-700 shadow-xs transition hover:bg-sky-50"
-              >
-                <Clipboard className="h-3.5 w-3.5" />
-                Copy
-              </button>
-            </div>
 
-            {report.metrics.length > 0 && (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {report.metrics.map((metric) => (
-                  <div key={`${metric.label}-${metric.value}`} className="rounded-xl border border-neutral-100 bg-white p-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-                      {metric.label}
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-neutral-800">{metric.value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+                {report.metrics.length > 0 && (
+                  <dl className="relative mt-4 grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
+                    {report.metrics.map((metric) => (
+                      <div key={`${metric.label}-${metric.value}`} className="rounded-xl border border-white bg-white/80 px-3 py-2.5 shadow-xs backdrop-blur-sm">
+                        <dt className="text-xs text-neutral-500">{metric.label}</dt>
+                        <dd className="mt-0.5 text-lg font-semibold tabular-nums text-neutral-900">{metric.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </section>
 
-            <div className="grid gap-3 lg:grid-cols-3">
-              <ReportBullets title="Đã hoàn thành" items={report.completed} />
-              <ReportBullets title="Rủi ro" items={report.risks} />
-              <ReportBullets title="Gợi ý hành động" items={report.actions} />
-            </div>
-          </div>
-        )}
-      </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <ReportBullets
+                  title="Đã hoàn thành"
+                  items={report.completed}
+                  tone="success"
+                  icon={CheckCircle2}
+                  emptyLabel="Chưa có việc hoàn thành trong khoảng này."
+                />
+                <ReportBullets
+                  title="Rủi ro"
+                  items={report.risks}
+                  tone="danger"
+                  icon={AlertTriangle}
+                  emptyLabel="Không phát hiện rủi ro đáng chú ý."
+                />
+                <ReportBullets
+                  title="Gợi ý hành động"
+                  items={report.actions}
+                  tone="accent"
+                  icon={Lightbulb}
+                  emptyLabel="Chưa có gợi ý nào."
+                  numbered
+                />
+              </div>
+            </Effect>
+          )}
+        </div>
+      )}
     </ChartPanel>
   );
 };

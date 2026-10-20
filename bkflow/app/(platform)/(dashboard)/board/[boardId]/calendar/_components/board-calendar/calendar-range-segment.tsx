@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 
 import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
+import { getGridColumnSpanStyle } from "@/lib/calendar/calendar-grid-size";
 import { getCourseColor } from "@/lib/courses/course-colors";
 import { cn } from "@/lib/utils";
 
@@ -107,11 +108,8 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
     date: segment.range.startDate,
     item: segment.range.item,
   };
-  const leftPercent = (segment.startIndex / 7) * 100;
-  const widthPercent = ((segment.endIndex - segment.startIndex + 1) / 7) * 100;
   const style: CSSProperties = {
-    left: `${leftPercent}%`,
-    width: `${widthPercent}%`,
+    ...getGridColumnSpanStyle(segment.startIndex, segment.endIndex),
     top: 36 + segment.lane * (RANGE_LANE_HEIGHT + RANGE_LANE_GAP),
   };
   const isResizingThisRange = resizingRange?.range.id === segment.range.id;

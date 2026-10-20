@@ -26,7 +26,7 @@ export const BoardNavbar = ({
   const canEdit = true;
 
   return (
-    <div className="relative z-[40] shrink-0 bg-gradient-to-b from-black/60 to-black/40 text-white backdrop-blur-sm">
+    <div className="relative z-[40] shrink-0 bg-[var(--board-header)]/95 text-white backdrop-blur-sm">
       {/* Hàng 1: danh tính bảng + hành động */}
       <div className="flex h-12 items-center justify-between gap-2 px-3 md:px-6">
         <div className="flex min-w-0 flex-1 items-center">

@@ -25,8 +25,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { BoardCalendarUnscheduledCard } from "@/types";
 import type { BoardCalendarList } from "../../_types";
+import { AiScheduleDialog } from "./ai-schedule-dialog";
 
 type UnscheduledPanelProps = {
+  boardId: string;
   lists: BoardCalendarList[];
   variant: "default" | "split";
   isCollapsed: boolean;
@@ -174,6 +176,7 @@ const UnscheduledCard = ({
 );
 
 export const UnscheduledPanel = ({
+  boardId,
   lists,
   variant,
   isCollapsed,
@@ -241,6 +244,7 @@ export const UnscheduledPanel = ({
       {!isCollapsed && (
         <>
           <div className="grid shrink-0 gap-2 border-b border-neutral-100 p-3">
+            <AiScheduleDialog boardId={boardId} cards={filteredUnscheduledCards} disabled={!isSuccess || isUpdatingCardDate || isUpdatingChecklistItemDueDate} />
             <select
               value={selectedListIds[0] ?? "all"}
               onChange={(event) =>

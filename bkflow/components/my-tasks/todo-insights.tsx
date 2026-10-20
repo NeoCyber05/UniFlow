@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { tr } from "@/lib/i18n";
 import { motion } from "motion/react";
 import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { ArrowRight } from "lucide-react";
@@ -57,7 +58,7 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
       const id = task.course?.id ?? PERSONAL_COURSE_FILTER;
       const entry = courseMap.get(id) ?? {
         id,
-        label: task.course ? getCourseShortLabel(task.course) : "Cá nhân",
+        label: task.course ? getCourseShortLabel(task.course) : tr("common.personal"),
         dot: task.course ? getCourseColor(task.course.color).dot : "bg-neutral-300",
         count: 0,
       };
@@ -100,15 +101,15 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
               </span>
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-neutral-900">Hôm nay</h3>
+              <h3 className="text-sm font-bold text-neutral-900">{tr("common.today")}</h3>
               <p className="text-xs text-neutral-500">
                 {stats.total === 0
-                  ? "Không có việc đến hạn hôm nay"
-                  : `${stats.doneToday}/${stats.total} việc đã xong`}
+                  ? tr("insights.noDueToday")
+                  : tr("insights.doneCount", { done: stats.doneToday, total: stats.total })}
               </p>
               {stats.next && (
                 <p className="mt-2 line-clamp-2 text-xs text-neutral-600">
-                  <span className="font-semibold text-neutral-800">Tiếp theo:</span> {stats.next.title}
+                  <span className="font-semibold text-neutral-800">{tr("insights.next")}</span> {stats.next.title}
                   {nextDue && (
                     <span className="text-neutral-500">
                       {" "}· {nextDue.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })}
@@ -123,19 +124,19 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
         {/* 7 ngày tới */}
         <section className="rounded-2xl border border-neutral-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-neutral-900">7 ngày tới</h3>
+            <h3 className="text-sm font-bold text-neutral-900">{tr("insights.next7")}</h3>
             <Link
               href={`/board/${boardId}/calendar`}
               className="flex items-center gap-1 text-xs font-semibold text-violet-700 transition-colors duration-200 hover:text-violet-900"
             >
-              Mở Lịch <ArrowRight className="h-3 w-3" />
+              {tr("insights.openCalendar")} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="grid grid-cols-7 gap-1">
             {stats.days.map((day, index) => (
               <div
                 key={day.key}
-                title={day.count > 0 ? `${day.count} việc đến hạn` : "Không có việc"}
+                title={day.count > 0 ? tr("insights.dueCount", { count: day.count }) : tr("insights.noTasks")}
                 className={cn(
                   "flex flex-col items-center gap-0.5 rounded-xl py-2",
                   index === 0 ? "bg-violet-600 text-white" : "bg-neutral-50 text-neutral-800",
@@ -158,20 +159,20 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
         {/* Theo môn học: bấm để lọc nhanh */}
         {stats.courses.length > 0 && (
           <section className="rounded-2xl border border-neutral-200 bg-white p-4">
-            <h3 className="mb-2 text-sm font-bold text-neutral-900">Theo môn học</h3>
+            <h3 className="mb-2 text-sm font-bold text-neutral-900">{tr("insights.byCourse")}</h3>
             <div className="flex flex-col">
               {stats.courses.map((course) => (
                 <button
                   key={course.id}
                   type="button"
                   onClick={() => setSelectedCourses(boardId, [course.id])}
-                  title={`Chỉ xem ${course.label}`}
+                  title={tr("insights.onlyCourse", { course: course.label })}
                   className="-mx-2 rounded-lg px-2 py-1.5 text-left transition-colors duration-200 hover:bg-neutral-50"
                 >
                   <span className="flex items-center gap-2 text-[13px]">
                     <span className={cn("h-2 w-2 shrink-0 rounded-full", course.dot)} />
                     <span className="min-w-0 flex-1 truncate font-medium text-neutral-800">{course.label}</span>
-                    <span className="text-xs tabular-nums text-neutral-500">{course.count} việc</span>
+                    <span className="text-xs tabular-nums text-neutral-500">{course.count} {tr("insights.taskUnit")}</span>
                   </span>
                   <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-neutral-100">
                     <motion.span

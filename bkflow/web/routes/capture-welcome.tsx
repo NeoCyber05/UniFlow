@@ -8,7 +8,7 @@ import { useTitle } from "../lib/use-title";
 const STEPS = [
   { icon: Highlighter, title: "Bôi đen tin nhắn", body: `Trên ${CAPTURE_SITES.join(", ")} (bản web), bôi đen tin của thầy cô hoặc nhóm.` },
   { icon: MousePointerClick, title: "Bấm “Thêm vào UniFlow”", body: "Nút hiện ngay cạnh đoạn bôi đen. Một cửa sổ nhỏ của UniFlow mở ra." },
-  { icon: Sparkles, title: "AI điền sẵn, bạn bấm Thêm", body: "Tiêu đề, hạn nộp, môn được điền từ tin nhắn. Kiểm tra lại rồi bấm Thêm task." },
+  { icon: Sparkles, title: "AI điền sẵn, bạn bấm Thêm", body: "Tiêu đề, hạn nộp, danh mục được điền từ tin nhắn. Kiểm tra lại rồi bấm Thêm task." },
 ];
 
 /** Opened by the extension right after it is installed. */

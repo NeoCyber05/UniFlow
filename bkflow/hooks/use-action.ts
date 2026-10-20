@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ActionState, FieldErrors } from "@/lib/create-safe-action";
+import { invalidateAfterWrite } from "@/lib/invalidate-after-write";
 
 type Action<TInput, TOutput> = (data: TInput) => Promise<ActionState<TInput, TOutput>>;
 
@@ -44,8 +45,8 @@ export const useAction = <TInput, TOutput> (
         if (result.data) {
           setData(result.data);
           options.onSuccess?.(result.data);
-          // shortcut: refetches every active query (mirrors revalidatePath's coarse refresh); scope per action if it gets slow.
-          void queryClient.invalidateQueries();
+          // shortcut: refetches active data queries except unrelated/lazy roots; scope per action when a caller needs finer control.
+          invalidateAfterWrite(queryClient);
         }
       } finally {
         setIsLoading(false);

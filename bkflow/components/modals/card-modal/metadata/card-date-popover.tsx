@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Bell, CalendarClock, Flag, X, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DesktopReminderControl } from "@/components/notifications/desktop-reminder-control";
@@ -16,6 +16,8 @@ import {
   type TaskDatesForm,
   type TaskDatesPatch,
 } from "@/lib/cards/task-dates-form";
+import { addVNDays, getVNDay, getVNDayKey } from "@/lib/my-tasks/vn-day";
+import { cn } from "@/lib/utils";
 import type { CardWithList } from "@/types";
 
 interface CardDatePopoverProps {
@@ -29,8 +31,33 @@ interface CardDatePopoverProps {
   onClearLegacyStart: () => void;
 }
 
-const inputClass = "h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-700 shadow-xs outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-200";
-const labelClass = "text-[11px] font-bold text-neutral-500 uppercase";
+const inputClass = "h-9 w-full rounded-lg border border-neutral-200 bg-white px-2.5 text-sm text-neutral-700 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-300";
+const chipClass = "h-6 cursor-pointer rounded-full border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-600 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50";
+const ghostButtonClass = "h-8 rounded-lg px-3 text-xs text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700";
+const dayKeyFromToday = (offset: number) => getVNDayKey(addVNDays(getVNDay(new Date()), offset));
+const DAY_CHIPS = [["Hôm nay", 0], ["Ngày mai", 1], ["Tuần sau", 7]] as const;
+const TIME_CHIPS = ["09:00", "12:00", "23:59"] as const;
+
+const Section = ({ icon: Icon, title, tone, action, children }: {
+  icon: LucideIcon;
+  title: string;
+  tone: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <fieldset className="space-y-2.5 rounded-xl border border-neutral-200/80 bg-neutral-50/60 p-3">
+    <div className="flex items-center justify-between">
+      <legend className="float-left flex items-center gap-2 text-xs font-semibold text-neutral-700">
+        <span className={cn("flex h-6 w-6 items-center justify-center rounded-md", tone)}>
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+        {title}
+      </legend>
+      {action}
+    </div>
+    <div className="clear-both space-y-2.5">{children}</div>
+  </fieldset>
+);
 
 export const CardDatePopover = ({
   open,
@@ -45,6 +72,7 @@ export const CardDatePopover = ({
   const [form, setForm] = useState<TaskDatesForm>(() => taskDatesToForm(data));
   const set = (key: keyof TaskDatesForm) => (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const patchForm = (patch: Partial<TaskDatesForm>) => setForm((current) => ({ ...current, ...patch }));
   const preview = buildTaskDatesPatch(form);
   const hasSchedule = Boolean(form.scheduleStartDate);
 
@@ -64,46 +92,75 @@ export const CardDatePopover = ({
       <PopoverTrigger asChild>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[320px] p-3 rounded-xl border border-neutral-200 shadow-xl bg-white z-[9999]" sideOffset={6}>
-        <div className="relative pb-2.5 mb-3 border-b border-neutral-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-neutral-700 mx-auto">Hạn nộp và lịch làm</span>
+      <PopoverContent align="start" className="z-[9999] w-[360px] gap-0 rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" sideOffset={6}>
+        <div className="flex items-start justify-between gap-3 border-b border-neutral-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-neutral-800">Hạn nộp và lịch làm</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-neutral-400">Hạn nộp là mốc cuối cùng; lịch làm là lúc bạn dự định bắt tay vào việc.</p>
+          </div>
           <button
             type="button"
             onClick={() => handleOpenChange(false)}
             aria-label="Đóng"
-            className="absolute right-0 top-0.5 text-neutral-400 hover:text-neutral-600 rounded-sm"
+            className="cursor-pointer rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <fieldset className="space-y-1.5">
-            <legend className={labelClass}>Hạn nộp</legend>
-            <div className="grid grid-cols-2 gap-2">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4">
+          <Section
+            icon={Flag}
+            title="Hạn nộp"
+            tone="bg-rose-100 text-rose-600"
+            action={form.deadlineDate && (
+              <button
+                type="button"
+                onClick={() => patchForm({ deadlineDate: "", deadlineTime: "", reminder: "none" })}
+                className="cursor-pointer text-[11px] text-neutral-400 transition-colors hover:text-rose-600"
+              >
+                Xóa hạn
+              </button>
+            )}
+          >
+            <div className="grid grid-cols-[1fr_7rem] gap-2">
               <input aria-label="Ngày hạn nộp" type="date" value={form.deadlineDate} onChange={set("deadlineDate")} disabled={isLoadingUpdate} className={inputClass} />
               <input aria-label="Giờ hạn nộp (để trống nếu chỉ có ngày)" type="time" value={form.deadlineTime} onChange={set("deadlineTime")} disabled={isLoadingUpdate || !form.deadlineDate} className={inputClass} />
             </div>
-          </fieldset>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DAY_CHIPS.map(([label, offset]) => (
+                <button key={label} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ deadlineDate: dayKeyFromToday(offset) })} className={chipClass}>{label}</button>
+              ))}
+              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-neutral-200" />
+              {TIME_CHIPS.map((time) => (
+                <button key={time} type="button" disabled={isLoadingUpdate || !form.deadlineDate} onClick={() => patchForm({ deadlineTime: time })} className={cn(chipClass, "tabular-nums")}>{time}</button>
+              ))}
+            </div>
+          </Section>
 
-          <fieldset className="space-y-1.5">
-            <legend className={labelClass}>Lịch làm</legend>
-            <div className="grid grid-cols-2 gap-2">
+          <Section icon={CalendarClock} title="Lịch làm" tone="bg-violet-100 text-violet-600">
+            <div className="grid grid-cols-[1fr_7rem] gap-2">
               <input aria-label="Ngày bắt đầu làm" type="date" value={form.scheduleStartDate} onChange={set("scheduleStartDate")} disabled={isLoadingUpdate} className={inputClass} />
               <input aria-label="Giờ bắt đầu làm" type="time" value={form.scheduleStartTime} onChange={set("scheduleStartTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
+            </div>
+            <div className="grid grid-cols-[1fr_7rem] gap-2">
               <input aria-label="Ngày kết thúc làm (để trống nếu cùng ngày)" type="date" value={form.scheduleEndDate} onChange={set("scheduleEndDate")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
               <input aria-label="Giờ kết thúc làm" type="time" value={form.scheduleEndTime} onChange={set("scheduleEndTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
             </div>
-            <p className="text-[11px] text-neutral-400">Chỉ chọn ngày nếu chưa biết giờ. Đổi lịch làm không đổi hạn nộp.</p>
-          </fieldset>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DAY_CHIPS.slice(0, 2).map(([label, offset]) => (
+                <button key={label} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ scheduleStartDate: dayKeyFromToday(offset) })} className={chipClass}>{label}</button>
+              ))}
+              <p className="ml-auto text-[11px] text-neutral-400">Chưa biết giờ thì bỏ trống.</p>
+            </div>
+          </Section>
 
-          <div className="flex flex-col gap-y-1">
-            <span className={labelClass}>Thiết lập nhắc nhở</span>
+          <Section icon={Bell} title="Nhắc nhở" tone="bg-amber-100 text-amber-600">
             <select
               aria-label="Thiết lập nhắc nhở"
               value={form.reminder}
               onChange={set("reminder")}
               disabled={isLoadingUpdate || !form.deadlineDate}
-              className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2.5 text-sm text-neutral-700 shadow-xs outline-none transition focus:border-violet-500 focus:ring-1 focus:ring-violet-200 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400 cursor-pointer"
+              className={cn(inputClass, "cursor-pointer")}
             >
               <option value="none">Không có</option>
               <option value="0">Vào thời điểm hết hạn</option>
@@ -118,11 +175,12 @@ export const CardDatePopover = ({
               <option value="10080">1 tuần trước</option>
               <option value="20160">2 tuần trước</option>
             </select>
+            {!form.deadlineDate && <p className="text-[11px] text-neutral-400">Đặt hạn nộp để bật nhắc nhở.</p>}
             {form.deadlineDate && !form.deadlineTime && (
               <p className="text-[11px] text-neutral-400">Hạn chỉ có ngày: nhắc tính từ 09:00 ngày hạn.</p>
             )}
             <DesktopReminderControl />
-          </div>
+          </Section>
 
           {"error" in preview && (
             <p role="alert" className="text-xs text-red-600">{preview.error}</p>
@@ -131,36 +189,22 @@ export const CardDatePopover = ({
             <p role="status" className="text-xs text-amber-600">{preview.warning}</p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
             <Button
               type="submit"
               size="sm"
               disabled={isLoadingUpdate || "error" in preview}
-              className="h-8 rounded-lg bg-violet-600 px-4 text-xs text-white hover:bg-violet-700"
+              className="h-8 rounded-lg bg-violet-600 px-5 text-xs text-white hover:bg-violet-700"
             >
               Lưu
             </Button>
             {Boolean(data.scheduledOn || data.scheduledStartAt) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={isLoadingUpdate}
-                onClick={onClearSchedule}
-                className="h-8 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 text-xs px-3"
-              >
+              <Button type="button" size="sm" variant="ghost" disabled={isLoadingUpdate} onClick={onClearSchedule} className={ghostButtonClass}>
                 Bỏ lịch làm (giữ hạn)
               </Button>
             )}
             {data.startDate && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={isLoadingUpdate}
-                onClick={onClearLegacyStart}
-                className="h-8 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 text-xs px-3"
-              >
+              <Button type="button" size="sm" variant="ghost" disabled={isLoadingUpdate} onClick={onClearLegacyStart} className={ghostButtonClass}>
                 Xóa mốc bắt đầu cũ
               </Button>
             )}

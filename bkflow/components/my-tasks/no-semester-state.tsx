@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { GraduationCap } from "lucide-react";
@@ -17,10 +18,10 @@ export const NoSemesterState = () => {
   return (
     <div className="mx-auto mt-16 max-w-md rounded-2xl border border-dashed border-neutral-200 p-8 text-center">
       <GraduationCap className="mx-auto mb-3 h-8 w-8 text-violet-500" />
-      <p className="font-semibold text-neutral-800">Chưa có học kỳ</p>
-      <p className="mt-1 text-sm text-neutral-500">Tạo học kỳ để bắt đầu ghi việc cần làm.</p>
+      <p className="font-semibold text-neutral-800">{tr("semester.noneTitle")}</p>
+      <p className="mt-1 text-sm text-neutral-500">{tr("semester.noneDesc")}</p>
       <Button type="button" className="mt-4" onClick={() => setOpen(true)}>
-        Tạo học kỳ
+        {tr("semester.create")}
       </Button>
       <ManageSemestersDialog
         open={open}

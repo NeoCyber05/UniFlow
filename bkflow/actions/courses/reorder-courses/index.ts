@@ -37,7 +37,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     return { data: { count: results.reduce((sum, result) => sum + result.count, 0) } };
   } catch {
-    return { error: "Sắp xếp môn học thất bại." };
+    return { error: "Sắp xếp danh mục thất bại." };
   }
 };
 

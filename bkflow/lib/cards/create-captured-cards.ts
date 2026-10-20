@@ -84,7 +84,7 @@ const normalizeDrafts = (
       throw new CapturedCardsError("Không tìm thấy một hoặc nhiều nhãn.");
     }
     if (draft.courseId && !valid.courses.has(draft.courseId)) {
-      throw new CapturedCardsError("Môn không hợp lệ.");
+      throw new CapturedCardsError("Danh mục không hợp lệ.");
     }
     const dueDateValue = normalizeDueDate(draft.dueDate);
     const deadline: TaskDeadline = {

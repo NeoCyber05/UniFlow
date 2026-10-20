@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { tr } from "@/lib/i18n";
 import { Clock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -58,17 +59,17 @@ export const DueDateBadge = ({
 
   let tooltipText = "";
   if (isCompleted) {
-    tooltipText = "Thẻ đã hoàn thành";
+    tooltipText = tr("dueBadge.done");
   } else if (hasDue) {
     if (status === "overdue") {
-      tooltipText = "Thẻ đã hết hạn";
+      tooltipText = tr("dueBadge.overdue");
     } else if (status === "warning") {
-      tooltipText = "Thẻ sắp hết hạn";
+      tooltipText = tr("dueBadge.soon");
     } else {
-      tooltipText = "Thẻ còn hạn";
+      tooltipText = tr("dueBadge.onTime");
     }
   } else {
-    tooltipText = "Thẻ đã bắt đầu";
+    tooltipText = tr("dueBadge.started");
   }
 
   const formatDateValue = (d: Date | string) => {
@@ -82,7 +83,7 @@ export const DueDateBadge = ({
 
   let displayString = "";
   if (hasStart && !hasDue) {
-    displayString = `Bắt đầu: ${formatDateValue(startDate)}`;
+    displayString = tr("dueBadge.startsOn", { date: formatDateValue(startDate) });
   } else if (hasStart && hasDue) {
     displayString = `${formatDateValue(startDate)} - ${formatDateValue(dueDate)}`;
   } else if (hasDue) {
@@ -93,16 +94,16 @@ export const DueDateBadge = ({
     <Hint description={tooltipText} side="bottom">
       <span
         className={cn(
-          "inline-flex h-7 max-w-full items-center rounded-md border text-xs font-medium shadow-sm !cursor-pointer",
+          "task-badge h-7 max-w-full !cursor-pointer",
           isCard ? "px-2 gap-x-1" : "px-2.5 gap-x-1.5",
-          status === "normal" && "border-neutral-200 bg-white text-neutral-600",
-          status === "warning" && "border-yellow-200 bg-yellow-50 text-yellow-700",
-          status === "overdue" && "border-red-200 bg-red-50 text-red-700",
-          status === "completed" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+          status === "normal" && "task-badge-neutral",
+          status === "warning" && "task-badge-warning",
+          status === "overdue" && "task-badge-danger",
+          status === "completed" && "task-badge-success",
           className,
         )}
       >
-        <Clock className="h-3.5 w-3.5 shrink-0" />
+        <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">{displayString}</span>
       </span>
     </Hint>

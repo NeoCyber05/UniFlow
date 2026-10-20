@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/web/shims/next-link";
+import { tr } from "@/lib/i18n";
 import { useNavigate } from "react-router";
 
 import { useUser, signOut } from "@/web/lib/auth";
@@ -59,7 +60,7 @@ const UserMenu = () => {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.fullName || "Người dùng"}</p>
+            <p className="text-sm font-medium leading-none">{user.fullName || tr("navbar.userFallback")}</p>
             {user.primaryEmailAddress?.emailAddress && (
               <p className="text-xs leading-none text-muted-foreground">
                 {user.primaryEmailAddress.emailAddress}
@@ -73,14 +74,14 @@ const UserMenu = () => {
           className="cursor-pointer"
         >
           <Settings className="mr-2 h-4 w-4" />
-          Cài đặt
+          {tr("common.settings")}
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
           onClick={handleSignOut}
           className="cursor-pointer"
         >
-          Đăng xuất
+          {tr("navbar.signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -89,7 +90,7 @@ const UserMenu = () => {
 
 export const Navbar = () => {
     return (
-        <nav aria-label="Thanh công cụ" className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border bg-background/95 backdrop-blur-sm flex items-center justify-between gap-x-3">
+        <nav aria-label={tr("navbar.toolbar")} className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border bg-header/95 backdrop-blur-sm flex items-center justify-between gap-x-3">
             <RealtimeNotificationSync />
             <NotificationToasts />
 
@@ -97,7 +98,7 @@ export const Navbar = () => {
             <div className="flex items-center gap-x-2 md:gap-x-3 shrink-0">
                 <MobileSidebar />
                 <div className="flex items-center gap-x-2">
-                    <Link href="/my/today" aria-label="UniFlow — Hôm nay" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                    <Link href="/my/today" aria-label={tr("navbar.homeLabel")} className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
                       <img src="/logo.svg" alt="" aria-hidden="true" className="size-7 rounded-lg" />
                       <span className="hidden sm:inline">UniFlow</span>
                       <span className="ml-1 hidden text-[10px] font-normal tracking-normal text-muted-foreground lg:inline">HUST</span>

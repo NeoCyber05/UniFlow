@@ -60,15 +60,21 @@ const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderPr
     return () => { ownerRef.current = null; queue.dispose(); queueRef.current = null; };
   }, [userId, initialAppearance]);
 
-  // Portaled UI (popovers, dialogs, toasts) renders under <body>, so mirror the accent on <html>
+  const backgroundStyle = BACKGROUNDS.find((item) => item.id === appearance.background)?.style;
+
+  // Portals also need the workspace palette, outside the provider's DOM subtree.
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.accent = appearance.accent;
+    root.dataset.background = appearance.background;
+    root.style.setProperty("--workspace-tint", String(backgroundStyle?.backgroundColor ?? "var(--color-violet-500)"));
 
     return () => {
       delete root.dataset.accent;
+      delete root.dataset.background;
+      root.style.removeProperty("--workspace-tint");
     };
-  }, [appearance.accent]);
+  }, [appearance.accent, appearance.background, backgroundStyle]);
 
   const setAccent = useCallback(
     (accent: AccentId) => { void queueRef.current?.update({ accent }); },
@@ -85,18 +91,12 @@ const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderPr
     if (preset) void queueRef.current?.update({ accent: preset.accent, background: preset.background });
   }, []);
 
-  const backgroundStyle = BACKGROUNDS.find((item) => item.id === appearance.background)?.style;
-
   return (
     <AppearanceContext.Provider value={{ ...appearance, pageStyle: readPageStyle(appearance.pageStyle), setAccent, setBackground, setPageStyle, selectPreset, saveStatus }}>
-      <div
-        data-accent={appearance.accent}
-        data-background={appearance.background}
-        className="relative h-full"
-      >
+      <div className="relative isolate h-full">
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 -z-10 transition-[background,filter] duration-500 motion-reduce:transition-none dark:brightness-[0.22] dark:saturate-50"
+          className="workspace-wallpaper pointer-events-none fixed inset-0 -z-10"
           style={backgroundStyle}
         />
         {children}

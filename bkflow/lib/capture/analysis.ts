@@ -198,7 +198,7 @@ export const validateCaptureAnalysis = (raw: unknown, context: CaptureAnalysisCo
     if (context.allowedCourseIds.includes(raw.courseId)) {
       if (!flagged.has("courseId")) fields.courseId = raw.courseId;
     } else {
-      addIssue("courseId", "AI gợi ý môn không thuộc học kỳ này, đã bỏ qua.");
+      addIssue("courseId", "AI gợi ý danh mục không thuộc học kỳ này, đã bỏ qua.");
     }
   }
 

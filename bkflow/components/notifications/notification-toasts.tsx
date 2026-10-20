@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { Bell, X } from "lucide-react";
 
 import { cn, formatNotificationText } from "@/lib/utils";
@@ -243,7 +244,7 @@ export const NotificationToasts = () => {
                       dismissToast(toast.item.id);
                     }}
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                    aria-label="Đóng thông báo"
+                    aria-label={tr("notif.close")}
                   >
                     <X className="h-4 w-4" />
                   </button>

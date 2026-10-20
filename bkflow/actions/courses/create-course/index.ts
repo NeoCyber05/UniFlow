@@ -49,7 +49,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: DUPLICATE_COURSE_ERROR };
     }
 
-    return { error: "Thêm môn học thất bại." };
+    return { error: "Thêm danh mục thất bại." };
   }
 };
 

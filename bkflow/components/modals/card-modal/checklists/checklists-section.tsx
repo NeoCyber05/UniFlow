@@ -677,7 +677,9 @@ export const ChecklistsSection = ({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      "flex min-h-8 w-full flex-col gap-y-1 pl-[52px]",
+                      "flex w-full flex-col gap-y-1 pl-[52px]",
+                      // Checklist rỗng và là duy nhất: không có đích kéo thả nào, đừng chừa khoảng trống.
+                      displayItems.length > 0 || localChecklists.length > 1 ? "min-h-8" : "-mt-3",
                       snapshot.isDraggingOver && "rounded-lg bg-violet-50/50",
                     )}
                   >

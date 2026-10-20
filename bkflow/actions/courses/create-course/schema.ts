@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { COURSE_COLOR_KEYS } from "@/lib/courses/course-colors";
 
-export const CourseName = z.string("Vui lòng nhập tên môn.")
+export const CourseName = z.string("Vui lòng nhập tên danh mục.")
   .trim()
-  .min(1, { message: "Vui lòng nhập tên môn." })
-  .max(80, { message: "Tên môn tối đa 80 ký tự." });
+  .min(1, { message: "Vui lòng nhập tên danh mục." })
+  .max(80, { message: "Tên danh mục tối đa 80 ký tự." });
 
 export const CourseCode = z.string().trim().max(20, { message: "Mã HP tối đa 20 ký tự." }).nullable();
 

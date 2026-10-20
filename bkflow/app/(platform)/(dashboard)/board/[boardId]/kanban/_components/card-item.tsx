@@ -5,10 +5,12 @@ import { createPortal } from "react-dom";
 import { useParams } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 import { Draggable } from "@hello-pangea/dnd";
-import { AlignLeft, Star } from "lucide-react";
+import { AlignLeft, Check, Star, Sun } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { setCardCompleted } from "@/actions/cards/set-card-completed";
 import { toggleCardImportant } from "@/actions/cards/toggle-card-important";
+import { toggleCardMyDay } from "@/actions/cards/toggle-card-my-day";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 
 import { useCardModal } from "@/hooks/use-card-modal";
@@ -261,6 +263,43 @@ export const CardItem = memo(function CardItem({
     void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
   };
 
+  const onToggleCompleted = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    const next = !data.isCompleted;
+
+    boardState.patchCard(data.id, { isCompleted: next });
+
+    const result = await setCardCompleted({ cardId: data.id, value: next });
+
+    if (result.error) {
+      boardState.patchCard(data.id, { isCompleted: !next });
+      toast.error(result.error);
+      return;
+    }
+
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+  };
+
+  const isPinned = Boolean(data.myDayAt);
+  const onToggleMyDay = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    const prev = data.myDayAt ?? null;
+
+    boardState.patchCard(data.id, { myDayAt: isPinned ? null : new Date().toISOString() });
+
+    const result = await toggleCardMyDay({ cardId: data.id, value: !isPinned });
+
+    if (result.error) {
+      boardState.patchCard(data.id, { myDayAt: prev });
+      toast.error(result.error);
+      return;
+    }
+
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+  };
+
   return (
     <>
       <Draggable draggableId={data.id} index={index} isDragDisabled={!canEdit}>
@@ -322,12 +361,29 @@ export const CardItem = memo(function CardItem({
                   />
                 </form>
               ) : (
-                <span className={cn(
-                  "block text-[15px] font-semibold leading-snug text-neutral-800 break-words pr-5",
-                  data.description?.trim() && "pr-10"
-                )}>
-                  {data.title}
-                </span>
+                <div className="flex items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={onToggleCompleted}
+                    aria-pressed={data.isCompleted}
+                    aria-label={data.isCompleted ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
+                    className={cn(
+                      "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                      data.isCompleted
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-neutral-300 hover:border-violet-500 hover:bg-violet-50",
+                    )}
+                  >
+                    {data.isCompleted && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                  </button>
+                  <span className={cn(
+                    "block min-w-0 flex-1 text-[15px] font-semibold leading-snug text-neutral-800 break-words pr-10",
+                    data.description?.trim() && "pr-14",
+                    data.isCompleted && "text-neutral-400 line-through",
+                  )}>
+                    {data.title}
+                  </span>
+                </div>
               )}
               <CardBadges card={data} />
             </div>
@@ -337,6 +393,21 @@ export const CardItem = memo(function CardItem({
                   <AlignLeft className="h-3.5 w-3.5 text-neutral-300 transition-colors group-hover:text-neutral-400" />
                 </Hint>
               )}
+              <button
+                type="button"
+                onClick={onToggleMyDay}
+                aria-pressed={isPinned}
+                aria-label={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
+                title={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
+                className={cn(
+                  "rounded p-0.5 transition",
+                  isPinned
+                    ? "text-amber-500"
+                    : "text-neutral-300 opacity-0 hover:text-amber-500 group-hover:opacity-100",
+                )}
+              >
+                <Sun className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={onToggleImportant}

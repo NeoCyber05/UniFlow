@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { tr } from "@/lib/i18n";
 import {
   Bell,
   CheckSquare,
@@ -150,7 +151,7 @@ export const NotificationsPopover = () => {
       >
         <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 bg-neutral-50/50 px-5 py-4">
           <h3 className="text-lg font-semibold text-neutral-800">
-            Thông báo
+            {tr("notif.title")}
           </h3>
           <div className="flex items-center gap-x-4">
             {hasUnread && (
@@ -160,11 +161,11 @@ export const NotificationsPopover = () => {
                 className="flex items-center gap-x-1 text-xs font-semibold text-violet-600 outline-hidden hover:text-violet-700 hover:underline"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Đọc tất cả
+                {tr("notif.markAllRead")}
               </button>
             )}
             <label className="flex cursor-pointer select-none items-center gap-x-2.5 text-xs font-medium text-neutral-500">
-              Chưa đọc
+              {tr("notif.unread")}
               <button
                 type="button"
                 onClick={() => {
@@ -207,7 +208,7 @@ export const NotificationsPopover = () => {
                 <Bell className="h-7 w-7" />
               </div>
               <p className="text-[15px] font-semibold text-neutral-800">
-                {onlyUnread ? "Không có thông báo chưa đọc" : "Không có thông báo"}
+                {onlyUnread ? tr("notif.emptyUnread") : tr("notif.empty")}
               </p>
             </div>
           ) : (
@@ -264,7 +265,7 @@ export const NotificationsPopover = () => {
                                   <div className="flex items-center gap-x-1.5 text-[12px] text-neutral-500">
                                     <Clock className="h-3 w-3 flex-shrink-0 text-rose-400" />
                                     <span>
-                                      Hết hạn:{" "}
+                                      {tr("notif.dueLabel")}:{" "}
                                       <span className="font-medium text-rose-500">
                                         {dueDateText}
                                       </span>
@@ -335,8 +336,8 @@ export const NotificationsPopover = () => {
                           <Hint
                             description={
                               notificationIsRead
-                                ? "Đánh dấu là chưa đọc"
-                                : "Đánh dấu là đã đọc"
+                                ? tr("notif.markUnread")
+                                : tr("notif.markRead")
                             }
                             side="left"
                             sideOffset={6}
@@ -353,8 +354,8 @@ export const NotificationsPopover = () => {
                               className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-neutral-200/80"
                               aria-label={
                                 notificationIsRead
-                                  ? "Đánh dấu là chưa đọc"
-                                  : "Đánh dấu là đã đọc"
+                                  ? tr("notif.markUnread")
+                                  : tr("notif.markRead")
                               }
                             >
                               {!notificationIsRead ? (

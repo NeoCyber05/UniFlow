@@ -1,9 +1,7 @@
-import { createBrowserRouter, Outlet } from "react-router";
+import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { SignInPage, SignUpPage } from "./routes/auth-pages";
 
 import { ModalProvider } from "@/components/providers/modal-provider";
-import MarketingPage from "@/app/(marketing)/page";
-import MarketingLayout from "@/app/(marketing)/layout";
 
 import DashboardLayoutRoute from "./routes/dashboard-layout";
 import BoardAnalyticsRoute from "./routes/board-analytics";
@@ -47,7 +45,7 @@ export const router = createBrowserRouter([
       {
         element: <RedirectIfSignedIn />,
         children: [
-          { path: "/", element: <MarketingLayout><MarketingPage /></MarketingLayout> },
+          { path: "/", element: <Navigate to="/sign-in" replace /> },
           { path: "/sign-in", element: <SignInPage /> },
           { path: "/sign-up", element: <SignUpPage /> },
         ],

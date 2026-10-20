@@ -1,4 +1,5 @@
 import { format, formatDistanceToNow, isPast } from "date-fns";
+import { tr } from "@/lib/i18n";
 import { vi } from "date-fns/locale";
 
 import { NotificationItem } from "@/components/notifications/types";
@@ -40,18 +41,18 @@ export const getReminderNotificationDisplay = (
   const overdue = isPast(dueDate);
   const timeText = format(dueDate, "HH:mm", { locale: vi });
   const relative = formatDistanceToNow(dueDate, { locale: vi });
-  const reminderActionText = overdue ? "đã quá hạn lúc" : "sẽ hết hạn lúc";
-  const fallbackSubject = overdue ? "Thẻ đã quá hạn" : "Thẻ sẽ hết hạn";
+  const reminderActionText = overdue ? tr("notif.overdueAt") : tr("notif.dueAt");
+  const fallbackSubject = overdue ? tr("notif.cardOverdue") : tr("notif.cardDue");
 
   return {
-    title: overdue ? "Thẻ đã quá hạn" : "Thẻ sắp đến hạn",
+    title: overdue ? tr("notif.cardOverdue") : tr("notif.cardSoon"),
     message: cardTitle
-      ? `Thẻ "${cardTitle}" ${reminderActionText} ${timeText}`
-      : `${fallbackSubject} lúc ${timeText}`,
+      ? tr("notif.cardTemplate", { title: cardTitle, action: reminderActionText, time: timeText })
+      : tr("notif.atTime", { subject: fallbackSubject, time: timeText }),
     dueDateText: format(dueDate, "dd/MM/yyyy 'lúc' HH:mm", { locale: vi }),
     statusText: overdue
-      ? `Quá hạn ${relative} trước`
-      : `Còn ${relative} nữa đến hạn`,
+      ? tr("notif.overdueBy", { relative })
+      : tr("notif.dueIn", { relative }),
     overdue,
   };
 };

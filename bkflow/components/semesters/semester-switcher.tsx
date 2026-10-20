@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { CalendarRange, ChevronDown, Settings2 } from "lucide-react";
 import type { Semester } from "@prisma/client";
 
@@ -46,7 +47,7 @@ export const SemesterSwitcher = ({
   );
 
   const selectedSemester = semesters.find((semester) => semester.id === selectedSemesterId);
-  const label = selectedSemester ? formatSemesterLabel(selectedSemester.title) : "Tất cả học kỳ";
+  const label = selectedSemester ? formatSemesterLabel(selectedSemester.title) : tr("semester.all");
 
   return (
     <>
@@ -64,12 +65,12 @@ export const SemesterSwitcher = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
           <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-            Chọn học kỳ
+            {tr("sidebar.pickSemester")}
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup value={selectedSemesterId} onValueChange={onSelectSemester}>
             {showAll && (
             <DropdownMenuRadioItem value="all" className="cursor-pointer">
-              Tất cả học kỳ
+              {tr("semester.all")}
             </DropdownMenuRadioItem>
             )}
             {sortedSemesters.map((semester) => {
@@ -92,7 +93,7 @@ export const SemesterSwitcher = ({
                   </div>
                   {semester.isCurrent && (
                     <span className="ml-2 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 shrink-0">
-                      Hiện tại
+                      {tr("semester.current")}
                     </span>
                   )}
                 </DropdownMenuRadioItem>
@@ -105,7 +106,7 @@ export const SemesterSwitcher = ({
             className="cursor-pointer gap-2 text-violet-700 hover:bg-violet-50 font-medium text-xs"
           >
             <Settings2 className="h-3.5 w-3.5 text-violet-600" />
-            Quản lý học kỳ
+            {tr("semester.manage")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

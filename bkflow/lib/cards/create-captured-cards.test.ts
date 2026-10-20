@@ -240,7 +240,7 @@ test("course of another board is rejected, not silently dropped", async () => {
   const { state, database } = setup();
   await assert.rejects(
     () => createCapturedCards({ userId: "u1", boardId: "b1", drafts: [draft(ID1, { courseId: "cx" })] }, database),
-    (e: any) => e instanceof CapturedCardsError && e.message === "Môn không hợp lệ.",
+    (e: any) => e instanceof CapturedCardsError && e.message === "Danh mục không hợp lệ.",
   );
   assert.equal(state.cards.length, 1);
 });

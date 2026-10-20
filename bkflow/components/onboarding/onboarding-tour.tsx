@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, CheckCircle2, GraduationCap, Highlighter, Sparkles, Zap } from "lucide-react";
+import { tr } from "@/lib/i18n";
+import { CheckCircle2 } from "lucide-react";
 
+import { ONBOARDING_ART } from "@/components/onboarding/onboarding-art";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { CAPTURE_EXTENSION_URL, CAPTURE_SITES } from "@/lib/capture/extension";
 import { cn } from "@/lib/utils";
@@ -13,34 +15,25 @@ const STORAGE_PREFIX = "uniflow:onboarding:v1:";
 
 const STEPS = [
   {
-    icon: GraduationCap,
-    tone: "bg-violet-50 text-violet-600",
-    title: "Chào mừng đến UniFlow",
-    body: "Mỗi học kỳ là một bảng, mỗi môn là một nhóm việc. Bài tập, hạn nộp và ghi chú của bạn nằm chung một chỗ.",
+    title: "onboarding.welcomeTitle",
+    body: "onboarding.welcomeBody",
   },
   {
-    icon: Zap,
-    tone: "bg-amber-50 text-amber-600",
-    title: "Thêm việc thật nhanh",
-    body: "Gõ vào ô “Thêm việc”: #môn để chọn môn, @mai, @t6 hoặc @15/10 để đặt hạn, ! để đánh dấu quan trọng. Câu thường như “nộp báo cáo 17h thứ 6” AI cũng hiểu.",
+    title: "onboarding.quickAddTitle",
+    body: "onboarding.quickAddBody",
   },
   {
-    icon: CalendarDays,
-    tone: "bg-sky-50 text-sky-600",
-    title: "Lịch và nhắc hạn",
-    body: "Xem việc theo lịch, kéo thả để dời ngày. Bật nhắc hạn để nhận thông báo trước khi tới hạn.",
+    title: "onboarding.calendarTitle",
+    body: "onboarding.calendarBody",
   },
   {
-    icon: Sparkles,
-    tone: "bg-fuchsia-50 text-fuchsia-600",
-    title: "Để AI làm phần khó",
-    body: "Dán ghi chú dài vào Smart Capture (✨), AI tách thành từng việc. Trợ lý AI giúp bạn hỏi đáp và sắp xếp công việc.",
+    title: "onboarding.aiTitle",
+    body: "onboarding.aiBody",
   },
   {
-    icon: Highlighter,
-    tone: "bg-emerald-50 text-emerald-600",
-    title: "Bắt việc từ tin nhắn",
-    body: `Cài UniFlow Capture: trên ${CAPTURE_SITES.join(", ")} (bản web), bôi đen tin của thầy cô rồi bấm “Thêm vào UniFlow”. AI điền sẵn hạn nộp cho bạn.`,
+    title: "onboarding.captureTitle",
+    body: "onboarding.captureBody",
+    params: { sites: CAPTURE_SITES.join(", ") },
   },
 ] as const;
 
@@ -75,17 +68,17 @@ export const OnboardingTour = () => {
   };
 
   const current = STEPS[step];
-  const Icon = current.icon;
+  const Art = ONBOARDING_ART[step];
   const isLast = step === STEPS.length - 1;
   const extensionInstalled = Boolean(getCaptureExtensionVersion());
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <div className="flex flex-col items-center gap-4 px-6 pb-2 pt-8 text-center">
-          <span className={cn("flex h-14 w-14 items-center justify-center rounded-2xl", current.tone)}>
-            <Icon className="h-7 w-7" />
-          </span>
+        <div className="flex flex-col items-center gap-4 px-6 pb-2 pt-10 text-center">
+          <div className="flex h-44 w-full items-center justify-center rounded-2xl bg-gradient-to-b from-violet-50 to-violet-100/60 ring-1 ring-inset ring-violet-100">
+            <Art key={step} className="h-full w-auto p-2" />
+          </div>
           <div className="space-y-2">
             <DialogTitle className="text-lg font-semibold">{current.title}</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">{current.body}</DialogDescription>
@@ -94,7 +87,7 @@ export const OnboardingTour = () => {
           {isLast && (
             extensionInstalled ? (
               <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" /> Bạn đã cài UniFlow Capture
+                <CheckCircle2 className="h-4 w-4" /> {tr("onboarding.installed")}
               </p>
             ) : CAPTURE_EXTENSION_URL ? (
               <a
@@ -103,7 +96,7 @@ export const OnboardingTour = () => {
                 rel="noreferrer"
                 className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
               >
-                Cài UniFlow Capture cho Edge
+                {tr("onboarding.captureEdge")}
               </a>
             ) : null
           )}
@@ -117,12 +110,12 @@ export const OnboardingTour = () => {
 
         <div className="flex items-center justify-between border-t px-4 py-3">
           <button type="button" onClick={close} className="text-sm text-muted-foreground hover:text-foreground">
-            Bỏ qua
+            {tr("onboarding.skip")}
           </button>
           <div className="flex gap-2">
             {step > 0 && (
               <button type="button" onClick={() => setStep(step - 1)} className="rounded-lg px-3 py-1.5 text-sm hover:bg-neutral-100">
-                Quay lại
+                {tr("common.back")}
               </button>
             )}
             <button
@@ -131,7 +124,7 @@ export const OnboardingTour = () => {
               onClick={() => (isLast ? close() : setStep(step + 1))}
               className="rounded-lg bg-violet-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-violet-700"
             >
-              {isLast ? "Bắt đầu" : "Tiếp"}
+              {isLast ? tr("onboarding.start") : tr("onboarding.next")}
             </button>
           </div>
         </div>

@@ -6,7 +6,7 @@ import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/list/page.tsx.
-export const loadBoardList = async ({ boardId }: { boardId: string }, userId: string) => {
+export const loadBoardList = async ({ boardId, group }: { boardId: string; group?: string }, userId: string) => {
   const permission = await requireBoardMemberForUser({ boardId, userId });
 
   if (permission.error || !permission.membership) {
@@ -37,9 +37,12 @@ export const loadBoardList = async ({ boardId }: { boardId: string }, userId: st
 
   const isSemesterBoard = board.boardType === BoardType.SEMESTER;
 
+  // Only the active grouping is preloaded; the other one is fetched by the client when the user switches.
+  // shortcut: a stored "list" mode without ?group=list still refetches client-side once, add the mode to the URL if it matters.
+  const wantsAgenda = isSemesterBoard && group !== "list";
   const [initialListData, initialAgendaData] = await Promise.all([
-    getBoardTaskGroups({ boardId, userId }),
-    isSemesterBoard ? getTodoTasks({ userId, boardId }) : Promise.resolve(undefined),
+    wantsAgenda ? Promise.resolve(undefined) : getBoardTaskGroups({ boardId, userId }),
+    wantsAgenda ? getTodoTasks({ userId, boardId }) : Promise.resolve(undefined),
   ]);
 
   return {

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { tr } from "@/lib/i18n";
 import { AnimatePresence, motion } from "motion/react";
 import {
   blur,
@@ -67,7 +68,7 @@ export const TaskRow = memo(function TaskRow({
     >
       {isEvent ? (
         // Sự kiện (buổi học) chỉ để xem: không có checkbox hoàn thành
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-sky-500" title="Sự kiện">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-sky-500" title={tr("task.event")}>
           <Clock className="h-4 w-4" aria-hidden="true" />
         </span>
       ) : (
@@ -75,7 +76,7 @@ export const TaskRow = memo(function TaskRow({
         type="button"
         whileTap={{ scale: scale.press }}
         transition={press}
-        aria-label={task.isCompleted ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
+        aria-label={task.isCompleted ? tr("task.markIncomplete") : tr("task.markComplete")}
         onClick={(event) => {
           event.stopPropagation();
           void setCompleted(task.id, !task.isCompleted);
@@ -156,7 +157,7 @@ export const TaskRow = memo(function TaskRow({
           {isPinned && (
             <span className="inline-flex items-center gap-1 text-amber-600">
               <Sun className="h-3 w-3" />
-              Hôm nay
+              {tr("common.today")}
             </span>
           )}
         </div>
@@ -166,8 +167,8 @@ export const TaskRow = memo(function TaskRow({
 
       <button
         type="button"
-        aria-label={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
-        title={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
+        aria-label={isPinned ? tr("task.unpin") : tr("task.pin")}
+        title={isPinned ? tr("task.unpin") : tr("task.pin")}
         onClick={(event) => {
           event.stopPropagation();
           void setMyDay(task.id, !isPinned);
@@ -181,7 +182,7 @@ export const TaskRow = memo(function TaskRow({
       </button>
       <button
         type="button"
-        aria-label={task.isImportant ? "Bỏ đánh dấu quan trọng" : "Đánh dấu quan trọng"}
+        aria-label={task.isImportant ? tr("task.unmarkImportant") : tr("task.markImportant")}
         onClick={(event) => {
           event.stopPropagation();
           void setImportant(task.id, !task.isImportant);

@@ -1,6 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type TextareaHTMLAttributes } from "react";
+import { tr } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n/messages/vi";
 import {
   ArrowDown, ArrowUp, CalendarClock, CheckSquare, Copy, GripVertical, Heading1, Heading2, Heading3,
   Lightbulb, Link2, List, ListOrdered, Minus, Pilcrow, Plus, Quote, Repeat, Trash2, type LucideIcon,
@@ -22,28 +24,28 @@ import { cn } from "@/lib/utils";
 
 type Focus = { id: string; pos: number | "end" };
 
-const COMMANDS: { command: BlockCommand; label: string; keywords: string; icon: LucideIcon }[] = [
-  { command: "paragraph", label: "Văn bản", keywords: "text paragraph doan", icon: Pilcrow },
-  { command: "h1", label: "Tiêu đề 1", keywords: "heading h1 title", icon: Heading1 },
-  { command: "h2", label: "Tiêu đề 2", keywords: "heading h2", icon: Heading2 },
-  { command: "h3", label: "Tiêu đề 3", keywords: "heading h3", icon: Heading3 },
-  { command: "todo", label: "Todo trong Trang", keywords: "todo checkbox check viec can lam", icon: CheckSquare },
-  { command: "bullet", label: "Danh sách chấm", keywords: "bullet list ul", icon: List },
-  { command: "numbered", label: "Danh sách số", keywords: "numbered list ol", icon: ListOrdered },
-  { command: "quote", label: "Trích dẫn", keywords: "quote", icon: Quote },
-  { command: "callout", label: "Ghi chú nổi bật", keywords: "callout highlight", icon: Lightbulb },
-  { command: "divider", label: "Đường phân cách", keywords: "divider line hr", icon: Minus },
-  { command: "deadline", label: "Hạn trong Trang (cũ)", keywords: "deadline reminder date nhac han", icon: CalendarClock },
-  { command: "task", label: "Công việc liên kết", keywords: "task card link the cong viec lien ket", icon: Link2 },
+const COMMANDS: { command: BlockCommand; labelKey: MessageKey; keywords: string; icon: LucideIcon }[] = [
+  { command: "paragraph", labelKey: "notes.block.paragraph", keywords: "text paragraph doan", icon: Pilcrow },
+  { command: "h1", labelKey: "notes.block.h1", keywords: "heading h1 title", icon: Heading1 },
+  { command: "h2", labelKey: "notes.block.h2", keywords: "heading h2", icon: Heading2 },
+  { command: "h3", labelKey: "notes.block.h3", keywords: "heading h3", icon: Heading3 },
+  { command: "todo", labelKey: "notes.block.todo", keywords: "todo checkbox check viec can lam", icon: CheckSquare },
+  { command: "bullet", labelKey: "notes.block.bullet", keywords: "bullet list ul", icon: List },
+  { command: "numbered", labelKey: "notes.block.numbered", keywords: "numbered list ol", icon: ListOrdered },
+  { command: "quote", labelKey: "notes.block.quote", keywords: "quote", icon: Quote },
+  { command: "callout", labelKey: "notes.block.callout", keywords: "callout highlight", icon: Lightbulb },
+  { command: "divider", labelKey: "notes.block.divider", keywords: "divider line hr", icon: Minus },
+  { command: "deadline", labelKey: "notes.block.deadline", keywords: "deadline reminder date nhac han", icon: CalendarClock },
+  { command: "task", labelKey: "notes.block.task", keywords: "task card link the cong viec lien ket", icon: Link2 },
 ];
 const TEXT_COMMANDS = COMMANDS.filter(item => !["divider", "deadline", "task"].includes(item.command));
 
-const PLACEHOLDERS: Partial<Record<NoteBlock["type"], string>> = {
-  todo: "Todo trong Trang", bullet: "Danh sách", numbered: "Danh sách", quote: "Trích dẫn", callout: "Ghi chú nổi bật",
+const PLACEHOLDERS: Partial<Record<NoteBlock["type"], MessageKey>> = {
+  todo: "notes.block.todo", bullet: "notes.block.list", numbered: "notes.block.list", quote: "notes.block.quote", callout: "notes.block.callout",
 };
 
 // Keys must exist in reminderLabels (lib/notifications/reminder-notifications.ts).
-const reminderOptions = [["none", "Không nhắc"], ["0", "Đúng giờ"], ["15", "Trước 15 phút"], ["60", "Trước 1 giờ"], ["1440", "Trước 1 ngày"], ["2880", "Trước 2 ngày"], ["10080", "Trước 1 tuần"]] as const;
+const reminderOptions = [["none", "notes.reminder.none"], ["0", "notes.reminder.onTime"], ["15", "notes.reminder.m15"], ["60", "notes.reminder.h1"], ["1440", "notes.reminder.d1"], ["2880", "notes.reminder.d2"], ["10080", "notes.reminder.w1"]] as const;
 
 // <input type="datetime-local"> works in local time without a zone suffix.
 const toLocalInput = (iso: string) => {
@@ -69,15 +71,15 @@ const DeadlineBlock = ({ block, onChange, onEnter }: { block: Extract<NoteBlock,
   const [openedAt] = useState(() => Date.now());
   const overdue = !block.checked && Boolean(block.dueAt) && new Date(block.dueAt).getTime() < openedAt;
   return <div className={cn("flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2", overdue ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/40")}>
-    <input type="checkbox" aria-label="Đánh dấu hạn đã xong" checked={block.checked} onChange={event => onChange({ checked: event.target.checked })} className="size-4 accent-violet-600" />
+    <input type="checkbox" aria-label={tr("notes.deadline.doneAria")} checked={block.checked} onChange={event => onChange({ checked: event.target.checked })} className="size-4 accent-violet-600" />
     <CalendarClock aria-hidden="true" className={cn("size-4 shrink-0", overdue ? "text-destructive" : "text-violet-600")} />
-    <span className="shrink-0 text-xs font-medium text-muted-foreground">Hạn trong Trang (cũ)</span>
-    <input data-block-input={block.id} aria-label="Tên hạn" value={block.text} maxLength={200} placeholder="Nộp bài, thi, đăng ký…" onChange={event => onChange({ text: event.target.value })} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onEnter(); } }} className={cn("min-w-40 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60", block.checked && "text-muted-foreground line-through")} />
-    <input type="datetime-local" aria-label="Thời điểm hạn" value={toLocalInput(block.dueAt)} onChange={event => onChange({ dueAt: event.target.value ? new Date(event.target.value).toISOString() : "" })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground" />
-    <select aria-label="Nhắc trước" value={block.reminder} onChange={event => onChange({ reminder: event.target.value })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground">
-      {reminderOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+    <span className="shrink-0 text-xs font-medium text-muted-foreground">{tr("notes.block.deadline")}</span>
+    <input data-block-input={block.id} aria-label={tr("notes.deadline.nameAria")} value={block.text} maxLength={200} placeholder={tr("notes.deadline.namePlaceholder")} onChange={event => onChange({ text: event.target.value })} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); onEnter(); } }} className={cn("min-w-40 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60", block.checked && "text-muted-foreground line-through")} />
+    <input type="datetime-local" aria-label={tr("notes.deadline.timeAria")} value={toLocalInput(block.dueAt)} onChange={event => onChange({ dueAt: event.target.value ? new Date(event.target.value).toISOString() : "" })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground" />
+    <select aria-label={tr("notes.deadline.reminderAria")} value={block.reminder} onChange={event => onChange({ reminder: event.target.value })} className="h-8 rounded-md border bg-background px-2 text-sm text-foreground">
+      {reminderOptions.map(([value, label]) => <option key={value} value={value}>{tr(label)}</option>)}
     </select>
-    {overdue && <span className="text-xs font-medium text-destructive">Quá hạn</span>}
+    {overdue && <span className="text-xs font-medium text-destructive">{tr("notes.deadline.overdue")}</span>}
   </div>;
 };
 
@@ -119,7 +121,7 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
 
   const slashBlock = slash ? blocks.find(block => block.id === slash.id) : undefined;
   const slashQuery = slashBlock && "text" in slashBlock && slashBlock.text.startsWith("/") ? slashBlock.text.slice(1) : null;
-  const slashItems = useMemo(() => slashQuery === null ? [] : COMMANDS.filter(item => toSearchKey(`${item.label} ${item.keywords}`).includes(toSearchKey(slashQuery))), [slashQuery]);
+  const slashItems = useMemo(() => slashQuery === null ? [] : COMMANDS.filter(item => toSearchKey(`${tr(item.labelKey)} ${item.keywords}`).includes(toSearchKey(slashQuery))), [slashQuery]);
   const slashOpen = slash !== null && slashQuery !== null;
 
   const applyCommand = (index: number, command: BlockCommand) => {
@@ -218,13 +220,13 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
     if (!isTextBlock(block)) return null;
     const heading = block.type === "heading" ? block.level : null;
     const onlyEmpty = blocks.length === 1 && block.text === "";
-    const label = heading ? `Tiêu đề ${heading}` : PLACEHOLDERS[block.type] ?? "Đoạn văn bản";
+    const label = heading ? tr("notes.block.headingLabel", { level: heading }) : tr(PLACEHOLDERS[block.type] ?? "notes.block.textPlaceholder");
     const textarea = <AutoTextarea
       data-block-input={block.id}
       aria-label={label}
       value={block.text}
       maxLength={10000}
-      placeholder={heading || PLACEHOLDERS[block.type] ? label : "Gõ '/' để chọn khối"}
+      placeholder={heading || PLACEHOLDERS[block.type] ? label : tr("notes.block.slashHint")}
       onChange={event => handleTextChange(index, event.target.value)}
       onKeyDown={event => handleKeyDown(event, index)}
       onBlur={() => { if (slash?.id === block.id) setSlash(null); }}
@@ -239,7 +241,7 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
     />;
 
     if (block.type === "todo") return <div className="flex items-start gap-2">
-      <input type="checkbox" aria-label="Đánh dấu việc đã xong" checked={block.checked} onChange={event => update(index, { checked: event.target.checked })} className="mt-[0.4em] size-4 shrink-0 accent-violet-600" />
+      <input type="checkbox" aria-label={tr("notes.block.checkAria")} checked={block.checked} onChange={event => update(index, { checked: event.target.checked })} className="mt-[0.4em] size-4 shrink-0 accent-violet-600" />
       {textarea}
     </div>;
     if (block.type === "bullet") return <div className="flex items-start"><span aria-hidden="true" className="w-6 shrink-0 select-none text-center">•</span>{textarea}</div>;
@@ -267,7 +269,7 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
       {drag?.to === blocks.length && index === blocks.length - 1 && <div aria-hidden="true" className="absolute inset-x-12 -bottom-px h-0.5 rounded bg-violet-500" />}
 
       <div className={cn("absolute left-0 top-[3px] flex h-[1.7em] w-12 items-center justify-end gap-0.5 pr-1.5 text-muted-foreground opacity-0 transition-opacity group-hover/block:opacity-100 group-focus-within/block:opacity-100", menuFor === block.id && "opacity-100")}>
-        <button type="button" disabled={full} onClick={() => insertBelow(index, makeBlock("paragraph", "/"), true)} aria-label="Thêm khối bên dưới" className="flex size-5 items-center justify-center rounded hover:bg-muted hover:text-foreground disabled:opacity-40">
+        <button type="button" disabled={full} onClick={() => insertBelow(index, makeBlock("paragraph", "/"), true)} aria-label={tr("notes.block.addBelow")} className="flex size-5 items-center justify-center rounded hover:bg-muted hover:text-foreground disabled:opacity-40">
           <Plus className="size-4" />
         </button>
         <div className="relative">
@@ -283,7 +285,7 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
             }}
             onDragEnd={() => setDrag(null)}
             onClick={() => setMenuFor(block.id)}
-            aria-label="Kéo để di chuyển, bấm để mở tuỳ chọn khối"
+            aria-label={tr("notes.block.dragHandle")}
             aria-haspopup="menu"
             className="flex h-6 w-4 cursor-grab items-center justify-center rounded hover:bg-muted hover:text-foreground active:cursor-grabbing"
           >
@@ -294,34 +296,34 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
             <DropdownMenuTrigger asChild><span aria-hidden="true" tabIndex={-1} className="pointer-events-none absolute inset-0" /></DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="left" className="w-52">
               {isTextBlock(block) && <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Repeat className="size-4" />Chuyển thành</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger><Repeat className="size-4" />{tr("notes.block.convertTo")}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-48">
-                  {TEXT_COMMANDS.map(item => <DropdownMenuItem key={item.command} onSelect={() => applyCommand(index, item.command)}><item.icon className="size-4" />{item.label}</DropdownMenuItem>)}
+                  {TEXT_COMMANDS.map(item => <DropdownMenuItem key={item.command} onSelect={() => applyCommand(index, item.command)}><item.icon className="size-4" />{tr(item.labelKey)}</DropdownMenuItem>)}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>}
-              <DropdownMenuItem disabled={full} onSelect={() => insertBelow(index, { ...structuredClone(block), id: crypto.randomUUID() })}><Copy className="size-4" />Nhân bản</DropdownMenuItem>
-              <DropdownMenuItem disabled={index === 0} onSelect={() => move(index, index - 1)}><ArrowUp className="size-4" />Lên trên</DropdownMenuItem>
-              <DropdownMenuItem disabled={index === blocks.length - 1} onSelect={() => move(index, index + 2)}><ArrowDown className="size-4" />Xuống dưới</DropdownMenuItem>
+              <DropdownMenuItem disabled={full} onSelect={() => insertBelow(index, { ...structuredClone(block), id: crypto.randomUUID() })}><Copy className="size-4" />{tr("notes.block.duplicate")}</DropdownMenuItem>
+              <DropdownMenuItem disabled={index === 0} onSelect={() => move(index, index - 1)}><ArrowUp className="size-4" />{tr("notes.block.moveUp")}</DropdownMenuItem>
+              <DropdownMenuItem disabled={index === blocks.length - 1} onSelect={() => move(index, index + 2)}><ArrowDown className="size-4" />{tr("notes.block.moveDown")}</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => remove(index)}><Trash2 className="size-4" />Xoá khối</DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onSelect={() => remove(index)}><Trash2 className="size-4" />{tr("notes.block.delete")}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {block.type === "divider" ? <div className="py-2"><hr className="border-border" aria-label="Đường phân cách" /></div>
+      {block.type === "divider" ? <div className="py-2"><hr className="border-border" aria-label={tr("notes.block.divider")} /></div>
         : block.type === "task" ? <LinkedTaskBlock block={block} resolved={linkedTask(block.taskId)} onRemove={() => remove(index)} onChoose={task => { onPickTask(task); update(index, { taskId: task.id }); }} />
         : block.type === "deadline" ? <DeadlineBlock block={block} onChange={patch => update(index, patch)} onEnter={() => insertBelow(index)} />
         : renderText(block, index)}
 
       {slashOpen && slash.id === block.id && <div
         role="listbox"
-        aria-label="Chọn loại khối"
+        aria-label={tr("notes.block.pickType")}
         onMouseDown={event => event.preventDefault()}
         className="absolute left-12 top-full z-30 mt-1 max-h-80 w-72 max-w-[calc(100vw-7rem)] overflow-y-auto rounded-xl border border-border bg-popover p-1.5 text-sm text-popover-foreground shadow-xl"
       >
-        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Khối cơ bản</p>
-        {slashItems.length === 0 && <p className="px-2 py-2 text-muted-foreground">Không có khối phù hợp</p>}
+        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">{tr("notes.block.basic")}</p>
+        {slashItems.length === 0 && <p className="px-2 py-2 text-muted-foreground">{tr("notes.block.noMatch")}</p>}
         {slashItems.map((item, itemIndex) => <button
           key={item.command}
           type="button"
@@ -332,7 +334,7 @@ export const BlockEditor = ({ blocks, onChange, linkedTask, onPickTask }: {
           className={cn("flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left", itemIndex === slash.active && "bg-muted")}
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background"><item.icon className="size-4" /></span>
-          {item.label}
+          {tr(item.labelKey)}
         </button>)}
       </div>}
     </div>)}

@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { useLocation, useNavigate, useParams as useRRParams, useSearchParams as useRRSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { invalidateAfterWrite } from "@/lib/invalidate-after-write";
+
 export const useRouter = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -13,7 +15,7 @@ export const useRouter = () => {
       back: () => navigate(-1),
       forward: () => navigate(1),
       // Server-rendered data now lives in TanStack Query, so "refresh" = refetch active queries.
-      refresh: () => void queryClient.invalidateQueries(),
+      refresh: () => invalidateAfterWrite(queryClient),
       prefetch: (_href: string) => {},
     }),
     [navigate, queryClient],

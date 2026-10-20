@@ -4,16 +4,12 @@ import { AiTaskHistory } from "@/components/ai-assistant/task-edit-controls";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { CardCommentWithReplies, CardWithList } from "@/types";
-import { fetcher } from "@/lib/fetcher";
-import { cn } from "@/lib/utils";
+import { CardWithList } from "@/types";
 import { Button } from "@/components/ui/button";
-import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import { Header } from "./header";
 import { MetadataSection as Metadata } from "./metadata/metadata-section";
 import { Description } from "./description";
-import { CommentsSection as Comments } from "./comments/comments-section";
 import { ChecklistsSection as Checklists } from "./checklists/checklists-section";
 import { AttachmentsSection as Attachments } from "./attachments/attachments-section";
 import { useAssistantTask } from "@/hooks/use-assistant-task";
@@ -58,14 +54,16 @@ const CardMainContent = ({
 
 const LAYOUT_CLASSES = {
   dialog: {
-    root: "grid min-h-0 flex-1 grid-cols-1 md:grid-cols-12 gap-x-8 p-7 items-start overflow-y-auto styled-scrollbar",
-    main: "col-span-1 md:col-span-7 border-r border-transparent md:border-neutral-200/80 pr-0 md:pr-8 space-y-7",
-    side: "col-span-1 md:col-span-5 pl-0 md:pl-2 space-y-6",
+    root: "min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-7 pt-1 md:px-8 styled-scrollbar",
+    columns: "grid grid-cols-1 items-start gap-8 md:grid-cols-[minmax(0,1fr)_260px]",
+    main: "min-w-0 space-y-7",
+    side: "space-y-6 border-t border-neutral-100 pt-6 empty:hidden md:border-l md:border-t-0 md:pl-6 md:pt-0",
   },
   panel: {
-    root: "min-h-0 flex-1 overflow-y-auto p-5 space-y-7 styled-scrollbar",
+    root: "min-h-0 flex-1 space-y-5 overflow-y-auto p-5 styled-scrollbar",
+    columns: "space-y-7",
     main: "space-y-7",
-    side: "space-y-6 border-t border-neutral-100 pt-6",
+    side: "space-y-6 border-t border-neutral-100 pt-6 empty:hidden",
   },
 } as const;
 
@@ -101,24 +99,13 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
     }
   }, [isGone, queryClient, cardId]);
 
-  const { data: commentsData } = useQuery<CardCommentWithReplies[]>({
-    queryKey: ["card-comments", cardId],
-    queryFn: () => fetcher(`/api/cards/${cardId}/comments`),
-  });
   const canEdit = true;
+  const metadata = !cardData
+    ? <Metadata.Skeleton />
+    : <Metadata key={`metadata-${cardData.id}`} data={cardData} canEdit={canEdit} />;
 
   return (
     <>
-      {layout === "dialog" && (
-        <>
-          <DialogTitle className="sr-only">
-            {cardData?.title || "Chi tiết thẻ"}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Nội dung chi tiết thẻ
-          </DialogDescription>
-        </>
-      )}
       {isError && (isGone || !cachedCard) ? (
         <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="text-sm font-medium text-neutral-700">
@@ -140,28 +127,23 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
           </div>
         </div>
       ) : (
-      <div className={cn(classes.root)}>
-        <div className={classes.main}>
-          {!cardData
-            ? <Header.Skeleton />
-            : <Header key={`header-${cardData.id}`} data={cardData} canEdit={canEdit} />
-          }
-          {!cardData
-            ? <Metadata.Skeleton />
-            : <Metadata key={`metadata-${cardData.id}`} data={cardData} canEdit={canEdit} />
-          }
-          {!cardData
-            ? <Description.Skeleton />
-            : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
-          }
-        </div>
-        <div className={classes.side}>
-          {cardData && canEdit && <AiTaskHistory cardId={cardData.id} />}
-          <Comments
-            cardId={cardId}
-            boardId={cardData?.list.boardId}
-            items={commentsData ?? []}
-          />
+      <div className={classes.root}>
+        {!cardData
+          ? <Header.Skeleton />
+          : <Header key={`header-${cardData.id}`} data={cardData} canEdit={canEdit} />
+        }
+        <div className={classes.columns}>
+          <div className={classes.main}>
+            {layout === "panel" && metadata}
+            {!cardData
+              ? <Description.Skeleton />
+              : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
+            }
+          </div>
+          <div className={classes.side}>
+            {layout === "dialog" && metadata}
+            {cardData && canEdit && <AiTaskHistory cardId={cardData.id} />}
+          </div>
         </div>
       </div>
       )}

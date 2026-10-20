@@ -77,7 +77,6 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
   const isChecklistItem = isCalendarChecklistItem(occurrence.item);
   const canDragOccurrence =
     occurrence.kind !== "range" &&
-    !(cardItem && cardItem.displayKind && cardItem.displayKind !== "work") &&
     (!!cardItem || isChecklistItem) &&
     !isUpdatingCardDate &&
     !isUpdatingChecklistItemDueDate;

@@ -38,7 +38,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     return { data: course };
   } catch {
-    return { error: "Xóa môn học thất bại." };
+    return { error: "Xóa danh mục thất bại." };
   }
 };
 

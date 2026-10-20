@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { tr } from "@/lib/i18n";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
@@ -87,7 +88,7 @@ export const ManageSemestersDialog = ({
     createSemester,
     {
       onSuccess: () => {
-        toast.success("Tạo học kỳ thành công!");
+        toast.success(tr("semester.createSuccess"));
         setCreateForm(EMPTY_FORM);
       },
       onError: (error) => toast.error(error),
@@ -98,7 +99,7 @@ export const ManageSemestersDialog = ({
     updateSemester,
     {
       onSuccess: () => {
-        toast.success("Cập nhật học kỳ thành công!");
+        toast.success(tr("semester.updateSuccess"));
         setEditingId(null);
       },
       onError: (error) => toast.error(error),
@@ -106,20 +107,20 @@ export const ManageSemestersDialog = ({
   );
 
   const { execute: executeDelete, isLoading: isDeleting } = useAction(deleteSemester, {
-    onSuccess: () => toast.success("Đã xóa học kỳ."),
+    onSuccess: () => toast.success(tr("semester.deleted")),
     onError: (error) => toast.error(error),
   });
 
   const { execute: executeSetCurrent, isLoading: isSettingCurrent } = useAction(
     setCurrentSemester,
     {
-      onSuccess: () => toast.success("Đã đặt học kỳ hiện tại."),
+      onSuccess: () => toast.success(tr("semester.setCurrentDone")),
       onError: (error) => toast.error(error),
     },
   );
 
   const { execute: executeSeed, isLoading: isSeeding } = useAction(seedDefaultSemesters, {
-    onSuccess: () => toast.success("Đã khởi tạo các học kỳ Bách Khoa chuẩn!"),
+    onSuccess: () => toast.success(tr("semester.seedDone")),
     onError: (error) => toast.error(error),
   });
 
@@ -204,12 +205,12 @@ export const ManageSemestersDialog = ({
                 ) : (
                   <Sparkles className="h-3 w-3 text-amber-500" />
                 )}
-                Khởi tạo nhanh bộ kỳ HUST
+                {tr("semester.seedButton")}
               </Button>
             )}
           </div>
           <DialogDescription className="text-xs text-neutral-500">
-            Học kỳ theo chuẩn Bách Khoa dạng <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.1</code>, <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.2</code>, <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.6</code>.
+            {tr("semester.formatIntro")} <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.1</code>, <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.2</code>, <code className="bg-neutral-100 px-1 py-0.5 rounded text-neutral-800 font-mono text-[11px]">2025.6</code>{tr("semester.formatEnd")}
           </DialogDescription>
         </DialogHeader>
 
@@ -218,9 +219,9 @@ export const ManageSemestersDialog = ({
           {sortedSemesters.length === 0 && (
             <div className="py-8 text-center bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
               <CalendarRange className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-              <p className="text-sm font-medium text-neutral-700">Chưa có học kỳ nào</p>
+              <p className="text-sm font-medium text-neutral-700">{tr("semester.none")}</p>
               <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
-                Bấm nút &ldquo;Khởi tạo nhanh bộ kỳ HUST&rdquo; phía trên hoặc thêm kỳ mới bên dưới.
+                {tr("semester.seedHint")}
               </p>
             </div>
           )}
@@ -243,7 +244,7 @@ export const ManageSemestersDialog = ({
                       autoFocus
                       value={editForm.title}
                       onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-                      placeholder="Mã học kỳ (VD: 2025.1)"
+                      placeholder={tr("semester.codeLabel")}
                       className="h-8 text-sm"
                     />
                     <div className="flex items-center gap-2">
@@ -253,7 +254,7 @@ export const ManageSemestersDialog = ({
                         onChange={(e) => setEditForm((f) => ({ ...f, startDate: e.target.value }))}
                         className="h-8 text-xs"
                       />
-                      <span className="text-xs text-neutral-400">đến</span>
+                      <span className="text-xs text-neutral-400">{tr("common.to")}</span>
                       <Input
                         type="date"
                         value={editForm.endDate}
@@ -274,10 +275,10 @@ export const ManageSemestersDialog = ({
                         className="h-7 text-xs"
                         onClick={() => setEditingId(null)}
                       >
-                        Hủy
+                        {tr("common.cancel")}
                       </Button>
                       <Button type="submit" size="sm" variant="primary" className="h-7 text-xs" disabled={isUpdating}>
-                        {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Lưu"}
+                        {isUpdating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : tr("common.save")}
                       </Button>
                     </div>
                   </form>
@@ -303,7 +304,7 @@ export const ManageSemestersDialog = ({
                         )}
                         {semester.isCurrent && (
                           <Badge variant="violet" className="text-[10px] px-1.5 py-0">
-                            Hiện tại
+                            {tr("semester.current")}
                           </Badge>
                         )}
                       </div>
@@ -318,7 +319,7 @@ export const ManageSemestersDialog = ({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          title="Đặt làm học kỳ hiện tại"
+                          title={tr("semester.setCurrent")}
                           disabled={isSettingCurrent}
                           onClick={() => executeSetCurrent({ id: semester.id })}
                           className="hover:text-amber-600 hover:bg-amber-50"
@@ -330,14 +331,14 @@ export const ManageSemestersDialog = ({
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        title="Đổi tên / ngày"
+                        title={tr("semester.rename")}
                         onClick={() => startEdit(semester)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <ConfirmModal
-                        title={`Xóa học kỳ ${semester.title}?`}
-                        description="Bảng học kỳ cùng toàn bộ môn học và thẻ bên trong sẽ bị xóa vĩnh viễn."
+                        title={tr("semester.deleteTitle", { title: semester.title })}
+                        description={tr("semester.deleteDesc")}
                         onConfirm={() => executeDelete({ id: semester.id })}
                         disabled={isDeleting}
                       >
@@ -345,7 +346,7 @@ export const ManageSemestersDialog = ({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          title="Xóa học kỳ"
+                          title={tr("semester.delete")}
                           disabled={isDeleting}
                           className="hover:text-rose-600 hover:bg-rose-50"
                         >
@@ -363,7 +364,7 @@ export const ManageSemestersDialog = ({
         {/* Thêm học kỳ mới */}
         <form onSubmit={onCreateSubmit} className="space-y-3 border-t border-neutral-100 pt-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-neutral-700">Gợi ý chọn nhanh mã kỳ:</Label>
+            <Label className="text-xs font-semibold text-neutral-700">{tr("semester.codeHint")}</Label>
             <div className="flex flex-wrap gap-1.5">
               {suggestedCodes.map((code) => {
                 const isExists = existingTitles.has(code);
@@ -394,20 +395,20 @@ export const ManageSemestersDialog = ({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-neutral-700">Mã học kỳ</Label>
-              <span className="text-[11px] text-neutral-400">Tự động tính ngày khi nhập dạng YYYY.1/2/6</span>
+              <Label className="text-xs font-semibold text-neutral-700">{tr("semester.codeField")}</Label>
+              <span className="text-[11px] text-neutral-400">{tr("semester.autoDate")}</span>
             </div>
             <Input
               value={createForm.title}
               onChange={(e) => handleCreateTitleChange(e.target.value)}
-              placeholder="Ví dụ: 2025.1, 2025.2, 2025.6..."
+              placeholder={tr("semester.codeExample")}
               className="h-8 text-sm font-mono"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex-1 space-y-1">
-              <span className="text-[11px] text-neutral-500">Ngày bắt đầu</span>
+              <span className="text-[11px] text-neutral-500">{tr("semester.startDate")}</span>
               <Input
                 type="date"
                 value={createForm.startDate}
@@ -416,7 +417,7 @@ export const ManageSemestersDialog = ({
               />
             </div>
             <div className="flex-1 space-y-1">
-              <span className="text-[11px] text-neutral-500">Ngày kết thúc</span>
+              <span className="text-[11px] text-neutral-500">{tr("semester.endDate")}</span>
               <Input
                 type="date"
                 value={createForm.endDate}
@@ -444,7 +445,7 @@ export const ManageSemestersDialog = ({
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            Thêm học kỳ
+            {tr("semester.add")}
           </Button>
         </form>
       </DialogContent>

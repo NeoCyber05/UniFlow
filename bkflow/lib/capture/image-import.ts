@@ -11,7 +11,7 @@ const text = (max: number) => z.string().trim().max(max);
 
 export const TimetableSession = z.object({
   code: text(20).nullable(),
-  name: text(120).min(1, { message: "Thiếu tên môn." }),
+  name: text(120).min(1, { message: "Thiếu tên danh mục." }),
   /** 1 = Thứ 2 … 6 = Thứ 7, 7 = Chủ nhật */
   weekday: z.number().int().min(1).max(7),
   start: HHMM,

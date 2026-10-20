@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 
+import { getGridColumnSpanStyle } from "@/lib/calendar/calendar-grid-size";
 import { cn } from "@/lib/utils";
 
 import {
@@ -42,11 +43,8 @@ export const CalendarRangeOverflows = ({
       return null;
     }
 
-    const leftPercent = (dayIndex / 7) * 100;
-    const widthPercent = (1 / 7) * 100;
     const style: CSSProperties = {
-      left: `${leftPercent}%`,
-      width: `${widthPercent}%`,
+      ...getGridColumnSpanStyle(dayIndex, dayIndex),
       top: 36 + maxLanes * (RANGE_LANE_HEIGHT + RANGE_LANE_GAP),
     };
 

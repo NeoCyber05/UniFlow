@@ -2,6 +2,7 @@ import "server-only";
 
 import { currentUser } from "@/server/auth";
 
+import { db } from "@/lib/db";
 import { getOrCreateSemesterBoard } from "@/lib/semester-board";
 import { pickCurrentSemester } from "@/lib/semesters";
 import { getOrSeedSemesters } from "@/lib/semesters-db";
@@ -9,12 +10,23 @@ import { getOrSeedSemesters } from "@/lib/semesters-db";
 export const NO_CURRENT_SEMESTER_ERROR = "Chưa có học kỳ hiện tại. Hãy tạo học kỳ trước.";
 
 /** Id bảng của học kỳ hiện tại trong workspace cá nhân; tạo bảng nếu chưa có. */
-export const resolveCurrentSemesterBoardId = async (userId: string): Promise<string | null> => {
+export const resolveCurrentSemesterBoardId = async (
+  userId: string,
+  knownSemester?: { id: string } | null,
+): Promise<string | null> => {
   if (!userId) return null;
 
-  const semester = pickCurrentSemester(await getOrSeedSemesters(userId));
+  const semester = knownSemester ?? pickCurrentSemester(await getOrSeedSemesters(userId));
 
   if (!semester) return null;
+
+  // Fast path: board exists (semesters are user-scoped, so ownership holds); skips the Clerk lookup below.
+  const existing = await db.board.findFirst({
+    where: { semesterId: semester.id, userId },
+    select: { id: true },
+  });
+
+  if (existing) return existing.id;
 
   const user = await currentUser();
 
