@@ -3,27 +3,24 @@ import "server-only";
 import { deadlineWhere } from "@/lib/cards/task-deadline";
 import { db } from "@/lib/db";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
-import { pickCurrentSemester } from "@/lib/semesters";
-import { getOrSeedSemesters } from "@/lib/semesters-db";
+import { pickCurrentWorkspace } from "@/lib/workspaces";
+import { getOrCreateWorkspaces } from "@/lib/workspaces-db";
 
 import { buildTodoBaseWhere, getTodayWindow } from "./query";
 import type { MyTaskCounts } from "./types";
 
 export const getMyTaskCounts = async (userId: string, now: Date = new Date()): Promise<MyTaskCounts> => {
-  const personalOrgId = userId;
-  const currentSemester = personalOrgId
-    ? pickCurrentSemester(await getOrSeedSemesters(personalOrgId))
-    : null;
-  const semesterBoard = currentSemester
-    ? await db.board.findUnique({ where: { semesterId: currentSemester.id }, select: { id: true } })
+  const currentWorkspace = userId ? pickCurrentWorkspace(await getOrCreateWorkspaces(userId)) : null;
+  const workspaceBoard = currentWorkspace
+    ? await db.board.findUnique({ where: { workspaceId: currentWorkspace.id }, select: { id: true } })
     : null;
 
-  if (!semesterBoard) {
+  if (!workspaceBoard) {
     return { today: 0, byCourse: {} };
   }
 
   const { startOfToday, endOfToday } = getTodayWindow(now);
-  const base = buildTodoBaseWhere({ userId, boardId: semesterBoard.id, includeTeam: true });
+  const base = buildTodoBaseWhere({ userId, boardId: workspaceBoard.id, includeTeam: true });
 
   const [today, byCourseRows] = await Promise.all([
     db.card.count({
@@ -46,7 +43,7 @@ export const getMyTaskCounts = async (userId: string, now: Date = new Date()): P
         archivedAt: null,
         isCompleted: false,
         kind: "TASK",
-        list: { archivedAt: null, boardId: semesterBoard.id },
+        list: { archivedAt: null, boardId: workspaceBoard.id },
       },
       _count: { _all: true },
     }),

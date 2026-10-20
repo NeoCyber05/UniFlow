@@ -38,7 +38,7 @@ export const MetadataActionRow = ({
   onClearLegacyStart,
 }: MetadataActionRowProps) => {
   // Bảng học kỳ đã có Danh mục (môn) để phân loại; nhãn chỉ hiện khi việc đã gắn nhãn từ trước.
-  const { isSemesterBoard } = useBoardCourses(boardId);
+  const { isWorkspaceBoard } = useBoardCourses(boardId);
 
   return (
     <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -65,7 +65,7 @@ export const MetadataActionRow = ({
       )}
 
       {/* Nhãn Button (Only shown when card has no labels) */}
-      {!hasLabels && !isSemesterBoard && (
+      {!hasLabels && !isWorkspaceBoard && (
         <LabelPopover
           cardId={data.id}
           boardId={boardId}

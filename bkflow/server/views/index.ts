@@ -14,7 +14,7 @@ import { loadDashboard } from "./dashboard";
 import { json } from "./json";
 import { loadMy } from "./my";
 import { loadPage } from "./pages";
-import { loadSemester } from "./semester";
+import { loadWorkspace } from "./workspace";
 
 export const viewsRoute = new Hono()
   .get("/dashboard", async () => {
@@ -74,7 +74,7 @@ export const viewsRoute = new Hono()
     const { userId } = await auth();
     return json(await loadPage({ pageId: c.req.param("pageId") }, userId));
   })
-  .get("/semester/:semesterId", async (c) => {
+  .get("/workspace/:workspaceId", async (c) => {
     const { userId } = await auth();
-    return json(await loadSemester({ semesterId: c.req.param("semesterId") }, userId));
+    return json(await loadWorkspace({ workspaceId: c.req.param("workspaceId") }, userId));
   });

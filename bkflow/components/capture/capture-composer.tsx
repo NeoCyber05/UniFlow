@@ -17,9 +17,11 @@ import {
   Star,
   X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { scale, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { toast } from "sonner";
 
-import { ImageImportDialog } from "@/components/capture/image-import-dialog";
+import { ImageImportDialog, readCaptureImage, readCaptureText, type CaptureImageResult } from "@/components/capture/image-import-dialog";
 import { CoursePicker, getCourseOptionLabel } from "@/components/courses/course-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -28,6 +30,9 @@ import { quickAddCard } from "@/actions/cards/quick-add-card";
 import { CAPTURE_ALREADY_PROCESSED, CAPTURE_REJECTED } from "@/lib/cards/capture-error-codes";
 import type { TaskDeadline, TaskSchedule } from "@/lib/cards/task-schedule";
 import { getZonedDayKey, zonedTimeToIso, type CaptureIssue } from "@/lib/capture/analysis";
+import { imageItemToCaptureFields } from "@/lib/capture/image-import";
+import { tr } from "@/lib/i18n";
+import { isStudyPlanRequest } from "@/lib/study-plan/validate";
 import {
   captureReducer,
   createCaptureDraft,
@@ -154,7 +159,10 @@ export const CaptureComposer = ({
   const [note, setNote] = useState("");
   // Ảnh đính kèm chờ gửi; bấm Thêm mới gửi AI cùng chữ đang gõ
   const [attachedImage, setAttachedImage] = useState<Blob | null>(null);
-  const [imageImport, setImageImport] = useState<{ file: Blob; prompt: string } | null>(null);
+  const [imageImport, setImageImport] = useState<CaptureImageResult | null>(null);
+  const [readingImage, setReadingImage] = useState(false);
+  const popIn = useTempoTransition(spring.checkPop);
+  const popOut = useTempoTransition(transition.popOut);
   const attachedPreview = useMemo(() => (attachedImage ? URL.createObjectURL(attachedImage) : null), [attachedImage]);
   useEffect(() => () => { if (attachedPreview) URL.revokeObjectURL(attachedPreview); }, [attachedPreview]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,8 +187,10 @@ export const CaptureComposer = ({
     dispatch({ type: "infer", analysis: { draftId, textRevision: textRevision + 1, fields: parserFields(next, courses, members) } });
   };
 
+  const studyPlan = !attachedImage && isStudyPlanRequest(rawText);
+
   useEffect(() => {
-    if (!aiEnabled || attachedImage || aiUnavailable.current || rawText.trim().length < AI_MIN_TEXT_LENGTH) return;
+    if (!aiEnabled || attachedImage || studyPlan || aiUnavailable.current || rawText.trim().length < AI_MIN_TEXT_LENGTH) return;
     const request = { draftId, textRevision };
     const timer = setTimeout(async () => {
       dispatch({ type: "analysis/start", ...request });
@@ -205,7 +215,7 @@ export const CaptureComposer = ({
       }
     }, AI_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [aiEnabled, attachedImage, boardId, draftId, textRevision, rawText, source]);
+  }, [aiEnabled, attachedImage, studyPlan, boardId, draftId, textRevision, rawText, source]);
 
   const setField = <K extends keyof CaptureFields>(key: K, value: CaptureFields[K]) =>
     dispatch({ type: "field", key, value } as never);
@@ -213,7 +223,45 @@ export const CaptureComposer = ({
   const submit = async (withCurrentInfo = false) => {
     if (disabled || submitting.current) return;
     if (attachedImage) {
-      setImageImport({ file: attachedImage, prompt: [rawText.trim(), note.trim()].filter(Boolean).join("\n") });
+      if (readingImage) return;
+      setReadingImage(true);
+      try {
+        const result = await readCaptureImage(boardId!, attachedImage, [rawText.trim(), note.trim()].filter(Boolean).join("\n") || undefined);
+        const { analysis } = result;
+        // Đúng 1 việc → điền thẳng vào ô như khi gõ chữ; nhiều việc/thời khóa biểu mới cần bảng xem lại
+        if (analysis.type === "tasks" && analysis.items.length <= 1) {
+          const item = analysis.items[0];
+          if (!item) {
+            toast.error(tr("import.noTasks"));
+            return;
+          }
+          const { deadline, schedule } = imageItemToCaptureFields(item);
+          onTextChange(item.title);
+          if (deadline) setField("deadline", deadline);
+          if (schedule) setField("schedule", schedule);
+          if (item.description) setNote(item.description);
+          setAttachedImage(null);
+          inputRef.current?.focus();
+        } else {
+          setImageImport(result);
+        }
+      } catch (caught) {
+        toast.error(caught instanceof Error ? caught.message : "Không đọc được ảnh.");
+      } finally {
+        setReadingImage(false);
+      }
+      return;
+    }
+    if (studyPlan) {
+      if (readingImage) return;
+      setReadingImage(true);
+      try {
+        setImageImport(await readCaptureText(boardId!, [rawText.trim(), note.trim()].filter(Boolean).join("\n")));
+      } catch (caught) {
+        toast.error(caught instanceof Error ? caught.message : tr("import.readError"));
+      } finally {
+        setReadingImage(false);
+      }
       return;
     }
     const plan = planCaptureSubmit(state, { withCurrentInfo });
@@ -257,7 +305,7 @@ export const CaptureComposer = ({
       // Chỉ lỗi server khẳng định chưa lưu mới cho đổi id; còn lại phải retry đúng bản cũ.
       const kind = result.errorCode === CAPTURE_ALREADY_PROCESSED
         ? "conflict"
-        : fieldError || result.errorCode === CAPTURE_REJECTED || result.errorCode === "NO_CURRENT_SEMESTER"
+        : fieldError || result.errorCode === CAPTURE_REJECTED || result.errorCode === "NO_CURRENT_WORKSPACE"
           ? "failed"
           : "uncertain";
       dispatch({ type: "submit/failure", creationId, error, kind });
@@ -305,8 +353,7 @@ export const CaptureComposer = ({
       {imageImport && (
         <ImageImportDialog
           boardId={boardId!}
-          file={imageImport.file}
-          prompt={imageImport.prompt || undefined}
+          result={imageImport}
           onClose={() => setImageImport(null)}
           onImported={() => {
             setAttachedImage(null);
@@ -317,21 +364,48 @@ export const CaptureComposer = ({
       )}
     </>
   );
-  const attachedChip = attachedPreview && (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 p-0.5 pr-1">
-      <img src={attachedPreview} alt="Ảnh đính kèm" className="h-7 w-7 rounded-md object-cover" />
-      <button
-        type="button"
-        onClick={() => setAttachedImage(null)}
-        aria-label="Bỏ ảnh"
-        className="rounded p-0.5 text-violet-500 hover:bg-white hover:text-rose-600"
-      >
-        <X className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-    </span>
+  // Ảnh đính kèm hiện phía trên ô nhập (kiểu chatbot); lúc AI đọc thì phủ loading lên ảnh
+  const attachedPreviewBlock = (
+    <>
+      {studyPlan && (
+        <p className="flex items-center gap-1.5 text-xs text-violet-600" role="status">
+          <Sparkles className="h-3 w-3" aria-hidden="true" />
+          {readingImage ? tr("import.planning") : tr("import.studyPlanHint")}
+        </p>
+      )}
+      <AnimatePresence initial={false}>
+        {attachedPreview && (
+          <motion.div
+            key={attachedPreview}
+            initial={{ opacity: 0, scale: scale.icon }}
+            animate={{ opacity: 1, scale: 1, transition: popIn }}
+            exit={{ opacity: 0, scale: scale.icon, transition: popOut }}
+            className="relative h-16 w-16 origin-bottom-left"
+          >
+            <img src={attachedPreview} alt="Ảnh đính kèm" className="h-full w-full rounded-lg border border-neutral-200 object-cover" />
+            {readingImage ? (
+              <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/60 motion-safe:animate-pulse" role="status">
+                <Loader2 className="h-5 w-5 text-violet-600 motion-safe:animate-spin" aria-hidden="true" />
+                <span className="sr-only">AI đang đọc ảnh…</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAttachedImage(null)}
+                aria-label="Bỏ ảnh"
+                className="absolute -right-1.5 -top-1.5 rounded-full bg-neutral-800 p-0.5 text-white shadow hover:bg-rose-600"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
   const inputPlaceholder = attachedImage ? "Yêu cầu cho AI về ảnh (tuỳ chọn), vd: chỉ lấy lịch thi" : placeholder;
   const canSubmit = Boolean(rawText.trim() || attachedImage);
+  const busy = isSaving || readingImage;
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
@@ -361,6 +435,7 @@ export const CaptureComposer = ({
           }}
           className="space-y-2 px-3.5 pt-3"
         >
+          {attachedPreviewBlock}
           <input
             ref={inputRef}
             autoFocus
@@ -391,7 +466,7 @@ export const CaptureComposer = ({
             className="block w-full resize-none bg-transparent text-sm text-neutral-700 outline-none placeholder:text-neutral-400"
           />
           <p className="min-h-4 text-[11px] text-neutral-400">
-            {analyzing ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />AI đang đọc…</span> : hint}
+            {readingImage ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />AI đang đọc ảnh…</span> : analyzing ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />AI đang đọc…</span> : hint}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 pb-3">
             <PickerChip icon={CalendarDays} label={values.deadline ? formatDeadlinePreview(values.deadline) : "Hạn nộp"} active={hasDeadline} onClear={() => setField("deadline", null)}>
@@ -424,7 +499,6 @@ export const CaptureComposer = ({
             {values.checklistItems.length > 0 && (
               <Chip icon={ListChecks} label={`${values.checklistItems.length} việc con`} onClear={() => setField("checklistItems", [])} />
             )}
-            {attachedChip}
             {imageControls}
             {trailing}
           </div>
@@ -463,12 +537,12 @@ export const CaptureComposer = ({
           <button type="button" onClick={onCancel} className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100">Hủy</button>
           <button
             type="button"
-            disabled={isSaving || disabled || !canSubmit}
+            disabled={busy || disabled || !canSubmit}
             onClick={() => void submit()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50"
           >
-            {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {attachedImage ? "Đọc ảnh" : submission?.status === "uncertain" ? "Thử lại" : "Thêm việc"}
+            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+            {submission?.status === "uncertain" && !attachedImage ? "Thử lại" : "Thêm việc"}
           </button>
         </div>
       </div>
@@ -477,6 +551,7 @@ export const CaptureComposer = ({
 
   return (
     <div className="space-y-1.5">
+      {attachedPreviewBlock}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -488,7 +563,7 @@ export const CaptureComposer = ({
           disabled && "opacity-60",
         )}
       >
-        {isSaving
+        {busy
           ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" aria-hidden="true" />
           : <Plus className="h-4 w-4 shrink-0 text-violet-500" aria-hidden="true" />}
         <input
@@ -510,7 +585,6 @@ export const CaptureComposer = ({
             <span className="sr-only sm:not-sr-only">AI đang đọc…</span>
           </span>
         )}
-        {attachedChip}
         {imageControls}
         {trailing}
         {canSubmit && !disabled && (
@@ -528,10 +602,10 @@ export const CaptureComposer = ({
             </button>
             <button
               type="submit"
-              disabled={isSaving}
+              disabled={busy}
               className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-60"
             >
-              {attachedImage ? "Đọc ảnh" : submission?.status === "uncertain" ? "Thử lại" : "Thêm"}
+              {submission?.status === "uncertain" && !attachedImage ? "Thử lại" : "Thêm"}
             </button>
           </>
         )}

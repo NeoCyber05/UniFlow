@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { DateOnly } from "@/lib/cards/task-schedule";
+import { DateOnly, type TaskDeadline, type TaskSchedule } from "@/lib/cards/task-schedule";
+import { zonedTimeToIso } from "@/lib/capture/analysis";
 
 /** Ảnh gửi lên AI: data URL đã nén ở client (~1600px JPEG). */
 export const IMAGE_DATA_URL_MAX_LENGTH = 6_000_000;
@@ -33,12 +34,14 @@ export const ImageTaskItem = z.object({
   end: HHMM.nullable(),
   courseCode: text(20).nullable(),
   description: text(1_000).nullable(),
+  /** Chỉ để hiển thị trong dialog: card thi / buổi ôn do AI lên kế hoạch */
+  role: z.enum(["exam", "review"]).nullable().optional(),
 });
 export type ImageTaskItem = z.infer<typeof ImageTaskItem>;
 
 export type ImageAnalysis =
   | { type: "timetable"; sessions: TimetableSession[] }
-  | { type: "tasks"; items: ImageTaskItem[] };
+  | { type: "tasks"; items: ImageTaskItem[]; notice?: string };
 
 export const WEEKDAY_LABELS = ["", "T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const;
 
@@ -79,3 +82,21 @@ export const expandTimetable = (sessions: TimetableSession[], week1Monday: strin
       date: addDays(week1Monday, (week - 1) * 7 + (session.weekday - 1)),
     })),
   );
+
+/** Một mục AI đọc từ ảnh → hạn nộp (TASK) hoặc lịch làm (EVENT) cho ô thêm việc. */
+export const imageItemToCaptureFields = (item: ImageTaskItem): { deadline: TaskDeadline | null; schedule: TaskSchedule | null } => {
+  if (!item.date) return { deadline: null, schedule: null };
+  const at = (time: string | null) => (time ? zonedTimeToIso(item.date!, time, IMAGE_IMPORT_TIME_ZONE) : null);
+  if (item.kind === "EVENT") {
+    const scheduledStartAt = at(item.start);
+    const scheduledEndAt = at(item.end);
+    return {
+      deadline: null,
+      schedule: scheduledStartAt && scheduledEndAt
+        ? { scheduledOn: null, scheduledStartAt, scheduledEndAt }
+        : { scheduledOn: item.date, scheduledStartAt: null, scheduledEndAt: null },
+    };
+  }
+  const dueDate = at(item.start);
+  return { deadline: dueDate ? { dueDate, deadlineOn: null } : { dueDate: null, deadlineOn: item.date }, schedule: null };
+};

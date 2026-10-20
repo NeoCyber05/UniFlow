@@ -5,27 +5,27 @@ import { z } from "zod";
 import { auth } from "@/server/auth";
 
 import { CAPTURE_IMAGE_SYSTEM_PROMPT } from "@/lib/ai/capture-image-prompt";
-import { generateAiTextFromImage } from "@/lib/ai/client";
+import { generateAiText, generateAiTextFromImage } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
 import { getZonedDayKey } from "@/lib/capture/analysis";
 import {
   IMAGE_IMPORT_TIME_ZONE,
   ImageTaskItem,
-  mondayOf,
   TimetableSession,
   WEEKDAY_LABELS,
   type ImageAnalysis,
 } from "@/lib/capture/image-import";
 import { createSafeAction } from "@/lib/create-safe-action";
-import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { requireBoardEditor } from "@/lib/permissions";
+import { generateStudyPlan } from "@/lib/study-plan/generate";
 
 import { AnalyzeCaptureImage } from "./schema";
 import { InputType, ReturnType } from "./types";
 
 const RawAnalysis = z.object({
   type: z.enum(["timetable", "tasks"]),
+  wantsStudyPlan: z.boolean().optional(),
   sessions: z.array(z.unknown()).optional(),
   items: z.array(z.unknown()).optional(),
 });
@@ -60,34 +60,41 @@ const handler = async (data: InputType): Promise<ReturnType> => {
       return { error: permission.error };
     }
 
-    const board = await db.board.findUnique({
-      where: { id: boardId },
-      select: { semester: { select: { startDate: true } } },
-    });
-    const now = new Date().toISOString();
-    const [header, base64] = image.split(",", 2);
-    const mediaType = header.slice("data:".length, header.indexOf(";"));
-
-    const raw = await generateAiTextFromImage({
-      system: CAPTURE_IMAGE_SYSTEM_PROMPT,
-      user: JSON.stringify({
-        today: getZonedDayKey(now, IMAGE_IMPORT_TIME_ZONE),
-        timeZone: IMAGE_IMPORT_TIME_ZONE,
-        ...(prompt?.trim() ? { instruction: prompt.trim() } : {}),
-      }),
-      image: { data: base64, mediaType },
-    });
-    const parsed = parseAiJson(raw, RawAnalysis, "AI chưa đọc được ảnh. Hãy thử ảnh rõ hơn.");
-    const analysis: ImageAnalysis = parsed.type === "timetable"
+    const now = new Date();
+    const today = getZonedDayKey(now.toISOString(), IMAGE_IMPORT_TIME_ZONE);
+    const instruction = prompt?.trim() ?? "";
+    const user = JSON.stringify({ today, timeZone: IMAGE_IMPORT_TIME_ZONE, ...(instruction ? { instruction } : {}) });
+    let raw: string;
+    if (image) {
+      const [header, base64] = image.split(",", 2);
+      const mediaType = header.slice("data:".length, header.indexOf(";"));
+      raw = await generateAiTextFromImage({ system: CAPTURE_IMAGE_SYSTEM_PROMPT, user, image: { data: base64, mediaType } });
+    } else {
+      raw = await generateAiText({ system: CAPTURE_IMAGE_SYSTEM_PROMPT, user, temperature: 0.1, maxTokens: 4_000 });
+    }
+    const parsed = parseAiJson(raw, RawAnalysis, "AI chưa đọc được lịch. Hãy thử ảnh rõ hơn hoặc ghi rõ ngày giờ.");
+    let analysis: ImageAnalysis = parsed.type === "timetable"
       ? { type: "timetable", sessions: keepValid(TimetableSession, parsed.sessions?.map(withWeekday), 60) }
       : { type: "tasks", items: keepValid(ImageTaskItem, parsed.items, 30) };
 
-    const startDate = board?.semester?.startDate;
+    if (analysis.type === "tasks" && parsed.wantsStudyPlan) {
+      const items = analysis.items.map((item) =>
+        item.kind === "EVENT" && item.courseCode && item.date ? { ...item, role: "exam" as const } : item);
+      const exams = items.filter((item) => item.role === "exam");
+      try {
+        const reviews = await generateStudyPlan({ exams, instruction, today, now });
+        analysis = { type: "tasks", items: [...items, ...reviews], ...(reviews.length ? {} : { notice: "Chưa tạo được lịch ôn. Hãy ghi rõ mã môn và ngày thi." }) };
+      } catch (error) {
+        logger.warn("[STUDY_PLAN_ERROR]", { userId, boardId, errorMessage: error instanceof Error ? error.message : String(error) });
+        analysis = { type: "tasks", items, notice: "Chưa tạo được lịch ôn. Hãy thử lại." };
+      }
+    }
 
     return {
       data: {
         analysis,
-        week1Start: startDate ? mondayOf(getZonedDayKey(startDate.toISOString(), IMAGE_IMPORT_TIME_ZONE)) : null,
+        // Workspace không có ngày; người dùng chọn tuần 1 trong dialog
+        week1Start: null,
       },
     };
   } catch (error) {

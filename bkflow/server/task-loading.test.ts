@@ -10,13 +10,13 @@ const previousDb = globalThis.prisma;
 let database: Record<string, unknown>;
 
 beforeEach(() => {
-  database = { course: {}, semester: {}, notePage: {}, aiNoteEdit: {} };
+  database = { course: {}, workspace: {}, notePage: {}, aiNoteEdit: {} };
   globalThis.prisma = database as unknown as PrismaClient;
 });
 afterEach(() => { globalThis.prisma = previousDb; });
 
-test("todo reads tasks directly without looking up or seeding semesters", async () => {
-  database.board = { findUnique: () => assert.fail("Unneeded semester-board lookup") };
+test("todo reads tasks directly without looking up or creating workspaces", async () => {
+  database.board = { findUnique: () => assert.fail("Unneeded workspace-board lookup") };
   database.card = { findMany: async (args: Prisma.CardFindManyArgs) => {
     assert.ok(Array.isArray(args.where?.AND));
     assert.deepEqual(args.where.AND[0], { archivedAt: null, list: { archivedAt: null, boardId: "b1" } });

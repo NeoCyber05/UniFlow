@@ -1,6 +1,6 @@
 /**
  * Seed demo cho bảng học kỳ hiện tại.
- * Yêu cầu: đã mở app ít nhất 1 lần ở workspace cá nhân (để học kỳ + bảng kỳ được tạo).
+ * Yêu cầu: đã mở app ít nhất 1 lần ở workspace cá nhân (để workspace + bảng được tạo).
  * Chạy: SEED_ORG_ID=org_xxx npm run db:seed
  */
 import { PrismaClient } from "@prisma/client";
@@ -37,7 +37,7 @@ const main = async () => {
     throw new Error("Thiếu SEED_USER_ID (id Supabase user).");
   }
 
-  const semester = await db.semester.findFirst({
+  const workspace = await db.workspace.findFirst({
     where: { userId, isCurrent: true },
     include: {
       board: {
@@ -46,14 +46,14 @@ const main = async () => {
     },
   });
 
-  if (!semester?.board) {
-    throw new Error("Chưa có bảng kỳ hiện tại. Mở app ở workspace cá nhân một lần rồi chạy lại.");
+  if (!workspace?.board) {
+    throw new Error("Chưa có bảng workspace hiện tại. Mở app một lần rồi chạy lại.");
   }
 
-  const board = semester.board;
+  const board = workspace.board;
 
   if (board.lists.length < 3) {
-    throw new Error("Bảng kỳ cần ít nhất 3 cột.");
+    throw new Error("Bảng workspace cần ít nhất 3 cột.");
   }
 
   const courseIdByCode = new Map<string, string>();

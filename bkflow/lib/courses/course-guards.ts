@@ -13,8 +13,8 @@ type GuardInput = {
   orgId?: string;
 };
 
-/** Người sửa được bảng + bảng phải là bảng học kỳ. */
-export const requireSemesterBoardEditor = async (input: GuardInput) => {
+/** Người sửa được bảng + bảng phải là bảng workspace. */
+export const requireWorkspaceBoardEditor = async (input: GuardInput) => {
   const permission = await requireBoardEditor({ boardId: input.boardId, userId: input.userId });
 
   if (permission.error) {
@@ -26,7 +26,7 @@ export const requireSemesterBoardEditor = async (input: GuardInput) => {
     select: { boardType: true },
   });
 
-  if (!board || board.boardType !== BoardType.SEMESTER) {
+  if (!board || board.boardType !== BoardType.WORKSPACE) {
     return { error: COURSE_UNSUPPORTED_BOARD_ERROR };
   }
 

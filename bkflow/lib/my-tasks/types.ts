@@ -17,7 +17,7 @@ export type MyTask = TaskSchedule & {
   isImportant: boolean;
   boardId: string;
   boardTitle: string;
-  boardType: "SEMESTER" | "TEAM_PROJECT";
+  boardType: "WORKSPACE" | "TEAM_PROJECT";
   listId: string;
   labelIds: string[];
   labels: TaskLabel[];
@@ -41,29 +41,25 @@ export type TaskListResponse = {
 };
 
 export type MyTaskCounts = {
-  /** Quá hạn + Hôm nay trên bảng kỳ hiện tại (+ việc nhóm giao cho mình) */
+  /** Quá hạn + Hôm nay trên bảng workspace hiện tại (+ việc nhóm giao cho mình) */
   today: number;
-  /** Số việc chưa xong theo môn của bảng kỳ hiện tại; key "none" = Cá nhân */
+  /** Số việc chưa xong theo môn của bảng workspace hiện tại; key "none" = Cá nhân */
   byCourse: Record<string, number>;
 };
 
-export type SerializedSemester = {
+export type SerializedWorkspace = {
   id: string;
-  userId: string;
-  orgId?: string;
   title: string;
-  startDate: string;
-  endDate: string;
+  icon: string | null;
+  color: string;
+  order: number;
   isCurrent: boolean;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type MyTasksContext = {
-  personalOrgId: string | null;
-  semesters: SerializedSemester[];
-  currentSemesterId: string | null;
-  /** Bảng kỳ hiện tại (tạo lười nếu chưa có); null khi chưa có học kỳ */
+  workspaces: SerializedWorkspace[];
+  currentWorkspaceId: string | null;
+  /** Bảng của workspace hiện tại (tạo lười nếu chưa có) */
   board: {
     id: string;
     lists: { id: string; title: string }[];

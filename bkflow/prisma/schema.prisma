@@ -23,8 +23,8 @@ model Board {
   imageUserName String @db.Text
   imageLinkHTML String @db.Text
 
-  semesterId String?   @unique
-  semester   Semester? @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  workspaceId String?    @unique
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   boardType  BoardType @default(TEAM_PROJECT)
 
   lists   List[]
@@ -38,16 +38,20 @@ model Board {
 }
 
 enum BoardType {
-  SEMESTER
+  WORKSPACE
   TEAM_PROJECT
 }
 
-model Semester {
+/// Container do user tự đặt (trước đây là "học kỳ"); 1-1 với một board WORKSPACE.
+model Workspace {
   id        String   @id @default(uuid())
   userId    String
   title     String
-  startDate DateTime
-  endDate   DateTime
+  /// null | emoji | "lucide:<IconName>" (xem lib/workspaces.ts)
+  icon      String?
+  /// key của COURSE_COLOR_KEYS
+  color     String   @default("violet")
+  order     Int      @default(0)
   isCurrent Boolean  @default(false)
   board     Board?
 

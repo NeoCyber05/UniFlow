@@ -35,11 +35,11 @@ export const loadBoardList = async ({ boardId, group }: { boardId: string; group
     return { redirect: "/my/today" } as const;
   }
 
-  const isSemesterBoard = board.boardType === BoardType.SEMESTER;
+  const isWorkspaceBoard = board.boardType === BoardType.WORKSPACE;
 
   // Only the active grouping is preloaded; the other one is fetched by the client when the user switches.
   // shortcut: a stored "list" mode without ?group=list still refetches client-side once, add the mode to the URL if it matters.
-  const wantsAgenda = isSemesterBoard && group !== "list";
+  const wantsAgenda = isWorkspaceBoard && group !== "list";
   const [initialListData, initialAgendaData] = await Promise.all([
     wantsAgenda ? Promise.resolve(undefined) : getBoardTaskGroups({ boardId, userId }),
     wantsAgenda ? getTodoTasks({ userId, boardId }) : Promise.resolve(undefined),

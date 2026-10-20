@@ -15,14 +15,14 @@ export const resolveCourseRef = async (boardId: string, courseId: string | null 
   return ref ? ensureCourse(boardId, ref) : courseId ?? null;
 };
 
-/** Môn có cùng mã (hoặc cùng tên) trong bảng học kỳ; chưa có thì tạo. Bảng khác → null. */
+/** Môn có cùng mã (hoặc cùng tên) trong bảng workspace; chưa có thì tạo. Bảng khác → null. */
 export const ensureCourse = async (boardId: string, ref: CourseRef) => {
   const board = await db.board.findUnique({
     where: { id: boardId },
     select: { boardType: true, courses: { select: { id: true, name: true, code: true, color: true, order: true } } },
   });
 
-  if (!board || board.boardType !== BoardType.SEMESTER) return null;
+  if (!board || board.boardType !== BoardType.WORKSPACE) return null;
 
   const find = (courses: typeof board.courses) => courses.find((course) =>
     (ref.code && course.code?.toUpperCase() === ref.code.toUpperCase()) ||

@@ -20,7 +20,7 @@ import ReminderDeliveryRoute from "./routes/reminder-delivery";
 import CaptureRoute from "./routes/capture";
 import CaptureWelcomeRoute from "./routes/capture-welcome";
 import PrivacyRoute from "./routes/privacy";
-import SemesterRoute from "./routes/semester";
+import WorkspaceRoute from "./routes/workspace";
 import SettingsAppearanceRoute from "./routes/settings-appearance";
 import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 
@@ -81,7 +81,7 @@ export const router = createBrowserRouter([
                   { path: ":pageId", element: <NotePageRoute /> },
                 ],
               },
-              { path: "semester/:semesterId", element: <SemesterRoute /> },
+              { path: "workspace/:workspaceId", element: <WorkspaceRoute /> },
             ],
           },
         ],

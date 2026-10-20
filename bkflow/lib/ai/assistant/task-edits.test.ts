@@ -18,7 +18,7 @@ beforeEach(() => {
     startDate: null, reminder: null, reminderSetAt: null, isCompleted: false, list: { boardId: "b1" },
   } };
   const database: any = {
-    course: {}, semester: {}, notePage: {}, aiNoteEdit: {},
+    course: {}, workspace: {}, notePage: {}, aiNoteEdit: {},
     board: { findFirst: async () => state.owned ? { id: "b1", userId: "u1", title: "B" } : null },
     card: {
       findFirst: async () => {

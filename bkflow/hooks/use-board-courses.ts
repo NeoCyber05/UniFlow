@@ -33,18 +33,18 @@ export const useBoardCourses = (
     [courses],
   );
 
-  const isSemesterBoard = query.data?.boardType === "SEMESTER";
-  // Lựa chọn khi gắn môn: bảng học kỳ có thêm danh mục HUST (id ảo, server tạo Course khi lưu)
+  const isWorkspaceBoard = query.data?.boardType === "WORKSPACE";
+  // Lựa chọn khi gắn môn: bảng workspace có thêm danh mục HUST (id ảo, server tạo Course khi lưu)
   const courseOptions = useMemo(
-    () => (isSemesterBoard ? withCatalogCourses(courses) : courses),
-    [isSemesterBoard, courses],
+    () => (isWorkspaceBoard ? withCatalogCourses(courses) : courses),
+    [isWorkspaceBoard, courses],
   );
 
   return {
     courses,
     courseOptions,
     courseById,
-    isSemesterBoard,
+    isWorkspaceBoard,
     isLoading: query.isLoading,
   };
 };

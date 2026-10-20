@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { tr } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { Clock, ListChecks, Loader2, Sparkles, Trash2 } from "lucide-react";
@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   parseWeeks,
   WEEKDAY_LABELS,
-  type ImageAnalysis,
   type ImageTaskItem,
   type TimetableSession,
 } from "@/lib/capture/image-import";
@@ -40,55 +39,43 @@ const withKeys = <T,>(values: T[]): Row<T>[] => values.map((value, index) => ({ 
 
 const cell = "w-full rounded border border-transparent bg-transparent px-1.5 py-1 text-xs outline-none hover:border-neutral-200 focus:border-violet-300 focus:bg-white";
 
+/** Nén ảnh + gửi AI đọc; ném lỗi khi AI không đọc được. */
+export const readCaptureImage = async (boardId: string, file: Blob, prompt?: string) => {
+  const image = await compressImage(file);
+  const result = await analyzeCaptureImage({ boardId, image, ...(prompt ? { prompt } : {}) });
+  if (!result.data) throw new Error(result.error ?? tr("import.readError"));
+  return result.data;
+};
+
+/** Không có ảnh: AI đọc lịch thi/việc từ chữ người dùng gõ (vd "thi IT2110 15/1, lên lịch ôn"). */
+export const readCaptureText = async (boardId: string, prompt: string) => {
+  const result = await analyzeCaptureImage({ boardId, prompt });
+  if (!result.data) throw new Error(result.error ?? tr("import.readError"));
+  return result.data;
+};
+
+export type CaptureImageResult = Awaited<ReturnType<typeof readCaptureImage>>;
+
 export const ImageImportDialog = ({
   boardId,
-  file,
-  prompt,
+  result,
   onClose,
   onImported,
 }: {
   boardId: string;
-  /** Ảnh vừa dán/chọn. Caller chỉ mount khi có ảnh nên mỗi ảnh là một lần đọc mới. */
-  file: Blob;
-  /** Yêu cầu gõ kèm ảnh, gửi cho AI cùng ảnh */
-  prompt?: string;
+  /** Kết quả AI đọc ảnh; caller mount lại mỗi lần đọc mới. */
+  result: CaptureImageResult;
   onClose: () => void;
   onImported?: () => void;
 }) => {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<"reading" | "review" | "saving" | "error">("reading");
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [type, setType] = useState<ImageAnalysis["type"]>("tasks");
-  const [sessions, setSessions] = useState<Row<TimetableSession>[]>([]);
-  const [items, setItems] = useState<Row<ImageTaskItem>[]>([]);
-  const [week1Start, setWeek1Start] = useState("");
-
-  useEffect(() => {
-    if (!file) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const image = await compressImage(file);
-        if (cancelled) return;
-        setPreview(image);
-        const result = await analyzeCaptureImage({ boardId, image, ...(prompt ? { prompt } : {}) });
-        if (cancelled) return;
-        if (!result.data) throw new Error(result.error ?? tr("import.readError"));
-        const { analysis } = result.data;
-        setType(analysis.type);
-        setSessions(analysis.type === "timetable" ? withKeys(analysis.sessions) : []);
-        setItems(analysis.type === "tasks" ? withKeys(analysis.items) : []);
-        setWeek1Start(result.data.week1Start ?? "");
-        setStatus("review");
-      } catch (caught) {
-        if (cancelled) return;
-        setError(caught instanceof Error ? caught.message : tr("import.readError"));
-        setStatus("error");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [file, boardId, prompt]);
+  const [status, setStatus] = useState<"review" | "saving">("review");
+  const { analysis } = result;
+  const type = analysis.type;
+  const isStudyPlan = analysis.type === "tasks" && analysis.items.some((item) => item.role);
+  const [sessions, setSessions] = useState<Row<TimetableSession>[]>(() => analysis.type === "timetable" ? withKeys(analysis.sessions) : []);
+  const [items, setItems] = useState<Row<ImageTaskItem>[]>(() => analysis.type === "tasks" ? withKeys(analysis.items) : []);
+  const [week1Start, setWeek1Start] = useState(result.week1Start ?? "");
 
   const chosenSessions = sessions.filter((row) => row.checked);
   const chosenItems = items.filter((row) => row.checked);
@@ -106,18 +93,18 @@ export const ImageImportDialog = ({
   const submit = async () => {
     setStatus("saving");
     // key/checked thừa: zod ở server tự bỏ field lạ
-    const result = await importImageItems(type === "timetable"
+    const saved = await importImageItems(type === "timetable"
       ? { boardId, week1Start, sessions: chosenSessions }
       : { boardId, items: chosenItems });
 
-    if (!result.data) {
-      const fieldError = result.fieldErrors ? Object.values(result.fieldErrors).flat().find(Boolean) : undefined;
-      toast.error(result.error ?? (fieldError as string | undefined) ?? tr("import.createFail"));
+    if (!saved.data) {
+      const fieldError = saved.fieldErrors ? Object.values(saved.fieldErrors).flat().find(Boolean) : undefined;
+      toast.error(saved.error ?? (fieldError as string | undefined) ?? tr("import.createFail"));
       setStatus("review");
       return;
     }
 
-    const { created, total: all } = result.data;
+    const { created, total: all } = saved.data;
     toast.success(created === all ? tr("import.createdAll", { count: created }) : tr("import.createdSome", { created, existing: all - created }));
     // Nhập hàng loạt chạm nhiều view (list, lịch, môn): làm mới toàn bộ
     await queryClient.invalidateQueries();
@@ -131,27 +118,18 @@ export const ImageImportDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-violet-500" aria-hidden="true" />
-            {type === "timetable" && status !== "reading" ? tr("import.titleTimetable") : tr("import.titleTasks")}
+            {type === "timetable" ? tr("import.titleTimetable") : isStudyPlan ? tr("import.titleStudyPlan") : tr("import.titleTasks")}
           </DialogTitle>
           <DialogDescription>{tr("import.review")}</DialogDescription>
         </DialogHeader>
+        {analysis.type === "tasks" && analysis.notice && <p className="text-xs text-amber-700" role="status">{analysis.notice}</p>}
 
-        {status === "reading" && (
-          <div className="flex flex-col items-center gap-3 py-10 text-sm text-neutral-500" role="status">
-            {preview && <img src={preview} alt="" className="max-h-40 rounded-md border border-neutral-200 object-contain opacity-60" />}
-            {prompt && <p className="max-w-md text-center text-xs italic text-neutral-500">“{prompt}”</p>}
-            <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{tr("import.reading")}</span>
-          </div>
-        )}
-
-        {status === "error" && <p role="alert" className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-
-        {(status === "review" || status === "saving") && type === "timetable" && (
+        {type === "timetable" && (
           <div className="space-y-3">
             <label className="flex flex-wrap items-center gap-2 text-xs text-neutral-600">
               <span className="font-medium">{tr("import.weekStart")}</span>
               <input type="date" value={week1Start} onChange={(event) => setWeek1Start(event.target.value)} className="rounded-md border border-neutral-200 px-2 py-1 text-xs" />
-              {!week1Start && <span className="text-amber-700">{tr("import.noSemester")}</span>}
+              {!week1Start && <span className="text-amber-700">{tr("import.pickWeek1")}</span>}
             </label>
             <div className="overflow-x-auto rounded-lg border border-neutral-200">
               <table className="w-full min-w-[720px] text-left text-xs">
@@ -190,7 +168,7 @@ export const ImageImportDialog = ({
           </div>
         )}
 
-        {(status === "review" || status === "saving") && type === "tasks" && (
+        {type === "tasks" && (
           items.length === 0
             ? <p className="py-8 text-center text-sm text-neutral-500">{tr("import.noTasks")}</p>
             : (
@@ -198,6 +176,11 @@ export const ImageImportDialog = ({
                 {items.map((row) => (
                   <li key={row.key} className={cn("flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 p-2", !row.checked && "opacity-40")}>
                     <input type="checkbox" checked={row.checked} onChange={(event) => patchItem(row.key, { checked: event.target.checked })} aria-label={tr("import.selectRow", { name: row.title })} />
+                    {row.role && (
+                      <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1", row.role === "exam" ? "bg-rose-50 text-rose-700 ring-rose-200" : "bg-emerald-50 text-emerald-700 ring-emerald-200")}>
+                        {row.role === "exam" ? tr("import.roleExam") : tr("import.roleReview")}
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => patchItem(row.key, { kind: row.kind === "TASK" ? "EVENT" : "TASK" })}
@@ -218,7 +201,7 @@ export const ImageImportDialog = ({
             )
         )}
 
-        {(status === "review" || status === "saving") && (
+        {(
           <div className="flex items-center justify-end gap-2 border-t border-neutral-100 pt-3">
             <button type="button" onClick={onClose} disabled={status === "saving"} className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100">{tr("import.cancel")}</button>
             <button

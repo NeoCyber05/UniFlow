@@ -25,7 +25,7 @@ beforeEach(() => {
   pages = [{ id: "p1", userId: "u1", content: "" }];
   cardQueries = [];
   const database = {
-    course: {}, semester: {}, aiNoteEdit: {},
+    course: {}, workspace: {}, aiNoteEdit: {},
     notePage: { findFirst: async ({ where }: any) => pages.find(page => page.id === where.id && page.userId === where.userId) ?? null },
     card: {
       findMany: async (query: any) => {
@@ -42,13 +42,13 @@ afterEach(() => { globalThis.prisma = previousDb; });
 
 const taskContent = (...taskIds: string[]) => JSON.stringify({ version: 1, blocks: taskIds.map((taskId, index) => ({ id: `t${index}`, type: "task", taskId })) });
 
-test("linked task outside current semester remains available", async () => {
-  // Semester is a board/course concept; the resolver must not filter by it.
-  cards = [row("c1", { title: "Bài tập kỳ trước", dueDate: new Date("2025-03-01T10:00:00Z"), deadlineOn: new Date("2025-03-01T00:00:00Z"), updatedAt: new Date("2026-10-18T00:00:00Z") }, { boardId: "old-semester" })];
+test("linked task outside current workspace remains available", async () => {
+  // Workspace is a board/course concept; the resolver must not filter by it.
+  cards = [row("c1", { title: "Bài tập kỳ trước", dueDate: new Date("2025-03-01T10:00:00Z"), deadlineOn: new Date("2025-03-01T00:00:00Z"), updatedAt: new Date("2026-10-18T00:00:00Z") }, { boardId: "old-workspace" })];
   const [result] = await loadLinkedTasks({ userId: "u1", pageId: "p1", taskIds: ["c1"] });
   assert.deepEqual(result, {
     taskId: "c1", state: "available",
-    task: { id: "c1", title: "Bài tập kỳ trước", boardId: "old-semester", isCompleted: false, dueDate: "2025-03-01T10:00:00.000Z", deadlineOn: "2025-03-01", updatedAt: "2026-10-18T00:00:00.000Z" },
+    task: { id: "c1", title: "Bài tập kỳ trước", boardId: "old-workspace", isCompleted: false, dueDate: "2025-03-01T10:00:00.000Z", deadlineOn: "2025-03-01", updatedAt: "2026-10-18T00:00:00.000Z" },
   });
   const { where, select } = cardQueries[0];
   assert.equal(where.isCompleted, undefined);
@@ -108,7 +108,7 @@ test("GET /api/pages/:pageId/tasks reads refs from page content, 401 when signed
   assert.equal(body.tasks[1].task, undefined);
 });
 
-test("task picker search covers completed and other-semester tasks within the owner's scope", async () => {
+test("task picker search covers completed and other-workspace tasks within the owner's scope", async () => {
   const { searchWorkspace } = await import("@/lib/search/workspace-search-server");
   const database = globalThis.prisma as any;
   Object.assign(database, { course: { findMany: async () => [] }, board: { findMany: async () => [] }, notePage: { ...database.notePage, findMany: async () => [] } });

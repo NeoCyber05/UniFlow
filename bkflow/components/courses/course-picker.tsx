@@ -36,18 +36,18 @@ export const CoursePicker = ({
   const key = toSearchKey(query);
   const trimmed = query.replace(/\s+/g, " ").trim();
 
-  const { inSemester, catalog } = useMemo(() => {
+  const { inWorkspace, catalog } = useMemo(() => {
     const matched = key
       ? courses.filter((course) => toSearchKey(`${course.code ?? ""} ${course.name}`).includes(key))
       : courses;
     return {
-      inSemester: matched.filter((course) => !isCourseRef(course.id)),
+      inWorkspace: matched.filter((course) => !isCourseRef(course.id)),
       catalog: matched.filter((course) => isCourseRef(course.id)),
     };
   }, [courses, key]);
 
   const canCreate = trimmed.length > 0 && !courses.some((course) => toSearchKey(course.name) === key || (course.code && toSearchKey(course.code) === key));
-  const first = inSemester[0] ?? catalog[0];
+  const first = inWorkspace[0] ?? catalog[0];
 
   const row = (course: PickerCourse) => (
     <li key={course.id}>
@@ -102,7 +102,7 @@ export const CoursePicker = ({
             {noneLabel}
           </button>
         )}
-        {group(tr("course.inSemesterGroup"), inSemester)}
+        {group(tr("course.inWorkspaceGroup"), inWorkspace)}
         {group(tr("course.hustGroup"), catalog)}
         {canCreate && (
           <button

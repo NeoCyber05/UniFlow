@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { tr } from "@/lib/i18n";
 import { useMatch } from "react-router";
 import Link from "@/web/shims/next-link";
 import { usePathname } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Semester } from "@prisma/client";
 import {
-  ChevronDown,
-  GraduationCap,
   Trash2,
   Settings,
   CalendarDays,
@@ -18,22 +15,13 @@ import {
   BarChart3,
 } from "lucide-react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ManageSemestersDialog } from "@/components/semesters/manage-semesters-dialog";
+import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 import { TrashDialog } from "@/components/notes/page-actions";
 import { useSettingsModal } from "@/hooks/use-settings-modal";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
 import { getBoardNavigation } from "@/lib/boards/navigation";
 import { useBoardFilters } from "@/hooks/use-board-filters";
-import { MY_TASKS_CONTEXT_KEY } from "@/lib/my-tasks/types";
-import { formatSemesterLabel } from "@/lib/semesters";
 import { cn } from "@/lib/utils";
 import { viewQueryOptions } from "@/web/lib/use-view";
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
@@ -60,22 +48,9 @@ export const MySidebarNav = () => {
   const queryClient = useQueryClient();
   const { data: context } = useMyTasksContext();
   const { data: counts } = useMyTaskCounts();
-  const [manageOpen, setManageOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const settingsModal = useSettingsModal();
 
-  const semesters = useMemo<Semester[]>(
-    () =>
-      (context?.semesters ?? []).map((semester) => ({
-        ...semester,
-        startDate: new Date(semester.startDate),
-        endDate: new Date(semester.endDate),
-        createdAt: new Date(semester.createdAt),
-        updatedAt: new Date(semester.updatedAt),
-      })),
-    [context?.semesters],
-  );
-  const currentSemester = semesters.find((semester) => semester.id === context?.currentSemesterId);
   const board = context?.board ?? null;
   const boardId = boardRoute?.params.boardId ?? board?.id;
   const navigation = boardId ? getBoardNavigation(boardId, pathname) : [];
@@ -93,40 +68,15 @@ export const MySidebarNav = () => {
     }
   };
 
-  const semesterBoardHref = context?.currentSemesterId
-      ? `/semester/${context.currentSemesterId}`
-      : null;
+  const workspaceBoardHref = context?.currentWorkspaceId ? `/workspace/${context.currentWorkspaceId}` : null;
 
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex h-7 w-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted">
-          <GraduationCap className="h-3.5 w-3.5" />
-          {currentSemester ? formatSemesterLabel(currentSemester.title) : tr("sidebar.pickSemester")}
-          <ChevronDown className="h-3 w-3" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          {semesters.map((semester) => (
-            <DropdownMenuItem key={semester.id} asChild>
-              <Link href={`/semester/${semester.id}`} className="flex items-center justify-between">
-                {formatSemesterLabel(semester.title)}
-                {semester.id === context?.currentSemesterId && (
-                  <span className="text-[10px] font-semibold text-violet-600">{tr("semester.current")}</span>
-                )}
-              </Link>
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setManageOpen(true)}>
-            <Settings className="h-3.5 w-3.5" />
-            {tr("semester.manage")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <WorkspaceSwitcher />
 
-      {!boardId && semesterBoardHref && (
-        <Link href={semesterBoardHref} aria-current={pathname === semesterBoardHref ? "page" : undefined} className={itemClassName(pathname === semesterBoardHref)}>
+      {!boardId && workspaceBoardHref && (
+        <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={itemClassName(pathname === workspaceBoardHref)}>
           <ListTodo className="h-4 w-4" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
@@ -164,15 +114,6 @@ export const MySidebarNav = () => {
         </button>
         <TrashDialog open={trashOpen} onOpenChange={setTrashOpen} />
       </div>
-
-      <ManageSemestersDialog
-        open={manageOpen}
-        onOpenChange={(open) => {
-          setManageOpen(open);
-          if (!open) void queryClient.invalidateQueries({ queryKey: MY_TASKS_CONTEXT_KEY });
-        }}
-        semesters={semesters}
-      />
     </div>
   );
 };

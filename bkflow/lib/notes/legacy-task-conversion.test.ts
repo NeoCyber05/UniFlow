@@ -49,7 +49,7 @@ beforeEach(() => {
     lists: [{ id: "l1", boardId: "b1", archivedAt: null }, { id: "ls", boardId: "shared", archivedAt: null }],
   };
   const database: any = {
-    course: {}, semester: {},
+    course: {}, workspace: {},
     notePage: {
       findFirst: async ({ where }: any) => { const page = state.pages.find((item: any) => matches(item, where)); return page ? { ...page } : null; },
       findUniqueOrThrow: async ({ where }: any) => state.pages.find((page: any) => page.id === where.id),

@@ -14,10 +14,10 @@ const getClient = (): PrismaClient => {
     return globalThis.prisma;
   }
 
-  // Trong môi trường development: nếu instance trong cache bị thiếu các model mới (như course, semester)
+  // Trong môi trường development: nếu instance trong cache bị thiếu các model mới (như course, workspace)
   // do schema được cập nhật sau khi dev server khởi động, tiến hành ngắt kết nối và tạo instance mới
   const cached = globalThis.prisma as (Record<string, unknown> & { $disconnect?: () => Promise<void> }) | undefined;
-  if (cached && (!("course" in cached) || !("semester" in cached) || !("notePage" in cached) || !("aiNoteEdit" in cached))) {
+  if (cached && (!("course" in cached) || !("workspace" in cached) || !("notePage" in cached) || !("aiNoteEdit" in cached))) {
     cached.$disconnect?.().catch(() => {});
     globalThis.prisma = undefined;
   }

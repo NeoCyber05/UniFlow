@@ -2,22 +2,20 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { getBoardCourses } from "@/lib/courses/board-courses";
-import { pickCurrentSemester } from "@/lib/semesters";
-import { getOrSeedSemesters } from "@/lib/semesters-db";
+import { pickCurrentWorkspace } from "@/lib/workspaces";
+import { getOrCreateWorkspaces } from "@/lib/workspaces-db";
 
-import { resolveCurrentSemesterBoardId } from "./current-semester-board";
+import { resolveCurrentWorkspaceBoardId } from "./current-workspace-board";
 import type { MyTasksContext } from "./types";
 
 export const getMyTasksContext = async (userId: string): Promise<MyTasksContext> => {
-  const personalOrgId = userId;
-
-  if (!personalOrgId) {
-    return { personalOrgId: null, semesters: [], currentSemesterId: null, board: null, courses: [] };
+  if (!userId) {
+    return { workspaces: [], currentWorkspaceId: null, board: null, courses: [] };
   }
 
-  const semesters = await getOrSeedSemesters(personalOrgId);
-  const currentSemester = pickCurrentSemester(semesters);
-  const boardId = currentSemester ? await resolveCurrentSemesterBoardId(userId, currentSemester) : null;
+  const workspaces = await getOrCreateWorkspaces(userId);
+  const currentWorkspace = pickCurrentWorkspace(workspaces);
+  const boardId = currentWorkspace ? await resolveCurrentWorkspaceBoardId(userId, currentWorkspace) : null;
 
   const [boardData, courses] = boardId
     ? await Promise.all([
@@ -48,15 +46,8 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
     : null;
 
   return {
-    personalOrgId,
-    semesters: semesters.map((semester) => ({
-      ...semester,
-      startDate: semester.startDate.toISOString(),
-      endDate: semester.endDate.toISOString(),
-      createdAt: semester.createdAt.toISOString(),
-      updatedAt: semester.updatedAt.toISOString(),
-    })),
-    currentSemesterId: currentSemester?.id ?? null,
+    workspaces: workspaces.map(({ id, title, icon, color, order, isCurrent }) => ({ id, title, icon, color, order, isCurrent })),
+    currentWorkspaceId: currentWorkspace?.id ?? null,
     board,
     courses,
   };

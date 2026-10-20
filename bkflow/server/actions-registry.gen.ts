@@ -63,11 +63,11 @@ import { deleteArchivedList as a60 } from "@/actions/lists/delete-archived-list"
 import { restoreList as a61 } from "@/actions/lists/restore-list";
 import { updateListOrder as a62 } from "@/actions/lists/update-list-order";
 import { updateList as a63 } from "@/actions/lists/update-list";
-import { createSemester as a64 } from "@/actions/semesters/create-semester";
-import { deleteSemester as a65 } from "@/actions/semesters/delete-semester";
-import { seedDefaultSemesters as a66 } from "@/actions/semesters/seed-default-semesters";
-import { setCurrentSemester as a67 } from "@/actions/semesters/set-current-semester";
-import { updateSemester as a68 } from "@/actions/semesters/update-semester";
+import { createWorkspace as a64 } from "@/actions/workspaces/create-workspace";
+import { deleteWorkspace as a65 } from "@/actions/workspaces/delete-workspace";
+import { reorderWorkspaces as a66 } from "@/actions/workspaces/reorder-workspaces";
+import { setCurrentWorkspace as a67 } from "@/actions/workspaces/set-current-workspace";
+import { updateWorkspace as a68 } from "@/actions/workspaces/update-workspace";
 
 export const actionRegistry: Record<string, (input: unknown) => Promise<unknown>> = {
   "ai/analyze-capture-image": a0 as (input: unknown) => Promise<unknown>,
@@ -134,9 +134,9 @@ export const actionRegistry: Record<string, (input: unknown) => Promise<unknown>
   "lists/restore-list": a61 as (input: unknown) => Promise<unknown>,
   "lists/update-list-order": a62 as (input: unknown) => Promise<unknown>,
   "lists/update-list": a63 as (input: unknown) => Promise<unknown>,
-  "semesters/create-semester": a64 as (input: unknown) => Promise<unknown>,
-  "semesters/delete-semester": a65 as (input: unknown) => Promise<unknown>,
-  "semesters/seed-default-semesters": a66 as (input: unknown) => Promise<unknown>,
-  "semesters/set-current-semester": a67 as (input: unknown) => Promise<unknown>,
-  "semesters/update-semester": a68 as (input: unknown) => Promise<unknown>,
+  "workspaces/create-workspace": a64 as (input: unknown) => Promise<unknown>,
+  "workspaces/delete-workspace": a65 as (input: unknown) => Promise<unknown>,
+  "workspaces/reorder-workspaces": a66 as (input: unknown) => Promise<unknown>,
+  "workspaces/set-current-workspace": a67 as (input: unknown) => Promise<unknown>,
+  "workspaces/update-workspace": a68 as (input: unknown) => Promise<unknown>,
 };

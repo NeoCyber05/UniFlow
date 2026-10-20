@@ -50,7 +50,7 @@ describe("createCapturedCards on a real database", { skip: !enabled && "set CAPT
 
   before(async () => {
     const image = { imageId: "x", imageThumbUrl: "x", imageFullUrl: "x", imageUserName: "x", imageLinkHTML: "x" };
-    const board = await prisma.board.create({ data: { userId, title: "Kỳ thử", boardType: "SEMESTER", ...image } });
+    const board = await prisma.board.create({ data: { userId, title: "Kỳ thử", boardType: "WORKSPACE", ...image } });
     const other = await prisma.board.create({ data: { userId: `${userId}-other`, title: "Khác", ...image } });
     boardId = board.id;
     listId = (await prisma.list.create({ data: { boardId, title: "Cần làm", order: 1 } })).id;

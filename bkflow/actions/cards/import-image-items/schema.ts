@@ -8,7 +8,7 @@ export const ImportImageItems = z.object({
   /** Thứ Hai của tuần 1 (bắt buộc khi có sessions) */
   week1Start: DateOnly.optional(),
   sessions: z.array(TimetableSession).max(60).optional(),
-  items: z.array(ImageTaskItem).max(30).optional(),
+  items: z.array(ImageTaskItem).max(70).optional(),
 }).refine((value) => !value.sessions?.length || value.week1Start, {
   message: "Chọn ngày bắt đầu tuần 1.",
   path: ["week1Start"],

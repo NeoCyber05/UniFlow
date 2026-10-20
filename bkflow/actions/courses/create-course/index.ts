@@ -4,7 +4,7 @@ import { auth } from "@/server/auth";
 import { Prisma } from "@prisma/client";
 
 import { createSafeAction } from "@/lib/create-safe-action";
-import { DUPLICATE_COURSE_ERROR, requireSemesterBoardEditor } from "@/lib/courses/course-guards";
+import { DUPLICATE_COURSE_ERROR, requireWorkspaceBoardEditor } from "@/lib/courses/course-guards";
 import { db } from "@/lib/db";
 
 import { CreateCourse } from "./schema";
@@ -20,7 +20,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   const { boardId, name, code, credits, color } = data;
 
   try {
-    const guard = await requireSemesterBoardEditor({ boardId, userId });
+    const guard = await requireWorkspaceBoardEditor({ boardId, userId });
 
     if (guard.error) {
       return { error: guard.error };

@@ -24,7 +24,7 @@ const course = { id: "c1", name: "Giải tích", code: null, color: "violet" };
 
 const task = (patch: Partial<TodoFilterableTask> = {}): TodoFilterableTask => ({
   isImportant: false,
-  boardType: "SEMESTER",
+  boardType: "WORKSPACE",
   course: null,
   ...patch,
 });

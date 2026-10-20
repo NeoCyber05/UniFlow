@@ -1,6 +1,5 @@
 import { BoardType } from "@prisma/client";
 
-import { getOrSeedSemesters } from "@/lib/semesters-db";
 import { getBoardCourses } from "@/lib/courses/board-courses";
 import { db } from "@/lib/db";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -20,6 +19,7 @@ export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: 
       id: boardId,
     },
     include: {
+      workspace: { select: { id: true, title: true, icon: true, color: true } },
       labels: {
         orderBy: {
           createdAt: "asc",
@@ -40,10 +40,8 @@ export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: 
     return { notFound: true } as const;
   }
 
-  const isSemesterBoard = board.boardType === BoardType.SEMESTER;
-  const [semesters, courses] = isSemesterBoard
-    ? await Promise.all([getOrSeedSemesters(boardUserId), getBoardCourses(boardId)])
-    : [[], []];
+  const isWorkspaceBoard = board.boardType === BoardType.WORKSPACE;
+  const courses = isWorkspaceBoard ? await getBoardCourses(boardId) : [];
 
   return {
     title: board.title || "Bảng",
@@ -51,10 +49,9 @@ export const loadBoardLayout = async ({ boardId }: { boardId: string }, userId: 
     board,
     boardOrgId: boardUserId,
     boardUserId,
-    semesters,
     courses,
     canEdit: true,
-    isSemesterBoard,
+    isWorkspaceBoard,
     effectiveOrgMembers: [] as { userId: string; name: string; imageUrl: string; email: string | null }[],
     currentUserId: userId,
     currentMemberRole: "ADMIN" as const,

@@ -12,9 +12,9 @@ import { resolveCourseRef } from "@/lib/courses/course-ref";
 import { logger } from "@/lib/logger";
 import { requireBoardEditorForUser } from "@/lib/permissions";
 import {
-  NO_CURRENT_SEMESTER_ERROR,
-  resolveCurrentSemesterBoardId,
-} from "@/lib/my-tasks/current-semester-board";
+  NO_CURRENT_WORKSPACE_ERROR,
+  resolveCurrentWorkspaceBoardId,
+} from "@/lib/my-tasks/current-workspace-board";
 
 import { QuickAddCard } from "./schema";
 import { InputType, ReturnType } from "./types";
@@ -53,10 +53,10 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   const creationId = data.creationId ?? randomUUID();
 
   try {
-    const boardId = data.boardId ?? (await resolveCurrentSemesterBoardId(userId));
+    const boardId = data.boardId ?? (await resolveCurrentWorkspaceBoardId(userId));
 
     if (!boardId) {
-      return { error: NO_CURRENT_SEMESTER_ERROR, errorCode: "NO_CURRENT_SEMESTER" };
+      return { error: NO_CURRENT_WORKSPACE_ERROR, errorCode: "NO_CURRENT_WORKSPACE" };
     }
 
     const permission = await requireBoardEditorForUser({ boardId, userId });

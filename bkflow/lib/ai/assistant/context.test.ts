@@ -33,7 +33,7 @@ beforeEach(() => {
   const boards = [{ id: "b1", userId: "u1", title: "Board" }, { id: "b9", userId: "u9", title: "Other" }];
   const courses = [{ id: "k1", boardId: "b1" }, { id: "k9", boardId: "b9" }];
   globalThis.prisma = {
-    semester: {}, aiNoteEdit: {}, // db proxy coi thiếu model là client cũ và tạo client thật
+    workspace: {}, aiNoteEdit: {}, // db proxy coi thiếu model là client cũ và tạo client thật
     notePage: { findFirst: async ({ where }: any) => pages.find(p => p.id === where.id && p.userId === where.userId && where.deletedAt === null) ?? null },
     card: { findFirst: async ({ where }: any) => cards.find(c => c.id === where.id && c.list.board.userId === where.list.board.userId) ?? null },
     board: { findFirst: async ({ where }: any) => boards.find(b => b.id === where.id && b.userId === where.userId) ?? null },

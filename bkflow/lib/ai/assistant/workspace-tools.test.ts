@@ -23,7 +23,7 @@ beforeEach(() => {
   auditWrites = 0;
   mock.method(Pusher.prototype, "trigger", async () => ({}));
   database = {
-    course: { findMany: async () => [] }, semester: {}, aiNoteEdit: {},
+    course: { findMany: async () => [] }, workspace: {}, aiNoteEdit: {},
     board: { findMany: async () => [], findFirst: async () => ({ id: "b1", userId: "u1", title: "Board" }) },
     card: { findMany: async () => [], findFirst: async () => ({ id: "c1", title: "Report", list: { title: "Todo" } }) },
     notePage: { findMany: async () => [], findFirst: async () => null },

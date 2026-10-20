@@ -17,7 +17,7 @@ const star = (cx: number, cy: number, r: number) =>
 
 const SURFACE = "fill-card stroke-border";
 
-/* 1 · Welcome: one board per semester, one list per course */
+/* 1 · Welcome: one board per workspace, one list per course */
 const COLUMNS = [
   { x: 34, accent: "fill-violet-500", cards: 3 },
   { x: 94, accent: "fill-amber-400", cards: 2 },

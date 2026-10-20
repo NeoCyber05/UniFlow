@@ -28,7 +28,7 @@ beforeEach(() => {
     card: { findFirst: async ({ where }: any) => (where.id === card.id && where.list?.boardId === "b1" ? card : null), findMany: async () => [] },
     board: { findFirst: async () => ({ id: "b1", userId: "u1", title: "Board" }), findMany: async () => [] },
     noteDeadline: { findMany: async () => [] },
-    course: { findMany: async () => [] }, semester: {}, aiNoteEdit: {}, notePage: { findMany: async () => [], findFirst: async () => null },
+    course: { findMany: async () => [] }, workspace: {}, aiNoteEdit: {}, notePage: { findMany: async () => [], findFirst: async () => null },
   };
   // Mọi lệnh ghi đều được ghi nhận: test khẳng định chúng không xảy ra.
   globalThis.prisma = new Proxy(models, {

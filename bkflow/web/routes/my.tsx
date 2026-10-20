@@ -5,8 +5,8 @@ import { getPersonalBoardDestination } from "@/lib/my-tasks/personal-navigation"
 import { MY_TASKS_CONTEXT_KEY, type MyTasksContext } from "@/lib/my-tasks/types";
 
 import type { loadMy } from "@/server/views/my";
-import { NoSemesterState } from "@/components/my-tasks/no-semester-state";
-import { PersonalWorkspaceView } from "@/components/my-tasks/personal-workspace-view";
+import { NoWorkspaceState } from "@/components/my-tasks/no-workspace-state";
+import { MyTasksView } from "@/components/my-tasks/my-tasks-view";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
 
 import { useTitle } from "../lib/use-title";
@@ -33,10 +33,10 @@ const render = (data: View | undefined) => {
   if (!data) return null;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
-  if (!data.context) return <NoSemesterState />;
+  if (!data.context) return <NoWorkspaceState />;
 
   return (
-    <PersonalWorkspaceView
+    <MyTasksView
       key={data.boardId}
       initialContext={data.context}
       initialData={data.data}

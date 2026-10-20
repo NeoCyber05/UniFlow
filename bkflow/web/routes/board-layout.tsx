@@ -38,13 +38,13 @@ export default function BoardLayoutRoute() {
   return (
     <div
       className="relative h-screen flex flex-col overflow-hidden bg-no-repeat bg-cover bg-center"
-      style={data.isSemesterBoard ? undefined : { backgroundImage: `url(${data.board.imageFullUrl})` }}
+      style={data.isWorkspaceBoard ? undefined : { backgroundImage: `url(${data.board.imageFullUrl})` }}
     >
       <BoardCoursesHydrator
         boardId={boardId}
         initialData={{ boardType: data.board.boardType, courses: data.courses }}
       />
-      {data.isSemesterBoard && (
+      {data.isWorkspaceBoard && (
         <Suspense fallback={null}>
           <CourseFilterFromUrl boardId={boardId} />
         </Suspense>
@@ -52,16 +52,16 @@ export default function BoardLayoutRoute() {
       <Suspense fallback={null}>
         <ImportantFilterFromUrl boardId={boardId} />
       </Suspense>
-      {!data.isSemesterBoard && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
+      {!data.isWorkspaceBoard && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
 
       <BoardShell
         boardNavbar={
           <BoardNavbar
             data={data.board}
             currentUserId={data.currentUserId}
-            semesters={data.semesters}
+            workspace={data.board.workspace}
             courseFilter={
-              data.isSemesterBoard ? (
+              data.isWorkspaceBoard ? (
                 <CourseFilterBar boardId={boardId} canEdit={data.canEdit} />
               ) : undefined
             }

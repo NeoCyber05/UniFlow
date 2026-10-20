@@ -6,7 +6,7 @@ import { createSafeAction } from "@/lib/create-safe-action";
 import {
   INVALID_COURSE_ERROR,
   isCourseInBoard,
-  requireSemesterBoardEditor,
+  requireWorkspaceBoardEditor,
 } from "@/lib/courses/course-guards";
 import { db } from "@/lib/db";
 
@@ -23,7 +23,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   const { id, boardId } = data;
 
   try {
-    const guard = await requireSemesterBoardEditor({ boardId, userId });
+    const guard = await requireWorkspaceBoardEditor({ boardId, userId });
 
     if (guard.error) {
       return { error: guard.error };

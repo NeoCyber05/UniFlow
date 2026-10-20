@@ -34,7 +34,7 @@ beforeEach(() => {
   };
   // No card model: any Card read or write in these routes would throw.
   const database: any = {
-    course: {}, semester: {}, aiNoteEdit: {}, notePage,
+    course: {}, workspace: {}, aiNoteEdit: {}, notePage,
     noteDeadline: { deleteMany: async () => { writes.push("noteDeadline.deleteMany"); }, createMany: async () => { writes.push("noteDeadline.createMany"); } },
   };
   database.$transaction = async (fn: any) => fn(database);

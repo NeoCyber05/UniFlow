@@ -57,7 +57,7 @@ export const BoardAnalyticsView = ({
           </Cell>
 
           <Cell index={3} className="lg:col-span-2">
-            {boardType === "SEMESTER" ? (
+            {boardType === "WORKSPACE" ? (
               <ChartPanel
                 title="Khối lượng theo danh mục"
                 description="Hoàn thành, đang mở, quá hạn theo từng môn"

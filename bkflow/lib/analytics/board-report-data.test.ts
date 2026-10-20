@@ -12,7 +12,7 @@ test("board reports use task state without reading activity logs", async () => {
   const previousDb = globalThis.prisma;
   const updatedAt = new Date();
   globalThis.prisma = {
-    course: {}, semester: {}, notePage: {}, aiNoteEdit: {},
+    course: {}, workspace: {}, notePage: {}, aiNoteEdit: {},
     board: { findFirst: async () => ({ id: "b1", title: "Board", courses: [] }) },
     list: { findMany: async () => [{
       id: "l1", title: "Done", order: 0,

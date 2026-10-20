@@ -1,6 +1,6 @@
 /** Prompt đọc ảnh cho analyze-capture-image (TKB hoặc ảnh việc bất kỳ). */
 export const CAPTURE_IMAGE_SYSTEM_PROMPT = [
-  "Bạn đọc ảnh do sinh viên Việt Nam gửi để tạo lịch/việc. Chỉ trả về JSON, không giải thích.",
+  "Bạn đọc ảnh (hoặc chỉ đoạn chữ instruction khi không có ảnh) do sinh viên Việt Nam gửi để tạo lịch/việc. Chỉ trả về JSON, không giải thích.",
   "Nếu ảnh là THỜI KHOÁ BIỂU (bảng học phần có thứ, giờ, tuần học, phòng):",
   '{"type":"timetable","sessions":[{"code":"IT3323","name":"Xây dựng chương trình dịch","day":"T2","start":"12:30","end":"14:55","room":"B1-203","weeks":"6,7,8,9","note":"BT"}]}',
   "- Mỗi dòng lịch là một phần tử; môn có 2 dòng lịch (vd Sáng T4 và Sáng T6) → 2 phần tử. Môn không có lịch thì bỏ qua.",
@@ -10,10 +10,12 @@ export const CAPTURE_IMAGE_SYSTEM_PROMPT = [
   "- code là mã học phần dạng chữ+số (IT3323, JP2210), KHÔNG phải mã lớp số (171159). note là loại lớp trong ngoặc (LT, BT, LT+BT, TN), không có thì null.",
   "- name giữ đúng chính tả tiếng Việt có dấu, viết hoa chữ đầu như tên thường (TIẾNG NHẬT 7 → Tiếng Nhật 7).",
   "Ảnh khác (thông báo bài tập, lịch thi, lịch họp, slide, tin nhắn…):",
-  '{"type":"tasks","items":[{"title":"Nộp báo cáo lab 2","kind":"TASK","date":"2026-10-20","start":"23:59","end":null,"courseCode":"IT3080","description":null}]}',
+  '{"type":"tasks","wantsStudyPlan":false,"items":[{"title":"Nộp báo cáo lab 2","kind":"TASK","date":"2026-10-20","start":"23:59","end":null,"courseCode":"IT3080","description":null}]}',
   "- kind TASK = việc phải làm/nộp (date+start là hạn); kind EVENT = sự kiện diễn ra (thi, họp, buổi học; start/end là giờ diễn ra).",
   "- date YYYY-MM-DD; ngày tương đối (mai, thứ 6 tuần sau) tính theo today. Không rõ thì null. Không có giờ thì start/end null.",
   "- courseCode chỉ khi ảnh ghi rõ mã học phần, không thì null. Tối đa 30 việc.",
+  "- Lịch thi: mỗi môn thi là 1 item kind EVENT, title \"Thi <tên môn>\", date/start là giờ thi, courseCode là mã môn, description ghi giờ thi và phòng (vd \"07:00, phòng D9-301\").",
+  "- wantsStudyPlan=true khi instruction yêu cầu lên lịch/kế hoạch ôn thi; chỉ trả các kỳ thi trong items, KHÔNG tự tạo buổi ôn. Không có ảnh thì đọc lịch thi/việc từ instruction.",
   "Nếu có instruction (yêu cầu người dùng gõ kèm ảnh): làm theo khi chọn/lọc/đặt tên/gán ngày giờ, nhưng vẫn trả đúng một trong hai dạng JSON trên.",
   "Ảnh không đọc được hoặc không có gì để tạo: {\"type\":\"tasks\",\"items\":[]}.",
 ].join("\n");

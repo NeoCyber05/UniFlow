@@ -170,7 +170,7 @@ export const CourseManagerDialog = ({ boardId, open, onOpenChange }: CourseManag
     >
       <DialogContent className="sm:max-w-lg rounded-xl bg-white p-6 text-neutral-900">
         <DialogHeader>
-          <DialogTitle>{tr("course.inSemester")}</DialogTitle>
+          <DialogTitle>{tr("course.inWorkspace")}</DialogTitle>
           <DialogDescription>
             {tr("course.colorHint")}
           </DialogDescription>

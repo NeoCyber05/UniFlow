@@ -1,12 +1,12 @@
 import { getUserAppearance } from "@/lib/appearance";
-import { pickCurrentSemester } from "@/lib/semesters";
-import { getOrSeedSemesters } from "@/lib/semesters-db";
+import { pickCurrentWorkspace } from "@/lib/workspaces";
+import { getOrCreateWorkspaces } from "@/lib/workspaces-db";
 
 export const loadDashboard = async (userId: string | null) => {
-  const [appearance, currentSemester] = await Promise.all([
+  const [appearance, currentWorkspace] = await Promise.all([
     getUserAppearance(userId),
-    userId ? getOrSeedSemesters(userId).then(pickCurrentSemester) : null,
+    userId ? getOrCreateWorkspaces(userId).then(pickCurrentWorkspace) : null,
   ]);
 
-  return { appearance, currentSemesterId: currentSemester?.id ?? null } as const;
+  return { appearance, currentWorkspaceId: currentWorkspace?.id ?? null } as const;
 };

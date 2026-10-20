@@ -28,7 +28,7 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit }: CardCou
   const router = useRouter();
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
-  const { courseOptions, courseById, isSemesterBoard } = useBoardCourses(boardId);
+  const { courseOptions, courseById, isWorkspaceBoard } = useBoardCourses(boardId);
   const [open, setOpen] = useState(false);
 
   const { execute, isLoading } = useAction(setCardCourse, {
@@ -44,7 +44,7 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit }: CardCou
     onError: (error) => toast.error(error),
   });
 
-  if (!isSemesterBoard) {
+  if (!isWorkspaceBoard) {
     return null;
   }
 

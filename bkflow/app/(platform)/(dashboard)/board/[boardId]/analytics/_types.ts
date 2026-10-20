@@ -56,6 +56,6 @@ export type BoardAnalyticsViewProps = {
   insights: {
     overdueCards: OverdueCardInsight[];
   };
-  boardType: "SEMESTER" | "TEAM_PROJECT" | null;
+  boardType: "WORKSPACE" | "TEAM_PROJECT" | null;
   courseBreakdown: CoursePoint[];
 };

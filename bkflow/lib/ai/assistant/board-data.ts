@@ -63,7 +63,7 @@ export type AssistantCard = {
  *
  * @remarks
  * Hàm thực hiện truy vấn quan hệ sâu qua Prisma:
- * - Thông tin bảng: tiêu đề, loại bảng (`boardType`), học kỳ (`semester`).
+ * - Thông tin bảng: tiêu đề, loại bảng (`boardType`), workspace (`workspace`).
  * - Danh mục môn học (`courses`): mã môn, tên môn, số tín chỉ.
  * - Danh sách thành viên bảng (`members`): tên, quyền hạn (`role`).
  * - Danh sách cột (`lists`) và các thẻ (`cards`) còn hiệu lực (chưa bị xóa/lưu trữ).
@@ -84,7 +84,7 @@ export const loadBoardSnapshot = async (boardId: string) => {
         select: { id: true, name: true, code: true, credits: true },
         orderBy: [{ order: "asc" }, { createdAt: "asc" }],
       },
-      semester: { select: { title: true, startDate: true, endDate: true } },
+      workspace: { select: { title: true } },
       lists: {
         where: { archivedAt: null },
         orderBy: { order: "asc" },
@@ -229,7 +229,7 @@ export const buildBoardContext = (
   return [
     `Bảng: "${board.title}"`,
     `Loại bảng: ${board.boardType}`,
-    board.semester ? `Học kỳ: ${board.semester.title}` : null,
+    board.workspace ? `Workspace: ${board.workspace.title}` : null,
     board.courses.length > 0
       ? `Môn học: ${board.courses
           .map((course) =>

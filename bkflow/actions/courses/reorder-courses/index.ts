@@ -3,7 +3,7 @@
 import { auth } from "@/server/auth";
 
 import { createSafeAction } from "@/lib/create-safe-action";
-import { requireSemesterBoardEditor } from "@/lib/courses/course-guards";
+import { requireWorkspaceBoardEditor } from "@/lib/courses/course-guards";
 import { db } from "@/lib/db";
 
 import { ReorderCourses } from "./schema";
@@ -19,7 +19,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
   const { boardId, items } = data;
 
   try {
-    const guard = await requireSemesterBoardEditor({ boardId, userId });
+    const guard = await requireWorkspaceBoardEditor({ boardId, userId });
 
     if (guard.error) {
       return { error: guard.error };
