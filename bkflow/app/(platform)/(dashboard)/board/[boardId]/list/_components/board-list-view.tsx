@@ -136,18 +136,16 @@ export const BoardListView = ({
   // Dữ liệu theo thời hạn (Agenda + Việc nhóm) cho học kỳ
   const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, !isTeamBoard);
 
-  // Lọc theo cột; việc đã tích và cột "Xong" gộp vào một nhóm Xong ở cuối
+  // Lọc theo cột; nhóm Xong chỉ gom việc đã tích từ mọi cột, cột "Xong" trống thì ẩn
   const columnGroups = useMemo(() => {
     const open: MyTaskGroup[] = [];
     const done: MyTask[] = [];
     for (const group of listData?.groups ?? []) {
       const tasks = group.tasks.filter((task) => matchesFilters(task, filters, currentBoardMemberId));
-      if (getListStatus(group.label) === "done") {
-        done.push(...tasks);
-        continue;
-      }
+      const pending = tasks.filter((task) => !task.isCompleted);
       done.push(...tasks.filter((task) => task.isCompleted));
-      open.push({ ...group, tasks: tasks.filter((task) => !task.isCompleted) });
+      if (pending.length === 0 && getListStatus(group.label) === "done") continue;
+      open.push({ ...group, tasks: pending });
     }
     return [...open, { key: "done", label: "Xong", collapsed: true, tasks: done }];
   }, [listData?.groups, filters, currentBoardMemberId]);
