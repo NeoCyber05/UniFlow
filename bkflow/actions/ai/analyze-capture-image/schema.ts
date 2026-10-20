@@ -8,4 +8,6 @@ export const AnalyzeCaptureImage = z.object({
   image: z.string()
     .max(IMAGE_DATA_URL_MAX_LENGTH, { message: "Ảnh quá lớn." })
     .regex(/^data:image\/(png|jpeg|webp);base64,/, { message: "Chỉ hỗ trợ ảnh PNG, JPEG, WebP." }),
+  /** Yêu cầu gõ kèm ảnh, vd "chỉ lấy lịch thi", "đặt tên theo môn" */
+  prompt: z.optional(z.string().max(4_000)),
 });

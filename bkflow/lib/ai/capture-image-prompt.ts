@@ -14,5 +14,6 @@ export const CAPTURE_IMAGE_SYSTEM_PROMPT = [
   "- kind TASK = việc phải làm/nộp (date+start là hạn); kind EVENT = sự kiện diễn ra (thi, họp, buổi học; start/end là giờ diễn ra).",
   "- date YYYY-MM-DD; ngày tương đối (mai, thứ 6 tuần sau) tính theo today. Không rõ thì null. Không có giờ thì start/end null.",
   "- courseCode chỉ khi ảnh ghi rõ mã học phần, không thì null. Tối đa 30 việc.",
+  "Nếu có instruction (yêu cầu người dùng gõ kèm ảnh): làm theo khi chọn/lọc/đặt tên/gán ngày giờ, nhưng vẫn trả đúng một trong hai dạng JSON trên.",
   "Ảnh không đọc được hoặc không có gì để tạo: {\"type\":\"tasks\",\"items\":[]}.",
 ].join("\n");

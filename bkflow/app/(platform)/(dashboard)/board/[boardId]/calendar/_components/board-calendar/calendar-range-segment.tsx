@@ -141,7 +141,7 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
             segment.isRangeStart ? "rounded-l-md pl-3" : "rounded-l-none border-l-0 pl-1.5",
             segment.isRangeEnd ? "rounded-r-md pr-3" : "rounded-r-none border-r-0 pr-1.5",
             isResizingThisRange && "opacity-80 ring-2 ring-violet-300",
-            isUpdatingCardDate && "cursor-wait opacity-70",
+            isUpdatingCardDate && "cursor-wait",
           )}
         >
           {segment.isRangeStart && (

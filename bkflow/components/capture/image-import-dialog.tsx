@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const MAX_SIDE = 1600;
 
 /** Thu ảnh về ≤1600px JPEG: đủ nét cho OCR, nhỏ cho request. */
-const compressImage = async (file: Blob) => {
+export const compressImage = async (file: Blob) => {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -43,12 +43,17 @@ const cell = "w-full rounded border border-transparent bg-transparent px-1.5 py-
 export const ImageImportDialog = ({
   boardId,
   file,
+  prompt,
   onClose,
+  onImported,
 }: {
   boardId: string;
   /** Ảnh vừa dán/chọn. Caller chỉ mount khi có ảnh nên mỗi ảnh là một lần đọc mới. */
   file: Blob;
+  /** Yêu cầu gõ kèm ảnh, gửi cho AI cùng ảnh */
+  prompt?: string;
   onClose: () => void;
+  onImported?: () => void;
 }) => {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<"reading" | "review" | "saving" | "error">("reading");
@@ -67,7 +72,7 @@ export const ImageImportDialog = ({
         const image = await compressImage(file);
         if (cancelled) return;
         setPreview(image);
-        const result = await analyzeCaptureImage({ boardId, image });
+        const result = await analyzeCaptureImage({ boardId, image, ...(prompt ? { prompt } : {}) });
         if (cancelled) return;
         if (!result.data) throw new Error(result.error ?? tr("import.readError"));
         const { analysis } = result.data;
@@ -83,7 +88,7 @@ export const ImageImportDialog = ({
       }
     })();
     return () => { cancelled = true; };
-  }, [file, boardId]);
+  }, [file, boardId, prompt]);
 
   const chosenSessions = sessions.filter((row) => row.checked);
   const chosenItems = items.filter((row) => row.checked);
@@ -116,6 +121,7 @@ export const ImageImportDialog = ({
     toast.success(created === all ? tr("import.createdAll", { count: created }) : tr("import.createdSome", { created, existing: all - created }));
     // Nhập hàng loạt chạm nhiều view (list, lịch, môn): làm mới toàn bộ
     await queryClient.invalidateQueries();
+    onImported?.();
     onClose();
   };
 
@@ -133,6 +139,7 @@ export const ImageImportDialog = ({
         {status === "reading" && (
           <div className="flex flex-col items-center gap-3 py-10 text-sm text-neutral-500" role="status">
             {preview && <img src={preview} alt="" className="max-h-40 rounded-md border border-neutral-200 object-contain opacity-60" />}
+            {prompt && <p className="max-w-md text-center text-xs italic text-neutral-500">“{prompt}”</p>}
             <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{tr("import.reading")}</span>
           </div>
         )}

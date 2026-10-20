@@ -51,7 +51,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return { error: "Không có quyền truy cập." };
   }
 
-  const { boardId, image } = data;
+  const { boardId, image, prompt } = data;
 
   try {
     const permission = await requireBoardEditor({ boardId, userId });
@@ -70,7 +70,11 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
     const raw = await generateAiTextFromImage({
       system: CAPTURE_IMAGE_SYSTEM_PROMPT,
-      user: JSON.stringify({ today: getZonedDayKey(now, IMAGE_IMPORT_TIME_ZONE), timeZone: IMAGE_IMPORT_TIME_ZONE }),
+      user: JSON.stringify({
+        today: getZonedDayKey(now, IMAGE_IMPORT_TIME_ZONE),
+        timeZone: IMAGE_IMPORT_TIME_ZONE,
+        ...(prompt?.trim() ? { instruction: prompt.trim() } : {}),
+      }),
       image: { data: base64, mediaType },
     });
     const parsed = parseAiJson(raw, RawAnalysis, "AI chưa đọc được ảnh. Hãy thử ảnh rõ hơn.");

@@ -13,6 +13,7 @@ import { logger } from "@/lib/logger";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 import { generateAiText } from "@/lib/ai/client";
 import { db } from "@/lib/db";
+import { IMAGE_DATA_URL_MAX_LENGTH } from "@/lib/capture/image-import";
 
 /**
  * Giới hạn thời gian thực thi tối đa (timeout) cho Serverless Function là 60 giây,
@@ -45,7 +46,12 @@ const PostBody = z.object({
   message: z.object({
     role: z.literal("user"),
     parts: z
-      .array(z.object({ type: z.string(), text: z.string().optional() }))
+      .array(z.object({
+        type: z.string(),
+        text: z.string().optional(),
+        mediaType: z.string().optional(),
+        url: z.string().optional(),
+      }))
       .min(1),
   }),
 });
@@ -219,10 +225,21 @@ export async function POST(request: Request) {
     return jsonError("Chưa cấu hình Trợ lý AI. Vui lòng thêm GEMINI_API_KEY.", 503);
   }
 
+  const images = message.parts.filter((part) => part.type === "file");
+  if (
+    images.length > 1 ||
+    images.some((part) =>
+      !part.url ||
+      part.url.length > IMAGE_DATA_URL_MAX_LENGTH ||
+      !/^data:image\/(png|jpeg|webp);base64,/.test(part.url))
+  ) {
+    return jsonError("Chỉ đính kèm được một ảnh PNG, JPEG hoặc WebP.", 400);
+  }
+
   const text = message.parts
     .map((part) => (part.type === "text" ? part.text ?? "" : ""))
     .join("\n")
-    .trim();
+    .trim() || (images.length > 0 ? "Đọc ảnh đính kèm và giúp tôi tạo việc/lịch phù hợp." : "");
 
   if (!text) {
     return jsonError("Tin nhắn trống.", 400);
@@ -256,7 +273,14 @@ export async function POST(request: Request) {
   const userMessage: UIMessage = {
     id: generateMessageId(),
     role: "user",
-    parts: [{ type: "text", text }],
+    parts: [
+      { type: "text", text },
+      ...images.map((part) => ({
+        type: "file" as const,
+        mediaType: part.url!.slice("data:".length, part.url!.indexOf(";")),
+        url: part.url!,
+      })),
+    ],
   };
   const uiMessages = [...history, userMessage];
   const scope = { boardId: session.boardId, userId };
@@ -275,7 +299,11 @@ export async function POST(request: Request) {
       }
 
       try {
-        await saveAssistantMessages(scope, newMessages);
+        // Không lưu base64 ảnh vào lịch sử chat
+        await saveAssistantMessages(scope, newMessages.map((item) => ({
+          ...item,
+          parts: item.parts.filter((part) => part.type !== "file"),
+        })));
       } catch (error) {
         logger.error("[AI_ASSISTANT_SAVE_ERROR]", error, { action: "ai-assistant-save", boardId });
       }

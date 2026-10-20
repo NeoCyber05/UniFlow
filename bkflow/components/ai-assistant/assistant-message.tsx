@@ -369,6 +369,10 @@ const RenderPart = ({
     return <AssistantMarkdown text={part.text} />;
   }
 
+  if (part.type === "file" && part.mediaType.startsWith("image/")) {
+    return <img src={part.url} alt="Ảnh đính kèm" className="max-h-40 rounded-lg border object-contain" />;
+  }
+
   // AI SDK Core dynamic tool parts expose toolCallId + state
   if ("toolCallId" in part) {
     const toolName = part.type.replace(/^tool-/, "");
