@@ -113,6 +113,8 @@ export type ToolPolicyGate = {
   /** Tải thẻ trong phạm vi đã kiểm quyền của phiên; null nếu không có. */
   loadCard: (cardId: string) => Promise<TaskEditTarget | null>;
   applyEdit?: (edit: TaskEdit, card: TaskEditTarget, expectedUpdatedAt: string, toolCallId: string) => Promise<unknown>;
+  /** Người dùng đã bấm "Đồng ý" trên một đề xuất: chạy công cụ ghi thật (chỉ dùng ở endpoint áp dụng đề xuất). */
+  approved?: boolean;
 };
 
 /**
@@ -136,6 +138,7 @@ export const applyToolPolicy = <T extends Record<string, Tool>>(tools: T, gate: 
         if (cardId && !target) {
           return { ok: false, needsClarification: true, error: "Chưa xác định được thẻ cần áp dụng trên bảng hiện tại. Bạn muốn áp dụng cho thẻ nào?" } satisfies AiClarification;
         }
+        if (gate.approved) return execute(input, options);
         const { context, operation: command } = gate;
         const edit = toTaskEdit(name, input);
         if (edit?.operation === "edit_task_content" && target && requiresContentConfirmation(target.description, edit.payload.description)) operation = "replace_content";

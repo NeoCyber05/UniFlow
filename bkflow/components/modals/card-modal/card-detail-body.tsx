@@ -13,7 +13,6 @@ import { Description } from "./description";
 import { ChecklistsSection as Checklists } from "./checklists/checklists-section";
 import { AttachmentsSection as Attachments } from "./attachments/attachments-section";
 import { useAssistantTask } from "@/hooks/use-assistant-task";
-import { DependenciesSection as CardDependencies } from "./dependencies/dependencies-section";
 import type { BeforeCloseRef } from "./close-guard";
 import { getCardQueryOptions } from "./card-cache-utils";
 
@@ -29,7 +28,6 @@ const CardMainContent = ({
   return (
     <>
       <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
-      <CardDependencies data={cardData} canEdit={canEdit} />
       {canEdit && (
         <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>AI: Gợi ý checklist</Button>
       )}

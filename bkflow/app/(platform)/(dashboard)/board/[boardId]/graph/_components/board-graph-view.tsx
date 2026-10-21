@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
 
 import { toast } from "sonner";
+import { useLocalStorage } from "usehooks-ts";
 import { toPng } from "html-to-image";
 import { Info, Network, Sparkles, X } from "lucide-react";
 
@@ -12,6 +13,9 @@ import { useCardModal } from "@/hooks/use-card-modal";
 import { useAction } from "@/hooks/use-action";
 import { createCardDependency } from "@/actions/dependencies/create-card-dependency";
 import { deleteCardDependency } from "@/actions/dependencies/delete-card-dependency";
+import { rankAiPriorities } from "@/actions/ai/rank-ai-priorities";
+import { setCardCompleted } from "@/actions/cards/set-card-completed";
+import { applyCustomOrder, buildPriorityPlan, type CustomOrderItem } from "@/lib/boards/graph-priority";
 import { buildBoardExportFileName } from "@/lib/exports/filename";
 import { cn } from "@/lib/utils";
 import type { BoardTimelineBoardMember, BoardTimelineList } from "@/types";
@@ -23,6 +27,7 @@ import { GraphEdges } from "./graph-edges";
 import { GraphToolbar } from "./graph-toolbar";
 import { GraphLegend } from "./graph-legend";
 import { AutoChainDialog } from "./auto-chain-dialog";
+import { PriorityPanel } from "./priority-panel";
 
 type BoardGraphViewProps = {
   boardId: string;
@@ -44,8 +49,18 @@ export const BoardGraphView = ({
   const cardModal = useCardModal();
   const canEdit = currentMemberRole !== BoardMemberRole.VIEWER;
 
-  // Extract all cards
-  const allCards = useMemo(() => lists.flatMap((list) => list.cards), [lists]);
+  // Tick xong lạc quan: ghi đè theo revision lúc bấm, server trả bản mới (updatedAt đổi) thì tự hết hiệu lực
+  const [completionOverrides, setCompletionOverrides] = useState<Map<string, { value: boolean; updatedAt: string }>>(new Map());
+  const allCards = useMemo(
+    () =>
+      lists.flatMap((list) =>
+        list.cards.map((card) => {
+          const override = completionOverrides.get(card.id);
+          return override && override.updatedAt === card.updatedAt ? { ...card, isCompleted: override.value } : card;
+        }),
+      ),
+    [lists, completionOverrides],
+  );
 
   // Check initial connected cards
   const hasAnyConnections = useMemo(() => {
@@ -72,6 +87,18 @@ export const BoardGraphView = ({
   const [isDraggingConnect, setIsDraggingConnect] = useState(false);
   const [hoverTargetNode, setHoverTargetNode] = useState<GraphNode | null>(null);
   const [isAutoChainOpen, setIsAutoChainOpen] = useState(false);
+  // Nhớ theo từng bảng trên trình duyệt này: panel mở/đóng, cách xếp và kết quả AI gần nhất
+  // shortcut: chỉ lưu localStorage (không theo người dùng qua thiết bị khác), chuyển sang DB nếu cần đồng bộ.
+  const [isPriorityOpen, setIsPriorityOpen] = useLocalStorage(`uniflow:graph-priority-open:${boardId}`, true);
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
+  const [isGliding, setIsGliding] = useState(false);
+  const [sortMode, setSortMode] = useLocalStorage<"auto" | "ai">(`uniflow:graph-priority-mode:${boardId}`, "auto");
+  const [aiOrder, setAiOrder] = useLocalStorage<{ order: CustomOrderItem[]; summary: string; request: string } | null>(
+    `uniflow:graph-priority-ai:${boardId}`,
+    null,
+  );
+  const lastAiRequestRef = useRef("");
+  const [recentlyUnlocked, setRecentlyUnlocked] = useState<Set<string>>(new Set());
 
   // Server actions for dependencies
   const { execute: executeCreateDependency } = useAction(createCardDependency, {
@@ -102,6 +129,70 @@ export const BoardGraphView = ({
   const layout = useMemo(() => {
     return computeGraphLayout(allCards, filterMode);
   }, [allCards, filterMode]);
+
+  // Thứ tự nên làm: số trên thẻ, chuỗi chính và panel gợi ý cùng đọc từ đây
+  const plan = useMemo(() => buildPriorityPlan(allCards), [allCards]);
+  const readyTasks = useMemo(
+    () => (sortMode === "ai" && aiOrder ? applyCustomOrder(plan.ready, aiOrder.order) : plan.ready),
+    [sortMode, aiOrder, plan.ready],
+  );
+  const rankById = useMemo(() => new Map(readyTasks.map((task) => [task.card.id, task.rank])), [readyTasks]);
+  const waitingIds = useMemo(() => new Set(plan.waiting.map((task) => task.card.id)), [plan.waiting]);
+  const criticalEdgeKeys = useMemo(
+    () => new Set(plan.criticalPath.slice(1).map((id, index) => `${plan.criticalPath[index]}->${id}`)),
+    [plan.criticalPath],
+  );
+
+  const { execute: executeRankAi, isLoading: isRankingAi } = useAction(rankAiPriorities, {
+    onSuccess: (result) => setAiOrder({ ...result, request: lastAiRequestRef.current }),
+    onError: (error) => toast.error(error),
+  });
+
+  const rankWithAi = (request: string) => {
+    if (plan.ready.length === 0) return;
+    lastAiRequestRef.current = request;
+    executeRankAi({ boardId, cardIds: plan.ready.map((task) => task.card.id), request });
+  };
+
+  // Nhãn "Vừa mở khóa" chỉ sáng một lúc
+  useEffect(() => {
+    if (recentlyUnlocked.size === 0) return;
+    const timer = window.setTimeout(() => setRecentlyUnlocked(new Set()), 4000);
+    return () => window.clearTimeout(timer);
+  }, [recentlyUnlocked]);
+
+  const setCompletion = async (cardId: string, value: boolean) => {
+    const card = allCards.find((item) => item.id === cardId);
+    if (!card) return;
+    const remember = (next: { value: boolean; updatedAt: string } | null) =>
+      setCompletionOverrides((current) => {
+        const copy = new Map(current);
+        if (next) copy.set(cardId, next);
+        else copy.delete(cardId);
+        return copy;
+      });
+    remember({ value, updatedAt: card.updatedAt });
+
+    if (value) {
+      // Việc chỉ còn chờ đúng thẻ này sẽ được mở khóa
+      const unlocked = plan.waiting
+        .filter((task) => task.waitingOn.length === 1 && task.waitingOn[0].id === cardId)
+        .map((task) => task.card);
+      setRecentlyUnlocked(new Set(unlocked.map((item) => item.id)));
+      toast.success(`Đã xong "${card.title}"`, {
+        description: unlocked.length > 0 ? `Mở khóa ${unlocked.length} việc: ${unlocked.map((item) => item.title).join(", ")}` : undefined,
+        action: { label: "Hoàn tác", onClick: () => void setCompletion(cardId, false) },
+      });
+    }
+
+    const result = await setCardCompleted({ cardId, value });
+    if (result.error) {
+      remember(null);
+      toast.error(result.error);
+      return;
+    }
+    router.refresh();
+  };
 
   // Chain selection
   const chain = useMemo(() => {
@@ -138,6 +229,39 @@ export const BoardGraphView = ({
       handleFitView();
     }
   }, [handleFitView, allCards.length]);
+
+  // Đưa thẻ vào giữa vùng nhìn (trừ phần panel bên phải) và chọn nó để sáng cả chuỗi
+  useEffect(() => {
+    if (!pendingFocusId || !containerRef.current) return;
+    const node = layout.nodeMap.get(pendingFocusId);
+    if (!node) return;
+    const { clientWidth, clientHeight } = containerRef.current;
+    const visibleWidth = clientWidth - (isPriorityOpen && clientWidth > 720 ? 356 : 0);
+    // Đọc zoom mới nhất: fit-view cùng lượt render (khi vừa bật "Tất cả") có thể vừa đổi zoom
+    setZoom((currentZoom) => {
+      setPan({
+        x: Math.round(visibleWidth / 2 - (node.x + node.width / 2) * currentZoom),
+        y: Math.round(clientHeight / 2 - (node.y + node.height / 2) * currentZoom),
+      });
+      return currentZoom;
+    });
+    setActiveCardId(pendingFocusId);
+    setPendingFocusId(null);
+  }, [pendingFocusId, layout.nodeMap, isPriorityOpen]);
+
+  // Chỉ lượt focus mới trượt mượt; kéo/cuộn tay vẫn đi theo con trỏ ngay
+  useEffect(() => {
+    if (!isGliding) return;
+    const timer = window.setTimeout(() => setIsGliding(false), 450);
+    return () => window.clearTimeout(timer);
+  }, [isGliding]);
+
+  const focusCard = (cardId: string) => {
+    // Việc chưa nối với ai bị ẩn ở chế độ "Có liên kết": bật "Tất cả" rồi mới focus
+    if (!layout.nodeMap.has(cardId)) setFilterMode("all");
+    setIsGliding(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    setPendingFocusId(cardId);
+  };
 
   const handleZoomIn = () => setZoom((z) => Math.min(Number((z + 0.15).toFixed(2)), 1.8));
   const handleZoomOut = () => setZoom((z) => Math.max(Number((z - 0.15).toFixed(2)), 0.4));
@@ -388,6 +512,8 @@ export const BoardGraphView = ({
     if (!container) return;
 
     const handleNativeWheel = (e: WheelEvent) => {
+      // Panel gợi ý tự cuộn, không kéo canvas
+      if ((e.target as HTMLElement | null)?.closest?.("[data-graph-overlay]")) return;
       // Prevent browser full page zoom and outer page scroll
       e.preventDefault();
 
@@ -549,7 +675,7 @@ export const BoardGraphView = ({
             </h3>
             <p className="mt-1.5 max-w-md text-xs text-neutral-500">
               {filterMode === "connected_only"
-                ? "Bạn có thể mở bất kỳ thẻ nào, cuộn xuống mục 'Phụ thuộc' để liên kết thẻ trước/thẻ sau, hoặc chuyển sang chế độ xem tất cả thẻ."
+                ? "Chuyển sang xem tất cả thẻ rồi kéo nút + bên phải một thẻ sang thẻ làm sau, hoặc dùng \"Nối chuỗi tự động\"."
                 : "Hãy tạo công việc mới trên bảng để bắt đầu vẽ sơ đồ mạng lưới phụ thuộc."}
             </p>
             {filterMode === "connected_only" && (
@@ -571,6 +697,7 @@ export const BoardGraphView = ({
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "0 0",
+            transition: isGliding ? "transform 420ms cubic-bezier(0.23, 1, 0.32, 1)" : undefined,
             width: `${layout.width}px`,
             height: `${layout.height}px`,
           }}
@@ -582,12 +709,26 @@ export const BoardGraphView = ({
             width={layout.width}
             height={layout.height}
             selectedEdgeKeys={chain.connectedEdgeKeys}
+            criticalEdgeKeys={criticalEdgeKeys}
             hasSelection={Boolean(activeCardId)}
             canEdit={canEdit}
             isConnectingActive={Boolean(connectingSourceNode)}
             connectingLine={connectingLine}
             onDeleteEdge={handleDeleteEdge}
           />
+
+          {/* Nhãn bước: cột trái làm trước, càng sang phải càng phụ thuộc nhiều */}
+          {layout.columns.length > 1 &&
+            layout.columns.map((column) => (
+              <div
+                key={column.level}
+                style={{ position: "absolute", left: column.x, top: 10, width: column.width }}
+                className="pointer-events-none flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500"
+              >
+                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-slate-700">{column.title}</span>
+                <span className="tabular-nums text-slate-400">{column.nodeCount}</span>
+              </div>
+            ))}
 
           {/* Graph Nodes */}
           {layout.nodes.map((node) => {
@@ -615,6 +756,8 @@ export const BoardGraphView = ({
                   isAncestor={isAncestor}
                   isDescendant={isDescendant}
                   isDimmed={isDimmed}
+                  priorityRank={rankById.get(node.card.id)}
+                  isWaiting={waitingIds.has(node.card.id)}
                   canEdit={canEdit}
                   isConnectingSource={connectingSourceNode?.card.id === node.card.id}
                   isConnectingHoverTarget={hoverTargetNode?.card.id === node.card.id}
@@ -633,6 +776,26 @@ export const BoardGraphView = ({
             );
           })}
         </div>
+
+        <PriorityPanel
+          plan={plan}
+          readyTasks={readyTasks}
+          canEdit={canEdit}
+          sortMode={sortMode}
+          onSortModeChange={setSortMode}
+          aiSummary={sortMode === "ai" ? aiOrder?.summary : undefined}
+          hasAiOrder={Boolean(aiOrder)}
+          lastAiRequest={aiOrder?.request}
+          isRankingAi={isRankingAi}
+          onRankWithAi={rankWithAi}
+          recentlyUnlocked={recentlyUnlocked}
+          onComplete={(cardId) => void setCompletion(cardId, true)}
+          open={isPriorityOpen}
+          onOpenChange={setIsPriorityOpen}
+          focusedCardId={activeCardId}
+          onFocusCard={focusCard}
+          onOpenCard={(cardId) => cardModal.onOpen(cardId)}
+        />
 
         {/* Selected Card Chain HUD Info Banner */}
         {activeCard && (

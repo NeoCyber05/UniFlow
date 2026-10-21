@@ -1,6 +1,6 @@
 "use client";
 
-import { Columns3, Rows3 } from "lucide-react";
+import { Columns3, LayoutPanelLeft, Rows3 } from "lucide-react";
 import { tr } from "@/lib/i18n";
 
 import { getTaskLayoutHref, type TaskLayout } from "@/lib/my-tasks/task-layout";
@@ -14,12 +14,14 @@ export const TaskLayoutSwitcher = ({ boardId, layout }: { boardId: string; layou
   return (
     <nav aria-label={tr("tasks.layoutLabel")} className="inline-flex shrink-0 rounded-xl bg-neutral-100 p-1 text-xs font-medium">
       {([
-        ["rows", tr("tasks.layoutRows"), Rows3],
-        ["columns", tr("tasks.layoutColumns"), Columns3],
-      ] as const).map(([value, label, Icon]) => (
+        ["rows", tr("tasks.layoutRows"), Rows3, undefined],
+        ["columns", tr("tasks.layoutColumns"), Columns3, undefined],
+        ["split", tr("tasks.layoutSplit"), LayoutPanelLeft, tr("tasks.layoutSplitHint")],
+      ] as const).map(([value, label, Icon, hint]) => (
         <Link
           key={value}
           href={getTaskLayoutHref(boardId, value, searchParams.toString())}
+          title={hint}
           aria-current={layout === value ? "page" : undefined}
           onClick={(event) => { if (layout === value) event.preventDefault(); }}
           className={cn(
@@ -27,7 +29,7 @@ export const TaskLayoutSwitcher = ({ boardId, layout }: { boardId: string; layou
             layout === value ? "bg-white text-neutral-900 shadow-sm ring-1 ring-neutral-200/70" : "text-neutral-500 hover:text-neutral-900",
           )}
         >
-          <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+          <Icon aria-hidden="true" className={cn("h-3.5 w-3.5", layout === value && "text-violet-600")} />
           {label}
         </Link>
       ))}

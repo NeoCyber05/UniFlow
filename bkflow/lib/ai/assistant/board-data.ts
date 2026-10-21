@@ -27,6 +27,8 @@ export type AssistantSession = {
   context?: AssistantContext;
   /** Operation do thao tác UI/lệnh xác định; thiếu = hỏi đáp/đề xuất. */
   operation?: AiOperation;
+  /** Đề xuất đã được người dùng đồng ý: công cụ ghi chạy thật thay vì trả đề xuất. */
+  approved?: boolean;
 };
 
 /**

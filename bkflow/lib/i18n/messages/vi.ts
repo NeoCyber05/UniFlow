@@ -161,6 +161,8 @@ export const vi = {
   "tasks.layoutLabel": "Bố cục việc cần làm",
   "tasks.layoutRows": "Hàng",
   "tasks.layoutColumns": "Cột",
+  "tasks.layoutSplit": "Cột + Lịch",
+  "tasks.layoutSplitHint": "Bảng cột và lịch cạnh nhau, kéo thẻ sang lịch để xếp giờ",
   "task.event": "Sự kiện",
   "task.markIncomplete": "Đánh dấu chưa xong",
   "task.markComplete": "Đánh dấu đã xong",

@@ -121,6 +121,18 @@ test("explicit content edit uses undo policy", async () => {
   assert.equal(applied.length, 1);
 });
 
+test("approved proposal runs the real tool, but still only on cards in scope", async () => {
+  const calls: unknown[] = [];
+  const stub = { createDeadlineCard: tool({ inputSchema: z.object({ title: z.string() }), execute: async (input) => { calls.push(input); return { ok: true, action: "created" }; } }),
+    archiveCard: tool({ inputSchema: z.object({ cardId: z.string() }), execute: async () => { calls.push("archive"); return { ok: true, action: "archived" }; } }) };
+  const proposed = applyToolPolicy(stub, { loadCard: async () => null }) as any;
+  assert.equal((await proposed.createDeadlineCard.execute({ title: "A" }, { toolCallId: "t", messages: [] })).action, "proposal");
+  const approved = applyToolPolicy(stub, { loadCard: async () => null, approved: true }) as any;
+  assert.equal((await approved.createDeadlineCard.execute({ title: "A" }, { toolCallId: "t", messages: [] })).action, "created");
+  assert.equal((await approved.archiveCard.execute({ cardId: "other-board" }, { toolCallId: "t", messages: [] })).needsClarification, true);
+  assert.deepEqual(calls, [{ title: "A" }]);
+});
+
 test("substantial task content replacement always becomes an explicit preview", async () => {
   const target = { id: "c1", title: "Notes", description: "Important notes. ".repeat(30), descriptionUpdatedAt: new Date(REV), updatedAt: new Date(REV), dueDate: null, deadlineOn: null, scheduledOn: null, scheduledStartAt: null, scheduledEndAt: null };
   const definition = tool({ inputSchema: z.object({ cardId: z.string(), description: z.string() }), execute: async (): Promise<{ ok: boolean }> => { throw new Error("must not write"); } });

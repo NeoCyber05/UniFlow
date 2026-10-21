@@ -27,6 +27,10 @@ type GraphNodeComponentProps = {
   isAncestor: boolean;
   isDescendant: boolean;
   isDimmed: boolean;
+  /** Thứ tự nên làm (chỉ việc làm được ngay). */
+  priorityRank?: number;
+  /** Còn chờ việc khác chưa xong. */
+  isWaiting?: boolean;
   canEdit?: boolean;
   isConnectingSource?: boolean;
   isConnectingHoverTarget?: boolean;
@@ -47,6 +51,8 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
   isAncestor,
   isDescendant,
   isDimmed,
+  priorityRank,
+  isWaiting = false,
   canEdit = false,
   isConnectingSource = false,
   isConnectingHoverTarget = false,
@@ -111,6 +117,8 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
         "hover:shadow-md hover:border-violet-300",
         // Status border accents
         card.isCompleted && "border-emerald-200 bg-emerald-50/30",
+        isWaiting && "border-dashed border-neutral-300 bg-neutral-50/90",
+        priorityRank === 1 && "border-violet-300 shadow-md shadow-violet-200/60",
         node.hasConflict && "border-rose-300 bg-rose-50/20 ring-1 ring-rose-200",
         // Interactive Highlights
         isSelected && "ring-2 ring-violet-600 shadow-lg scale-[1.02] z-20 bg-white",
@@ -123,6 +131,23 @@ export const GraphNodeComponent = memo(function GraphNodeComponent({
         isConnectionCandidate && !isConnectingHoverTarget && "border-dashed border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50/20",
       )}
     >
+      {/* Số thứ tự nên làm; số 1 có vòng sáng để mắt tìm thấy ngay */}
+      {priorityRank !== undefined && (
+        <Hint description={priorityRank === 1 ? "Nên làm việc này trước tiên" : `Thứ tự nên làm: ${priorityRank}`} side="top">
+          <span
+            className={cn(
+              "absolute -left-2.5 -top-2.5 z-30 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[11px] font-bold tabular-nums text-white shadow-md ring-2 ring-white",
+              priorityRank === 1 ? "bg-violet-600" : priorityRank <= 3 ? "bg-neutral-900" : "bg-neutral-400",
+            )}
+          >
+            {priorityRank === 1 && (
+              <span aria-hidden="true" className="absolute inset-0 rounded-full bg-violet-500 opacity-60 motion-safe:animate-ping" />
+            )}
+            <span className="relative">{priorityRank}</span>
+          </span>
+        </Hint>
+      )}
+
       {/* Top row: tags, course, and modal button */}
       <div className="flex items-center justify-between gap-1 text-[11px]">
         <div className="flex min-w-0 items-center gap-1.5 truncate">

@@ -10,9 +10,9 @@ export const PAD_Y = 40;
 
 const getLevelTitle = (level: number, maxLevel: number): string => {
   if (maxLevel === 0) return "Tất cả công việc";
-  if (level === 0) return "Cấp độ 1: Khởi đầu";
-  if (level === maxLevel) return `Cấp độ ${level + 1}: Nghiệm thu / Đích`;
-  return `Cấp độ ${level + 1}: Chuyển tiếp`;
+  if (level === 0) return "Bước 1 · làm trước";
+  if (level === maxLevel) return `Bước ${level + 1} · cuối`;
+  return `Bước ${level + 1}`;
 };
 
 export const computeGraphLayout = (

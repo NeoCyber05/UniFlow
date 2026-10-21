@@ -4,10 +4,7 @@ import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, CalendarClock, Layers, ListTodo, Plus, Sparkles } from "lucide-react";
-import { motion } from "motion/react";
-import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
-import { useSearchParams } from "@/web/shims/next-navigation";
+import { AlertCircle, ListTodo, Plus, Sparkles } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 
 import { SmartCaptureDialog } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/smart-capture-dialog";
@@ -96,18 +93,7 @@ export const BoardListView = ({
   error,
 }: BoardListViewProps) => {
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
-  const groupParam = searchParams.get("group");
-  const [storedGroupMode, setStoredGroupMode] = useLocalStorage<ListGroupMode>(
-    `uniflow:list-group-mode:${boardId}`,
-    isTeamBoard ? "list" : "agenda",
-  );
-
-  const groupMode: ListGroupMode = isTeamBoard
-    ? "list"
-    : groupParam === "list" || groupParam === "agenda"
-      ? groupParam
-      : storedGroupMode;
+  const groupMode: ListGroupMode = isTeamBoard ? "list" : "agenda";
 
   const { taskId, openTask, closeTask } = useTaskPanelParam();
   const { courseOptions } = useBoardCourses(boardId);
@@ -167,7 +153,6 @@ export const BoardListView = ({
   const pendingCount = pendingAgendaGroups.reduce((sum, group) => sum + group.tasks.length, 0);
   const overdueCount = agendaGroups.find((group) => group.key === "overdue")?.tasks.length ?? 0;
   const showInsights = !isTeamBoard && !taskId && hasAnyAgendaTask;
-  const slide = useTempoTransition(spring.selection);
 
   // Chip nhảy tới nhóm: mở nhóm nếu đang gập rồi cuộn tới
   const jumpToGroup = (key: string) => {
@@ -212,47 +197,8 @@ export const BoardListView = ({
               </p>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* Hàng = nhóm theo hạn; muốn xem theo cột thì sang layout Cột (Kanban) */}
             <TaskLayoutSwitcher boardId={boardId} layout="rows" />
-            {!isTeamBoard && <span aria-hidden="true" className="h-5 w-px bg-neutral-200" />}
-            {/* Chế độ nhóm: nền trắng trượt giữa hai lựa chọn */}
-            {!isTeamBoard && (
-              <ReducedMotionConfig>
-                <div
-                  role="radiogroup"
-                  aria-label="Cách nhóm việc"
-                  className="inline-flex shrink-0 items-center rounded-xl bg-neutral-100 p-1 text-xs font-medium"
-                >
-                  {([
-                    ["agenda", "Theo hạn", CalendarClock],
-                    ["list", "Theo cột", Layers],
-                  ] as const).map(([mode, label, Icon]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      role="radio"
-                      aria-checked={groupMode === mode}
-                      onClick={() => setStoredGroupMode(mode)}
-                      className={cn(
-                        "relative flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-200",
-                        groupMode === mode ? "text-neutral-900" : "text-neutral-500 hover:text-neutral-900",
-                      )}
-                    >
-                      {groupMode === mode && (
-                        <motion.span
-                          layoutId={`list-group-mode-${boardId}`}
-                          transition={slide}
-                          className="absolute inset-0 rounded-lg bg-white shadow-sm ring-1 ring-neutral-200/70"
-                        />
-                      )}
-                      <Icon className={cn("relative z-10 h-3.5 w-3.5", groupMode === mode && "text-violet-600")} />
-                      <span className="relative z-10">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </ReducedMotionConfig>
-            )}
-            </div>
           </header>
 
           {/* Chip nhảy nhanh tới nhóm theo độ gấp */}

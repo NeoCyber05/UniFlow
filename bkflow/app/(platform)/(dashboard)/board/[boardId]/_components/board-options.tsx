@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
-import { Download, LayoutPanelLeft, MoreHorizontal, Trash2, X } from "lucide-react";
+import { Download, MoreHorizontal, Trash2, X } from "lucide-react";
 import type { Label, List } from "@prisma/client";
 
 import { deleteBoard } from "@/actions/boards/delete-board";
@@ -84,16 +84,6 @@ export const BoardOptions = ({
               aria-label="Đóng"
             >
               <X className="h-4 w-4" />
-            </Button>
-          </PopoverClose>
-          <PopoverClose asChild>
-            <Button
-              variant="ghost"
-              onClick={() => router.push(`/board/${id}/split`)}
-              className="h-9 w-full justify-start gap-x-2 rounded-none px-4 text-sm font-normal"
-            >
-              <LayoutPanelLeft className="h-4 w-4 text-neutral-500" />
-              Chia đôi với Lịch
             </Button>
           </PopoverClose>
           <PopoverClose asChild>

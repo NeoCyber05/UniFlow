@@ -27,7 +27,8 @@ export const WorkspaceIconPicker = ({ icon, color, title, onChange, size = "md" 
       <PopoverTrigger type="button" aria-label={tr("workspace.pickIcon")} className="rounded-md focus-visible:outline-2 focus-visible:outline-ring">
         <WorkspaceIcon icon={icon} color={color} title={title} size={size} />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3">
+      {/* Submit của ô emoji tự nhập nổi qua portal tới form ngoài (form tạo workspace): chặn lại */}
+      <PopoverContent align="start" className="w-80 space-y-3" onSubmit={(event) => event.stopPropagation()}>
         <div role="tablist" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1 text-xs font-medium">
           {(["emoji", "icon"] as const).map((value) => (
             <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ExternalLink,
   GitBranch,
   ListChecks,
@@ -14,12 +15,18 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { Button } from "@/components/ui/button";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
-import type { AiOperation } from "@/lib/ai/assistant/policy";
+import type { AiOperation, AiProposal } from "@/lib/ai/assistant/policy";
 import type { AssistantMutationOutput } from "@/lib/ai/assistant/tools";
+import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@/web/shims/next-navigation";
 
+import { AiLogo } from "./ai-logo";
 import { AssistantMarkdown } from "./assistant-markdown";
 import { TaskEditProposal, AiEditUndoButton } from "./task-edit-controls";
 
@@ -78,6 +85,107 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
 };
 
 const isProposal = (output: unknown) => (output as { action?: string } | null)?.action === "proposal";
+
+const PROPOSAL_HEADINGS: Record<string, string> = {
+  createDeadlineCard: "Tạo việc mới",
+  createRecurringSchedule: "Tạo lịch lặp lại",
+  batchCreateCards: "Tạo nhiều việc",
+  createCardChecklist: "Thêm checklist",
+  moveCard: "Chuyển cột",
+  archiveCard: "Lưu trữ thẻ",
+  createCardDependency: "Nối phụ thuộc",
+  deleteCardDependency: "Gỡ phụ thuộc",
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "Tiêu đề", dueDate: "Hạn chót", startDate: "Bắt đầu", deadlineOn: "Hạn (ngày)", scheduledOn: "Ngày dự định",
+  listTitle: "Cột", destinationListTitle: "Sang cột", time: "Giờ", frequency: "Lặp lại", daysCount: "Số buổi",
+  blockerCard: "Làm trước", blockedCard: "Làm sau", isCompleted: "Hoàn thành", description: "Mô tả",
+};
+const FREQUENCY: Record<string, string> = { daily: "Mỗi ngày", weekdays: "Thứ 2 – Thứ 6", custom_days: "Các thứ đã chọn" };
+const DATE_FIELDS = new Set(["dueDate", "startDate"]);
+const formatDate = (value: string) => new Date(value).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
+
+/** Xem trước một đề xuất chưa có đường sửa thẻ (tạo việc, chuyển cột…); bấm "Đồng ý" mới ghi dữ liệu. */
+const ToolProposal = ({ proposal, toolCallId, boardId, onOpenCard }: { proposal: AiProposal; toolCallId: string; boardId?: string; onOpenCard: (cardId: string) => void }) => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [result, setResult] = useState<AssistantMutationOutput | null>(null);
+  const input = proposal.input;
+  const heading = PROPOSAL_HEADINGS[proposal.tool] ?? OPERATION_LABELS[proposal.operation];
+  const name = typeof input.title === "string" ? input.title : proposal.target?.title;
+  const rows = Object.entries(FIELD_LABELS).flatMap(([key, label]) => {
+    const value = input[key];
+    if (value === undefined || value === null || value === "") return [];
+    const text = key === "frequency" ? FREQUENCY[String(value)] ?? String(value)
+      : DATE_FIELDS.has(key) ? formatDate(String(value))
+      : typeof value === "boolean" ? (value ? "Có" : "Không") : String(value);
+    return [[label, text] as const];
+  });
+  if (proposal.target) rows.unshift(["Thẻ", proposal.target.title]);
+  const items = [
+    ...((input.checklistItems ?? input.items ?? []) as string[]),
+    ...((input.cards ?? []) as { title: string; dueDate?: string }[]).map((card) => card.dueDate ? `${card.title} · ${formatDate(card.dueDate)}` : card.title),
+  ];
+
+  const apply = async () => {
+    if (busy || result || !boardId) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/ai/proposals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boardId, tool: proposal.tool, input, toolCallId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      });
+      const output = await response.json().catch(() => ({}));
+      setResult(response.ok ? output : { ok: false, error: output.error || "Chưa áp dụng được đề xuất." });
+      if (response.ok && output.ok) {
+        void queryClient.invalidateQueries({ queryKey: ["board-calendar", boardId] });
+        void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+        router.refresh();
+      }
+    } catch {
+      setResult({ ok: false, error: "Mất kết nối. Thử lại sau." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (result && result.ok !== false) return <ActionCard output={result} onOpenCard={onOpenCard} />;
+  if (dismissed) return <p className="text-xs text-muted-foreground">Đã bỏ qua đề xuất: {heading}{name ? ` · ${name}` : ""}</p>;
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-violet-500/30 bg-violet-500/5 text-xs">
+      <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-violet-500/10">
+        <Sparkles className="size-3.5 shrink-0 text-violet-600" />
+        <span className="min-w-0 flex-1 truncate font-medium">{heading}{name ? `: ${name}` : ""}</span>
+        <span className="shrink-0 text-violet-700 dark:text-violet-300">{open ? "Ẩn" : "Xem trước"}</span>
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open ? (
+        <div className="space-y-2 border-t border-violet-500/20 px-3 py-2.5">
+          {rows.length > 0 ? (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              {rows.map(([label, text]) => (
+                <div key={label} className="contents"><dt className="text-muted-foreground">{label}</dt><dd className="whitespace-pre-wrap break-words">{text}</dd></div>
+              ))}
+            </dl>
+          ) : null}
+          {items.length > 0 ? <ul className="list-disc space-y-0.5 pl-4">{items.map((item, index) => <li key={index}>{item}</li>)}</ul> : null}
+          {proposal.confirmation === "explicit" ? <p className="text-amber-700 dark:text-amber-400">Thao tác này khó hoàn tác, hãy kiểm tra kỹ.</p> : null}
+          {result && !result.ok ? <p role="alert" className="text-destructive">{"error" in result ? result.error : "Chưa áp dụng được đề xuất."}</p> : null}
+          <div className="flex gap-2 pt-1">
+            <Button type="button" size="sm" disabled={busy || !boardId} onClick={() => void apply()}>{busy ? "Đang áp dụng…" : "Đồng ý"}</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setDismissed(true)}>Bỏ qua</Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 /**
  * Component hiển thị Thẻ hành động (Action Card) trực quan sau khi Agent thực thi công cụ mutation.
@@ -357,9 +465,11 @@ const ToolStatus = ({ toolName, state, proposal }: { toolName: string; state: st
  */
 const RenderPart = ({
   part,
+  boardId,
   onOpenCard,
 }: {
   part: MessagePart;
+  boardId?: string;
   onOpenCard: (cardId: string) => void;
 }) => {
   if (part.type === "text") {
@@ -382,7 +492,9 @@ const RenderPart = ({
       <div className="space-y-2">
         <ToolStatus toolName={toolName} state={part.state} proposal={part.state === "output-available" && isProposal(part.output)} />
         {isMutation && part.state === "output-available" ? (
-          isProposal(part.output) ? <TaskEditProposal proposal={part.output as import("@/lib/ai/assistant/policy").AiProposal} toolCallId={part.toolCallId} /> : <ActionCard
+          isProposal(part.output) ? (part.output as AiProposal).edit
+            ? <TaskEditProposal proposal={part.output as AiProposal} toolCallId={part.toolCallId} />
+            : <ToolProposal proposal={part.output as AiProposal} toolCallId={part.toolCallId} boardId={boardId} onOpenCard={onOpenCard} /> : <ActionCard
             output={part.output as AssistantMutationOutput}
             onOpenCard={onOpenCard}
           />
@@ -403,9 +515,11 @@ const RenderPart = ({
  */
 export const AssistantMessage = ({
   message,
+  boardId,
   onOpenCard,
 }: {
   message: BoardAssistantUIMessage;
+  boardId?: string;
   onOpenCard: (cardId: string) => void;
 }) => {
   const isAssistant = message.role === "assistant";
@@ -418,9 +532,7 @@ export const AssistantMessage = ({
       )}
     >
       {isAssistant ? (
-        <div className="mt-0.5 flex size-7 shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-sky-500 text-white shadow-sm">
-          <Sparkles className="size-3.5" />
-        </div>
+        <AiLogo className="mt-0.5 size-7 select-none shadow-sm" />
       ) : null}
 
       <div
@@ -435,6 +547,7 @@ export const AssistantMessage = ({
           <RenderPart
             key={`${message.id}-part-${index}`}
             part={part}
+            boardId={boardId}
             onOpenCard={onOpenCard}
           />
         ))}

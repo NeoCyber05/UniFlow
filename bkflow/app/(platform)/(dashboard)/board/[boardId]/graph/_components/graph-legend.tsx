@@ -39,6 +39,14 @@ export const GraphLegend = memo(function GraphLegend({ stats }: GraphLegendProps
       {/* Visual Guide / Legends */}
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-500">
         <div className="flex items-center gap-1">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-violet-600 text-[9px] font-bold text-white">1</span>
+          <span>Thứ tự nên làm</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="h-0 w-4 border-t-2 border-dashed border-violet-600" />
+          <span>Chuỗi dài nhất</span>
+        </div>
+        <div className="flex items-center gap-1">
           <span className="h-2 w-3 rounded-full bg-slate-400" />
           <span>Luồng chờ</span>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import type { GraphEdge } from "../_types";
 
@@ -9,6 +10,8 @@ type GraphEdgesProps = {
   width: number;
   height: number;
   selectedEdgeKeys: Set<string>;
+  /** Cạnh trên chuỗi dài nhất còn lại: vẽ dòng chảy để thấy đường đi chính. */
+  criticalEdgeKeys?: Set<string>;
   hasSelection: boolean;
   canEdit?: boolean;
   isConnectingActive?: boolean;
@@ -26,12 +29,14 @@ export const GraphEdges = memo(function GraphEdges({
   width,
   height,
   selectedEdgeKeys,
+  criticalEdgeKeys,
   hasSelection,
   canEdit,
   isConnectingActive = false,
   connectingLine,
   onDeleteEdge,
 }: GraphEdgesProps) {
+  const reduceMotion = useReducedMotion();
   return (
     <svg
       aria-hidden="true"
@@ -97,6 +102,7 @@ export const GraphEdges = memo(function GraphEdges({
       {/* Render Existing Edges */}
       {edges.map((edge) => {
         const isSelected = selectedEdgeKeys.has(edge.key);
+        const isCritical = !hasSelection && Boolean(criticalEdgeKeys?.has(edge.key));
         const isDimmed = hasSelection && !isSelected;
 
         const dx = Math.max(48, Math.abs(edge.x2 - edge.x1) * 0.45);
@@ -118,6 +124,12 @@ export const GraphEdges = memo(function GraphEdges({
           strokeColor = "#10b981";
           markerId = "graph-arrow-completed";
           strokeWidth = 2;
+        }
+
+        if (isCritical && !edge.hasConflict) {
+          strokeColor = "#7c3aed";
+          markerId = "graph-arrow-highlight";
+          strokeWidth = 2.5;
         }
 
         if (isSelected) {
@@ -151,12 +163,12 @@ export const GraphEdges = memo(function GraphEdges({
               fill="none"
               stroke={strokeColor}
               strokeWidth={strokeWidth}
-              strokeDasharray={isSelected ? "6 3" : undefined}
+              strokeDasharray={isSelected || isCritical ? "6 3" : undefined}
               markerEnd={`url(#${markerId})`}
               strokeLinecap="round"
               className="transition-colors group-hover/edge:stroke-violet-600"
             >
-              {isSelected && (
+              {(isSelected || isCritical) && !reduceMotion && (
                 <animate
                   attributeName="stroke-dashoffset"
                   from="18"

@@ -1804,7 +1804,7 @@ export const createAssistantTools = (session: AssistantSession) => {
         };
       },
     }),
-  }, { context: session.context, operation: session.operation, loadCard,
+  }, { context: session.context, operation: session.operation, approved: session.approved, loadCard,
     applyEdit: async (edit, target, expectedUpdatedAt, toolCallId) => ({ ok: true, action: "task_edited", card: { id: target.id, title: target.title },
       ...await applyAiTaskEdit({ ...edit, userId, cardId: target.id, expectedUpdatedAt, requestId: toDeterministicUuid(`${userId}:${toolCallId}`) }) }),
   });

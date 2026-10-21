@@ -1,18 +1,14 @@
-import { BoardType } from "@prisma/client";
-
 import { db } from "@/lib/db";
-import { getBoardTaskGroups } from "@/lib/my-tasks/board-tasks";
 import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/list/page.tsx.
-export const loadBoardList = async ({ boardId, group }: { boardId: string; group?: string }, userId: string) => {
+export const loadBoardList = async ({ boardId }: { boardId: string; group?: string }, userId: string) => {
   const [permission, board] = await Promise.all([
     requireBoardMemberForUser({ boardId, userId }),
     db.board.findFirst({
       where: { id: boardId, userId },
       select: {
-        boardType: true,
         userId: true,
         lists: {
           where: { archivedAt: null },
@@ -36,15 +32,8 @@ export const loadBoardList = async ({ boardId, group }: { boardId: string; group
     return { redirect: "/my/today" } as const;
   }
 
-  const isWorkspaceBoard = board.boardType === BoardType.WORKSPACE;
-
-  // Only the active grouping is preloaded; the other one is fetched by the client when the user switches.
-  // shortcut: a stored "list" mode without ?group=list still refetches client-side once, add the mode to the URL if it matters.
-  const wantsAgenda = isWorkspaceBoard && group !== "list";
-  const [initialListData, initialAgendaData] = await Promise.all([
-    wantsAgenda ? Promise.resolve(undefined) : getBoardTaskGroups({ boardId, userId }),
-    wantsAgenda ? getTodoTasks({ userId, boardId }) : Promise.resolve(undefined),
-  ]);
+  // Hàng luôn nhóm theo hạn (xem theo cột là layout Kanban), nên chỉ preload agenda.
+  const initialAgendaData = await getTodoTasks({ userId, boardId });
 
   return {
     boardId,
@@ -57,7 +46,7 @@ export const loadBoardList = async ({ boardId, group }: { boardId: string; group
     lists: board.lists,
     members: [] as any[],
     labels: board.labels,
-    initialData: initialListData,
+    initialData: undefined,
     initialAgendaData,
   } as const;
 };

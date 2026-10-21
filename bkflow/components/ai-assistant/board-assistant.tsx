@@ -11,13 +11,11 @@ import { readCalendarLocation } from "@/lib/calendar/calendar-navigation";
 import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
-  Bot,
   GripHorizontal,
   ImagePlus,
   Maximize2,
   Minimize2,
   Minus,
-  Sparkles,
   Square,
   Trash2,
   X,
@@ -42,6 +40,7 @@ import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 
 import { compressImage } from "@/components/capture/image-import-dialog";
 
+import { AiLogo } from "./ai-logo";
 import { AssistantMessage } from "./assistant-message";
 
 /**
@@ -420,7 +419,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           aria-label="Mở trợ lý AI"
           className="fixed bottom-5 right-5 z-[60] flex h-12 items-center justify-center gap-2 rounded-xl border border-violet-700 bg-violet-700 px-3 text-white shadow-sm transition-colors hover:bg-violet-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-500"
         >
-          <Sparkles className="size-6" />
+          <AiLogo className="size-7" />
           <span>AI</span>
           {isBusy ? (
             <span className="absolute right-1 top-1 size-3 animate-pulse rounded-full bg-emerald-400 ring-2 ring-white" />
@@ -450,9 +449,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         onPointerCancel={handleDragEnd}
         className="flex cursor-grab touch-none select-none items-center gap-2 bg-gradient-to-r from-violet-600 to-sky-500 px-3 py-2.5 text-white active:cursor-grabbing"
       >
-        <div className="flex size-8 items-center justify-center rounded-full bg-white/20">
-          <Bot className="size-4.5" />
-        </div>
+        <AiLogo className="ring-2 ring-white/30 rounded-[9px]" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Trợ lý UniFlow</p>
           <p className="text-[11px] leading-tight text-white/80">
@@ -493,9 +490,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/15 to-sky-500/15">
-              <Sparkles className="size-6 text-violet-600" />
-            </div>
+            <AiLogo className="size-12 shadow-sm" />
             <div className="space-y-1">
               <p className="text-sm font-semibold">Xin chào! Mình là trợ lý deadline của bạn.</p>
               <p className="px-4 text-xs text-muted-foreground">
@@ -511,7 +506,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           </div>
         ) : (
           messages.map((message) => (
-            <AssistantMessage key={message.id} message={message} onOpenCard={handleOpenCard} />
+            <AssistantMessage key={message.id} message={message} boardId={boardId} onOpenCard={handleOpenCard} />
           ))
         )}
 
@@ -534,13 +529,15 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
       </div>
 
       <div className="border-t bg-background p-3">
-        <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">Yêu cầu
-          <select aria-label="Loại yêu cầu AI" value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
-            <option value="answer">Hỏi / Đề xuất</option>
-            {context.kind === "task" && <><option value="edit_task_content">Sửa nội dung · có hoàn tác</option><option value="add_checklist">Chia bước · có hoàn tác</option><option value="set_schedule">Đổi lịch làm · xem trước</option><option value="set_deadline">Đổi hạn nộp · xem trước</option></>}
-            {onEditPage && <option value="edit_page">Sửa/bố trí Trang · có hoàn tác</option>}
-          </select>
-        </label>
+        {/* Trang cần chọn giữa hỏi và sửa; bảng/công việc mặc định hỏi, thay đổi đi qua đề xuất + "Đồng ý". */}
+        {onEditPage ? (
+          <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">Yêu cầu
+            <select aria-label="Loại yêu cầu AI" value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
+              <option value="answer">Hỏi về Trang</option>
+              <option value="edit_page">Sửa/bố trí Trang · có hoàn tác</option>
+            </select>
+          </label>
+        ) : null}
         {messages.length === 0 || (!isBusy && messages.length < 2) ? (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {SUGGESTIONS.map((suggestion) => (
@@ -634,9 +631,6 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             </button>
           )}
         </form>
-        <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-          Trợ lý AI chỉ hỗ trợ quản lý công việc — không giải bài tập.
-        </p>
       </div>
     </div>
   );

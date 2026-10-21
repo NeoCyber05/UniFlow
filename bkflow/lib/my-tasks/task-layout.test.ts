@@ -5,6 +5,7 @@ import { getTaskLayoutHref } from "./task-layout";
 it("uses the existing row and column routes without an empty query", () => {
   assert.equal(getTaskLayoutHref("board-1", "rows"), "/board/board-1/list");
   assert.equal(getTaskLayoutHref("board-1", "columns", "?task=task-1"), "/board/board-1");
+  assert.equal(getTaskLayoutHref("board-1", "split"), "/board/board-1/split");
 });
 
 it("preserves filters and grouping while clearing every task-panel parameter", () => {

@@ -35,8 +35,11 @@ export const ManageWorkspacesDialog = ({ open, onOpenChange, workspaces, onCreat
   const [editTitle, setEditTitle] = useState("");
   const [draft, setDraft] = useState<{ title: string; icon: string | null; color?: CourseColorKey }>({ title: "", icon: null });
 
-  // Danh sách workspace đọc từ context my-tasks: làm mới sau mỗi thay đổi
-  const refresh = () => { void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY }); };
+  // Danh sách workspace đọc từ context my-tasks; header bảng đọc icon/tên từ view: làm mới cả hai
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+    void queryClient.invalidateQueries({ queryKey: ["view"] });
+  };
 
   const { execute: executeCreate, isLoading: isCreating } = useAction(createWorkspace, {
     onSuccess: (workspace) => {
