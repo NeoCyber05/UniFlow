@@ -30,7 +30,7 @@ export const WorkspaceSwitcher = () => {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex h-9 w-full items-center gap-2 rounded-lg border bg-background px-2 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+        <DropdownMenuTrigger className="flex h-10 w-full items-center gap-2 rounded-lg border bg-background px-2 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
           {current && <WorkspaceIcon icon={current.icon} color={current.color} title={current.title} />}
           <span className="flex-1 truncate text-left">{current?.title ?? tr("workspace.label")}</span>
           <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />

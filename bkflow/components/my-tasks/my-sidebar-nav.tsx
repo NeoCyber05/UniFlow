@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { tr } from "@/lib/i18n";
 import { useMatch } from "react-router";
 import Link from "@/web/shims/next-link";
 import { usePathname } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import {
   Trash2,
   Settings,
@@ -31,9 +32,19 @@ const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network, ana
 
 const itemClassName = (isActive: boolean) =>
   cn(
-    "flex h-8 w-full items-center gap-x-2.5 rounded-md px-2.5 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-    isActive && "bg-violet-500/15 font-semibold text-violet-700 shadow-[inset_3px_0_0_var(--color-violet-500)] hover:bg-violet-500/20 dark:text-violet-300",
+    "relative isolate flex h-10 w-full items-center gap-x-3 rounded-lg px-3 text-[15px] text-sidebar-foreground transition-[background-color,transform] duration-150 hover:bg-sidebar-accent active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+    isActive && "font-semibold text-violet-700 dark:text-violet-300",
   );
+
+// Trượt giữa các mục khi đổi trang (cùng kiểu với tab Cài đặt); id riêng theo instance để sidebar desktop và sheet mobile không trượt qua nhau.
+const ActiveIndicator = ({ id }: { id: string }) => (
+  <motion.span
+    layoutId={id}
+    aria-hidden="true"
+    className="absolute inset-0 -z-10 rounded-lg bg-violet-500/15 shadow-[inset_3px_0_0_var(--color-violet-500)]"
+    transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
+  />
+);
 
 const Count = ({ value }: { value: number | undefined }) =>
   value ? (
@@ -50,6 +61,7 @@ export const MySidebarNav = () => {
   const { data: counts } = useMyTaskCounts();
   const [trashOpen, setTrashOpen] = useState(false);
   const settingsModal = useSettingsModal();
+  const indicatorId = useId();
 
   const board = context?.board ?? null;
   const boardId = boardRoute?.params.boardId ?? board?.id;
@@ -77,9 +89,10 @@ export const MySidebarNav = () => {
 
       {!boardId && workspaceBoardHref && (
         <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={itemClassName(pathname === workspaceBoardHref)}>
-          <ListTodo className="h-4 w-4" />
+          <ListTodo className="h-5 w-5" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
+          {pathname === workspaceBoardHref && <ActiveIndicator id={indicatorId} />}
         </Link>
       )}
       {navigation.map(item => {
@@ -89,7 +102,8 @@ export const MySidebarNav = () => {
           if (item.id === "tasks" || item.id === "calendar") clearBoardFilters();
           useMobileSidebar.getState().onClose();
         }} aria-current={active ? "page" : undefined} className={itemClassName(active)}>
-          <Icon aria-hidden="true" className="h-4 w-4" />
+          {active && <ActiveIndicator id={indicatorId} />}
+          <Icon aria-hidden="true" className="h-5 w-5" />
           {item.label}
           {item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
         </Link>;
@@ -105,11 +119,12 @@ export const MySidebarNav = () => {
           }}
           className={itemClassName(settingsModal.isOpen)}
         >
-          <Settings aria-hidden="true" className="h-4 w-4" />
+          {settingsModal.isOpen && <ActiveIndicator id={indicatorId} />}
+          <Settings aria-hidden="true" className="h-5 w-5" />
           {tr("common.settings")}
         </button>
         <button type="button" onClick={() => setTrashOpen(true)} className={itemClassName(false)}>
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-5 w-5" />
           {tr("sidebar.trash")}
         </button>
         <TrashDialog open={trashOpen} onOpenChange={setTrashOpen} />

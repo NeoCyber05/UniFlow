@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
-import { Archive, Download, LayoutPanelLeft, MoreHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { Download, LayoutPanelLeft, MoreHorizontal, Trash2, X } from "lucide-react";
 import type { Label, List } from "@prisma/client";
 
 import { deleteBoard } from "@/actions/boards/delete-board";
@@ -17,9 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { ConfirmModal } from "@/components/modals/confirm-modal";
 
-import { ArchivedItemsModal } from "./archived-items-modal";
 import { BoardExportDialog } from "./board-export-dialog";
-import { SmartCaptureDialog } from "./smart-capture-dialog";
 
 interface BoardOptionsProps {
   id: string;
@@ -40,16 +38,10 @@ export const BoardOptions = ({
   orgId: _orgId,
   currentUserId: _currentUserId,
   canDelete = false,
-  canEdit = false,
-  lists,
-  members = [],
-  labels,
 }: BoardOptionsProps) => {
   const router = useRouter();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [isSmartCaptureOpen, setIsSmartCaptureOpen] = useState(false);
 
   const { execute: executeDeleteBoard, isLoading: isDeleting } = useAction(deleteBoard, {
     onSuccess: () => {
@@ -94,18 +86,6 @@ export const BoardOptions = ({
               <X className="h-4 w-4" />
             </Button>
           </PopoverClose>
-          {canEdit && (
-            <PopoverClose asChild>
-              <Button
-                variant="ghost"
-                onClick={() => setIsSmartCaptureOpen(true)}
-                className="w-full h-9 px-4 justify-start font-normal text-sm text-violet-700 hover:bg-violet-50 hover:text-violet-800 gap-x-2 rounded-none cursor-pointer"
-              >
-                <Sparkles className="h-4 w-4 text-violet-600" />
-                Thêm việc bằng ảnh AI
-              </Button>
-            </PopoverClose>
-          )}
           <PopoverClose asChild>
             <Button
               variant="ghost"
@@ -126,16 +106,6 @@ export const BoardOptions = ({
               Xuất dữ liệu bảng
             </Button>
           </PopoverClose>
-          <PopoverClose asChild>
-            <Button
-              variant="ghost"
-              onClick={() => setIsArchivedModalOpen(true)}
-              className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-700 hover:bg-neutral-100 gap-x-2 rounded-none cursor-pointer"
-            >
-              <Archive className="h-4 w-4 text-neutral-500" />
-              Mục đã lưu trữ
-            </Button>
-          </PopoverClose>
           {canDelete && (
             <ConfirmModal
               onConfirm={onDelete}
@@ -154,24 +124,11 @@ export const BoardOptions = ({
           )}
         </PopoverContent>
       </Popover>
-      <ArchivedItemsModal
-        boardId={id}
-        open={isArchivedModalOpen}
-        onOpenChange={setIsArchivedModalOpen}
-      />
       <BoardExportDialog
         boardId={id}
         boardTitle={title}
         open={isExportDialogOpen}
         onOpenChange={setIsExportDialogOpen}
-      />
-      <SmartCaptureDialog
-        boardId={id}
-        open={isSmartCaptureOpen}
-        onOpenChange={setIsSmartCaptureOpen}
-        lists={lists}
-        members={members}
-        labels={labels}
       />
     </>
   );
