@@ -1,40 +1,30 @@
 import type { BoardTimelineCard } from "@/types";
 
 const DAY = 24 * 60 * 60 * 1000;
+const VN_OFFSET = 7 * 60 * 60 * 1000;
+
+/** Số thứ tự ngày theo lịch Việt Nam (UTC+7, không có giờ mùa hè): hai mốc cùng ngày VN cho cùng số. */
+const vnDayIndex = (date: Date) => Math.floor((date.getTime() + VN_OFFSET) / DAY);
 
 export type PriorityReason = { kind: "overdue" | "due" | "unlocks" | "chain" | "important"; label: string };
 
-export type ReadyTask = {
+type TaskMetrics = {
   card: BoardTimelineCard;
-  rank: number;
   /** Số việc chưa xong đang chờ việc này (trực tiếp + gián tiếp). */
   unlocks: number;
   /** Số việc nối tiếp dài nhất phía sau, tính cả việc này. */
   chainLength: number;
+  /** Số ngày (lịch VN) tới hạn; âm là đã quá hạn. */
   daysLeft: number | null;
+  onCritical: boolean;
   reasons: PriorityReason[];
 };
 
+export type ReadyTask = TaskMetrics & { rank: number };
+
 export type CustomOrderItem = { cardId: string; reason: string };
 
-/**
- * Áp thứ tự do AI xếp lên danh sách làm được ngay hiện tại.
- * Việc đã xong biến mất; việc mới mở khóa (AI chưa thấy) xếp sau theo heuristic và được đánh dấu `unranked`.
- */
-export const applyCustomOrder = (ready: ReadyTask[], order: CustomOrderItem[]) => {
-  const position = new Map(order.map((item, index) => [item.cardId, index]));
-  const reasonById = new Map(order.map((item) => [item.cardId, item.reason]));
-  const ranked = ready.filter((task) => position.has(task.card.id)).sort((a, b) => position.get(a.card.id)! - position.get(b.card.id)!);
-  const unranked = ready.filter((task) => !position.has(task.card.id));
-  return [...ranked, ...unranked].map((task, index) => ({
-    ...task,
-    rank: index + 1,
-    aiReason: reasonById.get(task.card.id),
-    unranked: !position.has(task.card.id),
-  }));
-};
-
-export type WaitingTask ={ card: BoardTimelineCard; waitingOn: BoardTimelineCard[] };
+export type WaitingTask = { card: BoardTimelineCard; waitingOn: BoardTimelineCard[] };
 
 export type PriorityPlan = {
   ready: ReadyTask[];
@@ -43,12 +33,22 @@ export type PriorityPlan = {
   criticalPath: string[];
 };
 
-/**
- * Xếp hạng việc nên làm trước trên đồ thị phụ thuộc.
- * Chỉ việc chưa xong và không còn việc chặn nào chưa xong mới "làm được ngay".
- * Thứ tự: quá hạn → hạn gần (≤ 3 ngày) → nằm trên chuỗi dài nhất → mở khóa nhiều việc → ⭐ → hạn → thứ tự trên bảng.
- */
-export const buildPriorityPlan = (cards: BoardTimelineCard[], now: Date = new Date()): PriorityPlan => {
+/** Quá hạn → hạn ≤ 3 ngày → trên chuỗi dài nhất → mở khóa nhiều việc → ⭐ → hạn sớm → thứ tự trên bảng. */
+const compareMetrics = (a: TaskMetrics, b: TaskMetrics) => {
+  const urgency = (task: TaskMetrics) => (task.daysLeft === null ? 2 : task.daysLeft < 0 ? 0 : task.daysLeft <= 3 ? 1 : 2);
+  return (
+    urgency(a) - urgency(b) ||
+    Number(b.onCritical) - Number(a.onCritical) ||
+    b.unlocks - a.unlocks ||
+    Number(Boolean(b.card.isImportant)) - Number(Boolean(a.card.isImportant)) ||
+    (a.daysLeft ?? Infinity) - (b.daysLeft ?? Infinity) ||
+    a.card.listOrder - b.card.listOrder ||
+    a.card.order - b.card.order
+  );
+};
+
+/** Đồ thị các việc chưa xong + chỉ số ưu tiên của từng việc. */
+const analyzeOpenCards = (cards: BoardTimelineCard[], now: Date) => {
   const open = new Map(cards.filter((card) => !card.isCompleted).map((card) => [card.id, card]));
   const next = new Map<string, string[]>();
   const prev = new Map<string, string[]>();
@@ -88,48 +88,123 @@ export const buildPriorityPlan = (cards: BoardTimelineCard[], now: Date = new Da
     return seen.size;
   };
 
-  const daysUntil = (card: BoardTimelineCard) =>
-    card.dueDate ? Math.floor((new Date(card.dueDate).getTime() - now.getTime()) / DAY) : null;
+  const today = vnDayIndex(now);
+  const isReady = (id: string) => (prev.get(id) ?? []).length === 0;
+  const readyIds = [...open.keys()].filter(isReady);
+  const longest = Math.max(0, ...readyIds.map((id) => chainFrom(id).length));
+  const criticalStartCandidates = readyIds.filter((id) => longest > 1 && chainFrom(id).length === longest);
 
-  const readyCards = [...open.values()].filter((card) => (prev.get(card.id) ?? []).length === 0);
-  const longest = Math.max(0, ...readyCards.map((card) => chainFrom(card.id).length));
-
-  const scored = readyCards.map((card) => {
-    const chain = chainFrom(card.id);
+  const metrics = new Map<string, TaskMetrics>();
+  for (const card of open.values()) {
+    const chainLength = chainFrom(card.id).length;
     const unlocks = countUnlocks(card.id);
-    const daysLeft = daysUntil(card);
-    const onCritical = longest > 1 && chain.length === longest;
+    const daysLeft = card.dueDate ? vnDayIndex(new Date(card.dueDate)) - today : null;
+    const onCritical = isReady(card.id) && criticalStartCandidates.includes(card.id);
     const reasons: PriorityReason[] = [];
     if (daysLeft !== null && daysLeft < 0) reasons.push({ kind: "overdue", label: `Quá hạn ${-daysLeft} ngày` });
-    else if (daysLeft !== null && daysLeft <= 3) reasons.push({ kind: "due", label: daysLeft === 0 ? "Hạn hôm nay" : `Còn ${daysLeft} ngày` });
-    if (onCritical) reasons.push({ kind: "chain", label: `Mở đầu chuỗi ${chain.length} việc` });
+    else if (daysLeft !== null && daysLeft <= 3) reasons.push({ kind: "due", label: daysLeft === 0 ? "Hạn hôm nay" : daysLeft === 1 ? "Hạn ngày mai" : `Còn ${daysLeft} ngày` });
+    if (onCritical) reasons.push({ kind: "chain", label: `Mở đầu chuỗi ${chainLength} việc` });
     if (unlocks > 0) reasons.push({ kind: "unlocks", label: `Mở khóa ${unlocks} việc` });
     if (card.isImportant) reasons.push({ kind: "important", label: "Quan trọng" });
-    const urgency = daysLeft === null ? 2 : daysLeft < 0 ? 0 : daysLeft <= 3 ? 1 : 2;
-    return { card, unlocks, chainLength: chain.length, daysLeft, reasons, urgency, onCritical };
-  });
+    metrics.set(card.id, { card, unlocks, chainLength, daysLeft, onCritical, reasons });
+  }
 
-  scored.sort(
-    (a, b) =>
-      a.urgency - b.urgency ||
-      Number(b.onCritical) - Number(a.onCritical) ||
-      b.unlocks - a.unlocks ||
-      Number(Boolean(b.card.isImportant)) - Number(Boolean(a.card.isImportant)) ||
-      (a.daysLeft ?? Infinity) - (b.daysLeft ?? Infinity) ||
-      a.card.listOrder - b.card.listOrder ||
-      a.card.order - b.card.order,
-  );
+  const sortedReady = readyIds.map((id) => metrics.get(id)!).sort(compareMetrics);
+  const criticalStart = sortedReady.find((task) => task.onCritical);
+  const criticalPath = criticalStart ? chainFrom(criticalStart.card.id).path : [];
 
-  const ready = scored.map(({ card, unlocks, chainLength, daysLeft, reasons }, index) => ({
-    card, rank: index + 1, unlocks, chainLength, daysLeft, reasons,
-  }));
+  return { open, next, prev, metrics, sortedReady, criticalPath };
+};
 
+/**
+ * Xếp hạng việc nên làm trước trên đồ thị phụ thuộc.
+ * Chỉ việc chưa xong và không còn việc chặn nào chưa xong mới "làm được ngay".
+ */
+export const buildPriorityPlan = (cards: BoardTimelineCard[], now: Date = new Date()): PriorityPlan => {
+  const { open, prev, sortedReady, criticalPath } = analyzeOpenCards(cards, now);
+  const ready = sortedReady.map((task, index) => ({ ...task, rank: index + 1 }));
   const waiting = [...open.values()]
     .filter((card) => (prev.get(card.id) ?? []).length > 0)
     .map((card) => ({ card, waitingOn: (prev.get(card.id) ?? []).map((id) => open.get(id)!) }));
-
-  const criticalStart = scored.find((item) => item.onCritical);
-  const criticalPath = criticalStart ? chainFrom(criticalStart.card.id).path : [];
-
   return { ready, waiting, criticalPath };
+};
+
+export type ScheduledTask = TaskMetrics & {
+  /** Làm được ngay (không còn việc chặn chưa xong). */
+  ready: boolean;
+  waitingOn: BoardTimelineCard[];
+  aiReason?: string;
+  /** Đang xếp bằng AI nhưng việc này AI chưa thấy (vừa mở khóa / mới tạo). */
+  unranked: boolean;
+  /** Theo lịch này việc rơi vào sau ngày hạn chót. */
+  lateRisk: boolean;
+};
+
+export type ScheduleDay = { offset: number; date: Date; tasks: ScheduledTask[] };
+
+export type Schedule = {
+  days: ScheduleDay[];
+  /** Kẹt trong vòng phụ thuộc, không xếp được. */
+  stuck: BoardTimelineCard[];
+  lateCount: number;
+};
+
+/**
+ * Chia mọi việc chưa xong vào từng ngày, `perDay` việc mỗi ngày, bắt đầu từ hôm nay.
+ * Việc chỉ được xếp sau khi mọi việc chặn nó đã được xếp (Kahn), mỗi bước chọn việc ưu tiên nhất đang làm được.
+ * Có `order` (AI) thì việc AI đã xếp đi trước theo thứ tự AI, việc AI chưa thấy theo heuristic.
+ */
+export const buildSchedule = (
+  cards: BoardTimelineCard[],
+  { perDay, order, now = new Date() }: { perDay: number; order?: CustomOrderItem[]; now?: Date },
+): Schedule => {
+  const { open, next, prev, metrics } = analyzeOpenCards(cards, now);
+  const position = new Map(order?.map((item, index) => [item.cardId, index]));
+  const reasonById = new Map(order?.map((item) => [item.cardId, item.reason]));
+  const compare = (a: TaskMetrics, b: TaskMetrics) => {
+    const pa = position.get(a.card.id);
+    const pb = position.get(b.card.id);
+    if (pa !== undefined && pb !== undefined) return pa - pb;
+    if (pa !== undefined) return -1;
+    if (pb !== undefined) return 1;
+    return compareMetrics(a, b);
+  };
+
+  const remaining = new Map([...open.keys()].map((id) => [id, (prev.get(id) ?? []).length]));
+  const available = [...remaining].filter(([, count]) => count === 0).map(([id]) => id);
+  const sequence: string[] = [];
+  while (available.length) {
+    available.sort((a, b) => compare(metrics.get(a)!, metrics.get(b)!));
+    const id = available.shift()!;
+    sequence.push(id);
+    remaining.delete(id);
+    for (const childId of next.get(id) ?? []) {
+      const count = (remaining.get(childId) ?? 0) - 1;
+      remaining.set(childId, count);
+      if (count === 0) available.push(childId);
+    }
+  }
+
+  const size = Math.max(1, Math.floor(perDay));
+  const today = vnDayIndex(now);
+  const days: ScheduleDay[] = [];
+  let lateCount = 0;
+  sequence.forEach((id, index) => {
+    const offset = Math.floor(index / size);
+    if (!days[offset]) days[offset] = { offset, date: new Date((today + offset) * DAY - VN_OFFSET + 12 * 60 * 60 * 1000), tasks: [] };
+    const task = metrics.get(id)!;
+    const blockers = (prev.get(id) ?? []).map((blockerId) => open.get(blockerId)!);
+    const lateRisk = task.daysLeft !== null && task.daysLeft >= 0 && task.daysLeft < offset;
+    if (lateRisk) lateCount += 1;
+    days[offset].tasks.push({
+      ...task,
+      ready: blockers.length === 0,
+      waitingOn: blockers,
+      aiReason: reasonById.get(id) || undefined,
+      unranked: Boolean(order) && !position.has(id),
+      lateRisk,
+    });
+  });
+
+  return { days, stuck: [...remaining.keys()].map((id) => open.get(id)!), lateCount };
 };

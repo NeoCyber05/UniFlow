@@ -75,13 +75,13 @@ test("the shared search route preserves recents order, navigation and private ca
     assert.deepEqual(where.id.in, ["p1", "deleted"]);
     return [{ id: "p1", title: "Notes" }];
   };
-  const recent = encodeURIComponent(JSON.stringify([{ type: "page", id: "today" }, { type: "note", id: "p1" }, { type: "note", id: "deleted" }]));
+  const recent = encodeURIComponent(JSON.stringify([{ type: "page", id: "calendar" }, { type: "note", id: "p1" }, { type: "note", id: "deleted" }]));
   const response = await runWithAuth({ userId: "u1", user: null }, () => searchRoute(new Request(`http://local/api/search?recent=${recent}`)));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("Cache-Control"), "private, no-store");
   const body = await response.json();
-  assert.deepEqual(body.items.map((item: any) => item.id), ["today", "p1"]);
-  assert.equal(body.navigation.some((item: any) => item.id === "today"), false);
+  assert.deepEqual(body.items.map((item: any) => item.id), ["calendar", "p1"]);
+  assert.equal(body.navigation.some((item: any) => item.id === "calendar"), false);
   assert.equal((await searchRoute(new Request("http://local/api/search?q=Notes"))).status, 401);
 });
 

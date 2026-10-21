@@ -15,7 +15,7 @@ import { createCardDependency } from "@/actions/dependencies/create-card-depende
 import { deleteCardDependency } from "@/actions/dependencies/delete-card-dependency";
 import { rankAiPriorities } from "@/actions/ai/rank-ai-priorities";
 import { setCardCompleted } from "@/actions/cards/set-card-completed";
-import { applyCustomOrder, buildPriorityPlan, type CustomOrderItem } from "@/lib/boards/graph-priority";
+import { buildPriorityPlan, buildSchedule, type CustomOrderItem } from "@/lib/boards/graph-priority";
 import { buildBoardExportFileName } from "@/lib/exports/filename";
 import { cn } from "@/lib/utils";
 import type { BoardTimelineBoardMember, BoardTimelineList } from "@/types";
@@ -98,6 +98,8 @@ export const BoardGraphView = ({
     null,
   );
   const lastAiRequestRef = useRef("");
+  // Sức làm mỗi ngày là thói quen của người dùng, không riêng bảng nào
+  const [perDay, setPerDay] = useLocalStorage("uniflow:graph-priority-per-day", 3);
   const [recentlyUnlocked, setRecentlyUnlocked] = useState<Set<string>>(new Set());
 
   // Server actions for dependencies
@@ -132,11 +134,15 @@ export const BoardGraphView = ({
 
   // Thứ tự nên làm: số trên thẻ, chuỗi chính và panel gợi ý cùng đọc từ đây
   const plan = useMemo(() => buildPriorityPlan(allCards), [allCards]);
-  const readyTasks = useMemo(
-    () => (sortMode === "ai" && aiOrder ? applyCustomOrder(plan.ready, aiOrder.order) : plan.ready),
-    [sortMode, aiOrder, plan.ready],
+  const schedule = useMemo(
+    () => buildSchedule(allCards, { perDay, order: sortMode === "ai" ? aiOrder?.order : undefined }),
+    [allCards, perDay, sortMode, aiOrder],
   );
-  const rankById = useMemo(() => new Map(readyTasks.map((task) => [task.card.id, task.rank])), [readyTasks]);
+  // Sơ đồ chỉ đánh số việc của hôm nay để không rối khi bảng nhiều thẻ
+  const rankById = useMemo(
+    () => new Map((schedule.days[0]?.tasks ?? []).map((task, index) => [task.card.id, index + 1])),
+    [schedule.days],
+  );
   const waitingIds = useMemo(() => new Set(plan.waiting.map((task) => task.card.id)), [plan.waiting]);
   const criticalEdgeKeys = useMemo(
     () => new Set(plan.criticalPath.slice(1).map((id, index) => `${plan.criticalPath[index]}->${id}`)),
@@ -779,7 +785,9 @@ export const BoardGraphView = ({
 
         <PriorityPanel
           plan={plan}
-          readyTasks={readyTasks}
+          schedule={schedule}
+          perDay={perDay}
+          onPerDayChange={setPerDay}
           canEdit={canEdit}
           sortMode={sortMode}
           onSortModeChange={setSortMode}

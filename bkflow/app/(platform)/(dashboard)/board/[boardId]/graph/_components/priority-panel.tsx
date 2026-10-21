@@ -6,13 +6,13 @@ import {
   ReducedMotionConfig, blur, scale, spring, transition, useTempoTransition,
 } from "@animate-ui/react/utils/motion";
 import {
-  AlarmClock, Check, ChevronDown, Crosshair, ExternalLink, Flag, Loader2, Lock, Route, Sparkles, Star, Target, Unlock, Wand2,
+  AlarmClock, AlertTriangle, Check, ChevronDown, ExternalLink, Flag, Loader2, Lock, Minus, Plus, Route, Sparkles, Star,
+  Target, Unlock, Wand2,
 } from "lucide-react";
 
-import type { PriorityPlan, PriorityReason, ReadyTask } from "@/lib/boards/graph-priority";
+import type { PriorityPlan, PriorityReason, Schedule, ScheduleDay, ScheduledTask } from "@/lib/boards/graph-priority";
 import { cn } from "@/lib/utils";
 
-type PanelTask = ReadyTask & { aiReason?: string; unranked?: boolean };
 type SortMode = "auto" | "ai";
 
 const REASON_STYLE: Record<PriorityReason["kind"], { icon: typeof Flag; className: string }> = {
@@ -30,47 +30,54 @@ const AI_PRESETS = [
   "Việc khó, cần tập trung làm buổi sáng",
 ];
 
-// Thời gian để thấy dấu tick trước khi việc rời danh sách và danh sách tự xếp lại
+// Thời gian để thấy dấu tick trước khi việc rời lộ trình và các ngày tự dồn lên
 const CHECK_HOLD_MS = 420;
+// Mặc định chỉ mở vài ngày đầu: nhiều thẻ vẫn gọn, phần sau bấm để xem
+const VISIBLE_DAYS = 3;
+const PER_DAY_MIN = 1;
+const PER_DAY_MAX = 10;
 
-const Tags = ({ task, fresh }: { task: PanelTask; fresh: boolean }) => (
-  <span className="flex flex-wrap gap-1">
-    {fresh && (
-      <motion.span
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1, transition: spring.checkPop }}
-        className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-      >
-        <Unlock aria-hidden="true" className="h-2.5 w-2.5" />
-        Vừa mở khóa
-      </motion.span>
-    )}
-    {task.aiReason ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200">
-        <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
-        {task.aiReason}
-      </span>
-    ) : (
-      task.reasons.map((reason) => {
-        const { icon: Icon, className } = REASON_STYLE[reason.kind];
-        return (
-          <span key={reason.kind} className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset", className)}>
-            <Icon aria-hidden="true" className="h-2.5 w-2.5" />
-            {reason.label}
-          </span>
-        );
-      })
-    )}
-    {task.unranked && (
-      <span className="inline-flex items-center rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
-        Chưa được AI xếp
-      </span>
-    )}
+const formatDay = (day: ScheduleDay) => {
+  const date = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(day.date);
+  if (day.offset === 0) return { title: "Hôm nay", date };
+  if (day.offset === 1) return { title: "Ngày mai", date };
+  const weekday = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", weekday: "long" }).format(day.date);
+  return { title: weekday.charAt(0).toUpperCase() + weekday.slice(1), date };
+};
+
+const formatDue = (iso: string) =>
+  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(new Date(iso));
+
+const Chip = ({ className, icon: Icon, children }: { className: string; icon?: typeof Flag; children: React.ReactNode }) => (
+  <span className={cn("inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset", className)}>
+    {Icon && <Icon aria-hidden="true" className="h-2.5 w-2.5 shrink-0" />}
+    <span className="truncate">{children}</span>
   </span>
 );
 
-/** Nút tròn tick xong: lấp đầy + dấu tick nảy lên, rồi việc mới rời danh sách. */
-const CheckCircle = ({ checked, disabled, onCheck, title }: { checked: boolean; disabled?: boolean; onCheck: () => void; title: string }) => {
+/** Tối đa vài chip để hàng không phình: rủi ro trễ hạn > vừa mở khóa > lý do AI hoặc 2 lý do heuristic. */
+const TaskMeta = ({ task, fresh }: { task: ScheduledTask; fresh: boolean }) => (
+  <span className="flex flex-wrap gap-1">
+    {task.lateRisk && task.card.dueDate && (
+      <Chip icon={AlertTriangle} className="bg-rose-50 text-rose-700 ring-rose-200">Hạn {formatDue(task.card.dueDate)}, sẽ trễ</Chip>
+    )}
+    {fresh && <Chip icon={Unlock} className="bg-emerald-500 text-white ring-emerald-500">Vừa mở khóa</Chip>}
+    {task.aiReason ? (
+      <Chip icon={Sparkles} className="bg-violet-50 text-violet-700 ring-violet-200">{task.aiReason}</Chip>
+    ) : (
+      task.reasons
+        .filter((reason) => !(task.lateRisk && reason.kind === "due"))
+        .slice(0, 2)
+        .map((reason) => (
+          <Chip key={reason.kind} icon={REASON_STYLE[reason.kind].icon} className={REASON_STYLE[reason.kind].className}>{reason.label}</Chip>
+        ))
+    )}
+    {task.unranked && <Chip className="bg-neutral-100 text-neutral-500 ring-neutral-200">AI chưa xếp</Chip>}
+  </span>
+);
+
+/** Nút tròn tick xong; vùng bấm rộng hơn vòng tròn để dễ trúng. */
+const CheckCircle = ({ checked, onCheck, title }: { checked: boolean; onCheck: () => void; title: string }) => {
   const press = useTempoTransition(spring.press);
   const checkPop = useTempoTransition(spring.checkPop);
   return (
@@ -79,34 +86,41 @@ const CheckCircle = ({ checked, disabled, onCheck, title }: { checked: boolean; 
       role="checkbox"
       aria-checked={checked}
       aria-label={`Đánh dấu xong: ${title}`}
-      disabled={disabled || checked}
+      disabled={checked}
       whileTap={{ scale: scale.press, transition: press }}
       onClick={(event) => { event.stopPropagation(); onCheck(); }}
-      className={cn(
-        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200",
-        checked ? "border-emerald-500 bg-emerald-500 text-white" : "border-neutral-300 bg-white hover:border-violet-500 hover:bg-violet-50",
-        disabled && !checked && "cursor-not-allowed opacity-50",
-      )}
+      className="group/check -m-1.5 shrink-0 rounded-full p-1.5 focus-visible:outline-2 focus-visible:outline-violet-500"
     >
-      <AnimatePresence initial={false}>
-        {checked && (
-          <motion.span
-            initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: checkPop }}
-          >
-            <Check className="h-3 w-3" strokeWidth={3} />
-          </motion.span>
+      <span
+        className={cn(
+          "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors duration-200",
+          checked ? "border-emerald-500 bg-emerald-500 text-white" : "border-neutral-300 bg-white group-hover/check:border-violet-500 group-hover/check:bg-violet-50",
         )}
-      </AnimatePresence>
+      >
+        <AnimatePresence initial={false}>
+          {checked && (
+            <motion.span
+              initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: checkPop }}
+            >
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </span>
     </motion.button>
   );
 };
 
-const VISIBLE_READY = 6;
+type Row =
+  | { kind: "day"; key: string; day: ScheduleDay }
+  | { kind: "task"; key: string; task: ScheduledTask; isNow: boolean };
 
 type PriorityPanelProps = {
   plan: PriorityPlan;
-  readyTasks: PanelTask[];
+  schedule: Schedule;
+  perDay: number;
+  onPerDayChange: (value: number) => void;
   canEdit: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -125,13 +139,12 @@ type PriorityPanelProps = {
   onRankWithAi: (request: string) => void;
 };
 
-/** "Làm gì trước?": việc làm được ngay, xếp bằng heuristic hoặc AI theo yêu cầu; tick xong thì tự xếp lại. */
+/** "Làm gì trước?": lộ trình theo ngày, mỗi ngày `perDay` việc, đúng thứ tự phụ thuộc; tick xong thì các ngày tự dồn lên. */
 export const PriorityPanel = ({
-  plan, readyTasks, canEdit, open, onOpenChange, focusedCardId, onFocusCard, onOpenCard, onComplete,
+  plan, schedule, perDay, onPerDayChange, canEdit, open, onOpenChange, focusedCardId, onFocusCard, onOpenCard, onComplete,
   recentlyUnlocked, sortMode, onSortModeChange, aiSummary, hasAiOrder, lastAiRequest, isRankingAi, onRankWithAi,
 }: PriorityPanelProps) => {
-  const [showAll, setShowAll] = useState(false);
-  const [waitingOpen, setWaitingOpen] = useState(false);
+  const [showAllDays, setShowAllDays] = useState(false);
   const [checking, setChecking] = useState<Set<string>>(new Set());
   const [request, setRequest] = useState(lastAiRequest ?? "");
   const slide = useTempoTransition(spring.slide);
@@ -160,9 +173,19 @@ export const PriorityPanel = ({
     onRankWithAi(trimmed);
   };
 
-  const [first, ...rest] = readyTasks;
-  const visibleRest = showAll ? rest : rest.slice(0, VISIBLE_READY - 1);
-  const hasUnranked = sortMode === "ai" && readyTasks.some((task) => task.unranked);
+  const { days, stuck, lateCount } = schedule;
+  const total = days.reduce((sum, day) => sum + day.tasks.length, 0);
+  const visibleDays = showAllDays ? days : days.slice(0, VISIBLE_DAYS);
+  const hiddenDays = days.slice(visibleDays.length);
+  const hiddenTaskCount = hiddenDays.reduce((sum, day) => sum + day.tasks.length, 0);
+  const hasUnranked = sortMode === "ai" && days.some((day) => day.tasks.some((task) => task.unranked));
+  const todayCount = days[0]?.offset === 0 ? days[0].tasks.length : 0;
+
+  // Một danh sách phẳng (tiêu đề ngày + việc) để việc dồn từ ngày sau lên ngày trước trượt liền mạch
+  const rows: Row[] = visibleDays.flatMap((day) => [
+    { kind: "day" as const, key: `day-${day.offset}`, day },
+    ...day.tasks.map((task, index) => ({ kind: "task" as const, key: task.card.id, task, isNow: day.offset === 0 && index === 0 })),
+  ]);
 
   return (
     <ReducedMotionConfig>
@@ -171,7 +194,7 @@ export const PriorityPanel = ({
           <motion.aside
             key="panel"
             data-graph-overlay
-            aria-label="Gợi ý thứ tự làm việc"
+            aria-label="Lộ trình ưu tiên"
             initial={{ opacity: 0, x: 24, filter: blur.panel }}
             animate={{ opacity: 1, x: 0, filter: "blur(0px)", transition: { ...slide, opacity: fade, filter: fade } }}
             exit={{ opacity: 0, x: 24, filter: blur.panel, transition: transition.panelOut }}
@@ -181,19 +204,19 @@ export const PriorityPanel = ({
           >
             <header className="space-y-2.5 border-b border-neutral-100 px-4 py-3">
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0">
                   <h2 className="flex items-center gap-1.5 text-sm font-bold text-neutral-900">
                     <Target aria-hidden="true" className="h-4 w-4 text-violet-600" />
                     Làm gì trước?
                   </h2>
                   <p className="mt-0.5 text-[11px] text-neutral-500">
-                    {plan.ready.length} việc làm được ngay · {plan.waiting.length} việc đang chờ
+                    {total > 0 ? `${total} việc, xong trong khoảng ${days.length} ngày` : "Không còn việc nào đang mở"}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  aria-label="Thu gọn gợi ý"
+                  aria-label="Thu gọn lộ trình"
                   className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
                 >
                   <ChevronDown aria-hidden="true" className="h-4 w-4 -rotate-90" />
@@ -235,10 +258,7 @@ export const PriorityPanel = ({
                     exit={{ height: 0, opacity: 0, transition: transition.collapse }}
                     className="overflow-hidden"
                   >
-                    <form
-                      className="space-y-2 pt-0.5"
-                      onSubmit={(event) => { event.preventDefault(); submitAi(request); }}
-                    >
+                    <form className="space-y-2 pt-0.5" onSubmit={(event) => { event.preventDefault(); submitAi(request); }}>
                       <div className="flex gap-1.5">
                         <input
                           value={request}
@@ -271,9 +291,7 @@ export const PriorityPanel = ({
                           </button>
                         ))}
                       </div>
-                      {!hasAiOrder && !isRankingAi && (
-                        <p className="text-[11px] text-neutral-500">Chưa xếp bằng AI: đang dùng thứ tự tự động.</p>
-                      )}
+                      {!hasAiOrder && !isRankingAi && <p className="text-[11px] text-neutral-500">Chưa xếp bằng AI: đang dùng thứ tự tự động.</p>}
                       {aiSummary && <p className="text-[11px] leading-snug text-violet-700">{aiSummary}</p>}
                       {hasUnranked && (
                         <button type="button" onClick={() => submitAi(request)} disabled={isRankingAi || !request.trim()} className="text-[11px] font-semibold text-violet-600 hover:underline disabled:opacity-50">
@@ -284,166 +302,189 @@ export const PriorityPanel = ({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Sức làm mỗi ngày quyết định việc rơi vào ngày nào */}
+              <div className="flex items-center justify-between gap-2 text-xs text-neutral-600">
+                <span id="graph-per-day-label">Mỗi ngày làm</span>
+                <div role="group" aria-labelledby="graph-per-day-label" className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label="Bớt một việc mỗi ngày"
+                    disabled={perDay <= PER_DAY_MIN}
+                    onClick={() => onPerDayChange(Math.max(PER_DAY_MIN, perDay - 1))}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-50 disabled:opacity-40"
+                  >
+                    <Minus aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                  <span aria-live="polite" className="min-w-14 text-center font-semibold tabular-nums text-neutral-900">{perDay} việc</span>
+                  <button
+                    type="button"
+                    aria-label="Thêm một việc mỗi ngày"
+                    disabled={perDay >= PER_DAY_MAX}
+                    onClick={() => onPerDayChange(Math.min(PER_DAY_MAX, perDay + 1))}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-50 disabled:opacity-40"
+                  >
+                    <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {lateCount > 0 && (
+                <p role="status" className="flex items-start gap-1.5 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[11px] leading-snug text-rose-700 ring-1 ring-inset ring-rose-200">
+                  <AlertTriangle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span><b>{lateCount} việc</b> rơi vào sau hạn chót. Tăng số việc mỗi ngày hoặc dời hạn.</span>
+                </p>
+              )}
             </header>
 
             <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 styled-scrollbar transition-opacity", isRankingAi && "opacity-60")}>
-              {!first ? (
-                <p className="rounded-xl bg-neutral-50 px-3 py-6 text-center text-xs text-neutral-500">
-                  {plan.waiting.length > 0
-                    ? "Mọi việc còn lại đang chờ nhau (có vòng phụ thuộc). Mở một thẻ và bỏ bớt liên kết."
-                    : "Không còn việc nào đang mở."}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {/* Việc số 1: tick xong thì việc kế tiếp trượt lên thay chỗ */}
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    <motion.div
-                      key={first.card.id}
-                      layout="position"
-                      initial={{ opacity: 0, y: 8, filter: blur.surface }}
-                      animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...move, opacity: fade, filter: fade } }}
-                      exit={{ opacity: 0, scale: 0.96, transition: fade }}
-                      transition={move}
-                      className={cn(
-                        "rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-3 shadow-sm",
-                        focusedCardId === first.card.id && "ring-2 ring-violet-500",
-                      )}
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Bắt đầu với</p>
-                      <div className="mt-1 flex items-start gap-2.5">
-                        {canEdit && <CheckCircle checked={checking.has(first.card.id)} title={first.card.title} onCheck={() => check(first.card.id)} />}
-                        <p className={cn("line-clamp-2 text-sm font-semibold leading-snug text-neutral-900 transition-colors", checking.has(first.card.id) && "text-neutral-400 line-through")}>
-                          {first.card.title}
-                        </p>
-                      </div>
-                      <div className="mt-2">
-                        <Tags task={first} fresh={recentlyUnlocked.has(first.card.id)} />
-                      </div>
-                      <div className="mt-3 flex gap-1.5">
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: scale.press, transition: press }}
-                          onClick={() => onFocusCard(first.card.id)}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-violet-700"
-                        >
-                          <Crosshair aria-hidden="true" className="h-3.5 w-3.5" />
-                          Xem trên sơ đồ
-                        </motion.button>
-                        <motion.button
-                          type="button"
-                          whileTap={{ scale: scale.press, transition: press }}
-                          onClick={() => onOpenCard(first.card.id)}
-                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
-                        >
-                          <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                          Mở thẻ
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {rest.length > 0 && (
-                    <section aria-label="Tiếp theo">
-                      <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Tiếp theo</p>
-                      <ol className="flex flex-col gap-1.5">
-                        <AnimatePresence mode="popLayout" initial={false}>
-                          {visibleRest.map((task) => {
-                            const isChecking = checking.has(task.card.id);
-                            const fresh = recentlyUnlocked.has(task.card.id);
-                            return (
-                              <motion.li
-                                key={task.card.id}
-                                layout="position"
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0, transition: { ...move, opacity: fade } }}
-                                exit={{ opacity: 0, scale: 0.96, transition: fade }}
-                                transition={move}
-                                className={cn(
-                                  "flex items-start gap-2.5 rounded-xl border px-2 py-2 transition-colors",
-                                  fresh ? "border-emerald-200 bg-emerald-50/60" : "border-transparent hover:border-neutral-200 hover:bg-neutral-50",
-                                  focusedCardId === task.card.id && "border-violet-200 bg-violet-50/60",
-                                )}
-                              >
-                                {canEdit ? (
-                                  <CheckCircle checked={isChecking} title={task.card.title} onCheck={() => check(task.card.id)} />
-                                ) : (
-                                  <span className="mt-0.5 h-5 w-5 shrink-0" />
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => onFocusCard(task.card.id)}
-                                  onDoubleClick={() => onOpenCard(task.card.id)}
-                                  title="Bấm để xem trên sơ đồ, bấm đúp để mở thẻ"
-                                  className="min-w-0 flex-1 space-y-1 text-left"
-                                >
-                                  <span className={cn("line-clamp-2 block text-xs font-medium leading-snug text-neutral-800 transition-colors", isChecking && "text-neutral-400 line-through")}>
-                                    {task.card.title}
-                                  </span>
-                                  <Tags task={task} fresh={fresh} />
-                                </button>
-                                <motion.span
-                                  key={task.rank}
-                                  initial={{ opacity: 0, y: -4 }}
-                                  animate={{ opacity: 1, y: 0, transition: fade }}
-                                  className="mt-0.5 flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-neutral-900 px-1 text-[10px] font-bold tabular-nums text-white"
-                                >
-                                  {task.rank}
-                                </motion.span>
-                              </motion.li>
-                            );
-                          })}
-                        </AnimatePresence>
-                      </ol>
-                      {rest.length > VISIBLE_READY - 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAll((value) => !value)}
-                          className="mt-1 w-full rounded-lg py-1.5 text-[11px] font-semibold text-violet-600 hover:bg-violet-50"
-                        >
-                          {showAll ? "Thu gọn" : `Xem thêm ${rest.length - (VISIBLE_READY - 1)} việc`}
-                        </button>
-                      )}
-                    </section>
-                  )}
-                </div>
+              {total === 0 && stuck.length === 0 && (
+                <p className="rounded-xl bg-neutral-50 px-3 py-6 text-center text-xs text-neutral-500">Không còn việc nào đang mở.</p>
               )}
 
-              {plan.waiting.length > 0 && (
-                <section className="mt-3 border-t border-neutral-100 pt-2">
-                  <button
-                    type="button"
-                    aria-expanded={waitingOpen}
-                    onClick={() => setWaitingOpen((value) => !value)}
-                    className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-600"
-                  >
-                    <span className="flex items-center gap-1.5"><Lock aria-hidden="true" className="h-3 w-3" />Đang chờ việc khác ({plan.waiting.length})</span>
-                    <ChevronDown aria-hidden="true" className={cn("h-3.5 w-3.5 transition-transform duration-200", waitingOpen && "rotate-180")} />
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {waitingOpen && (
-                      <motion.ul
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1, transition: { height, opacity: fade } }}
-                        exit={{ height: 0, opacity: 0, transition: transition.collapse }}
-                        className="flex flex-col gap-1 overflow-hidden"
+              <ol aria-label="Lộ trình theo ngày" className="flex flex-col">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {rows.map((row, rowIndex) => {
+                    if (row.kind === "day") {
+                      const { title, date } = formatDay(row.day);
+                      const isToday = row.day.offset === 0;
+                      const hasLate = row.day.tasks.some((task) => task.lateRisk);
+                      return (
+                        <motion.li
+                          key={row.key}
+                          layout="position"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1, transition: fade }}
+                          exit={{ opacity: 0, transition: fade }}
+                          transition={move}
+                          className={cn("relative pb-2 pl-8", rowIndex > 0 && "pt-1")}
+                        >
+                          {/* Đường ray nối các ngày; ray bắt đầu từ chấm của ngày đầu tiên */}
+                          <span aria-hidden="true" className={cn("absolute bottom-0 left-[11px] w-px bg-neutral-200", rowIndex === 0 ? "top-2" : "top-0")} />
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "absolute left-[5px] flex h-3.5 w-3.5 items-center justify-center rounded-full ring-4 ring-white",
+                              rowIndex === 0 ? "top-0.5" : "top-1.5",
+                              isToday ? "bg-violet-600" : hasLate ? "bg-rose-500" : "bg-neutral-300",
+                            )}
+                          >
+                            {isToday && <span className="absolute inset-0 rounded-full bg-violet-500 opacity-50 motion-safe:animate-ping" />}
+                          </span>
+                          <p className="flex items-baseline gap-1.5">
+                            <span className={cn("text-xs font-bold", isToday ? "text-violet-700" : "text-neutral-800")}>{title}</span>
+                            <span className="text-[11px] tabular-nums text-neutral-400">{date}</span>
+                            <span className="ml-auto text-[11px] tabular-nums text-neutral-400">{row.day.tasks.length} việc</span>
+                          </p>
+                        </motion.li>
+                      );
+                    }
+
+                    const { task, isNow } = row;
+                    const isChecking = checking.has(task.card.id);
+                    const fresh = recentlyUnlocked.has(task.card.id);
+                    return (
+                      <motion.li
+                        key={row.key}
+                        layout="position"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0, transition: { ...move, opacity: fade } }}
+                        exit={{ opacity: 0, scale: 0.96, transition: fade }}
+                        transition={move}
+                        className="relative pb-2 pl-8"
                       >
-                        {plan.waiting.map(({ card, waitingOn }) => (
-                          <li key={card.id}>
-                            <button
-                              type="button"
-                              onClick={() => onFocusCard(card.id)}
-                              className="w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-neutral-50"
+                        <span aria-hidden="true" className="absolute bottom-0 left-[11px] top-0 w-px bg-neutral-200" />
+                        <div
+                          className={cn(
+                            "group flex items-start gap-2.5 rounded-xl border px-2.5 py-2 transition-colors",
+                            task.ready ? "border-neutral-200 bg-white shadow-xs hover:border-violet-200" : "border-dashed border-neutral-300 bg-neutral-50/80",
+                            isNow && "border-violet-300 bg-violet-50/70 shadow-sm shadow-violet-100",
+                            fresh && "border-emerald-300 bg-emerald-50/70",
+                            focusedCardId === task.card.id && "ring-2 ring-violet-500",
+                          )}
+                        >
+                          {task.ready && canEdit ? (
+                            <CheckCircle checked={isChecking} title={task.card.title} onCheck={() => check(task.card.id)} />
+                          ) : (
+                            <span
+                              title={task.ready ? undefined : "Làm sau khi xong việc chặn"}
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500"
                             >
-                              <span className="line-clamp-1 block text-xs text-neutral-600">{card.title}</span>
+                              {task.ready ? null : <Lock aria-hidden="true" className="h-2.5 w-2.5" />}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => onFocusCard(task.card.id)}
+                            onDoubleClick={() => onOpenCard(task.card.id)}
+                            title="Bấm để xem trên sơ đồ, bấm đúp để mở thẻ"
+                            className="min-w-0 flex-1 space-y-1 text-left focus-visible:outline-none"
+                          >
+                            <span className={cn(
+                              "line-clamp-2 block text-xs font-medium leading-snug transition-colors",
+                              task.ready ? "text-neutral-800" : "text-neutral-500",
+                              isNow && "font-semibold text-neutral-900",
+                              isChecking && "text-neutral-400 line-through",
+                            )}>
+                              {isNow && (
+                                <span className="mr-1.5 inline-flex -translate-y-px items-center rounded-full bg-violet-600 px-1.5 py-px align-middle text-[9px] font-bold uppercase tracking-wide text-white">
+                                  Làm ngay
+                                </span>
+                              )}
+                              {task.card.title}
+                            </span>
+                            {!task.ready && (
                               <span className="line-clamp-1 block text-[10px] text-neutral-400">
-                                Chờ: {waitingOn.map((blocker) => blocker.title).join(", ")}
+                                Sau: {task.waitingOn.map((blocker) => blocker.title).join(", ")}
                               </span>
-                            </button>
-                          </li>
-                        ))}
-                      </motion.ul>
-                    )}
-                  </AnimatePresence>
+                            )}
+                            <TaskMeta task={task} fresh={fresh} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenCard(task.card.id)}
+                            aria-label={`Mở thẻ ${task.card.title}`}
+                            className="shrink-0 rounded p-0.5 text-neutral-400 opacity-0 transition-opacity hover:text-violet-600 focus-visible:opacity-100 group-hover:opacity-100"
+                          >
+                            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </motion.li>
+                    );
+                  })}
+                </AnimatePresence>
+              </ol>
+
+              {hiddenDays.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllDays(true)}
+                  className="ml-8 mt-1 w-[calc(100%-2rem)] rounded-lg border border-dashed border-neutral-300 py-2 text-[11px] font-semibold text-violet-600 transition-colors hover:border-violet-300 hover:bg-violet-50"
+                >
+                  Xem thêm {hiddenDays.length} ngày ({hiddenTaskCount} việc)
+                </button>
+              )}
+              {showAllDays && days.length > VISIBLE_DAYS && (
+                <button type="button" onClick={() => setShowAllDays(false)} className="ml-8 mt-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-800">
+                  Thu gọn
+                </button>
+              )}
+
+              {stuck.length > 0 && (
+                <section className="mt-3 rounded-xl bg-rose-50 px-3 py-2 ring-1 ring-inset ring-rose-200">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-700">
+                    <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                    {stuck.length} việc chờ nhau thành vòng, chưa xếp được
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {stuck.map((card) => (
+                      <li key={card.id}>
+                        <button type="button" onClick={() => onFocusCard(card.id)} className="line-clamp-1 text-left text-[11px] text-rose-700/90 hover:underline">
+                          {card.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
             </div>
@@ -462,8 +503,8 @@ export const PriorityPanel = ({
           >
             <Target aria-hidden="true" className="h-3.5 w-3.5" />
             Làm gì trước?
-            {plan.ready.length > 0 && (
-              <span className="rounded-full bg-violet-600 px-1.5 text-[10px] tabular-nums text-white">{plan.ready.length}</span>
+            {todayCount > 0 && (
+              <span className="rounded-full bg-violet-600 px-1.5 text-[10px] tabular-nums text-white" aria-label={`${todayCount} việc hôm nay`}>{todayCount}</span>
             )}
           </motion.button>
         )}
