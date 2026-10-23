@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ActionState } from "@/lib/create-safe-action";
 import { TaskDatesPatchShape } from "@/lib/cards/task-schedule";
+import { TaskRepeatSchema } from "@/lib/cards/task-repeat";
 
 export const UpdateCard = z.object({
   boardId: z.string(),
@@ -23,6 +24,7 @@ export const UpdateCard = z.object({
   dueDateTimezoneOffset: z.optional(z.number()),
   isCompleted: z.optional(z.boolean()),
   reminder: z.optional(z.union([z.string(), z.null()])),
+  repeat: TaskRepeatSchema.nullable().optional(),
   id: z.string(),
 }).superRefine((data, ctx) => {
   if (data.description !== undefined && !data.descriptionBaseUpdatedAt) {
@@ -52,6 +54,7 @@ const METADATA_KEYS = [
   "scheduledEndAt",
   "isCompleted",
   "reminder",
+  "repeat",
 ] as const;
 
 /** Có trường metadata (mọi thứ ngoài mô tả) trong patch hay không. */

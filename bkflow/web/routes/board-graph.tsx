@@ -22,6 +22,7 @@ export default function BoardGraphRoute() {
       <BoardGraphView
         boardId={data.boardId}
         boardTitle={data.boardTitle}
+        initialPlan={data.plan}
         lists={data.lists}
         boardMembers={data.boardMembers}
         currentUserId={data.currentUserId}

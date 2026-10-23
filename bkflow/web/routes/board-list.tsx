@@ -32,6 +32,7 @@ export default function BoardListRoute() {
         lists={data.lists}
         members={data.members}
         labels={data.labels}
+        showCourseFilter={data.showCourseFilter}
         initialData={data.initialData}
         initialAgendaData={data.initialAgendaData}
         error={error}

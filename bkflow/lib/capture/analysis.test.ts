@@ -24,13 +24,13 @@ const MATRIX = [
     text: "Học bài A ngày mai từ 19h đến 20h",
     raw: { title: "Học bài A", deadline: null, schedule: { date: "2026-10-19", startTime: "19:00", endTime: "20:00" } },
     deadline: undefined,
-    schedule: { scheduledOn: null, scheduledStartAt: "2026-10-19T12:00:00.000Z", scheduledEndAt: "2026-10-19T13:00:00.000Z" },
+    schedule: undefined,
   },
   {
     text: "Ôn bài A tối mai",
     raw: { title: "Ôn bài A", schedule: { date: "2026-10-19", startTime: null, endTime: null } },
     deadline: undefined,
-    schedule: { scheduledOn: "2026-10-19", scheduledStartAt: null, scheduledEndAt: null },
+    schedule: undefined,
   },
   {
     text: "nộp thứ ba 17h",
@@ -96,7 +96,7 @@ describe("validateCaptureAnalysis", () => {
       issues: [{ field: "deadline", reason: "Có hai hạn khác nhau: thứ ba và thứ tư." }],
     }, context);
     assert.equal(result.fields.deadline, undefined);
-    assert.ok(result.fields.schedule);
+    assert.equal(result.fields.schedule, undefined);
     assert.equal(result.fields.isImportant, true);
     assert.deepEqual(result.issues.map((issue) => issue.field), ["deadline"]);
   });
@@ -111,13 +111,24 @@ describe("validateCaptureAnalysis", () => {
     assert.equal(result.fields.title, undefined);
     assert.equal(result.fields.deadline, undefined);
     assert.equal(result.fields.schedule, undefined);
-    assert.deepEqual(result.issues.map((issue) => issue.field), ["deadline", "schedule"]);
+    assert.deepEqual(result.issues.map((issue) => issue.field), ["deadline"]);
   });
 
-  test("schedule with only a start time is not completed by guessing", () => {
-    const result = validateCaptureAnalysis({ title: "Học", schedule: { date: "2026-10-19", startTime: "19:00" } }, context);
+  test("tasks only carry a deadline: model schedule and schedule issues are dropped", () => {
+    const result = validateCaptureAnalysis({
+      title: "Làm môn IT3011",
+      schedule: { date: "2026-10-19", startTime: "20:00" },
+      issues: [{ field: "schedule", reason: "Lịch theo giờ cần cả startTime và endTime" }],
+    }, context);
     assert.equal(result.fields.schedule, undefined);
-    assert.equal(result.issues[0].field, "schedule");
+    assert.deepEqual(result.issues, []);
+  });
+
+  test("repeat is kept only with a deadline and a valid shape", () => {
+    const daily = validateCaptureAnalysis({ title: "Làm IT3011", deadline: { date: "2026-10-18", time: "20:00" }, repeat: { unit: "day", every: 1 } }, context);
+    assert.deepEqual(daily.fields.repeat, { unit: "day", every: 1 });
+    assert.equal(validateCaptureAnalysis({ title: "A", repeat: { unit: "day", every: 1 } }, context).fields.repeat, undefined);
+    assert.equal(validateCaptureAnalysis({ title: "A", deadline: { date: "2026-10-18", time: null }, repeat: { unit: "hour", every: 1 } }, context).fields.repeat, undefined);
   });
 
   test("unknown course id is rejected (prompt injection cannot pick a foreign course)", () => {

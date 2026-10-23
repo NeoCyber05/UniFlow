@@ -1,7 +1,6 @@
 "use client";
-import { AiTaskHistory } from "@/components/ai-assistant/task-edit-controls";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CardWithList } from "@/types";
@@ -15,23 +14,43 @@ import { AttachmentsSection as Attachments } from "./attachments/attachments-sec
 import { useAssistantTask } from "@/hooks/use-assistant-task";
 import type { BeforeCloseRef } from "./close-guard";
 import { getCardQueryOptions } from "./card-cache-utils";
+import { PanelMetadata, CardRepeatControl } from "./metadata/panel-metadata";
+import { ChecklistPopover } from "./checklists/checklist-popover";
+import { AttachmentAddPopover } from "./attachments/attachment-add-popover";
+import { ChevronDown, ListChecks, Paperclip, Plus } from "lucide-react";
 
 const CardMainContent = ({
   cardData,
   canEdit,
   beforeCloseRef,
+  panel = false,
 }: {
   cardData: CardWithList;
   canEdit: boolean;
   beforeCloseRef: BeforeCloseRef;
+  panel?: boolean;
 }) => {
+  const checklistActions = canEdit ? (
+    <div className="flex items-center gap-1">
+      <ChecklistPopover cardId={cardData.id} boardId={cardData.list.boardId}>
+        <Button type="button" variant="ghost" size="sm" aria-label="Thêm checklist" className="size-8 p-0"><Plus className="size-4" /></Button>
+      </ChecklistPopover>
+      <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs"
+        onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4 text-primary" aria-hidden="true">
+          <path d="M8.3 7.3c1.7-3 5.2-4 7.7-2.5s3.4 4.7 1.6 7.8-5.2 4-7.8 2.5S6.5 10.3 8.3 7.3Zm7.4 9.4c-1.7 3-5.2 4-7.7 2.5s-3.4-4.7-1.6-7.8 5.2-4 7.8-2.5 3.3 4.8 1.5 7.8Z" />
+          <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+        </svg>
+        Gợi ý AI
+      </Button>
+    </div>
+  ) : null;
   return (
     <>
-      <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
-      {canEdit && (
-        <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>AI: Gợi ý checklist</Button>
-      )}
-      {(cardData.attachments ?? []).length > 0 && (
+      <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} compact={panel} />
+      {!panel && canEdit && <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>AI: Gợi ý checklist</Button>}
+      {panel && cardData.checklists.length === 0 && <div className="flex items-center justify-between gap-2 border-t border-border pt-5"><h2 className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="size-4 text-muted-foreground" />Checklist</h2>{checklistActions}</div>}
+      {!panel && (cardData.attachments ?? []).length > 0 && (
         <Attachments
           cardId={cardData.id}
           boardId={cardData.list.boardId}
@@ -45,7 +64,26 @@ const CardMainContent = ({
         cardDueDate={cardData.dueDate}
         checklists={cardData.checklists || []}
         canEdit={canEdit}
+        compact={panel}
+        actions={panel ? checklistActions : undefined}
       />
+      {panel && <>
+        {cardData.checklists.length === 0 && <p className="text-xs leading-relaxed text-muted-foreground">Chia việc thành các bước nhỏ. Thêm checklist hoặc dùng gợi ý AI để bắt đầu.</p>}
+        <details className="group border-t border-border">
+          <summary className="flex cursor-pointer list-none items-center gap-2 py-4 text-xs font-medium">
+            <Paperclip className="size-4 text-muted-foreground" />Đính kèm
+            <span className="text-muted-foreground">{cardData.attachments.length || ""}</span>
+            <ChevronDown className="ml-auto size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+          </summary>
+          <div className="space-y-3 pb-4">
+            <Attachments cardId={cardData.id} boardId={cardData.list.boardId} items={cardData.attachments} canEdit={canEdit} />
+            {canEdit && <AttachmentAddPopover cardId={cardData.id} boardId={cardData.list.boardId}>
+              <Button type="button" variant="outline" size="sm"><Plus className="size-3.5" />Thêm đính kèm</Button>
+            </AttachmentAddPopover>}
+          </div>
+        </details>
+        <CardRepeatControl data={cardData} canEdit={canEdit} />
+      </>}
     </>
   );
 };
@@ -58,9 +96,9 @@ const LAYOUT_CLASSES = {
     side: "space-y-6 border-t border-neutral-100 pt-6 empty:hidden md:border-l md:border-t-0 md:pl-6 md:pt-0",
   },
   panel: {
-    root: "min-h-0 flex-1 space-y-5 overflow-y-auto p-5 styled-scrollbar",
+    root: "task-detail-panel-body min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6 styled-scrollbar",
     columns: "space-y-7",
-    main: "space-y-7",
+    main: "min-w-0 space-y-5",
     side: "space-y-6 border-t border-neutral-100 pt-6 empty:hidden",
   },
 } as const;
@@ -72,10 +110,11 @@ type CardDetailBodyProps = {
   onClose: () => void;
   /** Filled with the unsaved-changes guard; containers must call it before closing or switching. */
   beforeCloseRef: BeforeCloseRef;
+  headerActions?: ReactNode;
 };
 
 /** Nội dung chi tiết thẻ, dùng chung cho modal (dialog) và panel bên phải. */
-export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: CardDetailBodyProps) => {
+export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef, headerActions }: CardDetailBodyProps) => {
   const classes = LAYOUT_CLASSES[layout];
 
   const queryClient = useQueryClient();
@@ -100,7 +139,7 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
   const canEdit = true;
   const metadata = !cardData
     ? <Metadata.Skeleton />
-    : <Metadata key={`metadata-${cardData.id}`} data={cardData} canEdit={canEdit} />;
+    : layout === "panel" ? <PanelMetadata key={`metadata-${cardData.id}`} data={cardData} canEdit={canEdit} /> : <Metadata key={`metadata-${cardData.id}`} data={cardData} canEdit={canEdit} />;
 
   return (
     <>
@@ -128,19 +167,18 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef }: Card
       <div className={classes.root}>
         {!cardData
           ? <Header.Skeleton />
-          : <Header key={`header-${cardData.id}`} data={cardData} canEdit={canEdit} />
+          : <Header key={`header-${cardData.id}`} data={cardData} canEdit={canEdit} layout={layout} actions={headerActions} />
         }
         <div className={classes.columns}>
           <div className={classes.main}>
             {layout === "panel" && metadata}
             {!cardData
               ? <Description.Skeleton />
-              : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} />
+              : <CardMainContent key={`main-content-${cardData.id}`} cardData={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} panel={layout === "panel"} />
             }
           </div>
           <div className={classes.side}>
             {layout === "dialog" && metadata}
-            {cardData && canEdit && <AiTaskHistory cardId={cardData.id} />}
           </div>
         </div>
       </div>

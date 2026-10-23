@@ -23,6 +23,8 @@ const baseCard = {
   scheduledStartAt: new Date("2026-10-19T12:00:00.000Z"),
   scheduledEndAt: new Date("2026-10-19T13:00:00.000Z"),
   isCompleted: false,
+  repeatUnit: null as string | null,
+  repeatEvery: null as number | null,
   reminder: "1h_before",
   reminderSetAt: new Date("2026-10-18T02:00:00.000Z") as Date | null,
   updatedAt: T0,
@@ -69,6 +71,55 @@ const run = async (data: any, ctx = setup()) => {
   );
   return { result, state: ctx.state };
 };
+
+test("recurrence updates require a valid interval and card revision", () => {
+  const input = { id: "c1", boardId: "b1", expectedUpdatedAt: T0.toISOString() };
+  assert.equal(UpdateCard.safeParse({ ...input, repeat: { unit: "day", every: 0 } }).success, false);
+  assert.equal(UpdateCard.safeParse({ ...input, repeat: { unit: "year", every: 100 } }).success, false);
+  assert.equal(UpdateCard.safeParse({ id: "c1", boardId: "b1", repeat: null }).success, false);
+  assert.equal(UpdateCard.safeParse({ ...input, repeat: { unit: "weekday", every: 1 } }).success, true);
+});
+
+test("set and clear recurrence without changing deadline or schedule", async () => {
+  const ctx = setup();
+  const saved = await run({ repeat: { unit: "week", every: 2 }, expectedUpdatedAt: T0.toISOString() }, ctx);
+  assert.equal(saved.result.data?.repeatUnit, "week");
+  assert.equal(saved.result.data?.repeatEvery, 2);
+  assert.deepEqual(ctx.state.card.dueDate, baseCard.dueDate);
+  assert.deepEqual(ctx.state.card.scheduledStartAt, baseCard.scheduledStartAt);
+  assert.equal(ctx.state.effects.includes("sync:c1"), false);
+  const cleared = await run({ repeat: null, expectedUpdatedAt: ctx.state.card.updatedAt.toISOString() }, ctx);
+  assert.equal(cleared.result.data?.repeatUnit, null);
+  assert.equal(cleared.result.data?.repeatEvery, null);
+});
+
+test("stale recurrence writes do not change the existing rule", async () => {
+  const ctx = setup();
+  ctx.state.card.repeatUnit = "month";
+  ctx.state.card.repeatEvery = 1;
+  const { result } = await run({ repeat: null, expectedUpdatedAt: new Date(T0.getTime() - 1000).toISOString() }, ctx);
+  assert.equal(result.errorCode, CARD_CONFLICT_ERROR_CODE);
+  assert.equal(ctx.state.card.repeatUnit, "month");
+  assert.deepEqual(ctx.state.writes, []);
+});
+
+test("configuring recurrence while completing uses the newly saved title and deadline", async () => {
+  const ctx = setup();
+  Object.assign(ctx.state.card, { reminder: null });
+  const created: any[] = [];
+  ctx.database.cardLabel = { findMany: async () => [] };
+  ctx.database.card.create = async ({ data }: any) => { created.push(data); return { id: "next", ...data }; };
+  const { result } = await run({
+    title: "Tên mới", deadlineOn: "2099-01-31", reminder: null,
+    repeat: { unit: "month", every: 1 }, isCompleted: true, expectedUpdatedAt: T0.toISOString(),
+  }, ctx);
+  assert.equal(result.error, undefined);
+  assert.equal(created.length, 1);
+  assert.equal(created[0].title, "Tên mới");
+  assert.equal(created[0].deadlineOn.toISOString().slice(0, 10), "2099-02-28");
+  assert.equal(result.data?.repeatUnit, null);
+  assert.equal(created[0].repeatUnit, "month");
+});
 
 test("rejects stale metadata without changing deadline", async () => {
   const { result, state } = await run({
@@ -216,7 +267,7 @@ test("reminder for a date-only deadline is validated against 09:00 VN of that da
 });
 
 test("syncs reminder deliveries in the write transaction only when deadline, offset or completion change", async () => {
-  const deadline = await run({ dueDate: new Date("2026-10-22T10:30:00.000Z"), reminder: "60", expectedUpdatedAt: T0.toISOString() });
+  const deadline = await run({ dueDate: new Date(Date.now() + 5 * 86_400_000), reminder: "60", expectedUpdatedAt: T0.toISOString() });
   assert.equal(deadline.result.error, undefined);
   assert.ok(deadline.state.effects.includes("sync:c1"));
   const done = await run({ isCompleted: true, expectedUpdatedAt: T0.toISOString() });

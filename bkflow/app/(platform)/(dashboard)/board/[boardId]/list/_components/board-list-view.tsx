@@ -2,18 +2,18 @@
 
 import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, ListTodo, Plus, Sparkles } from "lucide-react";
+import { AlertCircle, ListTodo, Plus } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 
-import { SmartCaptureDialog } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/smart-capture-dialog";
+import { BoardFilters } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-filters";
+import { BoardImportantToggle } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-important-toggle";
+import { CourseFilterBar } from "@/components/courses/course-filter-bar";
 import { QuickAddBar, type QuickAddDefaults } from "@/components/my-tasks/quick-add-bar";
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
-import { TaskLayoutSwitcher } from "@/components/my-tasks/task-layout-switcher";
-import { getGroupTone, TaskGroupSection } from "@/components/my-tasks/task-group-section";
+import { TaskGroupSection } from "@/components/my-tasks/task-group-section";
 import { TodoInsights } from "@/components/my-tasks/todo-insights";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBoardCourses } from "@/hooks/use-board-courses";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
@@ -24,7 +24,6 @@ import { fetcher } from "@/lib/fetcher";
 import { todoTaskMatchesFilters } from "@/lib/my-tasks/todo-filters";
 import {
   boardTasksQueryKey,
-  MY_TASKS_ROOT_KEY,
   type MyTask,
   type MyTaskGroup,
   type TaskListResponse,
@@ -54,6 +53,8 @@ type BoardListViewProps = {
   lists: Pick<List, "id" | "title">[];
   members: Pick<BoardMember, "id" | "userName" | "userEmail" | "role">[];
   labels: Pick<Label, "id" | "title" | "color">[];
+  /** Bảng workspace mới có lọc theo môn */
+  showCourseFilter?: boolean;
   initialData?: TaskListResponse;
   initialAgendaData?: TaskListResponse;
   error?: string;
@@ -86,13 +87,12 @@ export const BoardListView = ({
   currentBoardMemberId,
   assignableMembers,
   lists,
-  members,
   labels,
+  showCourseFilter,
   initialData,
   initialAgendaData,
   error,
 }: BoardListViewProps) => {
-  const queryClient = useQueryClient();
   const groupMode: ListGroupMode = isTeamBoard ? "list" : "agenda";
 
   const { taskId, openTask, closeTask } = useTaskPanelParam();
@@ -101,15 +101,12 @@ export const BoardListView = ({
   const clearFilters = useBoardFilters((state) => state.clearFilters);
 
   const [openByGroup, setOpenByGroup] = useLocalStorage<Record<string, boolean>>(TODO_GROUPS_STORAGE_KEY, {});
-  const [captureOpen, setCaptureOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [addListId, setAddListId] = useState<string>();
 
-  // Một ô thêm duy nhất, chọn cột lúc tạo; cột "Xong" không nhận việc mới
+  // Một ô thêm duy nhất, vào cột "Cần làm" (hoặc cột đầu); cột "Xong" không nhận việc mới
   const addableLists = lists.filter((list) => getListStatus(list.title) !== "done");
   const addTargets = addableLists.length > 0 ? addableLists : lists;
-  const targetListId =
-    addListId ?? (addTargets.find((list) => getListStatus(list.title) === "todo") ?? addTargets[0])?.id;
+  const targetListId = (addTargets.find((list) => getListStatus(list.title) === "todo") ?? addTargets[0])?.id;
 
   // Dữ liệu theo cột Kanban
   const { data: listData } = useQuery<TaskListResponse>({
@@ -154,15 +151,6 @@ export const BoardListView = ({
   const overdueCount = agendaGroups.find((group) => group.key === "overdue")?.tasks.length ?? 0;
   const showInsights = !isTeamBoard && !taskId && hasAnyAgendaTask;
 
-  // Chip nhảy tới nhóm: mở nhóm nếu đang gập rồi cuộn tới
-  const jumpToGroup = (key: string) => {
-    setOpenByGroup((current) => ({ ...current, [key]: true }));
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    requestAnimationFrame(() =>
-      document.getElementById(`task-group-${key}`)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }),
-    );
-  };
-
   const selectedCourseId = filters.selectedCourseIds.length === 1 ? filters.selectedCourseIds[0] : undefined;
   const quickAddDefaults: QuickAddDefaults = {
     myDayWhenNoDue: true,
@@ -197,29 +185,14 @@ export const BoardListView = ({
               </p>
             </div>
 
-            {/* Hàng = nhóm theo hạn; muốn xem theo cột thì sang layout Cột (Kanban) */}
-            <TaskLayoutSwitcher boardId={boardId} layout="rows" />
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <div className="flex items-center gap-1.5">
+                {showCourseFilter && <CourseFilterBar boardId={boardId} canEdit={canEdit} tone="light" />}
+                <BoardImportantToggle boardId={boardId} tone="light" />
+                <BoardFilters boardId={boardId} labels={labels} tone="light" />
+              </div>
+            </div>
           </header>
-
-          {/* Chip nhảy nhanh tới nhóm theo độ gấp */}
-          {groupMode === "agenda" && pendingAgendaGroups.length > 1 && (
-            <nav aria-label="Nhảy tới nhóm" className="flex flex-wrap gap-2">
-              {pendingAgendaGroups.map((group) => (
-                <button
-                  key={group.key}
-                  type="button"
-                  onClick={() => jumpToGroup(group.key)}
-                  className={cn(
-                    "flex h-8 items-center gap-2 rounded-full px-3 text-xs font-semibold ring-1 transition-[filter] duration-200 hover:brightness-95",
-                    getGroupTone(group.key).chip,
-                  )}
-                >
-                  {group.label}
-                  <span className="tabular-nums opacity-80">{group.tasks.length}</span>
-                </button>
-              ))}
-            </nav>
-          )}
 
           {error && (
             <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">
@@ -238,35 +211,6 @@ export const BoardListView = ({
               defaults={groupMode === "agenda" ? quickAddDefaults : undefined}
               placeholder="Tên việc, vd: nộp bài giải tích @mai ! #toán"
               onCancel={() => setAdding(false)}
-              trailing={
-                <div className="ml-auto flex items-center gap-1">
-                  {addTargets.length > 1 && (
-                    <Select value={targetListId} onValueChange={setAddListId}>
-                      <SelectTrigger aria-label="Thêm vào cột" className="h-8 w-auto gap-1.5 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {addTargets.map((list) => (
-                          <SelectItem key={list.id} value={list.id}>
-                            {list.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {!isTeamBoard && (
-                    <button
-                      type="button"
-                      onClick={() => setCaptureOpen(true)}
-                      title="Smart Capture: dán ghi chú dài, AI tách thành nhiều việc"
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Smart Capture
-                    </button>
-                  )}
-                </div>
-              }
             />
           ) : (
             <button
@@ -334,7 +278,7 @@ export const BoardListView = ({
         </div>
         {showInsights && (
           <div className="sticky top-0 hidden xl:block">
-            <TodoInsights boardId={boardId} groups={agendaGroups} />
+            <TodoInsights boardId={boardId} groups={agendaGroups} onOpen={openTask} />
           </div>
         )}
         </div>
@@ -345,20 +289,6 @@ export const BoardListView = ({
           taskId={taskId}
           onClose={closeTask}
           desktopClassName="top-0 h-full rounded-none border-0 border-l shadow-none"
-        />
-      )}
-
-      {canEdit && (
-        <SmartCaptureDialog
-          boardId={boardId}
-          open={captureOpen}
-          onOpenChange={(open) => {
-            setCaptureOpen(open);
-            if (!open) void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
-          }}
-          lists={lists}
-          members={members}
-          labels={labels}
         />
       )}
     </div>

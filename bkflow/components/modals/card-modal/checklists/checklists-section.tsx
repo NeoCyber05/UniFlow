@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   DragDropContext,
@@ -23,6 +23,7 @@ import { updateChecklist } from "@/actions/checklists/update-checklist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAction } from "@/hooks/use-action";
+import { patchTaskListData } from "@/hooks/use-my-task-mutations";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { ChecklistItemWithAssignee } from "@/types";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,8 @@ interface ChecklistsProps {
   cardDueDate: Date | string | null;
   checklists: ChecklistWithItems[];
   canEdit?: boolean;
+  compact?: boolean;
+  actions?: ReactNode;
 }
 
 export const ChecklistsSection = ({
@@ -53,6 +56,8 @@ export const ChecklistsSection = ({
   cardDueDate,
   checklists,
   canEdit = true,
+  compact = false,
+  actions,
 }: ChecklistsProps) => {
   const queryClient = useQueryClient();
   const [localChecklists, setLocalChecklists] = useState(checklists);
@@ -93,7 +98,10 @@ export const ChecklistsSection = ({
         completed,
       },
     });
-  }, [boardId, cardId, localChecklists]);
+    queryClient.setQueriesData({ queryKey: MY_TASKS_ROOT_KEY }, current =>
+      patchTaskListData(current, cardId, { checklist: { total, completed } }),
+    );
+  }, [boardId, cardId, localChecklists, queryClient]);
 
   const invalidateCard = () => {
     queryClient.invalidateQueries({ queryKey: ["card", cardId] });
@@ -639,9 +647,9 @@ export const ChecklistsSection = ({
   }
 
   return (
-    <div className="flex w-full flex-col gap-y-6">
+    <div className={cn("flex w-full flex-col gap-y-6", compact && "border-t border-border pt-5")}>
       <DragDropContext onDragEnd={canEdit ? onDragEnd : () => undefined}>
-        {localChecklists.map((checklist) => {
+        {localChecklists.map((checklist, checklistIndex) => {
           const completedCount = checklist.items.filter((item) => item.isCompleted).length;
           const isHiding = !!hideCompleted[checklist.id];
           const displayItems = isHiding
@@ -658,6 +666,9 @@ export const ChecklistsSection = ({
                 onRename={(title) => handleRenameChecklist(checklist.id, title)}
                 onDelete={() => executeDeleteChecklist({ id: checklist.id, boardId, cardId })}
                 canEdit={canEdit}
+                compact={compact}
+                actions={checklistIndex === 0 ? actions : undefined}
+                totalCount={checklist.items.length}
                 onToggleHideCompleted={() =>
                   setHideCompleted((current) => ({
                     ...current,
@@ -669,6 +680,7 @@ export const ChecklistsSection = ({
                 <ChecklistProgress
                   completedCount={completedCount}
                   totalCount={checklist.items.length}
+                  compact={compact}
                 />
               )}
               <Droppable droppableId={`checklist:${checklist.id}`} type="checklist-item">
@@ -677,7 +689,8 @@ export const ChecklistsSection = ({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
-                      "flex w-full flex-col gap-y-1 pl-[52px]",
+                      "flex w-full flex-col gap-y-1",
+                      !compact && "pl-[52px]",
                       // Checklist rỗng và là duy nhất: không có đích kéo thả nào, đừng chừa khoảng trống.
                       displayItems.length > 0 || localChecklists.length > 1 ? "min-h-8" : "-mt-3",
                       snapshot.isDraggingOver && "rounded-lg bg-violet-50/50",
@@ -723,7 +736,7 @@ export const ChecklistsSection = ({
                 )}
               </Droppable>
 
-              {canEdit && <div className="pl-[52px]">
+              {canEdit && <div className={compact ? "" : "pl-[52px]"}>
                 {activeChecklistIdForNewItem === checklist.id ? (
                   <form
                     onSubmit={(event) => handleCreateItem(event, checklist.id)}

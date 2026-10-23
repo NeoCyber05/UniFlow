@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -16,8 +17,8 @@ import {
   useTempoTransition,
 } from "@animate-ui/react/utils/motion";
 import { useRouter } from "@/web/shims/next-navigation";
-import { useCardModal } from "@/hooks/use-card-modal";
-import { useShallow } from "zustand/react/shallow";
+import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
+import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { getTodayKey } from "@/lib/calendar/calendar-navigation";
@@ -73,7 +74,9 @@ export const BoardCalendarView = ({
   initialData,
 }: BoardCalendarViewProps) => {
   const router = useRouter();
-  const cardModal = useCardModal(useShallow((state) => ({ onOpen: state.onOpen, onClose: state.onClose })));
+  // Mở thẻ ở panel chi tiết như trang Việc cần làm (?task=<id>), không dùng modal giữa màn hình
+  const { taskId, openTask, closeTask } = useTaskPanelParam();
+  const cardModal = useMemo(() => ({ onOpen: openTask, onClose: closeTask }), [openTask, closeTask]);
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
   const {
@@ -456,6 +459,20 @@ export const BoardCalendarView = ({
         anchorDate,
         currentTime,
         isSkeleton,
+        deadlineMarkers: dayTimeline.markers.map((entry) => {
+          const at = new Date(entry.startsAt!);
+          const { hours, minutes } = getGmt7Parts(at);
+
+          return {
+            key: entry.key,
+            cardId: entry.cardId,
+            title: entry.title ?? dayCardMeta[entry.cardId]?.title ?? "Thẻ",
+            label: entry.kind === "checklist-deadline" ? "Hạn checklist" : entry.kind === "deadline" ? "Hạn nộp" : "Bắt đầu",
+            minute: hours * 60 + minutes,
+            time: formatGmt7Time(at),
+            isCompleted: dayCardMeta[entry.cardId]?.isCompleted ?? false,
+          };
+        }),
         dayViewBlocks,
         desktopDayViewLayout,
         mobileDayViewLayout,
@@ -612,7 +629,7 @@ export const BoardCalendarView = ({
                 rowProps={calendarWeekRowProps}
               />
             ) : (
-              <div className="space-y-3">
+              <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <CalendarDayTimeline
                   day={getGmt7DayKey(anchorDate)}
                   today={getTodayKey(currentTime)}
@@ -623,10 +640,7 @@ export const BoardCalendarView = ({
                   onPlanTask={openScheduleDialog}
                   onCreateInGap={(gap) => openCreateDialogWithRange(new Date(gap.startsAt), new Date(gap.endsAt))}
                 />
-                <details className="rounded-lg border border-neutral-200 bg-white p-3">
-                  <summary className="cursor-pointer text-sm font-medium text-neutral-700">Lưới giờ — kéo, đổi độ dài hoặc thêm buổi làm</summary>
-                  <div className="mt-3">{renderCalendarDayTimeGrid()}</div>
-                </details>
+                <div className="min-w-0 lg:order-first">{renderCalendarDayTimeGrid()}</div>
               </div>
             )}
             {viewMode !== "day" && items.length === 0 && (
@@ -670,6 +684,7 @@ export const BoardCalendarView = ({
         </ReducedMotionConfig>
       </div>
     </section>
+    {taskId && <TaskDetailPanel taskId={taskId} onClose={closeTask} desktopClassName="top-0 h-full" />}
     <ReducedMotionConfig>
     <AnimatePresence initial={false}>
     {!isUnscheduledCollapsed && (

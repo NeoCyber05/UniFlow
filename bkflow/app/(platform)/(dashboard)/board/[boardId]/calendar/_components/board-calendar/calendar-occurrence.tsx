@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 
 import {
   getCalendarItemTitle,
-  getOccurrenceLabel,
   getOccurrenceTimeLabel,
   getOccurrenceTone,
   isCalendarCardItem,
@@ -72,7 +71,8 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
   const timeLabel = getOccurrenceTimeLabel(occurrence);
-  const occurrenceLabel = variant === "split" ? null : getOccurrenceLabel(occurrence);
+  // Nhãn chip là mã môn/tên danh mục thay vì "Hạn nộp", "Lịch làm"…
+  const occurrenceLabel = variant === "split" ? null : course?.code ?? course?.name ?? null;
   const cardItem = isCalendarCardItem(occurrence.item) ? occurrence.item : null;
   const isChecklistItem = isCalendarChecklistItem(occurrence.item);
   const canDragOccurrence =

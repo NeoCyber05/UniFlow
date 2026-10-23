@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ReminderValue } from "@/actions/cards/create-smart-capture-card/schema";
 import { DateOnly, OffsetDateTime } from "@/lib/cards/task-schedule";
+import { TaskRepeatSchema } from "@/lib/cards/task-repeat";
 
 export const QuickAddCard = z.object({
   /** UUID ổn định cho một lần gửi → Card.id; retry cùng id không tạo bản thứ hai. Bỏ trống ở caller cũ. */
@@ -27,6 +28,7 @@ export const QuickAddCard = z.object({
   scheduledStartAt: z.optional(z.union([OffsetDateTime, z.null()])),
   scheduledEndAt: z.optional(z.union([OffsetDateTime, z.null()])),
   reminder: ReminderValue,
+  repeat: z.optional(z.union([TaskRepeatSchema, z.null()])),
   checklistItems: z.optional(z.array(z.string().max(120)).max(20)),
   isImportant: z.optional(z.boolean()),
   myDay: z.optional(z.boolean()),

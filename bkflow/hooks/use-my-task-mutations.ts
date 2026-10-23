@@ -15,12 +15,12 @@ import {
   type TaskListResponse,
 } from "@/lib/my-tasks/types";
 
-type TaskPatch = Partial<Pick<MyTask, "isCompleted" | "isImportant" | "myDayAt">>;
+type TaskPatch = Partial<Pick<MyTask, "isCompleted" | "isImportant" | "myDayAt" | "checklist">>;
 
 const isTaskListResponse = (data: unknown): data is TaskListResponse =>
   typeof data === "object" && data !== null && Array.isArray((data as TaskListResponse).groups);
 
-const patchResponse = (data: unknown, cardId: string, patch: TaskPatch) => {
+export const patchTaskListData = (data: unknown, cardId: string, patch: TaskPatch) => {
   const apply = (task: MyTask) => (task.id === cardId ? { ...task, ...patch } : task);
 
   if (isTaskListResponse(data)) {
@@ -62,7 +62,7 @@ export const useMyTaskMutations = () => {
 
       queryClient.setQueriesData(
         { queryKey: MY_TASKS_ROOT_KEY },
-        (data: unknown) => patchResponse(data, cardId, patch),
+        (data: unknown) => patchTaskListData(data, cardId, patch),
       );
 
       if (contextSnapshot) {

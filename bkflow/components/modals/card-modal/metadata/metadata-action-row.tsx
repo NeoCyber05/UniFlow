@@ -83,11 +83,7 @@ export const MetadataActionRow = ({
       )}
 
       {/* Checklist Button */}
-      <ChecklistPopover
-        cardId={data.id}
-        boardId={boardId}
-        boardChecklists={data.boardChecklists || []}
-      >
+      <ChecklistPopover cardId={data.id} boardId={boardId}>
         <button
           type="button"
           className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"

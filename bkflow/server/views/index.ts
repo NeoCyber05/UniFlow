@@ -5,7 +5,6 @@ import { loadBoardAnalytics } from "./board-analytics";
 import { loadBoardCalendar } from "./board-calendar";
 import { loadBoardGraph } from "./board-graph";
 import { loadBoardList } from "./board-list";
-import { loadBoardSplit } from "./board-split";
 import { loadBoardTimeline } from "./board-timeline";
 import { loadBoardTodo } from "./board-todo";
 import { loadBoardKanban } from "./board-kanban";
@@ -35,11 +34,6 @@ export const viewsRoute = new Hono()
     const { userId } = await auth();
     if (!userId) return json({ redirect: "/sign-in" });
     return json(await loadBoardList({ boardId: c.req.param("boardId"), group: c.req.query("group") }, userId));
-  })
-  .get("/board/:boardId/split", async (c) => {
-    const { userId } = await auth();
-    if (!userId) return json({ redirect: "/sign-in" });
-    return json(await loadBoardSplit({ boardId: c.req.param("boardId") }, userId));
   })
   .get("/board/:boardId/timeline", async (c) => {
     const { userId } = await auth();

@@ -5,7 +5,6 @@ import type { loadBoardKanban } from "@/server/views/board-kanban";
 import { BoardCardModalFromUrl } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-card-modal-from-url";
 import { ListContainer } from "@/app/(platform)/(dashboard)/board/[boardId]/kanban/_components/list-container";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TaskLayoutSwitcher } from "@/components/my-tasks/task-layout-switcher";
 
 import { useView } from "../lib/use-view";
 
@@ -26,7 +25,6 @@ export default function BoardKanbanRoute() {
           <ListTodo aria-hidden="true" className="h-6 w-6 text-violet-600" />
           Việc cần làm
         </h1>
-        <TaskLayoutSwitcher boardId={data.boardId} layout="columns" />
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         <ListContainer

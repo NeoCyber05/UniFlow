@@ -32,7 +32,8 @@ export type CardUpdatedField =
   | "reminderSetAt"
   | "assignees"
   | "dependencies"
-  | "courseId";
+  | "courseId"
+  | "repeat";
 
 export type BoardUpdatedField = "title" | "members" | "roles";
 

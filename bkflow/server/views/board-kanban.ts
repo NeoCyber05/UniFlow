@@ -46,6 +46,8 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
               reminder: true,
               reminderSetAt: true,
               reminderGeneration: true,
+              repeatUnit: true,
+              repeatEvery: true,
               archivedAt: true,
               archivedByListId: true,
               listId: true,

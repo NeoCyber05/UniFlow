@@ -1,4 +1,5 @@
 import { validateTaskSchedule, type TaskDeadline, type TaskSchedule } from "@/lib/cards/task-schedule";
+import type { TaskRepeat } from "@/lib/cards/task-repeat";
 import type { CaptureAnalysis, CaptureIssue } from "@/lib/capture/analysis";
 import {
   buildCaptureSourceDescription,
@@ -13,6 +14,8 @@ export type CaptureFields = {
   schedule: TaskSchedule | null;
   /** Offset phút trước hạn (contract nhắc của card), null = không nhắc. */
   reminder: string | null;
+  /** Lặp lại theo hạn nộp; không có hạn thì bỏ. */
+  repeat: TaskRepeat | null;
   isImportant: boolean;
   courseId: string | null;
   checklistItems: string[];
@@ -39,6 +42,7 @@ const EMPTY_FIELDS: CaptureFields = {
   deadline: null,
   schedule: null,
   reminder: null,
+  repeat: null,
   isImportant: false,
   courseId: null,
   checklistItems: [],
@@ -351,6 +355,7 @@ export const toQuickAddInput = (
     scheduledStartAt: values.schedule?.scheduledStartAt ?? null,
     scheduledEndAt: values.schedule?.scheduledEndAt ?? null,
     reminder: values.deadline ? values.reminder : null,
+    repeat: values.deadline ? values.repeat : null,
     isImportant: values.isImportant || Boolean(defaults?.isImportant),
     myDay: Boolean(defaults?.myDay) || (Boolean(defaults?.myDayWhenNoDue) && !values.deadline),
     checklistItems: values.checklistItems,

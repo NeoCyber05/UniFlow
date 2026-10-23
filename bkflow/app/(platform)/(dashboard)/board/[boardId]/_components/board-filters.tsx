@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import type { Label } from "@prisma/client";
-import { Filter, X, ChevronDown, Clock, CalendarDays, Tag } from "lucide-react";
+import { AlarmClock, CalendarDays, CalendarOff, Check, CheckCircle2, Circle, Clock, Filter, Tag, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
@@ -15,14 +15,59 @@ import {
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { cn } from "@/lib/utils";
 
+const CHIP_TONES = {
+  violet: "border-violet-300 bg-violet-50 text-violet-800",
+  emerald: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  rose: "border-rose-300 bg-rose-50 text-rose-700",
+  amber: "border-amber-300 bg-amber-50 text-amber-800",
+};
+
+const FilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section>
+    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">{title}</p>
+    {children}
+  </section>
+);
+
+/** Ô bật/tắt một điều kiện lọc; bật thì tô màu theo ý nghĩa và hiện dấu tick. */
+const FilterChip = ({
+  icon: Icon,
+  label,
+  active,
+  onToggle,
+  tone = "violet",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  active: boolean;
+  onToggle: () => void;
+  tone?: keyof typeof CHIP_TONES;
+}) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    onClick={onToggle}
+    className={cn(
+      "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+      active ? CHIP_TONES[tone] : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50",
+    )}
+  >
+    <Icon className="h-3.5 w-3.5 shrink-0" />
+    <span className="truncate">{label}</span>
+    {active && <Check aria-hidden="true" className="ml-auto h-3.5 w-3.5 shrink-0" />}
+  </button>
+);
+
 interface BoardFiltersProps {
   boardId: string;
-  labels: Label[];
+  labels: Pick<Label, "id" | "title" | "color">[];
+  tone?: "dark" | "light";
 }
 
 export const BoardFilters = ({
   boardId,
   labels,
+  tone = "dark",
 }: BoardFiltersProps) => {
   const filters = useBoardFilters((state) =>
     state.filtersByBoardId[boardId] ?? emptyBoardFilters,
@@ -33,10 +78,7 @@ export const BoardFilters = ({
   const toggleDueDateFilter = useBoardFilters((state) => state.toggleDueDateFilter);
   const toggleLabel = useBoardFilters((state) => state.toggleLabel);
   const toggleNoLabels = useBoardFilters((state) => state.toggleNoLabels);
-  const setSelectedLabels = useBoardFilters((state) => state.setSelectedLabels);
   const clearFilters = useBoardFilters((state) => state.clearFilters);
-
-  const [labelsExpanded, setLabelsExpanded] = useState(false);
 
   const {
     completedEnabled,
@@ -78,7 +120,10 @@ export const BoardFilters = ({
               size="icon"
               variant="transparent"
               className={cn(
-                "relative h-8 w-8 rounded-lg border border-white/20 bg-white/10 text-white shadow-sm hover:bg-white/20 cursor-pointer",
+                "relative h-8 w-8 rounded-lg shadow-sm cursor-pointer",
+                tone === "dark"
+                  ? "border border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
                 hasActiveFilters && "border-violet-200 bg-white text-violet-700 hover:bg-violet-50",
               )}
               aria-label="Lọc thẻ"
@@ -95,213 +140,76 @@ export const BoardFilters = ({
         <PopoverContent
           align="end"
           sideOffset={8}
-          className="w-80 rounded-xl border border-neutral-200 bg-white p-4 shadow-xl overflow-y-auto max-h-[480px] styled-scrollbar"
+          className="w-80 gap-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl"
         >
-          {/* Header */}
-          <div className="relative pb-2.5 mb-3.5 border-b border-neutral-100 flex items-center justify-between">
-            <span className="text-sm font-semibold text-neutral-800 mx-auto">Lọc</span>
+          <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
+            <Filter aria-hidden="true" className="h-4 w-4 text-violet-600" />
+            <span className="text-sm font-semibold text-neutral-900">Lọc thẻ</span>
+            {hasActiveFilters && (
+              <span className="rounded-full bg-violet-100 px-1.5 text-[11px] font-semibold tabular-nums text-violet-700">{activeFilterCount}</span>
+            )}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => clearFilters(boardId)}
+                className="ml-auto cursor-pointer rounded-md px-1.5 py-0.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+              >
+                Xóa lọc
+              </button>
+            )}
             <PopoverClose asChild>
-              <button 
-                type="button" 
-                className="absolute right-0 top-0.5 text-neutral-400 hover:text-neutral-600 rounded-sm cursor-pointer"
+              <button
+                type="button"
+                aria-label="Đóng"
+                className={cn("cursor-pointer rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700", !hasActiveFilters && "ml-auto")}
               >
                 <X className="h-4 w-4" />
               </button>
             </PopoverClose>
           </div>
 
-          <div className="space-y-4">
-            {/* 1. Card Status Section */}
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-neutral-800 pl-0.5">
-                Trạng thái thẻ
-              </p>
-              
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={completedEnabled}
-                  onChange={() => toggleCompleted(boardId)}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <span className="text-sm text-neutral-700 font-normal">
-                  Đã đánh dấu hoàn thành
-                </span>
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={notCompletedEnabled}
-                  onChange={() => toggleNotCompleted(boardId)}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <span className="text-sm text-neutral-700 font-normal">
-                  Chưa hoàn thành
-                </span>
-              </label>
-            </div>
-
-            {/* 2. Ngày hết hạn Section */}
-            <div className="space-y-2 pt-3.5 border-t border-neutral-100">
-              <p className="text-sm font-semibold text-neutral-800 pl-0.5">
-                Ngày hết hạn
-              </p>
-
-              {/* Không có ngày hết hạn */}
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={selectedDueDateFilters.includes("no-due")}
-                  onChange={() => toggleDueDateFilter(boardId, "no-due")}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm text-neutral-700 font-normal">
-                  Không có ngày hết hạn
-                </span>
-              </label>
-
-              {/* Quá hạn */}
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={selectedDueDateFilters.includes("overdue")}
-                  onChange={() => toggleDueDateFilter(boardId, "overdue")}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-                  <Clock className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm text-rose-600 font-normal">
-                  Đã quá hạn
-                </span>
-              </label>
-
-              {/* Hết hạn vào ngày mai */}
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={selectedDueDateFilters.includes("due-tomorrow")}
-                  onChange={() => toggleDueDateFilter(boardId, "due-tomorrow")}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
-                  <Clock className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm text-amber-600 font-normal">
-                  Hạn vào ngày mai
-                </span>
-              </label>
-
-              {/* Hết hạn trong tuần tới */}
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={selectedDueDateFilters.includes("due-next-week")}
-                  onChange={() => toggleDueDateFilter(boardId, "due-next-week")}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm text-neutral-700 font-normal">
-                  Hạn vào tuần tới
-                </span>
-              </label>
-            </div>
-
-            {/* 3. Nhãn Section */}
-            <div className="space-y-2 pt-3.5 border-t border-neutral-100">
-              <p className="text-sm font-semibold text-neutral-800 pl-0.5">
-                Nhãn
-              </p>
-
-              {/* Không có nhãn */}
-              <label className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1.5 transition hover:bg-neutral-50 select-none">
-                <input
-                  type="checkbox"
-                  checked={noLabelsEnabled}
-                  onChange={() => toggleNoLabels(boardId)}
-                  className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                />
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
-                  <Tag className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm text-neutral-700 font-normal">
-                  Không có nhãn
-                </span>
-              </label>
-
-              {/* Chọn nhãn collapsible */}
-              <div className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => setLabelsExpanded(!labelsExpanded)}
-                  className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-neutral-50 transition text-left cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-x-2.5">
-                    <input
-                      type="checkbox"
-                      checked={selectedLabelIds.length > 0}
-                      readOnly
-                      className="h-4 w-4 rounded border-neutral-300 accent-violet-600 pointer-events-none"
-                    />
-                    <span className="text-sm text-neutral-700 font-normal">
-                      Chọn nhãn
-                    </span>
-                  </div>
-                  <ChevronDown className={cn("h-4 w-4 text-neutral-400 transition-transform", labelsExpanded && "rotate-180")} />
-                </button>
-
-                {labelsExpanded && (
-                  <div className="pl-7 space-y-1 mt-1 max-h-40 overflow-y-auto pr-1 styled-scrollbar">
-                    {labels.length === 0 ? (
-                      <p className="text-xs text-neutral-400 italic py-1 pl-2">Bảng chưa có nhãn</p>
-                    ) : (
-                      labels.map((label) => {
-                        const checked = selectedLabelIds.includes(label.id);
-                        return (
-                          <label
-                            key={label.id}
-                            className="flex cursor-pointer items-center gap-x-2.5 rounded-lg px-2 py-1 transition hover:bg-neutral-50 select-none"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleLabel(boardId, label.id)}
-                              className="h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer"
-                            />
-                            <div
-                              className="h-5 flex-1 rounded px-2 py-0.5 text-xs text-white font-medium truncate flex items-center shadow-xs"
-                              style={{ backgroundColor: label.color }}
-                            >
-                              {label.title || "Không có tiêu đề"}
-                            </div>
-                          </label>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
+          <div className="max-h-[420px] space-y-4 overflow-y-auto px-4 py-3.5 styled-scrollbar">
+            <FilterSection title="Trạng thái">
+              <div className="grid grid-cols-2 gap-1.5">
+                <FilterChip icon={CheckCircle2} label="Đã xong" active={completedEnabled} onToggle={() => toggleCompleted(boardId)} tone="emerald" />
+                <FilterChip icon={Circle} label="Chưa xong" active={notCompletedEnabled} onToggle={() => toggleNotCompleted(boardId)} />
               </div>
-            </div>
+            </FilterSection>
 
-            {/* Clear All Filters Button */}
-            {hasActiveFilters && (
-              <div className="pt-2 border-t border-neutral-100">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => clearFilters(boardId)}
-                  className="w-full text-xs text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 h-8"
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
+            <FilterSection title="Hạn nộp">
+              <div className="grid grid-cols-2 gap-1.5">
+                <FilterChip icon={AlarmClock} label="Quá hạn" active={selectedDueDateFilters.includes("overdue")} onToggle={() => toggleDueDateFilter(boardId, "overdue")} tone="rose" />
+                <FilterChip icon={Clock} label="Ngày mai" active={selectedDueDateFilters.includes("due-tomorrow")} onToggle={() => toggleDueDateFilter(boardId, "due-tomorrow")} tone="amber" />
+                <FilterChip icon={CalendarDays} label="Tuần tới" active={selectedDueDateFilters.includes("due-next-week")} onToggle={() => toggleDueDateFilter(boardId, "due-next-week")} />
+                <FilterChip icon={CalendarOff} label="Chưa có hạn" active={selectedDueDateFilters.includes("no-due")} onToggle={() => toggleDueDateFilter(boardId, "no-due")} />
               </div>
-            )}
+            </FilterSection>
+
+            <FilterSection title="Nhãn">
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip icon={Tag} label="Không có nhãn" active={noLabelsEnabled} onToggle={() => toggleNoLabels(boardId)} />
+                {labels.map((label) => {
+                  const active = selectedLabelIds.includes(label.id);
+                  return (
+                    <button
+                      key={label.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleLabel(boardId, label.id)}
+                      className={cn(
+                        "inline-flex h-8 max-w-full cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+                        active ? "border-violet-300 bg-violet-50 text-violet-800" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50",
+                      )}
+                    >
+                      <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
+                      <span className="truncate">{label.title || "Không có tiêu đề"}</span>
+                      {active && <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+              {labels.length === 0 && <p className="mt-1.5 text-xs text-neutral-400">Bảng chưa có nhãn.</p>}
+            </FilterSection>
           </div>
         </PopoverContent>
       </Popover>

@@ -30,11 +30,25 @@ model Board {
   lists   List[]
   labels  Label[]
   courses Course[]
+  graphPlans BoardGraphPlan[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+/// Thứ tự "Làm gì trước?" của một người trên một bảng (Sơ đồ), lưu trên server
+model BoardGraphPlan {
+  userId    String
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  arranged  String?
+  range     String   @default("week")
+  aiOrder   Json?
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, boardId])
 }
 
 enum BoardType {
@@ -111,6 +125,9 @@ model Card {
   scheduledStartAt     DateTime?
   scheduledEndAt       DateTime?
   isCompleted          Boolean   @default(false)
+  /// Lặp lại: day | weekday | week | month | year; tick xong thì tạo thẻ kỳ sau (xem lib/cards/task-repeat.ts)
+  repeatUnit           String?
+  repeatEvery          Int?
   /// EVENT: lịch để xem (buổi học TKB), không có checkbox, không tính là việc
   kind                 CardKind  @default(TASK)
   reminder             String?

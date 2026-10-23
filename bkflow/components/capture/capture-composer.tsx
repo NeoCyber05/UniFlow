@@ -6,13 +6,16 @@ import {
   AlertTriangle,
   Bell,
   BookOpen,
-  CalendarClock,
+  CalendarCheck,
   CalendarDays,
+  CalendarPlus,
+  CalendarRange,
   ChevronDown,
   ImagePlus,
   ListChecks,
   Loader2,
   Plus,
+  Repeat,
   Sparkles,
   Star,
   X,
@@ -21,14 +24,16 @@ import { AnimatePresence, motion } from "motion/react";
 import { scale, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { toast } from "sonner";
 
+import { TaskRepeatEditor } from "@/components/task-repeat-editor";
 import { ImageImportDialog, readCaptureImage, readCaptureText, type CaptureImageResult } from "@/components/capture/image-import-dialog";
 import { CoursePicker, getCourseOptionLabel } from "@/components/courses/course-picker";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 import { analyzeSmartCapture } from "@/actions/ai/analyze-smart-capture";
 import { quickAddCard } from "@/actions/cards/quick-add-card";
 import { CAPTURE_ALREADY_PROCESSED, CAPTURE_REJECTED } from "@/lib/cards/capture-error-codes";
-import type { TaskDeadline, TaskSchedule } from "@/lib/cards/task-schedule";
+import type { TaskDeadline } from "@/lib/cards/task-schedule";
+import { formatRepeat } from "@/lib/cards/task-repeat";
 import { getZonedDayKey, zonedTimeToIso, type CaptureIssue } from "@/lib/capture/analysis";
 import { imageItemToCaptureFields } from "@/lib/capture/image-import";
 import { tr } from "@/lib/i18n";
@@ -61,6 +66,7 @@ const FIELD_LABELS: Record<keyof CaptureFields, string> = {
   deadline: "Hạn nộp",
   schedule: "Lịch làm",
   reminder: "Nhắc",
+  repeat: "Lặp lại",
   isImportant: "Ưu tiên",
   courseId: "Danh mục",
   checklistItems: "Việc cần làm",
@@ -79,14 +85,6 @@ const formatInstant = (iso: string) => `${formatDay(getZonedDayKey(iso, CAPTURE_
 /** Ngày tuyệt đối có năm và múi giờ, không để người dùng đoán "mai" là ngày nào. */
 export const formatDeadlinePreview = (deadline: TaskDeadline) =>
   deadline.dueDate ? `${formatInstant(deadline.dueDate)} (GMT+7)` : `${formatDay(deadline.deadlineOn!)} · cả ngày`;
-
-export const formatSchedulePreview = (schedule: TaskSchedule) => {
-  if (schedule.scheduledOn) return `${formatDay(schedule.scheduledOn)} · chưa chọn giờ`;
-  const start = schedule.scheduledStartAt!;
-  const end = schedule.scheduledEndAt!;
-  const sameDay = getZonedDayKey(start, CAPTURE_TIME_ZONE) === getZonedDayKey(end, CAPTURE_TIME_ZONE);
-  return `${formatInstant(start)}–${sameDay ? timeOf(end) : formatInstant(end)} (GMT+7)`;
-};
 
 const parserFields = (rawText: string, courses?: QuickAddCourse[], members?: QuickAddMember[]) => {
   const parsed = parseQuickAdd(rawText, { courses, members });
@@ -235,10 +233,9 @@ export const CaptureComposer = ({
             toast.error(tr("import.noTasks"));
             return;
           }
-          const { deadline, schedule } = imageItemToCaptureFields(item);
+          const { deadline } = imageItemToCaptureFields(item);
           onTextChange(item.title);
           if (deadline) setField("deadline", deadline);
-          if (schedule) setField("schedule", schedule);
           if (item.description) setNote(item.description);
           setAttachedImage(null);
           inputRef.current?.focus();
@@ -472,8 +469,15 @@ export const CaptureComposer = ({
             <PickerChip icon={CalendarDays} label={values.deadline ? formatDeadlinePreview(values.deadline) : "Hạn nộp"} active={hasDeadline} onClear={() => setField("deadline", null)}>
               <DeadlineEditor key={`deadline:${JSON.stringify(values.deadline)}`} value={values.deadline} onChange={(value) => setField("deadline", value)} />
             </PickerChip>
-            <PickerChip icon={CalendarClock} label={values.schedule ? formatSchedulePreview(values.schedule) : "Lịch làm"} active={Boolean(values.schedule)} onClear={() => setField("schedule", null)}>
-              <ScheduleEditor key={`schedule:${JSON.stringify(values.schedule)}`} value={values.schedule} onChange={(value) => setField("schedule", value)} />
+            <PickerChip icon={Repeat} label={values.repeat ? formatRepeat(values.repeat) : "Lặp lại"} active={Boolean(values.repeat)} onClear={() => setField("repeat", null)}>
+              <TaskRepeatEditor
+                value={values.repeat}
+                onChange={(value) => {
+                  // Kỳ lặp tính từ hạn nộp: chưa có hạn thì lấy hôm nay
+                  if (!values.deadline) setField("deadline", { dueDate: null, deadlineOn: dayKeyFromToday(0) });
+                  setField("repeat", value);
+                }}
+              />
             </PickerChip>
             <button
               type="button"
@@ -632,9 +636,6 @@ export const CaptureComposer = ({
             {values.deadline && (
               <Chip icon={CalendarDays} label={`Hạn ${formatDeadlinePreview(values.deadline)}`} onClear={() => setField("deadline", null)} />
             )}
-            {values.schedule && (
-              <Chip icon={CalendarClock} label={`Làm ${formatSchedulePreview(values.schedule)}`} onClear={() => setField("schedule", null)} />
-            )}
             {values.deadline && values.reminder && values.reminder !== "none" && (
               <Chip icon={Bell} label={reminderLabel(values.reminder)} onClear={() => setField("reminder", null)} />
             )}
@@ -714,12 +715,6 @@ const deadlineToForm = (deadline: TaskDeadline | null) => ({
   time: deadline?.dueDate ? timeOf(deadline.dueDate) : "",
 });
 
-const scheduleToForm = (schedule: TaskSchedule | null) => ({
-  date: schedule?.scheduledStartAt ? getZonedDayKey(schedule.scheduledStartAt, CAPTURE_TIME_ZONE) : schedule?.scheduledOn ?? "",
-  start: schedule?.scheduledStartAt ? timeOf(schedule.scheduledStartAt) : "",
-  end: schedule?.scheduledEndAt ? timeOf(schedule.scheduledEndAt) : "",
-});
-
 const CaptureDetails = ({
   id,
   values,
@@ -743,7 +738,6 @@ const CaptureDetails = ({
       </label>
 
       <DeadlineEditor key={`deadline:${JSON.stringify(values.deadline)}`} value={values.deadline} onChange={(value) => setField("deadline", value)} />
-      <ScheduleEditor key={`schedule:${JSON.stringify(values.schedule)}`} value={values.schedule} onChange={(value) => setField("schedule", value)} />
 
       <label className="grid gap-1">
         <span className="font-medium">Nhắc hạn</span>
@@ -833,6 +827,24 @@ const CaptureDetails = ({
   );
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const dayKeyFromToday = (days: number) =>
+  new Date(Date.parse(`${getZonedDayKey(new Date().toISOString(), CAPTURE_TIME_ZONE)}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+const weekdayOf = (key: string) =>
+  new Intl.DateTimeFormat("vi-VN", { weekday: "short", timeZone: "UTC" }).format(new Date(`${key}T00:00:00Z`));
+
+/** Hôm nay / Ngày mai / Thứ hai tuần tới. */
+const quickDeadlines = () => {
+  const todayDow = new Date(`${dayKeyFromToday(0)}T00:00:00Z`).getUTCDay();
+  return [
+    { label: "Hôm nay", icon: CalendarCheck, key: dayKeyFromToday(0) },
+    { label: "Ngày mai", icon: CalendarPlus, key: dayKeyFromToday(1) },
+    { label: "Tuần tới", icon: CalendarRange, key: dayKeyFromToday(((8 - todayDow) % 7) || 7) },
+  ];
+};
+
+const menuItemClass = "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs text-neutral-700 hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none";
+
 const DeadlineEditor = ({ value, onChange }: { value: TaskDeadline | null; onChange: (value: TaskDeadline | null) => void }) => {
   const [form, setForm] = useState(() => deadlineToForm(value));
   const update = (next: typeof form) => {
@@ -847,38 +859,23 @@ const DeadlineEditor = ({ value, onChange }: { value: TaskDeadline | null; onCha
 
   return (
     <fieldset className="grid gap-1">
-      <legend className="mb-1 font-medium">Hạn nộp (giờ VN)</legend>
+      <div className="-mx-1 mb-1 grid gap-0.5 border-b border-neutral-100 pb-1.5">
+        {quickDeadlines().map(({ label, icon: Icon, key }) => (
+          <PopoverClose asChild key={label}>
+            <button type="button" onClick={() => update({ ...form, date: key })} className={cn(menuItemClass, form.date === key && "bg-violet-50 text-violet-700")}>
+              <Icon className="h-4 w-4 text-neutral-500" aria-hidden="true" />
+              <span className="flex-1">{label}</span>
+              <span className="text-[11px] text-neutral-400">{weekdayOf(key)}, {formatDay(key)}</span>
+            </button>
+          </PopoverClose>
+        ))}
+      </div>
+      <span className="mb-1 font-medium">Chọn ngày (giờ VN)</span>
       <div className="flex flex-wrap gap-1.5">
         <input type="date" aria-label="Ngày hạn" value={form.date} onChange={(event) => update({ ...form, date: event.target.value })} className={inputClass} />
         <input type="time" aria-label="Giờ hạn" value={form.time} disabled={!form.date} onChange={(event) => update({ ...form, time: event.target.value })} className={inputClass} />
       </div>
       {form.date && !form.time && <span className="text-neutral-400">Không chọn giờ = hạn cả ngày.</span>}
-    </fieldset>
-  );
-};
-
-const ScheduleEditor = ({ value, onChange }: { value: TaskSchedule | null; onChange: (value: TaskSchedule | null) => void }) => {
-  const [form, setForm] = useState(() => scheduleToForm(value));
-  const partial = Boolean(form.date) && Boolean(form.start) !== Boolean(form.end);
-  const update = (next: typeof form) => {
-    setForm(next);
-    if (!next.date) return onChange(null);
-    if (!next.start && !next.end) return onChange({ scheduledOn: next.date, scheduledStartAt: null, scheduledEndAt: null });
-    if (!next.start || !next.end) return;
-    const scheduledStartAt = zonedTimeToIso(next.date, next.start, CAPTURE_TIME_ZONE);
-    const scheduledEndAt = zonedTimeToIso(next.date, next.end, CAPTURE_TIME_ZONE);
-    if (scheduledStartAt && scheduledEndAt) onChange({ scheduledOn: null, scheduledStartAt, scheduledEndAt });
-  };
-
-  return (
-    <fieldset className="grid gap-1">
-      <legend className="mb-1 font-medium">Lịch làm (giờ VN)</legend>
-      <div className="flex flex-wrap gap-1.5">
-        <input type="date" aria-label="Ngày làm" value={form.date} onChange={(event) => update({ ...form, date: event.target.value })} className={inputClass} />
-        <input type="time" aria-label="Giờ bắt đầu" value={form.start} disabled={!form.date} onChange={(event) => update({ ...form, start: event.target.value })} className={inputClass} />
-        <input type="time" aria-label="Giờ kết thúc" value={form.end} disabled={!form.date} onChange={(event) => update({ ...form, end: event.target.value })} className={inputClass} />
-      </div>
-      {partial && <span className="text-amber-700">Cần cả giờ bắt đầu và giờ kết thúc.</span>}
     </fieldset>
   );
 };

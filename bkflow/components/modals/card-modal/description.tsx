@@ -56,6 +56,7 @@ import { DescriptionEditor } from "./description-editor";
 import type { BeforeCloseRef } from "./close-guard";
 
 interface DescriptionProps {
+  compact?: boolean;
   data: CardWithList;
   canEdit?: boolean;
   /** Detail containers call this before closing or switching task. */
@@ -160,7 +161,7 @@ const getOutdentSize = (line: string) => {
 
 const stripHeadingPrefix = (line: string) => line.replace(/^(\s*)#{1,6}\s+/, "$1");
 
-export const Description = ({ data, canEdit = true, beforeCloseRef }: DescriptionProps) => {
+export const Description = ({ data, canEdit = true, beforeCloseRef, compact = false }: DescriptionProps) => {
   const queryClient = useQueryClient();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -742,15 +743,15 @@ export const Description = ({ data, canEdit = true, beforeCloseRef }: Descriptio
 
   return (
     <div className="flex items-start gap-x-4 w-full">
-      <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className={cn("flex shrink-0 items-center justify-center", compact ? "hidden" : "mt-0.5 size-10 rounded-xl bg-muted")}>
         <AlignLeft className="h-5 w-5 text-neutral-500" />
       </div>
       <Popover open={isConflictOpen} onOpenChange={setIsConflictOpen}>
         <PopoverAnchor asChild>
           <div className="w-full min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2.5">
-              <p className="font-semibold text-base text-neutral-800">
-                Nội dung
+              <p className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-base")}>
+                {compact ? "Mô tả" : "Nội dung"}
               </p>
               {canEdit && (
                 <div className="flex items-center gap-x-1.5 ml-1">
@@ -759,12 +760,12 @@ export const Description = ({ data, canEdit = true, beforeCloseRef }: Descriptio
                     variant="outline"
                     onClick={() => handleGenerateAi("create_description")}
                     disabled={isGeneratingAi || isSelectionAiBusy}
-                    className="h-7 rounded-lg border-sky-100 bg-sky-50/50 px-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors shadow-xs"
+                    className={cn("h-7 rounded-lg px-2 text-xs font-semibold transition-colors shadow-xs", compact ? "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" : "border-sky-100 bg-sky-50/50 text-sky-700 hover:bg-sky-100 hover:text-sky-800")}
                   >
                     {isGeneratingAi && activeAiTask === "create_description" ? (
                       <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
                     ) : (
-                      <Sparkles className="mr-1 h-3 w-3 text-sky-500" />
+                      <Sparkles className={cn("mr-1 h-3 w-3", compact ? "text-primary" : "text-sky-500")} />
                     )}
                     {isGeneratingAi && activeAiTask === "create_description" ? "Đang tạo..." : "Tạo mô tả từ tiêu đề"}
                   </Button>
@@ -774,12 +775,12 @@ export const Description = ({ data, canEdit = true, beforeCloseRef }: Descriptio
                       variant="outline"
                       onClick={() => handleGenerateAi("rewrite_description")}
                       disabled={isGeneratingAi || isSelectionAiBusy}
-                      className="h-7 rounded-lg border-sky-100 bg-sky-50/50 px-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors shadow-xs"
+                      className={cn("h-7 rounded-lg px-2 text-xs font-semibold transition-colors shadow-xs", compact ? "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground" : "border-sky-100 bg-sky-50/50 text-sky-700 hover:bg-sky-100 hover:text-sky-800")}
                     >
                       {isGeneratingAi && activeAiTask === "rewrite_description" ? (
                         <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
                       ) : (
-                        <Sparkles className="mr-1 h-3 w-3 text-sky-500" />
+                        <Sparkles className={cn("mr-1 h-3 w-3", compact ? "text-primary" : "text-sky-500")} />
                       )}
                       {isGeneratingAi && activeAiTask === "rewrite_description" ? "Đang viết lại..." : "Viết lại mô tả"}
                     </Button>
@@ -970,11 +971,11 @@ export const Description = ({ data, canEdit = true, beforeCloseRef }: Descriptio
                   }
                 }}
                 className={cn(
-                  "min-h-[96px] rounded-xl px-4 py-3 text-base leading-relaxed transition-colors duration-150 md:text-base",
+                  compact ? "min-h-16 rounded-lg px-2 py-2 text-sm leading-relaxed transition-colors" : "min-h-[96px] rounded-xl px-4 py-3 text-base leading-relaxed transition-colors duration-150 md:text-base",
                   canEdit
                     ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200"
                     : "cursor-default",
-                  hasDescription
+                  compact ? "border border-transparent bg-transparent text-muted-foreground hover:bg-accent" : hasDescription
                     ? cn(
                       "border border-neutral-200 bg-neutral-50 text-neutral-700",
                       canEdit && "hover:bg-neutral-100",

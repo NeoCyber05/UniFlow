@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Clock } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -10,7 +10,6 @@ import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
-import { Hint } from "@/components/hint";
 import { BlockedCompletionDialog } from "./metadata/blocked-completion-dialog";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +18,15 @@ import { getCardRevision, patchBoardCardPreview, patchCardQueryData } from "./ca
 interface HeaderProps {
   data: CardWithList;
   canEdit?: boolean;
+  layout?: "dialog" | "panel";
+  actions?: ReactNode;
 }
 
 export const Header = ({
   data,
   canEdit = true,
+  layout = "dialog",
+  actions,
 }: HeaderProps) => {
   const queryClient = useQueryClient();
   const boardId = data.list.boardId;
@@ -34,7 +37,6 @@ export const Header = ({
   );
 
   const [blockedCompletionOpen, setBlockedCompletionOpen] = useState(false);
-  const [animateComplete, setAnimateComplete] = useState(false);
 
   const completionRequestRef = useRef<{
     previous: boolean;
@@ -45,25 +47,18 @@ export const Header = ({
     optimistic: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (data.isCompleted) {
-      const startTimer = setTimeout(() => setAnimateComplete(true), 0);
-      const endTimer = setTimeout(() => setAnimateComplete(false), 600);
-      return () => {
-        clearTimeout(startTimer);
-        clearTimeout(endTimer);
-      };
-    }
-  }, [data.isCompleted]);
-
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
     onSuccess: (updatedCard) => {
       patchCardQueryData(queryClient, updatedCard.id, {
         isCompleted: updatedCard.isCompleted,
+        repeatUnit: updatedCard.repeatUnit,
+        repeatEvery: updatedCard.repeatEvery,
         updatedAt: updatedCard.updatedAt,
       });
       patchBoardCardPreview(boardId, updatedCard.id, {
         isCompleted: updatedCard.isCompleted,
+        repeatUnit: updatedCard.repeatUnit,
+        repeatEvery: updatedCard.repeatEvery,
         updatedAt: updatedCard.updatedAt,
       });
       invalidateBoardCalendar();
@@ -273,93 +268,36 @@ export const Header = ({
     }
   };
 
+  const isPanel = layout === "panel";
+  const completion = data.kind === "EVENT" ? (
+    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Clock className="size-4" />Sự kiện</span>
+  ) : (
+    <button type="button" onClick={onToggleComplete} disabled={!canEdit} aria-pressed={data.isCompleted}
+      aria-label={data.isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none disabled:opacity-60",
+        isPanel ? "min-h-9 px-3 text-xs font-semibold" : "mt-1 size-10 rounded-full",
+        data.isCompleted || isPanel ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary",
+      )}>
+      <Check className={isPanel ? "size-4" : "size-5"} aria-hidden="true" />
+      {isPanel && (data.isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành")}
+    </button>
+  );
   return (
-    <div className="flex items-start gap-x-4 mb-3 w-full">
-      <style>{`
-        @keyframes blinkBlink {
-          0% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-          }
-          50% {
-            transform: scale(1.15);
-            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-          }
-          100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-          }
-        }
-        .animate-complete-pop {
-          animation: blinkBlink 0.6s ease-out forwards;
-        }
-      `}</style>
-
-      {canEdit && (
-        <BlockedCompletionDialog
-          open={blockedCompletionOpen}
-          onOpenChange={setBlockedCompletionOpen}
-          blockers={unresolvedBlockers}
-          isLoading={isLoadingUpdate}
-          onConfirm={onConfirmBlockedCompletion}
-        />
-      )}
-
-      {data.kind === "EVENT" ? (
-        // Sự kiện chỉ để xem: không có nút hoàn thành
-        <span className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-sky-50 text-sky-600" title="Sự kiện">
-          <Clock className="h-5 w-5" aria-hidden="true" />
-        </span>
-      ) : (
-      <Hint description={data.isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"} side="bottom">
-        <button
-          onClick={onToggleComplete}
-          disabled={!canEdit}
-          className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 transition-[color,background-color,border-color,box-shadow,scale] duration-200 border-2 shadow-xs",
-            data.isCompleted 
-              ? "bg-emerald-500 border-emerald-500 text-white" 
-              : "bg-white border-neutral-300 text-transparent",
-            canEdit && !data.isCompleted && "hover:border-emerald-500 hover:text-emerald-500/40",
-            canEdit && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 active:scale-[0.97]",
-            !canEdit && "opacity-80 cursor-default",
-            animateComplete && "animate-complete-pop"
-          )}
-          aria-label={data.isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"}
-        >
-          <Check className={cn(
-            "h-5 w-5 transition-transform duration-200",
-            data.isCompleted ? "stroke-[3] scale-100" : "stroke-[2] scale-90"
-          )} />
-        </button>
-      </Hint>
-      )}
-      <div className="w-full min-w-0">
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit(new FormData(e.currentTarget));
-        }}>
-          <textarea
-            ref={titleRef}
-            onBlur={onBlur}
-            onInput={resizeTitle}
-            onChange={(event) => setTitle(event.target.value)}
-            onKeyDown={onKeyDown}
-            id="title"
-            name="title"
-            value={title}
-            readOnly={!canEdit}
-            rows={1}
-            className="relative -left-2 mb-0.5 min-h-10 w-[calc(100%+0.5rem)] resize-none overflow-hidden whitespace-pre-wrap break-words rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-2xl font-bold leading-tight text-neutral-800 outline-none transition focus-visible:border-neutral-300 focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-violet-200 read-only:cursor-default read-only:focus-visible:border-transparent read-only:focus-visible:bg-transparent read-only:focus-visible:ring-0 md:text-2xl"
+    <div className={isPanel ? "space-y-4" : "flex w-full items-start gap-4"}>
+      {canEdit && <BlockedCompletionDialog open={blockedCompletionOpen} onOpenChange={setBlockedCompletionOpen} blockers={unresolvedBlockers} isLoading={isLoadingUpdate} onConfirm={onConfirmBlockedCompletion} />}
+      {!isPanel && completion}
+      <div className="min-w-0 flex-1">
+        {isPanel && <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" />{data.isCompleted ? "Đã hoàn thành" : data.list.title}</p>}
+        <form onSubmit={event => { event.preventDefault(); onSubmit(new FormData(event.currentTarget)); }}>
+          <textarea ref={titleRef} onBlur={onBlur} onInput={resizeTitle} onChange={event => setTitle(event.target.value)} onKeyDown={onKeyDown}
+            id="title" name="title" value={title} readOnly={!canEdit} rows={1} aria-label="Tên công việc" aria-busy={isLoadingTitle}
+            className="relative -left-2 min-h-10 w-[calc(100%+0.5rem)] resize-none overflow-hidden break-words rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold leading-tight tracking-tight text-foreground outline-none transition-colors focus-visible:border-border focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring read-only:cursor-default"
           />
         </form>
-        <p className="text-sm text-neutral-400 pl-0.5">
-          trong danh sách{" "}
-          <span className="inline break-words align-bottom font-semibold text-neutral-600">
-            {data.list.title}
-          </span>
-        </p>
+        {!isPanel && <p className="mt-1 text-xs text-muted-foreground">trong danh sách <span className="font-medium text-foreground">{data.list.title}</span></p>}
       </div>
+      {isPanel && <div className="flex flex-wrap items-center justify-between gap-2">{completion}{actions}</div>}
     </div>
   );
 };

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 
 import { setCardCourse } from "@/actions/cards/set-card-course";
@@ -22,9 +22,10 @@ type CardCourseSelectProps = {
   boardId: string;
   courseId: string | null;
   canEdit: boolean;
+  compact?: boolean;
 };
 
-export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit }: CardCourseSelectProps) => {
+export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit, compact = false }: CardCourseSelectProps) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
@@ -52,21 +53,21 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit }: CardCou
   const label = current ? current.name : "Cá nhân";
 
   const trigger = (
-    <span className="flex h-8 items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-800">
+    <span className={cn("flex h-8 items-center gap-2 rounded-md px-2 text-xs font-medium", compact ? "hover:bg-accent" : "border border-border bg-background text-foreground")}>
       <span
         className={cn(
           "h-2.5 w-2.5 rounded-full",
           current ? getCourseColor(current.color).dot : "border border-neutral-400",
         )}
       />
-      <span className="max-w-[160px] truncate">{label}</span>
-      {canEdit && <ChevronDown className="h-3.5 w-3.5 text-neutral-400" />}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {canEdit && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
     </span>
   );
 
   return (
-    <div className="flex flex-col gap-y-1.5">
-      <span className="text-xs font-semibold text-neutral-600 pl-0.5">Danh mục</span>
+    <div className={compact ? "grid min-h-10 grid-cols-[116px_minmax(0,1fr)] items-center gap-3" : "flex flex-col gap-y-1.5"}>
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">{compact && <FolderOpen className="size-4" />}Danh mục</span>
       {canEdit ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild disabled={isLoading}>

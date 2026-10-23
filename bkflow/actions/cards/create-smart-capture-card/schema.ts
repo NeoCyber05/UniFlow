@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DateOnly, OffsetDateTime, validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { TaskRepeatSchema } from "@/lib/cards/task-repeat";
 import { hasUnsafeMarkdownLink } from "@/lib/capture/source";
 
 const DueDateValue = z.union([z.date(), z.string().datetime({ offset: true }), z.null()]);
@@ -39,6 +40,7 @@ const SmartCaptureCardDraft = z.object({
   scheduledStartAt: NullableInstant,
   scheduledEndAt: NullableInstant,
   reminder: ReminderValue,
+  repeat: z.optional(z.union([TaskRepeatSchema, z.null()])),
   myDay: z.optional(z.boolean()),
   assigneeBoardMemberId: z.optional(z.union([z.string().min(1), z.null()])),
   assigneeBoardMemberIds: z.array(z.string().min(1)).max(20).default([]),

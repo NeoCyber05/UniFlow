@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import { tr } from "@/lib/i18n";
 import { useMatch } from "react-router";
 import Link from "@/web/shims/next-link";
@@ -8,7 +8,6 @@ import { usePathname } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
-  Trash2,
   Settings,
   CalendarDays,
   ListTodo,
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
-import { TrashDialog } from "@/components/notes/page-actions";
 import { useSettingsModal } from "@/hooks/use-settings-modal";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
@@ -32,7 +30,7 @@ const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network, ana
 
 const itemClassName = (isActive: boolean) =>
   cn(
-    "relative isolate flex h-10 w-full items-center gap-x-3 rounded-lg px-3 text-[15px] text-sidebar-foreground transition-[background-color,transform] duration-150 hover:bg-sidebar-accent active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+    "relative isolate flex h-11 w-full items-center gap-x-3 rounded-lg px-3 text-base text-sidebar-foreground transition-[background-color,transform] duration-150 hover:bg-sidebar-accent active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
     isActive && "font-semibold text-violet-700 dark:text-violet-300",
   );
 
@@ -59,7 +57,6 @@ export const MySidebarNav = () => {
   const queryClient = useQueryClient();
   const { data: context } = useMyTasksContext();
   const { data: counts } = useMyTaskCounts();
-  const [trashOpen, setTrashOpen] = useState(false);
   const settingsModal = useSettingsModal();
   const indicatorId = useId();
 
@@ -89,7 +86,7 @@ export const MySidebarNav = () => {
 
       {!boardId && workspaceBoardHref && (
         <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={itemClassName(pathname === workspaceBoardHref)}>
-          <ListTodo className="h-5 w-5" />
+          <ListTodo className="h-5.5 w-5.5" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
           {pathname === workspaceBoardHref && <ActiveIndicator id={indicatorId} />}
@@ -103,7 +100,7 @@ export const MySidebarNav = () => {
           useMobileSidebar.getState().onClose();
         }} aria-current={active ? "page" : undefined} className={itemClassName(active)}>
           {active && <ActiveIndicator id={indicatorId} />}
-          <Icon aria-hidden="true" className="h-5 w-5" />
+          <Icon aria-hidden="true" className="h-5.5 w-5.5" />
           {item.label}
           {item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
         </Link>;
@@ -120,14 +117,9 @@ export const MySidebarNav = () => {
           className={itemClassName(settingsModal.isOpen)}
         >
           {settingsModal.isOpen && <ActiveIndicator id={indicatorId} />}
-          <Settings aria-hidden="true" className="h-5 w-5" />
+          <Settings aria-hidden="true" className="h-5.5 w-5.5" />
           {tr("common.settings")}
         </button>
-        <button type="button" onClick={() => setTrashOpen(true)} className={itemClassName(false)}>
-          <Trash2 className="h-5 w-5" />
-          {tr("sidebar.trash")}
-        </button>
-        <TrashDialog open={trashOpen} onOpenChange={setTrashOpen} />
       </div>
     </div>
   );

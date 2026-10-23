@@ -1,13 +1,16 @@
 "use client";
 
-import type {
-  DragEvent,
-  MouseEvent,
-  PointerEvent,
+import {
+  useEffect,
+  useRef,
+  type DragEvent,
+  type MouseEvent,
+  type PointerEvent,
 } from "react";
 import {
   CheckCircle2,
   Clock,
+  Flag,
   ListChecks,
 } from "lucide-react";
 
@@ -54,10 +57,22 @@ type DayViewCreatePreview = {
   endMinute: number;
 };
 
+/** Mốc không chiếm thời gian (hạn nộp, hạn checklist) — vẽ thành vạch + nhãn thay vì khối. */
+export type DayViewDeadlineMarker = {
+  key: string;
+  cardId: string;
+  title: string;
+  label: string;
+  minute: number;
+  time: string;
+  isCompleted: boolean;
+};
+
 type DayViewTimeGridProps = {
   anchorDate: Date;
   currentTime: Date;
   isSkeleton?: boolean;
+  deadlineMarkers?: DayViewDeadlineMarker[];
   dayViewBlocks: DayViewBlock[];
   desktopDayViewLayout: DayViewBlockLayout;
   mobileDayViewLayout: DayViewBlockLayout;
@@ -451,6 +466,7 @@ export const DayViewTimeGrid = ({
   anchorDate,
   currentTime,
   isSkeleton = false,
+  deadlineMarkers = [],
   dayViewBlocks,
   desktopDayViewLayout,
   mobileDayViewLayout,
@@ -482,34 +498,56 @@ export const DayViewTimeGrid = ({
   const currentDayKey = getGmt7DayKey(currentTime);
   const currentParts = getGmt7Parts(currentTime);
   const isCurrentGmt7Day = anchorDayKey === currentDayKey;
-  const currentTimeTop =
-    ((currentParts.hours * 60 + currentParts.minutes) / (24 * 60)) * 100;
+  const currentMinute = currentParts.hours * 60 + currentParts.minutes;
+  const currentTimeTop = (currentMinute / (24 * 60)) * 100;
+  // Lưới cao 24h: khi đổi ngày, cuộn tới việc sớm nhất (hoặc giờ hiện tại / 8:00) để không phải tìm
+  const focusMinute = Math.min(
+    ...dayViewBlocks.map((block) => block.startMinute),
+    ...deadlineMarkers.map((marker) => marker.minute),
+    isCurrentGmt7Day ? currentMinute : 8 * 60,
+  );
+  const focusAnchorRef = useRef<HTMLDivElement>(null);
+  const hasItems = dayViewBlocks.length > 0 || deadlineMarkers.length > 0;
+
+  useEffect(() => {
+    if (!isSkeleton) focusAnchorRef.current?.scrollIntoView({ block: "center" });
+    // Chỉ cuộn khi đổi ngày, không giật lại mỗi lần dữ liệu cập nhật
+  },[anchorDayKey, isSkeleton]);
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-      <div className="grid grid-cols-[56px_minmax(0,1fr)] border-b border-neutral-200 bg-neutral-50 sm:grid-cols-[68px_minmax(0,1fr)]">
-        <div className="border-r border-neutral-200 px-2 py-2 text-[11px] font-semibold uppercase text-neutral-500">
+    // overflow-clip (không phải hidden) để header sticky theo vùng cuộn bên ngoài
+    <div className="min-w-0 overflow-clip rounded-xl border border-neutral-200 bg-white shadow-xs">
+      <div className="sticky top-0 z-40 grid grid-cols-[56px_minmax(0,1fr)] border-b border-neutral-200 bg-white/95 backdrop-blur sm:grid-cols-[68px_minmax(0,1fr)]">
+        <div className="flex items-end justify-end px-2 pb-2.5 text-[10px] font-medium text-neutral-400">
           GMT+7
         </div>
-        <div className="px-3 py-2 text-xs font-semibold text-neutral-700">
-          {formatDayTitle(anchorDate)}
+        <div className="flex items-center gap-2 px-4 py-2.5">
+          <span className="text-sm font-semibold capitalize text-neutral-900">
+            {formatDayTitle(anchorDate)}
+          </span>
+          {isCurrentGmt7Day && (
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+              Hôm nay
+            </span>
+          )}
+          <span className="ml-auto hidden text-xs text-neutral-400 sm:inline">
+            Kéo trên lưới để thêm buổi làm
+          </span>
         </div>
       </div>
 
       <div className="relative grid grid-cols-[56px_minmax(0,1fr)] sm:grid-cols-[68px_minmax(0,1fr)]">
-        <div className="bg-neutral-50">
+        <div>
           {DAY_TIME_SLOTS.map((slot) => (
             <div
               key={`time:${slot.label}`}
-              className={cn(
-                "flex h-5 items-start justify-end border-r border-neutral-200 px-2 text-[10px] font-medium tabular-nums",
-                slot.isHour ? "text-neutral-600" : "text-neutral-400",
-              )}
+              className="flex items-start justify-end pr-3 text-[11px] font-medium tabular-nums text-neutral-400"
               style={{ height: DAY_VIEW_SLOT_HEIGHT }}
             >
-              <span className="-translate-y-1/2 block">
-                {slot.isHour ? slot.label : String(slot.minute).padStart(2, "0")}
-              </span>
+              {/* Chỉ in nhãn giờ chẵn; 00:00 bỏ để không bị cắt ở mép trên */}
+              {slot.isHour && slot.index > 0 && (
+                <span className="-translate-y-1/2 block">{slot.label}</span>
+              )}
             </div>
           ))}
         </div>
@@ -531,8 +569,9 @@ export const DayViewTimeGrid = ({
             <div
               key={`slot:${slot.label}`}
               className={cn(
-                "h-5 border-t",
-                slot.isHour ? "border-neutral-300 bg-white" : "border-neutral-100 bg-white",
+                "border-l border-l-neutral-200 transition-colors hover:bg-violet-50/40",
+                slot.isHour && slot.index > 0 && "border-t border-t-neutral-200",
+                slot.minute === 30 && "border-t border-t-neutral-100",
               )}
               style={{ height: DAY_VIEW_SLOT_HEIGHT }}
               aria-label={`Khung giờ ${slot.label} GMT+7`}
@@ -639,6 +678,54 @@ export const DayViewTimeGrid = ({
             </div>
           )}
 
+          <div
+            ref={focusAnchorRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute h-px w-px"
+            style={{ top: `${(focusMinute / MINUTES_IN_DAY) * 100}%` }}
+          />
+
+          {!isSkeleton && deadlineMarkers.map((marker) => (
+            <div
+              key={marker.key}
+              className="pointer-events-none absolute left-0 right-0 z-[25] flex -translate-y-1/2 items-center"
+              style={{ top: `${(marker.minute / MINUTES_IN_DAY) * 100}%` }}
+            >
+              <button
+                type="button"
+                data-calendar-day-view-block="true"
+                onClick={(event) => onOpenCard(marker.cardId, event)}
+                aria-label={`${marker.label} ${marker.time}: ${marker.title}`}
+                className={cn(
+                  "pointer-events-auto ml-1.5 flex h-7 min-w-0 max-w-[min(420px,calc(100%-12px))] items-center gap-1.5 rounded-full border border-orange-200 bg-white py-0 pl-1 pr-3 text-left shadow-sm transition hover:border-orange-300 hover:shadow-md",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60",
+                  marker.isCompleted && "opacity-60",
+                )}
+              >
+                <span className="flex h-5 shrink-0 items-center gap-1 rounded-full bg-orange-500 px-2 text-[11px] font-semibold tabular-nums text-white">
+                  <Flag aria-hidden className="h-3 w-3" />
+                  {marker.time}
+                </span>
+                <span className="shrink-0 text-[11px] font-medium text-orange-700">{marker.label}</span>
+                <span className={cn("min-w-0 truncate text-xs font-medium text-neutral-800", marker.isCompleted && "line-through")}>
+                  {marker.title}
+                </span>
+              </button>
+              <span aria-hidden className="h-px flex-1 border-t border-dashed border-orange-300" />
+            </div>
+          ))}
+
+          {!isSkeleton && !hasItems && (
+            <div
+              className="pointer-events-none absolute inset-x-0 z-[5] flex -translate-y-1/2 justify-center"
+              style={{ top: `${(focusMinute / MINUTES_IN_DAY) * 100}%` }}
+            >
+              <span className="rounded-full border border-dashed border-neutral-300 bg-white/90 px-3 py-1 text-xs text-neutral-500">
+                Ngày trống — kéo trên lưới để thêm buổi làm
+              </span>
+            </div>
+          )}
+
           {isCurrentGmt7Day && (
             <div
               data-calendar-current-time-indicator="true"
@@ -646,8 +733,8 @@ export const DayViewTimeGrid = ({
               style={{ top: `${currentTimeTop}%` }}
               aria-hidden="true"
             >
-              <span className="h-2 w-2 -translate-x-1 rounded-full bg-red-500" />
-              <span className="h-px flex-1 bg-red-500" />
+              <span className="h-2.5 w-2.5 -translate-x-[5px] rounded-full bg-rose-500 ring-2 ring-white" />
+              <span className="h-0.5 flex-1 bg-rose-500" />
             </div>
           )}
         </div>

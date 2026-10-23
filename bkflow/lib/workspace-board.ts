@@ -5,8 +5,6 @@ import { BoardType, Prisma } from "@prisma/client";
 import { defaultImages } from "@/constants/images";
 import { db } from "@/lib/db";
 
-export const WORKSPACE_BOARD_DEFAULT_LISTS = ["Cần làm", "Đang làm", "Xong"] as const;
-
 const DEFAULT_LABEL_COLORS = ["#4ade80", "#facc15", "#fb923c", "#f87171", "#c084fc", "#60a5fa"];
 
 /**
@@ -46,14 +44,6 @@ export const getOrCreateWorkspaceBoard = async ({ userId, workspaceId }: { userI
         imageFullUrl: image.urls.full,
         imageUserName: image.user.name,
         imageLinkHTML: image.links.html,
-        lists: {
-          createMany: {
-            data: WORKSPACE_BOARD_DEFAULT_LISTS.map((title, index) => ({
-              title,
-              order: index + 1,
-            })),
-          },
-        },
         labels: {
           createMany: {
             data: DEFAULT_LABEL_COLORS.map((color) => ({ color, title: "" })),

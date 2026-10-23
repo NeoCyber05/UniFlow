@@ -104,6 +104,8 @@ const normalizeDrafts = (
       deadline,
       schedule,
       reminder: hasDeadline && draft.reminder && draft.reminder !== "none" ? draft.reminder : null,
+      // Kỳ sau tính từ hạn nộp, không có hạn thì không lặp
+      repeat: hasDeadline ? draft.repeat ?? null : null,
       checklistItems: normalizeChecklistItems(draft.checklistItems),
       labelIds,
       courseId: draft.courseId ?? null,
@@ -121,6 +123,7 @@ const sameContent = (card: LoadedCard, draft: NormalizedDraft, userId: string) =
     (card.courseId ?? null) === draft.courseId &&
     JSON.stringify(serializeTaskDates(card)) === JSON.stringify({ ...draft.deadline, ...draft.schedule }) &&
     (card.reminder ?? null) === draft.reminder &&
+    (card.repeatUnit ?? null) === (draft.repeat?.unit ?? null) &&
     Boolean(state?.isImportant) === draft.isImportant &&
     Boolean(state?.myDayAt) === draft.myDay &&
     labelIds.join() === [...draft.labelIds].sort().join() &&
@@ -250,6 +253,7 @@ export const createCapturedCardsWithStatus = async (
               ...toTaskDeadlineStorage(draft.deadline),
               ...toTaskScheduleStorage(draft.schedule),
               ...(draft.reminder ? { reminder: draft.reminder, reminderSetAt: now } : {}),
+              ...(draft.repeat ? { repeatUnit: draft.repeat.unit, repeatEvery: draft.repeat.every } : {}),
               ...(draft.isImportant || draft.myDay
                 ? { userStates: { create: { userId, isImportant: draft.isImportant, myDayAt: draft.myDay ? now : null } } }
                 : {}),

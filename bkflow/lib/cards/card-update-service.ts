@@ -22,6 +22,7 @@ import {
   validateReminderConfig,
 } from "@/lib/cards/card-date-rules";
 import { validateTaskSchedule } from "@/lib/cards/task-schedule";
+import { nextRepeatDeadline, readCardRepeat } from "@/lib/cards/task-repeat";
 import {
   toTaskDeadlineStorage,
   toTaskScheduleStorage,
@@ -55,6 +56,38 @@ export const CARD_CONFLICT_ERROR_CODE = "CARD_CONFLICT";
 export const CARD_CONFLICT_ERROR_MESSAGE =
   "Thẻ đã được cập nhật ở nơi khác. Vui lòng tải lại rồi thử lại.";
 
+/** Thẻ kỳ sau của việc lặp: cùng nội dung, danh mục, nhãn, nhắc; hạn dời theo chu kỳ, cuối cột. */
+const createNextRepeatCard = async (
+  tx: Prisma.TransactionClient,
+  card: Card,
+  repeat: NonNullable<ReturnType<typeof readCardRepeat>>,
+) => {
+  const deadline = nextRepeatDeadline({
+    dueDate: card.dueDate?.toISOString() ?? null,
+    deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null,
+  }, repeat);
+  const [last, labels] = await Promise.all([
+    tx.card.findFirst({ where: { listId: card.listId, archivedAt: null }, orderBy: { order: "desc" }, select: { order: true } }),
+    tx.cardLabel.findMany({ where: { cardId: card.id }, select: { labelId: true } }),
+  ]);
+  const now = new Date();
+  const next = await tx.card.create({
+    data: {
+      title: card.title,
+      description: card.description,
+      listId: card.listId,
+      order: (last?.order ?? 0) + 1,
+      courseId: card.courseId,
+      ...toTaskDeadlineStorage(deadline),
+      repeatUnit: repeat.unit,
+      repeatEvery: repeat.every,
+      ...(card.reminder ? { reminder: card.reminder, reminderSetAt: now } : {}),
+      ...(labels.length ? { labels: { create: labels } } : {}),
+    },
+  });
+  if (card.reminder) await syncCardReminder(tx, { cardId: next.id, now });
+};
+
 export const updateCardService = async (
   { data, userId }: UpdateCardServiceInput,
   database: typeof db = db,
@@ -73,6 +106,7 @@ export const updateCardService = async (
     scheduledEndAt,
     isCompleted,
     reminder,
+    repeat: repeatPatch,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Strip legacy client-only metadata before the Prisma update.
     dueDateTimezoneOffset: _dueDateTimezoneOffset,
     descriptionBaseUpdatedAt,
@@ -217,6 +251,10 @@ export const updateCardService = async (
     if (scheduledOnChanged) changedFields.push("scheduledOn");
     if (scheduledStartChanged) changedFields.push("scheduledStartAt");
     if (scheduledEndChanged) changedFields.push("scheduledEndAt");
+    if (repeatPatch !== undefined && (
+      (repeatPatch?.unit ?? null) !== currentCard.repeatUnit ||
+      (repeatPatch?.every ?? null) !== currentCard.repeatEvery
+    )) changedFields.push("repeat");
 
     if (changedFields.length === 0) {
       return { data: currentCard };
@@ -247,7 +285,13 @@ export const updateCardService = async (
       }
     }
 
+    // Tick xong việc lặp: lặp chuyển sang thẻ kỳ sau, thẻ này thôi lặp để tick lại không sinh thêm
+    const repeat = isCompleted === true && !currentCard.isCompleted
+      ? repeatPatch !== undefined ? repeatPatch : readCardRepeat(currentCard)
+      : null;
     const extra: Prisma.CardUpdateInput = {
+      ...(repeatPatch !== undefined ? { repeatUnit: repeatPatch?.unit ?? null, repeatEvery: repeatPatch?.every ?? null } : {}),
+      ...(repeat ? { repeatUnit: null, repeatEvery: null } : {}),
       ...(nextDeadlineOn !== undefined ? { deadlineOn: nextDeadlineOn } : {}),
       ...(scheduleStorage
         ? {
@@ -279,6 +323,12 @@ export const updateCardService = async (
 
       if (result.count > 0 && (reminderConfigChanged || isCompleted !== undefined)) {
         await effects.syncCardReminder(tx, { cardId: id, now: new Date() });
+      }
+
+      if (result.count > 0 && repeat) {
+        const completedCard = await tx.card.findFirst({ where: cardWhere });
+        if (!completedCard) throw new Error("Completed card missing inside transaction");
+        await createNextRepeatCard(tx, completedCard, repeat);
       }
 
       if (result.count > 0 && inTransaction) await inTransaction(tx);

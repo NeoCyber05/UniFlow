@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { tr } from "@/lib/i18n";
 import Link from "@/web/shims/next-link";
-import { ExternalLink, Star, Sun, X } from "lucide-react";
+import { ExternalLink, Maximize2, Minimize2, Star, X } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -16,7 +16,6 @@ import { runBeforeClose, type BeforeCloseRef } from "@/components/modals/card-mo
 import { Button } from "@/components/ui/button";
 import { useCardContext } from "@/hooks/use-my-tasks";
 import { useMyTaskMutations } from "@/hooks/use-my-task-mutations";
-import { isSameVNDay } from "@/lib/my-tasks/vn-day";
 import { cn } from "@/lib/utils";
 
 type TaskDetailPanelProps = {
@@ -29,9 +28,9 @@ type TaskDetailPanelOuterProps = TaskDetailPanelProps & {
   desktopClassName?: string;
 };
 
-type PanelContentProps = TaskDetailPanelProps & { beforeCloseRef: BeforeCloseRef };
+type PanelContentProps = TaskDetailPanelProps & { beforeCloseRef: BeforeCloseRef; expanded: boolean; onExpand: () => void };
 
-const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) => {
+const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: PanelContentProps) => {
   const queryClient = useQueryClient();
   useEffect(() => {
     void queryClient.prefetchQuery(getCardQueryOptions(taskId));
@@ -42,39 +41,31 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
   const requestClose = () => {
     void runBeforeClose(beforeCloseRef).then((ok) => ok && onClose());
   };
-  const { setImportant, setMyDay } = useMyTaskMutations();
+  const { setImportant } = useMyTaskMutations();
   const isReady = Boolean(context) && !isGone;
-  const isPinned = Boolean(context?.myDayAt && isSameVNDay(new Date(context.myDayAt), new Date()));
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1 border-b border-neutral-100 px-3 py-2">
-        <p className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500">
-          {context?.boardTitle ?? tr("common.loading")}
-        </p>
-        <button
-          type="button"
-          disabled={!context}
-          onClick={() => context && void setMyDay(taskId, !isPinned)}
-          title={isPinned ? tr("task.unpin") : tr("task.pin")}
-          className={cn("rounded-md p-1.5 text-neutral-400 hover:bg-amber-50 hover:text-amber-500", isPinned && "text-amber-500")}
-        >
-          <Sun className="h-4 w-4" />
-        </button>
+      <div className="flex min-h-12 shrink-0 items-center justify-end gap-1 border-b border-border px-4 py-2">
         <button
           type="button"
           disabled={!context}
           onClick={() => context && void setImportant(taskId, !context.isImportant)}
+          aria-label={context?.isImportant ? tr("task.unmarkImportant") : tr("task.markImportant")}
           title={context?.isImportant ? tr("task.unmarkImportant") : tr("task.markImportant")}
-          className="rounded-md p-1.5 text-neutral-400 hover:bg-amber-50 hover:text-amber-500"
+          className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Star className={cn("h-4 w-4", context?.isImportant && "fill-amber-400 text-amber-400")} />
+        </button>
+        <button type="button" onClick={onExpand} aria-label={expanded ? "Thu gọn chi tiết" : "Mở rộng chi tiết"} aria-pressed={expanded} className="hidden rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:inline-flex">
+          {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
         </button>
         {context && (
           <Link
             href={`/board/${context.boardId}?cardId=${taskId}`}
+            aria-label={tr("task.openInBoard")}
             title={tr("task.openInBoard")}
-            className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <ExternalLink className="h-4 w-4" />
           </Link>
@@ -83,7 +74,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
           type="button"
           onClick={requestClose}
           aria-label={tr("common.close")}
-          className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+          className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -92,6 +83,9 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef }: PanelContentProps) =>
         <>
           <CardRealtimeSync cardId={taskId} isOpen />
           <CardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} beforeCloseRef={beforeCloseRef} />
+          <footer className="flex shrink-0 items-center justify-end gap-1.5 border-t border-border px-6 py-2 text-[10px] text-muted-foreground">
+            <kbd className="rounded border border-border px-1">Esc</kbd>để đóng
+          </footer>
         </>
       ) : isError ? (
         <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -130,6 +124,7 @@ export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetai
   const beforeCloseRef: BeforeCloseRef = useRef(null);
   // The task actually on screen; it only follows `taskId` once unsaved edits are dealt with.
   const [shownId, setShownId] = useState(taskId);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (shownId === taskId) {
@@ -162,11 +157,12 @@ export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetai
           }
         }}
         className={cn(
-          "sticky top-20 h-[calc(100vh-6rem)] w-[420px] shrink-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm xl:w-[500px] 2xl:w-[560px]",
+          "sticky top-20 h-[calc(100vh-6rem)] max-w-[calc(100vw-2rem)] shrink-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm",
+          expanded ? "w-[min(740px,calc(100vw-20rem))]" : "w-[480px]",
           desktopClassName,
         )}
       >
-        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} />
+        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} expanded={expanded} onExpand={() => setExpanded(value => !value)} />
       </aside>
     );
   }
@@ -175,7 +171,7 @@ export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetai
     <Sheet open onOpenChange={(open) => !open && requestClose()}>
       <SheetContent side="right" showCloseButton={false} className="w-full gap-0 p-0 sm:max-w-full">
         <SheetTitle className="sr-only">{tr("task.detailTitle")}</SheetTitle>
-        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} />
+        <PanelContent taskId={shownId} onClose={onClose} beforeCloseRef={beforeCloseRef} expanded={expanded} onExpand={() => setExpanded(value => !value)} />
       </SheetContent>
     </Sheet>
   );

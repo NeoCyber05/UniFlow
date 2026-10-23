@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { DateOnly, TaskDeadlineSchema, TaskScheduleSchema } from "@/lib/cards/task-schedule";
+import { DateOnly, TaskDeadlineSchema } from "@/lib/cards/task-schedule";
+import { TaskRepeatSchema } from "@/lib/cards/task-repeat";
 import type { CaptureFields } from "@/lib/capture/draft";
 
 export const CAPTURE_TITLE_MAX_LENGTH = 200;
@@ -102,25 +103,6 @@ const parseDeadline = (value: unknown, timeZone: string) => {
   return { value: { dueDate, deadlineOn: null } };
 };
 
-const parseSchedule = (value: unknown, timeZone: string) => {
-  if (value === null || value === undefined) return { value: undefined };
-  if (!isRecord(value) || !isDate(value.date)) return { issue: "AI trả lịch làm không hợp lệ." };
-  const hasStart = value.startTime !== null && value.startTime !== undefined && value.startTime !== "";
-  const hasEnd = value.endTime !== null && value.endTime !== undefined && value.endTime !== "";
-  if (!hasStart && !hasEnd) {
-    return { value: { scheduledOn: value.date, scheduledStartAt: null, scheduledEndAt: null } };
-  }
-  if (!hasStart || !hasEnd) return { issue: "Lịch làm cần cả giờ bắt đầu và giờ kết thúc." };
-  if (!isTime(value.startTime) || !isTime(value.endTime)) return { issue: "AI trả giờ lịch làm không hợp lệ." };
-  const scheduledStartAt = zonedTimeToIso(value.date, value.startTime, timeZone);
-  const scheduledEndAt = zonedTimeToIso(value.date, value.endTime, timeZone);
-  if (!scheduledStartAt || !scheduledEndAt) return { issue: "Giờ lịch làm không tồn tại ở múi giờ này." };
-  const schedule = { scheduledOn: null, scheduledStartAt, scheduledEndAt };
-  const parsed = TaskScheduleSchema.safeParse(schedule);
-  if (!parsed.success) return { issue: parsed.error.issues[0]?.message ?? "Lịch làm không hợp lệ." };
-  return { value: schedule };
-};
-
 const parseChecklist = (value: unknown) => {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -170,7 +152,8 @@ const pastIssue = (fields: Partial<CaptureFields>, context: CaptureAnalysisConte
 export const validateCaptureAnalysis = (raw: unknown, context: CaptureAnalysisContext): CaptureAnalysis => {
   if (!isRecord(raw)) throw new CaptureAnalysisError("AI chưa trả kết quả hợp lệ.");
 
-  const issues = parseIssues(raw.issues);
+  // Việc chỉ có hạn chót: bỏ mọi lịch làm/issue lịch làm model có thể trả
+  const issues = parseIssues(raw.issues).filter((issue) => issue.field !== "schedule");
   const flagged = new Set(issues.map((issue) => issue.field));
   const fields: Partial<CaptureFields> = {};
   const addIssue = (field: keyof CaptureFields, reason: string) => {
@@ -188,9 +171,8 @@ export const validateCaptureAnalysis = (raw: unknown, context: CaptureAnalysisCo
     fields.deadline = deadline.value;
   }
 
-  const schedule = parseSchedule(raw.schedule, context.timeZone);
-  if (schedule.issue) addIssue("schedule", schedule.issue);
-  else if (schedule.value && !flagged.has("schedule")) fields.schedule = schedule.value;
+  const repeat = TaskRepeatSchema.safeParse(raw.repeat);
+  if (repeat.success && fields.deadline) fields.repeat = repeat.data;
 
   if (raw.isImportant === true && !flagged.has("isImportant")) fields.isImportant = true;
 

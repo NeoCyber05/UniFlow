@@ -1,3 +1,5 @@
+import { BoardType } from "@prisma/client";
+
 import { db } from "@/lib/db";
 import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -10,6 +12,7 @@ export const loadBoardList = async ({ boardId }: { boardId: string; group?: stri
       where: { id: boardId, userId },
       select: {
         userId: true,
+        boardType: true,
         lists: {
           where: { archivedAt: null },
           orderBy: { order: "asc" },
@@ -46,6 +49,7 @@ export const loadBoardList = async ({ boardId }: { boardId: string; group?: stri
     lists: board.lists,
     members: [] as any[],
     labels: board.labels,
+    showCourseFilter: board.boardType === BoardType.WORKSPACE,
     initialData: undefined,
     initialAgendaData,
   } as const;

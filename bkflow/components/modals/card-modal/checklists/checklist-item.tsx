@@ -1,7 +1,8 @@
-import { type BoardMember } from "@/types";
 "use client";
 
-import { useId, useState, type KeyboardEvent } from "react";
+import { type BoardMember } from "@/types";
+
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
 import { GripVertical } from "lucide-react";
@@ -43,15 +44,18 @@ export const ChecklistItem = ({
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(item.title);
   const titleId = useId();
+  const cancelledRef = useRef(false);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      handleBlur();
+      event.currentTarget.blur();
     }
 
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
+      cancelledRef.current = true;
       setTitle(item.title);
       setIsEditing(false);
     }
@@ -59,6 +63,7 @@ export const ChecklistItem = ({
 
   const handleBlur = () => {
     setIsEditing(false);
+    if (cancelledRef.current) { cancelledRef.current = false; return; }
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle || trimmedTitle === item.title) {
@@ -89,10 +94,11 @@ export const ChecklistItem = ({
         <input
           type="checkbox"
           id={titleId}
+          aria-label={`Hoàn thành: ${item.title}`}
           checked={item.isCompleted}
           disabled={!canEdit}
           onChange={(e) => onToggle(item.id, e.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-neutral-300 accent-violet-600 cursor-pointer disabled:cursor-not-allowed"
+          className="mt-1 h-4 w-4 cursor-pointer rounded border-border accent-primary disabled:cursor-not-allowed"
         />
         <div className="min-w-0 flex-1">
           {isEditing && canEdit ? (
@@ -103,26 +109,31 @@ export const ChecklistItem = ({
               onKeyDown={handleKeyDown}
               onBlur={handleBlur}
               autoFocus
+              aria-label="Tên mục checklist"
               className="min-h-0 resize-none rounded-md border-neutral-300 px-2 py-1 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-neutral-400"
             />
           ) : (
             <div className="space-y-1">
-              <label
-                htmlFor={titleId}
+              <button
+                type="button"
+                disabled={!canEdit}
+                aria-label={`Sửa: ${item.title}`}
                 onClick={(e) => {
                   if (canEdit) {
                     e.preventDefault();
+                    cancelledRef.current = false;
+                    setTitle(item.title);
                     setIsEditing(true);
                   }
                 }}
-                className={`block cursor-pointer break-words text-sm leading-relaxed select-none ${
+                className={`block w-full cursor-text break-words rounded text-left text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-ring ${
                   item.isCompleted
                     ? "text-neutral-400 line-through"
                     : "text-neutral-700"
                 }`}
               >
                 {item.title}
-              </label>
+              </button>
               {item.dueDate && (
                 <div className="flex items-center gap-x-1">
                   <ChecklistItemDueDate

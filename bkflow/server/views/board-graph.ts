@@ -1,3 +1,4 @@
+import { graphPlanSchema, type GraphPlan } from "@/lib/boards/graph-plan";
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -17,6 +18,14 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
   }
 
   const boardUserId = currentMembership.membership.board.userId;
+
+  const savedPlan = await db.boardGraphPlan.findUnique({
+    where: { userId_boardId: { userId, boardId } },
+    select: { arranged: true, range: true, aiOrder: true },
+  });
+  // Dữ liệu JSON đọc lại phải qua schema trước khi đưa xuống client
+  const parsedPlan = savedPlan ? graphPlanSchema.safeParse(savedPlan) : null;
+  const plan: GraphPlan | null = parsedPlan?.success ? parsedPlan.data : null;
 
   const listsData = await measureDev(`board:${boardId}:graph-data`, () =>
     db.list.findMany({
@@ -257,6 +266,7 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
   return {
     boardId,
     boardTitle: currentMembership.membership.board.title,
+    plan,
     lists,
     boardMembers,
     currentUserId: userId,

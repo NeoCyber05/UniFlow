@@ -13,7 +13,7 @@ export const boardListViewPath = (boardId: string, group: string | null) =>
 export const myViewPath = (view: string, error: string | null | undefined) =>
   `/my/${view}${error ? `?error=${encodeURIComponent(error)}` : ""}`;
 
-const PLAIN_VIEWS = new Set(["analytics", "graph", "split", "timeline"]);
+const PLAIN_VIEWS = new Set(["analytics", "graph", "timeline"]);
 
 /** Starts the view requests a route will make, so they run in parallel with layout views instead of after them. */
 export const prefetchRouteViews = (queryClient: QueryClient, pathname: string, search: string) => {

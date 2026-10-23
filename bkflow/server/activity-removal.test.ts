@@ -12,7 +12,6 @@ test("activity log UI and read endpoints are removed", () => {
   for (const path of [
     "components/my-tasks/my-sidebar-nav.tsx",
     "components/modals/card-modal/card-detail-body.tsx",
-    "app/(platform)/(dashboard)/board/[boardId]/_components/board-options.tsx",
   ]) assert.doesNotMatch(readFileSync(path, "utf8"), /Nhật ký hoạt động|card-logs|BoardActivityPopoverContent/);
 });
 

@@ -1,33 +1,27 @@
-import { BoardMemberRole } from "@/types";
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "@/web/shims/next-navigation";
+import { BoardMemberRole } from "@/types";
 
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
-import { toPng } from "html-to-image";
-import { Info, Network, Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { ReducedMotionConfig, scale, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
+import { AlertTriangle, CheckCheck, ChevronRight, Loader2, Minus, Plus, Route, Sparkles, Target, Undo2, Wand2 } from "lucide-react";
 
 import { useCardModal } from "@/hooks/use-card-modal";
 import { useAction } from "@/hooks/use-action";
-import { createCardDependency } from "@/actions/dependencies/create-card-dependency";
-import { deleteCardDependency } from "@/actions/dependencies/delete-card-dependency";
 import { rankAiPriorities } from "@/actions/ai/rank-ai-priorities";
+import { saveGraphPlan } from "@/actions/boards/save-graph-plan";
 import { setCardCompleted } from "@/actions/cards/set-card-completed";
-import { buildPriorityPlan, buildSchedule, type CustomOrderItem } from "@/lib/boards/graph-priority";
-import { buildBoardExportFileName } from "@/lib/exports/filename";
+import type { GraphPlan } from "@/lib/boards/graph-plan";
+import { buildSchedule, type ScheduleDay, type ScheduledTask } from "@/lib/boards/graph-priority";
 import { cn } from "@/lib/utils";
 import type { BoardTimelineBoardMember, BoardTimelineList } from "@/types";
 
-import type { GraphEdge, GraphFilterMode, GraphNode } from "../_types";
-import { computeGraphLayout, getConnectedChain } from "../_lib/graph-layout";
-import { GraphNodeComponent } from "./graph-node";
-import { GraphEdges } from "./graph-edges";
-import { GraphToolbar } from "./graph-toolbar";
-import { GraphLegend } from "./graph-legend";
-import { AutoChainDialog } from "./auto-chain-dialog";
-import { PriorityPanel } from "./priority-panel";
+import { FlowCard } from "./flow-card";
+import { FlowEdges } from "./flow-edges";
 
 type BoardGraphViewProps = {
   boardId: string;
@@ -37,14 +31,60 @@ type BoardGraphViewProps = {
   currentUserId: string;
   currentBoardMemberId: string;
   currentMemberRole: BoardMemberRole;
+  initialPlan: GraphPlan | null;
 };
 
-export const BoardGraphView = ({
-  boardId,
-  boardTitle,
-  lists,
-  currentMemberRole,
-}: BoardGraphViewProps) => {
+type Range = "today" | "week" | "month";
+type Lane = { key: string; title: string; subtitle: string; tasks: ScheduledTask[]; isToday: boolean };
+
+const RANGES: { id: Range; label: string; days: number }[] = [
+  { id: "today", label: "Hôm nay", days: 1 },
+  { id: "week", label: "Tuần này", days: 7 },
+  { id: "month", label: "Tháng này", days: 30 },
+];
+
+const AI_PRESETS = [
+  "Việc nhanh, dễ trước để lấy đà",
+  "Gấp nhất trước, bỏ qua việc chưa có hạn",
+  "Ưu tiên ôn thi và môn quan trọng",
+  "Việc khó, cần tập trung làm buổi sáng",
+];
+
+// Thời gian để thấy dấu tick trước khi việc rời dòng chảy và các ngày tự dồn lên
+const CHECK_HOLD_MS = 420;
+const AI_DEFAULT_REQUEST = "Xếp hợp lý theo hạn nộp và mức quan trọng";
+const PER_DAY_MIN = 1;
+const PER_DAY_MAX = 10;
+// Giới hạn của action rank-ai-priorities
+const AI_MAX_CARDS = 60;
+
+const shortDate = (date: Date) =>
+  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(date);
+
+const dayTitle = (day: ScheduleDay) => {
+  if (day.offset === 0) return "Hôm nay";
+  if (day.offset === 1) return "Ngày mai";
+  const weekday = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", weekday: "long" }).format(day.date);
+  return weekday.charAt(0).toUpperCase() + weekday.slice(1);
+};
+
+/** Tuần/tháng: mỗi cột một ngày, tháng gộp 7 ngày một cột để không quá dài. */
+const buildLanes = (days: ScheduleDay[], range: Range): Lane[] => {
+  if (range !== "month") {
+    return days.map((day) => ({ key: `d${day.offset}`, title: dayTitle(day), subtitle: shortDate(day.date), tasks: day.tasks, isToday: day.offset === 0 }));
+  }
+  const weeks: ScheduleDay[][] = [];
+  for (const day of days) (weeks[Math.floor(day.offset / 7)] ??= []).push(day);
+  return weeks.filter(Boolean).map((week, index) => ({
+    key: `w${index}`,
+    title: index === 0 ? "7 ngày tới" : `Tuần ${index + 1}`,
+    subtitle: `${shortDate(week[0].date)} – ${shortDate(week[week.length - 1].date)}`,
+    tasks: week.flatMap((day) => day.tasks),
+    isToday: index === 0,
+  }));
+};
+
+export const BoardGraphView = ({ boardId, lists, currentMemberRole, initialPlan }: BoardGraphViewProps) => {
   const router = useRouter();
   const cardModal = useCardModal();
   const canEdit = currentMemberRole !== BoardMemberRole.VIEWER;
@@ -62,110 +102,70 @@ export const BoardGraphView = ({
     [lists, completionOverrides],
   );
 
-  // Check initial connected cards
-  const hasAnyConnections = useMemo(() => {
-    return allCards.some(
-      (c) => c.blockedByDependencies.length > 0 || c.blockingDependencies.length > 0,
-    );
-  }, [allCards]);
-
-  const [filterMode, setFilterMode] = useState<GraphFilterMode>(
-    hasAnyConnections ? "connected_only" : "all",
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
-
-  // Zoom & Pan state
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Connecting line state (Drag & Drop or Click-to-Connect)
-  const [connectingSourceNode, setConnectingSourceNode] = useState<GraphNode | null>(null);
-  const [connectingMousePos, setConnectingMousePos] = useState<{ x: number; y: number } | null>(null);
-  const [isDraggingConnect, setIsDraggingConnect] = useState(false);
-  const [hoverTargetNode, setHoverTargetNode] = useState<GraphNode | null>(null);
-  const [isAutoChainOpen, setIsAutoChainOpen] = useState(false);
-  // Nhớ theo từng bảng trên trình duyệt này: panel mở/đóng, cách xếp và kết quả AI gần nhất
-  // shortcut: chỉ lưu localStorage (không theo người dùng qua thiết bị khác), chuyển sang DB nếu cần đồng bộ.
-  const [isPriorityOpen, setIsPriorityOpen] = useLocalStorage(`uniflow:graph-priority-open:${boardId}`, true);
-  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
-  const [isGliding, setIsGliding] = useState(false);
-  const [sortMode, setSortMode] = useLocalStorage<"auto" | "ai">(`uniflow:graph-priority-mode:${boardId}`, "auto");
-  const [aiOrder, setAiOrder] = useLocalStorage<{ order: CustomOrderItem[]; summary: string; request: string } | null>(
-    `uniflow:graph-priority-ai:${boardId}`,
-    null,
-  );
-  const lastAiRequestRef = useRef("");
+  // Thứ tự lưu trên server theo người và bảng: mở ở trình duyệt/thiết bị khác vẫn còn
+  // arranged null = chưa xếp: thẻ hiện theo danh sách của bảng, chưa nối; chỉ xếp khi người dùng bấm
+  const [plan, setPlan] = useState<GraphPlan>(initialPlan ?? { arranged: null, range: "week", aiOrder: null });
+  const { arranged, range, aiOrder } = plan;
+  const updatePlan = (patch: Partial<GraphPlan>) => {
+    const next = { ...plan, ...patch };
+    setPlan(next);
+    void saveGraphPlan({ boardId, plan: next }).then((result) => {
+      if (result.error) toast.error(result.error);
+    });
+  };
+  const setRange = (value: Range) => updatePlan({ range: value });
+  const setArranged = (value: GraphPlan["arranged"]) => updatePlan({ arranged: value });
   // Sức làm mỗi ngày là thói quen của người dùng, không riêng bảng nào
   const [perDay, setPerDay] = useLocalStorage("uniflow:graph-priority-per-day", 3);
-  const [recentlyUnlocked, setRecentlyUnlocked] = useState<Set<string>>(new Set());
+  const [request, setRequest] = useState(aiOrder?.request ?? "");
+  const [checking, setChecking] = useState<Set<string>>(new Set());
+  const flowRef = useRef<HTMLDivElement>(null);
 
-  // Server actions for dependencies
-  const { execute: executeCreateDependency } = useAction(createCardDependency, {
-    onSuccess: () => {
-      toast.success("Đã thiết lập liên kết phụ thuộc thành công!");
-      router.refresh();
-    },
-    onError: (error) => {
-      toast.error(error);
-    },
-  });
+  const press = useTempoTransition(spring.press);
+  const select = useTempoTransition(spring.selection);
+  const move = useTempoTransition(spring.reflow);
+  const fade = useTempoTransition(transition.fade);
+  const height = useTempoTransition(spring.height);
 
-  const { execute: executeDeleteDependency } = useAction(deleteCardDependency, {
-    onSuccess: () => {
-      toast.success("Đã xóa liên kết phụ thuộc!");
-      router.refresh();
-    },
-    onError: (error) => {
-      toast.error(error);
-    },
-  });
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  // Compute Layout
-  const layout = useMemo(() => {
-    return computeGraphLayout(allCards, filterMode);
-  }, [allCards, filterMode]);
-
-  // Thứ tự nên làm: số trên thẻ, chuỗi chính và panel gợi ý cùng đọc từ đây
-  const plan = useMemo(() => buildPriorityPlan(allCards), [allCards]);
   const schedule = useMemo(
-    () => buildSchedule(allCards, { perDay, order: sortMode === "ai" ? aiOrder?.order : undefined }),
-    [allCards, perDay, sortMode, aiOrder],
+    () => buildSchedule(allCards, { perDay, order: arranged === "ai" ? aiOrder?.order : undefined }),
+    [allCards, perDay, arranged, aiOrder],
   );
-  // Sơ đồ chỉ đánh số việc của hôm nay để không rối khi bảng nhiều thẻ
-  const rankById = useMemo(
-    () => new Map((schedule.days[0]?.tasks ?? []).map((task, index) => [task.card.id, index + 1])),
-    [schedule.days],
-  );
-  const waitingIds = useMemo(() => new Set(plan.waiting.map((task) => task.card.id)), [plan.waiting]);
-  const criticalEdgeKeys = useMemo(
-    () => new Set(plan.criticalPath.slice(1).map((id, index) => `${plan.criticalPath[index]}->${id}`)),
-    [plan.criticalPath],
-  );
+  const flat = schedule.days.flatMap((day) => day.tasks);
+  const stepById = new Map(flat.map((task, index) => [task.card.id, index + 1]));
+  const rangeDays = RANGES.find((item) => item.id === range)!.days;
+  const daysInRange = schedule.days.filter((day) => day.offset < rangeDays);
+  const lanes = buildLanes(daysInRange, range);
+  const shownCount = daysInRange.reduce((sum, day) => sum + day.tasks.length, 0);
+  const laterCount = flat.length - shownCount;
+  const countFor = (days: number) => schedule.days.filter((day) => day.offset < days).reduce((sum, day) => sum + day.tasks.length, 0);
+  const readyIds = flat.filter((task) => task.ready).map((task) => task.card.id);
+  const hasUnranked = arranged === "ai" && flat.some((task) => task.unranked);
+  // Chưa xếp: mỗi danh sách của bảng một cột, giữ thứ tự thẻ trên bảng
+  const taskById = new Map(flat.map((task) => [task.card.id, task]));
+  const listLanes = lists
+    .map((list) => ({
+      key: list.id,
+      title: list.title,
+      tasks: [...list.cards].sort((a, b) => a.order - b.order).flatMap((card) => taskById.get(card.id) ?? []),
+    }))
+    .filter((lane) => lane.tasks.length > 0);
+  const nextRange = RANGES[RANGES.findIndex((item) => item.id === range) + 1];
 
   const { execute: executeRankAi, isLoading: isRankingAi } = useAction(rankAiPriorities, {
-    onSuccess: (result) => setAiOrder({ ...result, request: lastAiRequestRef.current }),
+    onSuccess: (result) => {
+      updatePlan({ aiOrder: { ...result, request: request.trim() }, arranged: "ai" });
+    },
     onError: (error) => toast.error(error),
   });
 
-  const rankWithAi = (request: string) => {
-    if (plan.ready.length === 0) return;
-    lastAiRequestRef.current = request;
-    executeRankAi({ boardId, cardIds: plan.ready.map((task) => task.card.id), request });
+  const submitAi = (value: string) => {
+    // Không ghi yêu cầu thì AI xếp theo mặc định (hạn, mức quan trọng)
+    const trimmed = value.trim() || AI_DEFAULT_REQUEST;
+    if (isRankingAi || readyIds.length === 0) return;
+    // shortcut: AI chỉ xếp 60 việc đầu, phần còn lại theo heuristic; tăng giới hạn schema nếu bảng lớn hơn.
+    executeRankAi({ boardId, cardIds: readyIds.slice(0, AI_MAX_CARDS), request: trimmed });
   };
-
-  // Nhãn "Vừa mở khóa" chỉ sáng một lúc
-  useEffect(() => {
-    if (recentlyUnlocked.size === 0) return;
-    const timer = window.setTimeout(() => setRecentlyUnlocked(new Set()), 4000);
-    return () => window.clearTimeout(timer);
-  }, [recentlyUnlocked]);
 
   const setCompletion = async (cardId: string, value: boolean) => {
     const card = allCards.find((item) => item.id === cardId);
@@ -178,15 +178,8 @@ export const BoardGraphView = ({
         return copy;
       });
     remember({ value, updatedAt: card.updatedAt });
-
     if (value) {
-      // Việc chỉ còn chờ đúng thẻ này sẽ được mở khóa
-      const unlocked = plan.waiting
-        .filter((task) => task.waitingOn.length === 1 && task.waitingOn[0].id === cardId)
-        .map((task) => task.card);
-      setRecentlyUnlocked(new Set(unlocked.map((item) => item.id)));
       toast.success(`Đã xong "${card.title}"`, {
-        description: unlocked.length > 0 ? `Mở khóa ${unlocked.length} việc: ${unlocked.map((item) => item.title).join(", ")}` : undefined,
         action: { label: "Hoàn tác", onClick: () => void setCompletion(cardId, false) },
       });
     }
@@ -200,652 +193,342 @@ export const BoardGraphView = ({
     router.refresh();
   };
 
-  // Chain selection
-  const chain = useMemo(() => {
-    if (!activeCardId) {
-      return {
-        ancestorIds: new Set<string>(),
-        descendantIds: new Set<string>(),
-        connectedEdgeKeys: new Set<string>(),
-      };
-    }
-    return getConnectedChain(activeCardId, layout.nodes);
-  }, [activeCardId, layout.nodes]);
-
-  // Fit view calculation
-  const handleFitView = useCallback(() => {
-    if (!containerRef.current) return;
-    const { clientWidth, clientHeight } = containerRef.current;
-    if (layout.width === 0 || layout.height === 0) return;
-
-    const scaleX = (clientWidth - 80) / layout.width;
-    const scaleY = (clientHeight - 120) / layout.height;
-    const nextZoom = Math.min(Math.max(Math.min(scaleX, scaleY), 0.45), 1.1);
-
-    const nextPanX = Math.max(20, (clientWidth - layout.width * nextZoom) / 2);
-    const nextPanY = Math.max(20, (clientHeight - layout.height * nextZoom) / 2);
-
-    setZoom(Number(nextZoom.toFixed(2)));
-    setPan({ x: Math.round(nextPanX), y: Math.round(nextPanY) });
-  }, [layout.width, layout.height]);
-
-  // Run initial fit view on mount or layout change if cards loaded
-  useEffect(() => {
-    if (allCards.length > 0) {
-      handleFitView();
-    }
-  }, [handleFitView, allCards.length]);
-
-  // Đưa thẻ vào giữa vùng nhìn (trừ phần panel bên phải) và chọn nó để sáng cả chuỗi
-  useEffect(() => {
-    if (!pendingFocusId || !containerRef.current) return;
-    const node = layout.nodeMap.get(pendingFocusId);
-    if (!node) return;
-    const { clientWidth, clientHeight } = containerRef.current;
-    const visibleWidth = clientWidth - (isPriorityOpen && clientWidth > 720 ? 356 : 0);
-    // Đọc zoom mới nhất: fit-view cùng lượt render (khi vừa bật "Tất cả") có thể vừa đổi zoom
-    setZoom((currentZoom) => {
-      setPan({
-        x: Math.round(visibleWidth / 2 - (node.x + node.width / 2) * currentZoom),
-        y: Math.round(clientHeight / 2 - (node.y + node.height / 2) * currentZoom),
+  const check = (cardId: string) => {
+    setChecking((current) => new Set(current).add(cardId));
+    window.setTimeout(() => {
+      void setCompletion(cardId, true);
+      setChecking((current) => {
+        const next = new Set(current);
+        next.delete(cardId);
+        return next;
       });
-      return currentZoom;
-    });
-    setActiveCardId(pendingFocusId);
-    setPendingFocusId(null);
-  }, [pendingFocusId, layout.nodeMap, isPriorityOpen]);
-
-  // Chỉ lượt focus mới trượt mượt; kéo/cuộn tay vẫn đi theo con trỏ ngay
-  useEffect(() => {
-    if (!isGliding) return;
-    const timer = window.setTimeout(() => setIsGliding(false), 450);
-    return () => window.clearTimeout(timer);
-  }, [isGliding]);
-
-  const focusCard = (cardId: string) => {
-    // Việc chưa nối với ai bị ẩn ở chế độ "Có liên kết": bật "Tất cả" rồi mới focus
-    if (!layout.nodeMap.has(cardId)) setFilterMode("all");
-    setIsGliding(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    setPendingFocusId(cardId);
+    }, CHECK_HOLD_MS);
   };
 
-  const handleZoomIn = () => setZoom((z) => Math.min(Number((z + 0.15).toFixed(2)), 1.8));
-  const handleZoomOut = () => setZoom((z) => Math.max(Number((z - 0.15).toFixed(2)), 0.4));
-  const handleResetZoom = () => {
-    setZoom(1);
-    setPan({ x: 40, y: 30 });
+  const renderCard = (task: ScheduledTask) => {
+    const step = arranged ? stepById.get(task.card.id) : undefined;
+    return (
+      <div data-flow-id={task.card.id} className="relative">
+      <FlowCard
+        boardId={boardId}
+        task={task}
+        step={step}
+        isNow={step === 1}
+        checking={checking.has(task.card.id)}
+        canEdit={canEdit}
+        onCheck={() => check(task.card.id)}
+        onOpen={() => cardModal.onOpen(task.card.id)}
+      />
+      </div>
+    );
   };
 
-  // Helper to convert mouse client coordinates to canvas coordinates
-  const getCanvasCoords = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!containerRef.current) return { x: 0, y: 0 };
-      const rect = containerRef.current.getBoundingClientRect();
-      const canvasX = (clientX - rect.left - pan.x) / zoom;
-      const canvasY = (clientY - rect.top - pan.y) / zoom;
-      return { x: canvasX, y: canvasY };
-    },
-    [pan.x, pan.y, zoom],
-  );
-
-  // Keep refs for active connecting state so global event handlers always access the latest values
-  const connectingSourceNodeRef = useRef<GraphNode | null>(null);
-  connectingSourceNodeRef.current = connectingSourceNode;
-
-  const isDraggingConnectRef = useRef(false);
-  isDraggingConnectRef.current = isDraggingConnect;
-
-  const hoverTargetNodeRef = useRef<GraphNode | null>(null);
-  hoverTargetNodeRef.current = hoverTargetNode;
-
-  // Handle ESC key to cancel connection
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setConnectingSourceNode(null);
-        setIsDraggingConnect(false);
-        setConnectingMousePos(null);
-        setHoverTargetNode(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  // Connection Handlers
-  const handleStartConnectDrag = useCallback(
-    (
-      e: React.PointerEvent<HTMLButtonElement> | React.MouseEvent<HTMLButtonElement>,
-      node: GraphNode,
-    ) => {
-      if (!canEdit) return;
-      setConnectingSourceNode(node);
-      setIsDraggingConnect(true);
-      connectingSourceNodeRef.current = node;
-      isDraggingConnectRef.current = true;
-      hoverTargetNodeRef.current = null;
-      setHoverTargetNode(null);
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      setConnectingMousePos(coords);
-    },
-    [canEdit, getCanvasCoords],
-  );
-
-  const handlePortClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>, node: GraphNode) => {
-      if (!canEdit) return;
-      if (connectingSourceNode?.card.id === node.card.id) {
-        // Toggle off if clicking the same node port
-        setConnectingSourceNode(null);
-        setConnectingMousePos(null);
-        setHoverTargetNode(null);
-        setIsDraggingConnect(false);
-      } else {
-        setConnectingSourceNode(node);
-        setIsDraggingConnect(false);
-        const coords = getCanvasCoords(e.clientX, e.clientY);
-        setConnectingMousePos(coords);
-        toast.info(
-          `Đã chọn "${node.card.title}". Nhấn vào công việc tiếp theo để hoàn tất nối (Esc để hủy).`,
-        );
-      }
-    },
-    [canEdit, connectingSourceNode, getCanvasCoords],
-  );
-
-  const handleSelectTarget = useCallback(
-    (targetNode: GraphNode) => {
-      const source = connectingSourceNodeRef.current || connectingSourceNode;
-      if (!canEdit || !source) return;
-
-      if (source.card.id === targetNode.card.id) {
-        toast.error("Một công việc không thể phụ thuộc vào chính nó!");
-        setConnectingSourceNode(null);
-        setIsDraggingConnect(false);
-        setConnectingMousePos(null);
-        setHoverTargetNode(null);
-        return;
-      }
-
-      // Check if dependency already exists
-      const alreadyConnected = targetNode.card.blockedByDependencies.some(
-        (d) => d.cardId === source.card.id,
-      );
-      if (alreadyConnected) {
-        toast.info("Liên kết phụ thuộc giữa 2 công việc này đã tồn tại.");
-        setConnectingSourceNode(null);
-        setIsDraggingConnect(false);
-        setConnectingMousePos(null);
-        setHoverTargetNode(null);
-        return;
-      }
-
-      // Execute create dependency
-      executeCreateDependency({
-        boardId,
-        blockerCardId: source.card.id,
-        blockedCardId: targetNode.card.id,
-      });
-
-      // Reset connecting state
-      setConnectingSourceNode(null);
-      setIsDraggingConnect(false);
-      setConnectingMousePos(null);
-      setHoverTargetNode(null);
-    },
-    [boardId, canEdit, connectingSourceNode, executeCreateDependency],
-  );
-
-  // Global window pointer listener for ultra-smooth Drag-to-Connect
-  useEffect(() => {
-    if (!isDraggingConnect) return;
-
-    const handleWindowPointerMove = (e: PointerEvent) => {
-      // 1. Update cursor canvas coords for live curve
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      setConnectingMousePos(coords);
-
-      const source = connectingSourceNodeRef.current;
-      if (!source) return;
-
-      // 2. Identify target card directly under the cursor
-      const targetElem = document.elementFromPoint(e.clientX, e.clientY);
-      const cardContainer = targetElem?.closest("[data-graph-card-id]");
-      const cardId = cardContainer?.getAttribute("data-graph-card-id");
-
-      if (cardId && cardId !== source.card.id) {
-        const targetNode = layout.nodeMap.get(cardId);
-        setHoverTargetNode(targetNode || null);
-        hoverTargetNodeRef.current = targetNode || null;
-      } else {
-        setHoverTargetNode(null);
-        hoverTargetNodeRef.current = null;
-      }
-    };
-
-    const handleWindowPointerUp = () => {
-      const source = connectingSourceNodeRef.current;
-      const target = hoverTargetNodeRef.current;
-
-      if (source && target && source.card.id !== target.card.id) {
-        // Complete connection!
-        handleSelectTarget(target);
-      } else {
-        // Released on empty canvas
-        setConnectingSourceNode(null);
-        setConnectingMousePos(null);
-        setHoverTargetNode(null);
-      }
-
-      setIsDraggingConnect(false);
-      isDraggingConnectRef.current = false;
-      connectingSourceNodeRef.current = null;
-      hoverTargetNodeRef.current = null;
-    };
-
-    window.addEventListener("pointermove", handleWindowPointerMove, { passive: true });
-    window.addEventListener("pointerup", handleWindowPointerUp);
-
-    return () => {
-      window.removeEventListener("pointermove", handleWindowPointerMove);
-      window.removeEventListener("pointerup", handleWindowPointerUp);
-    };
-  }, [isDraggingConnect, getCanvasCoords, handleSelectTarget, layout.nodeMap]);
-
-  const handleDeleteEdge = useCallback(
-    (edge: GraphEdge) => {
-      if (!canEdit || !edge.dependencyId) return;
-      executeDeleteDependency({
-        boardId,
-        dependencyId: edge.dependencyId,
-      });
-    },
-    [boardId, canEdit, executeDeleteDependency],
-  );
-
-  // Compute live connecting line coordinates
-  const connectingLine = useMemo(() => {
-    if (!connectingSourceNode || !connectingMousePos) return null;
-    const x1 = connectingSourceNode.x + connectingSourceNode.width;
-    const y1 = connectingSourceNode.y + connectingSourceNode.height / 2;
-    const x2 = hoverTargetNode ? hoverTargetNode.x : connectingMousePos.x;
-    const y2 = hoverTargetNode
-      ? hoverTargetNode.y + hoverTargetNode.height / 2
-      : connectingMousePos.y;
-    return { x1, y1, x2, y2 };
-  }, [connectingSourceNode, connectingMousePos, hoverTargetNode]);
-
-  // Mouse pan & connect handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Only pan on left click on canvas background when not connecting
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement | null;
-    if (target?.closest?.("[data-graph-card-id]")) {
-      // Do not process canvas click/pan if user clicked on a card
-      return;
-    }
-    if (connectingSourceNode && !isDraggingConnect) {
-      // Clicking on empty canvas while in click-to-connect mode cancels it
-      setConnectingSourceNode(null);
-      setConnectingMousePos(null);
-      setHoverTargetNode(null);
-      return;
-    }
-    setIsPanning(true);
-    panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+  const cardMotion = {
+    layout: "position" as const,
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0, transition: { ...move, opacity: fade } },
+    exit: { opacity: 0, scale: 0.96, transition: fade },
+    transition: move,
   };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (connectingSourceNode && !isDraggingConnect) {
-      // Follow cursor in click-to-connect mode
-      const coords = getCanvasCoords(e.clientX, e.clientY);
-      setConnectingMousePos(coords);
-    }
-    if (!isPanning) return;
-    setPan({
-      x: e.clientX - panStartRef.current.x,
-      y: e.clientY - panStartRef.current.y,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
-
-  // Native wheel listener on container with passive: false to prevent browser page zoom on touchpad pinch
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleNativeWheel = (e: WheelEvent) => {
-      // Panel gợi ý tự cuộn, không kéo canvas
-      if ((e.target as HTMLElement | null)?.closest?.("[data-graph-overlay]")) return;
-      // Prevent browser full page zoom and outer page scroll
-      e.preventDefault();
-
-      const rect = container.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      if (e.ctrlKey) {
-        // Touchpad pinch-to-zoom OR Ctrl + Wheel
-        // Negative deltaY means zooming in, positive means zooming out
-        const zoomFactor = -e.deltaY * 0.01;
-        setZoom((prevZoom) => {
-          const nextZoom = Math.min(
-            Math.max(Number((prevZoom * Math.exp(zoomFactor)).toFixed(2)), 0.35),
-            2.2,
-          );
-
-          // Zoom toward mouse pointer position
-          setPan((prevPan) => {
-            const canvasX = (mouseX - prevPan.x) / prevZoom;
-            const canvasY = (mouseY - prevPan.y) / prevZoom;
-            const nextPanX = mouseX - canvasX * nextZoom;
-            const nextPanY = mouseY - canvasY * nextZoom;
-            return { x: Math.round(nextPanX), y: Math.round(nextPanY) };
-          });
-
-          return nextZoom;
-        });
-      } else {
-        // Touchpad 2-finger scroll / mouse wheel: Pan the canvas smoothly
-        setPan((prevPan) => ({
-          x: Math.round(prevPan.x - e.deltaX),
-          y: Math.round(prevPan.y - e.deltaY),
-        }));
-      }
-    };
-
-    container.addEventListener("wheel", handleNativeWheel, { passive: false });
-    return () => {
-      container.removeEventListener("wheel", handleNativeWheel);
-    };
-  }, []);
-
-  // Export PNG
-  const handleExportPng = async () => {
-    if (!canvasRef.current || isExporting) return;
-    setIsExporting(true);
-
-    try {
-      const toastId = toast.loading("Đang chuẩn bị ảnh sơ đồ...");
-      const dataUrl = await toPng(canvasRef.current, {
-        cacheBust: true,
-        backgroundColor: "#f8fafc",
-      });
-
-      const fileName = buildBoardExportFileName(boardTitle, "graph", "png");
-      const link = document.createElement("a");
-      link.download = fileName;
-      link.href = dataUrl;
-      link.click();
-
-      toast.success("Đã xuất ảnh sơ đồ thành công!", { id: toastId });
-    } catch {
-      toast.error("Không thể xuất ảnh sơ đồ. Vui lòng thử lại!");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const activeCard = activeCardId ? layout.nodeMap.get(activeCardId)?.card : null;
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/20 bg-neutral-900/10 shadow-lg backdrop-blur-md">
-      {/* Top Controls Toolbar */}
-      <GraphToolbar
-        filterMode={filterMode}
-        onFilterModeChange={setFilterMode}
-        searchQuery={searchQuery}
-        onSearchQueryChange={setSearchQuery}
-        zoom={zoom}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onResetZoom={handleResetZoom}
-        onFitView={handleFitView}
-        onExportPng={handleExportPng}
-        isExporting={isExporting}
-        totalCardsCount={layout.stats.totalCards}
-        connectedCardsCount={layout.stats.connectedCards}
-        canEdit={canEdit}
-        onOpenAutoChain={() => setIsAutoChainOpen(true)}
-      />
-
-      {/* Main Canvas Area */}
-      <div
-        ref={containerRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onClick={(e) => {
-          const target = e.target as HTMLElement | null;
-          if (target?.closest?.("[data-graph-card-id]")) {
-            return;
-          }
-          setActiveCardId(null);
-        }}
-        className={cn(
-          "relative flex-1 overflow-hidden bg-slate-50/90 select-none",
-          connectingSourceNode
-            ? "cursor-crosshair"
-            : isPanning
-            ? "cursor-grabbing"
-            : "cursor-grab",
-        )}
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(148, 163, 184, 0.25) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      >
-        {/* Connection Active Top HUD Banner */}
-        {connectingSourceNode && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 rounded-full border border-violet-300 bg-white/95 px-4 py-2 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-600" />
-            </span>
-            <div className="text-xs">
-              <span className="text-neutral-500">Đang nối từ: </span>
-              <span className="font-bold text-violet-900">{connectingSourceNode.card.title}</span>
-              <span className="text-neutral-500"> ➔ Nhấn hoặc thả vào thẻ tiếp theo</span>
+    <ReducedMotionConfig>
+      <div className="flex h-full flex-col gap-3">
+        {/* Một khối điều khiển: ràng buộc (mỗi ngày, yêu cầu cho AI) rồi bấm xếp */}
+        <header className="space-y-3 rounded-2xl border border-neutral-200/80 bg-white/95 p-4 shadow-xs backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-2 text-base font-bold text-neutral-900">
+                <Target aria-hidden="true" className="h-5 w-5 text-violet-600" />
+                Làm gì trước?
+              </h1>
+              <p className="mt-0.5 text-xs text-neutral-500">
+                {flat.length === 0
+                  ? "Không còn việc nào đang mở"
+                  : arranged
+                    ? `${flat.length} việc, xong trong khoảng ${schedule.days.length} ngày nếu làm ${perDay} việc/ngày`
+                    : `${flat.length} việc đang mở trong ${listLanes.length} danh sách. Bấm sắp xếp để biết nên làm gì trước.`}
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setConnectingSourceNode(null);
-                setIsDraggingConnect(false);
-                setConnectingMousePos(null);
-                setHoverTargetNode(null);
-              }}
-              className="ml-1 rounded-full p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition cursor-pointer"
-              title="Hủy kết nối (Esc)"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
 
-        {/* Empty State warning if connected_only but 0 connections */}
-        {layout.nodes.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-20">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 shadow-sm mb-4">
-              <Network className="h-7 w-7" />
-            </div>
-            <h3 className="text-base font-semibold text-neutral-800">
-              {filterMode === "connected_only"
-                ? "Chưa có công việc nào được gán quan hệ phụ thuộc"
-                : "Bảng chưa có công việc nào"}
-            </h3>
-            <p className="mt-1.5 max-w-md text-xs text-neutral-500">
-              {filterMode === "connected_only"
-                ? "Chuyển sang xem tất cả thẻ rồi kéo nút + bên phải một thẻ sang thẻ làm sau, hoặc dùng \"Nối chuỗi tự động\"."
-                : "Hãy tạo công việc mới trên bảng để bắt đầu vẽ sơ đồ mạng lưới phụ thuộc."}
-            </p>
-            {filterMode === "connected_only" && (
-              <button
-                type="button"
-                onClick={() => setFilterMode("all")}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 transition"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Hiển thị tất cả công việc ({layout.stats.totalCards})</span>
-              </button>
+            {arranged && (
+              <div role="tablist" aria-label="Khoảng thời gian" className="flex rounded-xl bg-neutral-100 p-1 text-xs font-semibold">
+                {RANGES.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={range === item.id}
+                    onClick={() => setRange(item.id)}
+                    className={cn(
+                      "relative flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors duration-200",
+                      range === item.id ? "text-violet-700" : "text-neutral-500 hover:text-neutral-900",
+                    )}
+                  >
+                    {range === item.id && <motion.span layoutId={`graph-range-${boardId}`} transition={select} className="absolute inset-0 rounded-lg bg-white shadow-sm ring-1 ring-neutral-200/70" />}
+                    <span className="relative z-10">{item.label}</span>
+                    <span className="relative z-10 rounded-full bg-neutral-200/70 px-1.5 text-[10px] tabular-nums text-neutral-600">{countFor(item.days)}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
-        )}
 
-        {/* Zoomable & Pannable Canvas */}
-        <div
-          ref={canvasRef}
-          style={{
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: "0 0",
-            transition: isGliding ? "transform 420ms cubic-bezier(0.23, 1, 0.32, 1)" : undefined,
-            width: `${layout.width}px`,
-            height: `${layout.height}px`,
-          }}
-          className="relative"
-        >
-          {/* SVG Edges */}
-          <GraphEdges
-            edges={layout.edges}
-            width={layout.width}
-            height={layout.height}
-            selectedEdgeKeys={chain.connectedEdgeKeys}
-            criticalEdgeKeys={criticalEdgeKeys}
-            hasSelection={Boolean(activeCardId)}
-            canEdit={canEdit}
-            isConnectingActive={Boolean(connectingSourceNode)}
-            connectingLine={connectingLine}
-            onDeleteEdge={handleDeleteEdge}
-          />
-
-          {/* Nhãn bước: cột trái làm trước, càng sang phải càng phụ thuộc nhiều */}
-          {layout.columns.length > 1 &&
-            layout.columns.map((column) => (
-              <div
-                key={column.level}
-                style={{ position: "absolute", left: column.x, top: 10, width: column.width }}
-                className="pointer-events-none flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500"
-              >
-                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-slate-700">{column.title}</span>
-                <span className="tabular-nums text-slate-400">{column.nodeCount}</span>
+          <form
+            onSubmit={(event) => { event.preventDefault(); if (canEdit) submitAi(request); }}
+            className="space-y-2 rounded-xl bg-violet-50/60 p-2.5 ring-1 ring-inset ring-violet-100"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Ràng buộc: số việc tối đa mỗi ngày quyết định việc rơi vào ngày nào */}
+              <div role="group" aria-labelledby="graph-per-day-label" className="flex h-9 shrink-0 items-center gap-0.5 rounded-xl border border-neutral-200 bg-white px-1 text-xs text-neutral-600">
+                <span id="graph-per-day-label" className="px-1.5">Mỗi ngày tối đa</span>
+                <button
+                  type="button"
+                  aria-label="Bớt một việc mỗi ngày"
+                  disabled={perDay <= PER_DAY_MIN}
+                  onClick={() => setPerDay(Math.max(PER_DAY_MIN, perDay - 1))}
+                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40"
+                >
+                  <Minus aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
+                <span aria-live="polite" className="min-w-12 text-center font-semibold tabular-nums text-neutral-900">{perDay} việc</span>
+                <button
+                  type="button"
+                  aria-label="Thêm một việc mỗi ngày"
+                  disabled={perDay >= PER_DAY_MAX}
+                  onClick={() => setPerDay(Math.min(PER_DAY_MAX, perDay + 1))}
+                  className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-neutral-100 disabled:cursor-default disabled:opacity-40"
+                >
+                  <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ))}
 
-          {/* Graph Nodes */}
-          {layout.nodes.map((node) => {
-            const isSelected = activeCardId === node.card.id;
-            const isAncestor = chain.ancestorIds.has(node.card.id);
-            const isDescendant = chain.descendantIds.has(node.card.id);
-            const isMatchedBySearch =
-              searchQuery.trim().length > 0 &&
-              node.card.title.toLowerCase().includes(searchQuery.toLowerCase());
-
-            const isDimmed =
-              Boolean(activeCardId) && !isSelected && !isAncestor && !isDescendant;
-
-            return (
-              <div
-                key={node.card.id}
-                className={cn(
-                  isMatchedBySearch && "ring-4 ring-amber-400 rounded-xl",
-                )}
-              >
-                <GraphNodeComponent
-                  node={node}
-                  boardId={boardId}
-                  isSelected={isSelected}
-                  isAncestor={isAncestor}
-                  isDescendant={isDescendant}
-                  isDimmed={isDimmed}
-                  priorityRank={rankById.get(node.card.id)}
-                  isWaiting={waitingIds.has(node.card.id)}
-                  canEdit={canEdit}
-                  isConnectingSource={connectingSourceNode?.card.id === node.card.id}
-                  isConnectingHoverTarget={hoverTargetNode?.card.id === node.card.id}
-                  isConnectionCandidate={Boolean(
-                    connectingSourceNode && connectingSourceNode.card.id !== node.card.id,
-                  )}
-                  onClick={(cardId) => setActiveCardId(cardId)}
-                  onOpenCardModal={(cardId) => cardModal.onOpen(cardId)}
-                  onStartConnectDrag={handleStartConnectDrag}
-                  onPortClick={handlePortClick}
-                  onMouseEnterTarget={(n) => setHoverTargetNode(n)}
-                  onMouseLeaveTarget={() => setHoverTargetNode(null)}
-                  onSelectTarget={handleSelectTarget}
+              <div className="relative min-w-[220px] flex-1">
+                <Sparkles aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-violet-500" />
+                <input
+                  value={request}
+                  maxLength={300}
+                  disabled={!canEdit}
+                  onChange={(event) => setRequest(event.target.value)}
+                  placeholder="Yêu cầu thêm cho AI (không bắt buộc), vd: thứ 6 thi Giải tích"
+                  aria-label="Yêu cầu thêm cho AI"
+                  className="h-9 w-full rounded-xl border border-neutral-200 bg-white pl-8 pr-3 text-xs outline-none transition-shadow focus-visible:border-violet-400 focus-visible:ring-3 focus-visible:ring-violet-100"
                 />
               </div>
-            );
-          })}
-        </div>
 
-        <PriorityPanel
-          plan={plan}
-          schedule={schedule}
-          perDay={perDay}
-          onPerDayChange={setPerDay}
-          canEdit={canEdit}
-          sortMode={sortMode}
-          onSortModeChange={setSortMode}
-          aiSummary={sortMode === "ai" ? aiOrder?.summary : undefined}
-          hasAiOrder={Boolean(aiOrder)}
-          lastAiRequest={aiOrder?.request}
-          isRankingAi={isRankingAi}
-          onRankWithAi={rankWithAi}
-          recentlyUnlocked={recentlyUnlocked}
-          onComplete={(cardId) => void setCompletion(cardId, true)}
-          open={isPriorityOpen}
-          onOpenChange={setIsPriorityOpen}
-          focusedCardId={activeCardId}
-          onFocusCard={focusCard}
-          onOpenCard={(cardId) => cardModal.onOpen(cardId)}
-        />
-
-        {/* Selected Card Chain HUD Info Banner */}
-        {activeCard && (
-          <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 rounded-xl border border-violet-200 bg-white/95 px-4 py-2.5 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150">
-            <Info className="h-4 w-4 text-violet-600 shrink-0" />
-            <div className="text-xs">
-              <span className="font-semibold text-neutral-900 line-clamp-1">
-                {activeCard.title}
-              </span>
-              <div className="flex items-center gap-2 text-neutral-500 text-[11px] mt-0.5">
-                <span className="text-amber-700 font-medium">
-                  {chain.ancestorIds.size} thẻ làm trước
-                </span>
-                <span>•</span>
-                <span className="text-emerald-700 font-medium">
-                  {chain.descendantIds.size} thẻ mở khóa sau
-                </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: scale.press, transition: press }}
+                  onClick={() => setArranged("auto")}
+                  disabled={flat.length === 0}
+                  className={cn(
+                    "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border bg-white px-3 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-50",
+                    arranged === "auto" ? "border-violet-400 text-violet-700 ring-2 ring-violet-200" : "border-neutral-200 text-neutral-700 hover:border-violet-300 hover:text-violet-700",
+                  )}
+                >
+                  <Route aria-hidden="true" className="h-3.5 w-3.5" />
+                  Tự động sắp xếp
+                </motion.button>
+                <motion.button
+                  type="submit"
+                  whileTap={{ scale: scale.press, transition: press }}
+                  disabled={!canEdit || isRankingAi || readyIds.length === 0}
+                  className={cn(
+                    "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-violet-700 disabled:cursor-default disabled:opacity-50",
+                    arranged === "ai" && "ring-2 ring-violet-300",
+                  )}
+                >
+                  {isRankingAi ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />}
+                  {isRankingAi ? "AI đang xếp…" : "AI sắp xếp"}
+                </motion.button>
+                {arranged && (
+                  <button
+                    type="button"
+                    onClick={() => setArranged(null)}
+                    title="Về dạng danh sách, bỏ nối"
+                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl px-2.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-white hover:text-neutral-800"
+                  >
+                    <Undo2 aria-hidden="true" className="h-3.5 w-3.5" />
+                    Bỏ sắp xếp
+                  </button>
+                )}
               </div>
             </div>
+
+            {canEdit && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-neutral-400">Gợi ý:</span>
+                {AI_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={isRankingAi}
+                    onClick={() => setRequest(preset)}
+                    className={cn(
+                      "cursor-pointer rounded-full border bg-white px-2.5 py-0.5 text-[11px] font-medium transition-colors disabled:opacity-50",
+                      request === preset ? "border-violet-300 text-violet-700" : "border-neutral-200 text-neutral-600 hover:border-violet-300 hover:text-violet-700",
+                    )}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <AnimatePresence initial={false} mode="popLayout">
+              {arranged && (
+                <motion.p
+                  key={arranged}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0, transition: { ...height, opacity: fade } }}
+                  exit={{ opacity: 0, transition: transition.collapse }}
+                  className="flex items-start gap-1.5 text-[11px] leading-snug text-violet-800"
+                >
+                  {arranged === "ai" ? <Sparkles aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" /> : <Route aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />}
+                  <span>
+                    {arranged === "ai"
+                      ? aiOrder?.summary || "AI đã xếp theo yêu cầu của bạn."
+                      : "Đã xếp tự động: quá hạn và sắp tới hạn trước, rồi đến việc gắn sao và hạn sớm."}
+                    {hasUnranked && (
+                      <button type="button" onClick={() => submitAi(request)} disabled={isRankingAi} className="ml-1.5 cursor-pointer font-semibold text-violet-600 hover:underline disabled:opacity-50">
+                        Có việc mới, xếp lại bằng AI
+                      </button>
+                    )}
+                  </span>
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </form>
+
+          {arranged && schedule.lateCount > 0 && (
+            <p role="status" className="flex items-start gap-1.5 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[11px] leading-snug text-rose-700 ring-1 ring-inset ring-rose-200">
+              <AlertTriangle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span><b>{schedule.lateCount} việc</b> rơi vào sau hạn chót. Tăng số việc mỗi ngày hoặc dời hạn.</span>
+            </p>
+          )}
+        </header>
+
+        {/* Dòng chảy công việc */}
+        <section aria-label="Thứ tự nên làm" className={cn("min-h-0 flex-1 overflow-auto rounded-2xl border border-neutral-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-sm styled-scrollbar transition-opacity", isRankingAi && "opacity-60")}>
+          {flat.length === 0 && schedule.stuck.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <CheckCheck aria-hidden="true" className="h-6 w-6" />
+              </span>
+              <p className="text-sm font-semibold text-neutral-800">Xong hết rồi!</p>
+              <p className="text-xs text-neutral-500">Không còn việc nào đang mở trên bảng này.</p>
+            </div>
+          ) : !arranged ? (
+            // Chưa xếp: các danh sách của bảng, chưa có thứ tự hay mũi tên
+            <ol className="flex min-w-max items-start gap-x-5 pb-2">
+              {listLanes.map((lane) => (
+                <li key={lane.key} className="w-72 shrink-0 rounded-xl bg-neutral-50/80 p-2.5 ring-1 ring-inset ring-neutral-200/70">
+                  <p className="mb-2.5 flex items-baseline gap-1.5 px-0.5">
+                    <span className="truncate text-sm font-bold text-neutral-800">{lane.title}</span>
+                    <span className="ml-auto text-[11px] tabular-nums text-neutral-400">{lane.tasks.length} việc</span>
+                  </p>
+                  <ol className="flex flex-col gap-2">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {lane.tasks.map((task) => (
+                        <motion.li key={task.card.id} {...cardMotion}>
+                          {renderCard(task)}
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
+                  </ol>
+                </li>
+              ))}
+            </ol>
+          ) : shownCount === 0 ? (
+            <p className="py-12 text-center text-xs text-neutral-500">Không có việc nào trong khoảng này.</p>
+          ) : range === "today" ? (
+            // Hôm nay: một hàng ① → ② → ③, cuộn ngang thay vì xuống dòng để đường nối không gãy
+            <div ref={flowRef} className="relative w-max">
+              <FlowEdges containerRef={flowRef} nodes={lanes[0].tasks.map((task) => ({ id: task.card.id, lane: "row" }))} />
+              <ol className="relative flex items-center gap-x-16 pb-2">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {lanes[0].tasks.map((task) => (
+                    <motion.li key={task.card.id} {...cardMotion} className="w-72">
+                      {renderCard(task)}
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ol>
+            </div>
+          ) : (
+            // Tuần/tháng: mỗi cột một mốc; đường cong nối việc này → việc sau, cả sang cột kế
+            <div ref={flowRef} className="relative w-max">
+            <FlowEdges containerRef={flowRef} nodes={lanes.flatMap((lane) => lane.tasks.map((task) => ({ id: task.card.id, lane: lane.key })))} />
+            <ol className="relative flex items-start gap-x-16 pb-2">
+              {lanes.map((lane) => (
+                <li key={lane.key} className="flex items-start">
+                  <div className="w-72 shrink-0">
+                  <div className="mb-3 flex items-start gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "relative mt-0.5 flex h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-white",
+                        lane.isToday ? "bg-violet-600" : lane.tasks.some((task) => task.lateRisk) ? "bg-rose-500" : "bg-neutral-300",
+                      )}
+                    >
+                      {lane.isToday && <span className="absolute inset-0 rounded-full bg-violet-500 opacity-50 motion-safe:animate-ping" />}
+                    </span>
+                    <div className="min-w-0 flex-1 bg-white/0">
+                      <p className="flex items-baseline gap-1.5">
+                        <span className={cn("text-sm font-bold", lane.isToday ? "text-violet-700" : "text-neutral-800")}>{lane.title}</span>
+                        <span className="text-[11px] tabular-nums text-neutral-400">{lane.subtitle}</span>
+                        <span className="ml-auto text-[11px] tabular-nums text-neutral-400">{lane.tasks.length} việc</span>
+                      </p>
+                    </div>
+                  </div>
+                  <ol className="flex flex-col gap-y-9">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {lane.tasks.map((task) => (
+                        <motion.li key={task.card.id} {...cardMotion}>
+                          {renderCard(task)}
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
+                  </ol>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            </div>
+          )}
+
+          {arranged && laterCount > 0 && shownCount > 0 && (
             <button
               type="button"
-              onClick={() => setActiveCardId(null)}
-              className="ml-2 rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition"
-              title="Đóng chi tiết chuỗi"
+              onClick={() => nextRange && setRange(nextRange.id)}
+              disabled={!nextRange}
+              className="mt-6 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-xs font-semibold text-violet-600 transition-colors hover:border-violet-300 hover:bg-violet-50 disabled:cursor-default disabled:text-neutral-500 disabled:hover:bg-transparent"
             >
-              <X className="h-3.5 w-3.5" />
+              Còn {laterCount} việc sau {RANGES.find((item) => item.id === range)!.label.toLowerCase()}
+              {nextRange && <><span className="font-normal text-neutral-400">·</span> Xem {nextRange.label.toLowerCase()} <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" /></>}
             </button>
-          </div>
-        )}
+          )}
+
+          {schedule.stuck.length > 0 && (
+            <section className="mt-6 max-w-md rounded-xl bg-rose-50 px-3 py-2 ring-1 ring-inset ring-rose-200">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-700">
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                {schedule.stuck.length} việc chờ nhau thành vòng, chưa xếp được
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {schedule.stuck.map((card) => (
+                  <li key={card.id}>
+                    <button type="button" onClick={() => cardModal.onOpen(card.id)} className="line-clamp-1 cursor-pointer text-left text-[11px] text-rose-700/90 hover:underline">
+                      {card.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </section>
       </div>
-
-      {/* Bottom Summary Legend */}
-      <GraphLegend stats={layout.stats} />
-
-      {/* Auto Chain Dialog */}
-      <AutoChainDialog
-        isOpen={isAutoChainOpen}
-        onClose={() => setIsAutoChainOpen(false)}
-        boardId={boardId}
-        lists={lists}
-        onSuccess={() => router.refresh()}
-      />
-    </div>
+    </ReducedMotionConfig>
   );
 };

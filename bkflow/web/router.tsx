@@ -61,7 +61,6 @@ export const router = createBrowserRouter([
                   { index: true, element: lazyRoute(() => import("./routes/board-kanban")) },
                   { path: "calendar", element: lazyRoute(() => import("./routes/board-calendar")) },
                   { path: "list", element: <BoardListRoute /> },
-                  { path: "split", element: lazyRoute(() => import("./routes/board-split")) },
                   { path: "timeline", element: lazyRoute(() => import("./routes/board-timeline")) },
                   { path: "graph", element: lazyRoute(() => import("./routes/board-graph")) },
                   { path: "analytics", element: lazyRoute(() => import("./routes/board-analytics")) },

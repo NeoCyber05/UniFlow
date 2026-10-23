@@ -9,7 +9,7 @@ import { useBoardFilters } from "@/hooks/use-board-filters";
 import { cn } from "@/lib/utils";
 
 /** Lọc thẻ đã gắn ⭐ (trạng thái riêng từng người). Ẩn ở tab không áp bộ lọc. */
-export const BoardImportantToggle = ({ boardId }: { boardId: string }) => {
+export const BoardImportantToggle = ({ boardId, tone = "dark" }: { boardId: string; tone?: "dark" | "light" }) => {
   const pathname = usePathname();
   const importantOnly = useBoardFilters((state) => state.filtersByBoardId[boardId]?.importantOnly ?? false);
   const toggleImportant = useBoardFilters((state) => state.toggleImportant);
@@ -28,7 +28,10 @@ export const BoardImportantToggle = ({ boardId }: { boardId: string }) => {
         aria-pressed={importantOnly}
         aria-label="Lọc việc quan trọng"
         className={cn(
-          "h-8 w-8 rounded-lg border border-white/20 bg-white/10 text-white shadow-sm hover:bg-white/20 cursor-pointer",
+          "h-8 w-8 rounded-lg shadow-sm cursor-pointer",
+          tone === "dark"
+            ? "border border-white/20 bg-white/10 text-white hover:bg-white/20"
+            : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
           importantOnly && "border-amber-200 bg-amber-300 text-amber-950 hover:bg-amber-200",
         )}
       >

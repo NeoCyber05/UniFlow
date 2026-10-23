@@ -88,6 +88,7 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         scheduledStartAt: data.scheduledStartAt ?? null,
         scheduledEndAt: data.scheduledEndAt ?? null,
         reminder: data.reminder ?? null,
+        repeat: data.repeat ?? null,
         checklistItems: data.checklistItems ?? [],
         isImportant: Boolean(data.isImportant),
         myDay: Boolean(data.myDay),

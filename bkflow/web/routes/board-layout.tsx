@@ -24,6 +24,10 @@ export default function BoardLayoutRoute() {
   const { data, error, refetch } = useView<View>(`/board/${boardId}/layout`);
   const queryClient = useQueryClient();
   const { pathname, search } = useLocation();
+  // Trang Việc cần làm không có thanh bảng; bộ lọc được đặt ngay trong trang
+  const isListRoute = pathname.endsWith("/list");
+  // Lịch / Sơ đồ / Thống kê dùng thanh lọc sáng, không nền tối
+  const navTone = ["/calendar", "/graph", "/analytics"].some((tab) => pathname.endsWith(tab)) ? "light" : "dark";
   // Start content loading alongside the layout, before Outlet can mount.
   useEffect(() => {
     prefetchRouteViews(queryClient, pathname, search);
@@ -55,18 +59,19 @@ export default function BoardLayoutRoute() {
       {!data.isWorkspaceBoard && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
 
       <BoardShell
-        boardNavbar={
+        boardNavbar={isListRoute ? null : (
           <BoardNavbar
             data={data.board}
             currentUserId={data.currentUserId}
             workspace={data.board.workspace}
+            tone={navTone}
             courseFilter={
               data.isWorkspaceBoard ? (
-                <CourseFilterBar boardId={boardId} canEdit={data.canEdit} />
+                <CourseFilterBar boardId={boardId} canEdit={data.canEdit} tone={navTone} />
               ) : undefined
             }
           />
-        }
+        )}
       >
         <Outlet />
       </BoardShell>

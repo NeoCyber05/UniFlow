@@ -35,9 +35,10 @@ type ScopeOption = { id: string; label: string; fullName: string; dotClassName: 
 type CourseFilterBarProps = {
   boardId: string;
   canEdit: boolean;
+  tone?: "dark" | "light";
 };
 
-export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
+export const CourseFilterBar = ({ boardId, canEdit, tone = "dark" }: CourseFilterBarProps) => {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -200,25 +201,15 @@ export const CourseFilterBar = ({ boardId, canEdit }: CourseFilterBarProps) => {
             <button
               type="button"
               className={cn(
-                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-white ring-1 ring-white/20 transition-colors duration-200 hover:bg-white/20 data-[state=open]:bg-white/20",
-                selected.length === 0 ? "bg-white/10" : "bg-white/5",
+                "flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-colors duration-200",
+                tone === "dark"
+                  ? "text-white ring-1 ring-white/20 hover:bg-white/20 data-[state=open]:bg-white/20"
+                  : "bg-white text-neutral-700 ring-1 ring-neutral-200 hover:bg-neutral-50 data-[state=open]:bg-neutral-50",
+                tone === "dark" && (selected.length === 0 ? "bg-white/10" : "bg-white/5"),
               )}
             >
               {selected.length === 0 ? (
-                <>
-                  <span className="flex -space-x-1">
-                    {options.slice(0, 4).map((option) => (
-                      <span
-                        key={option.id}
-                        className={cn(
-                          "h-2.5 w-2.5 rounded-full ring-1 ring-black/30",
-                          option.dotClassName || "border border-white bg-transparent",
-                        )}
-                      />
-                    ))}
-                  </span>
-                  {tr("course.all")}
-                </>
+                tr("course.all")
               ) : (
                 <>
                   {tr("course.title")}

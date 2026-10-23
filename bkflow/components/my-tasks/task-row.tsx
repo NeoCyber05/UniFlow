@@ -115,6 +115,19 @@ export const TaskRow = memo(function TaskRow({
         >
           {task.title}
         </button>
+        {task.checklist.total > 0 && (
+          <div className="mt-1.5 flex max-w-36 items-center gap-2">
+            <div role="progressbar" aria-label="Tiến độ checklist trên task" aria-valuemin={0}
+              aria-valuemax={task.checklist.total} aria-valuenow={task.checklist.completed}
+              className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-full origin-left rounded-full bg-primary transition-transform duration-300 ease-out motion-reduce:transition-none"
+                style={{ transform: `scaleX(${task.checklist.completed / task.checklist.total})` }} />
+            </div>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {Math.round(task.checklist.completed / task.checklist.total * 100)}%
+            </span>
+          </div>
+        )}
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-neutral-500">
           {task.course && courseColor && (
             <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1", courseColor.chip)}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { tr } from "@/lib/i18n";
 import { motion } from "motion/react";
 import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
@@ -15,15 +15,20 @@ import type { MyTask, MyTaskGroup } from "@/lib/my-tasks/types";
 import { addVNDays, getVNDay, getVNDayKey, getVNWeekday } from "@/lib/my-tasks/vn-day";
 import { cn } from "@/lib/utils";
 
+import { TaskRow } from "./task-row";
+
 const WEEKDAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const RING_RADIUS = 30;
 
 type TodoInsightsProps = {
   boardId: string;
   groups: MyTaskGroup[];
+  onOpen: (taskId: string) => void;
 };
 
-export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
+export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => {
+  // Ngày (YYYY-MM-DD, giờ VN) đang xem; việc của ngày hiện ngay dưới cụm 7 ngày
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const setSelectedCourses = useBoardFilters((state) => state.setSelectedCourses);
   const progressSpring = useTempoTransition(spring.progress);
   const barSpring = useTempoTransition(spring.number);
@@ -69,6 +74,17 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
 
     return { doneToday, total: doneToday + dueToday, next, days, courses };
   }, [groups]);
+
+  const dayTasks = useMemo(() => {
+    if (!selectedDayKey) return [];
+    return groups
+      .flatMap((group) => group.tasks)
+      .filter((task) => {
+        const due = getTaskDeadlineAt(task);
+        return !!due && getVNDayKey(getVNDay(due)) === selectedDayKey;
+      })
+      .sort((a, b) => (getTaskDeadlineAt(a)?.getTime() ?? 0) - (getTaskDeadlineAt(b)?.getTime() ?? 0));
+  }, [groups, selectedDayKey]);
 
   const ratio = stats.total === 0 ? 0 : stats.doneToday / stats.total;
   const maxCourseCount = Math.max(1, ...stats.courses.map((course) => course.count));
@@ -133,28 +149,62 @@ export const TodoInsights = ({ boardId, groups }: TodoInsightsProps) => {
             </Link>
           </div>
           <div className="grid grid-cols-7 gap-1">
-            {stats.days.map((day, index) => (
-              <div
-                key={day.key}
-                title={day.count > 0 ? tr("insights.dueCount", { count: day.count }) : tr("insights.noTasks")}
-                className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-xl py-2",
-                  index === 0 ? "bg-violet-600 text-white" : "bg-neutral-50 text-neutral-800",
-                )}
-              >
-                <span className={cn("text-[10px] font-semibold", index === 0 ? "text-violet-100" : "text-neutral-500")}>
-                  {day.weekday}
-                </span>
-                <span className="text-sm font-bold tabular-nums">{day.date}</span>
-                <span className="flex h-1.5 items-center gap-0.5">
-                  {Array.from({ length: Math.min(day.count, 3) }, (_, dot) => (
-                    <span key={dot} className={cn("h-1 w-1 rounded-full", index === 0 ? "bg-white" : "bg-violet-500")} />
-                  ))}
-                </span>
-              </div>
-            ))}
+            {stats.days.map((day, index) => {
+              const selected = selectedDayKey === day.key;
+              return (
+                <button
+                  key={day.key}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setSelectedDayKey(selected ? null : day.key)}
+                  title={day.count > 0 ? tr("insights.dueCount", { count: day.count }) : tr("insights.noTasks")}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 rounded-xl py-2 transition-colors duration-200 cursor-pointer",
+                    index === 0 ? "bg-violet-600 text-white" : "bg-neutral-50 text-neutral-800 hover:bg-violet-50",
+                    selected && "ring-2 ring-violet-500 ring-offset-1",
+                  )}
+                >
+                  <span className={cn("text-[10px] font-semibold", index === 0 ? "text-violet-100" : "text-neutral-500")}>
+                    {day.weekday}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums">{day.date}</span>
+                  <span className="flex h-1.5 items-center gap-0.5">
+                    {Array.from({ length: Math.min(day.count, 3) }, (_, dot) => (
+                      <span key={dot} className={cn("h-1 w-1 rounded-full", index === 0 ? "bg-white" : "bg-violet-500")} />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </section>
+
+        {/* Việc của ngày đang chọn */}
+        {selectedDayKey && (
+          <section className="rounded-2xl border border-white/40 glass-row p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-neutral-900">
+                Việc ngày {selectedDayKey.slice(8)}/{selectedDayKey.slice(5, 7)}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSelectedDayKey(null)}
+                className="text-xs font-semibold text-violet-700 transition-colors duration-200 hover:text-violet-900"
+              >
+                Đóng
+              </button>
+            </div>
+            {dayTasks.length === 0 ? (
+              <p className="text-xs text-neutral-500">Không có việc đến hạn ngày này.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {dayTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} onOpen={onOpen} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Theo môn học: bấm để lọc nhanh */}
         {stats.courses.length > 0 && (
