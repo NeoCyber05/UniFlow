@@ -54,7 +54,7 @@ import {
 import { CAPTURE_TIME_ZONE, type CaptureSource } from "@/lib/capture/source";
 import { isCourseRef } from "@/lib/courses/hust-catalog";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
-import { parseQuickAdd, type QuickAddCourse, type QuickAddMember } from "@/lib/my-tasks/parse-quick-add";
+import { parseQuickAdd, toSearchKey, type QuickAddCourse, type QuickAddMember } from "@/lib/my-tasks/parse-quick-add";
 import { cn } from "@/lib/utils";
 import type { CardWithAssignees } from "@/types";
 
@@ -155,8 +155,14 @@ export const CaptureComposer = ({
   const [detailsOpen, setDetailsOpen] = useState(Boolean(initialSource));
   const [notice, setNotice] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  // Ảnh đính kèm chờ gửi; bấm Thêm mới gửi AI cùng chữ đang gõ
+  // Ảnh đính kèm: AI đọc ngay khi gắn, đọc lại khi sửa chữ (ảnh + chữ đang gõ)
   const [attachedImage, setAttachedImage] = useState<Blob | null>(null);
+  const scanSeq = useRef(0);
+  const scannedImage = useRef<Blob | null>(null);
+  // Chữ AI vừa điền vào ô: không quét lại cho chính nó
+  const filledPrompt = useRef<string | null>(null);
+  // Ảnh ra nhiều việc/TKB: bấm Thêm mở lại bảng xem lại
+  const pendingImport = useRef<CaptureImageResult | null>(null);
   const [imageImport, setImageImport] = useState<CaptureImageResult | null>(null);
   const [readingImage, setReadingImage] = useState(false);
   const popIn = useTempoTransition(spring.checkPop);
@@ -222,32 +228,14 @@ export const CaptureComposer = ({
     if (disabled || submitting.current) return;
     if (attachedImage) {
       if (readingImage) return;
-      setReadingImage(true);
-      try {
-        const result = await readCaptureImage(boardId!, attachedImage, [rawText.trim(), note.trim()].filter(Boolean).join("\n") || undefined);
-        const { analysis } = result;
-        // Đúng 1 việc → điền thẳng vào ô như khi gõ chữ; nhiều việc/thời khóa biểu mới cần bảng xem lại
-        if (analysis.type === "tasks" && analysis.items.length <= 1) {
-          const item = analysis.items[0];
-          if (!item) {
-            toast.error(tr("import.noTasks"));
-            return;
-          }
-          const { deadline } = imageItemToCaptureFields(item);
-          onTextChange(item.title);
-          if (deadline) setField("deadline", deadline);
-          if (item.description) setNote(item.description);
-          setAttachedImage(null);
-          inputRef.current?.focus();
-        } else {
-          setImageImport(result);
-        }
-      } catch (caught) {
-        toast.error(caught instanceof Error ? caught.message : "Không đọc được ảnh.");
-      } finally {
-        setReadingImage(false);
+      if (pendingImport.current) {
+        setImageImport(pendingImport.current);
+        return;
       }
-      return;
+      if (scannedImage.current !== attachedImage) {
+        void scanImage(attachedImage, imagePrompt);
+        return;
+      }
     }
     if (studyPlan) {
       if (readingImage) return;
@@ -289,6 +277,7 @@ export const CaptureComposer = ({
       if (result.data) {
         dispatch({ type: "submit/success", creationId, nextDraftId: newId() });
         setNote("");
+        attachImage(null);
         if (plan.retry) toast.success("Đã lưu lần gửi trước. Nội dung mới vẫn còn trong ô nhập.");
         await queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
         // Môn danh mục/tự đặt vừa thành Course thật → nạp lại danh sách môn
@@ -317,13 +306,79 @@ export const CaptureComposer = ({
   };
 
   const canImportImage = Boolean(boardId) && !disabled;
+  const imagePrompt = [rawText.trim(), note.trim()].filter(Boolean).join("\n");
+
+  const attachImage = (image: Blob | null) => {
+    scannedImage.current = null;
+    filledPrompt.current = null;
+    pendingImport.current = null;
+    setAttachedImage(image);
+  };
+
+  const courseIdForCode = (code: string | null) => {
+    const key = code ? toSearchKey(code) : "";
+    return key ? courses?.find((course) => course.code && toSearchKey(course.code) === key)?.id ?? null : null;
+  };
+
+  const scanImage = async (image: Blob, prompt: string) => {
+    const seq = ++scanSeq.current;
+    scannedImage.current = image;
+    setReadingImage(true);
+    try {
+      const result = await readCaptureImage(boardId!, image, prompt || undefined);
+      if (seq !== scanSeq.current) return;
+      const { analysis } = result;
+      // Đúng 1 việc → điền thẳng vào ô; nhiều việc/thời khóa biểu mới cần bảng xem lại
+      if (analysis.type === "tasks" && analysis.items.length <= 1) {
+        pendingImport.current = null;
+        const item = analysis.items[0];
+        if (!item) {
+          filledPrompt.current = prompt;
+          toast.error(tr("import.noTasks"));
+          return;
+        }
+        const { deadline } = imageItemToCaptureFields(item);
+        const nextNote = item.description ?? note;
+        filledPrompt.current = [item.title.trim(), nextNote.trim()].filter(Boolean).join("\n");
+        onTextChange(item.title);
+        if (deadline) setField("deadline", deadline);
+        const courseId = courseIdForCode(item.courseCode);
+        if (courseId) setField("courseId", courseId);
+        setNote(nextNote);
+        inputRef.current?.focus();
+      } else {
+        pendingImport.current = result;
+        setImageImport(result);
+      }
+    } catch (caught) {
+      if (seq !== scanSeq.current) return;
+      // Lỗi: bấm Thêm đọc lại; sửa chữ thì đọc lại sau debounce
+      scannedImage.current = null;
+      filledPrompt.current = prompt;
+      toast.error(caught instanceof Error ? caught.message : "Không đọc được ảnh.");
+    } finally {
+      if (seq === scanSeq.current) setReadingImage(false);
+    }
+  };
+
+  // Gắn ảnh → đọc ngay; sửa chữ sau đó → đọc lại ảnh kèm chữ mới (debounce), bỏ kết quả cũ đang chạy
+  useEffect(() => {
+    if (!attachedImage || !canImportImage) return;
+    if (scannedImage.current === attachedImage && filledPrompt.current === imagePrompt) return;
+    const fresh = scannedImage.current === null && filledPrompt.current === null;
+    scanSeq.current += 1;
+    setReadingImage(false);
+    const timer = setTimeout(() => void scanImage(attachedImage, imagePrompt), fresh ? 0 : AI_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachedImage, imagePrompt, canImportImage]);
   // Dán/chọn ảnh → đính kèm; bấm Thêm thì AI đọc ảnh + chữ đang gõ, mở bảng xem lại
   const onPaste = (event: React.ClipboardEvent) => {
     if (!canImportImage) return;
     const image = Array.from(event.clipboardData.files).find((file) => file.type.startsWith("image/"));
     if (!image) return;
     event.preventDefault();
-    setAttachedImage(image);
+    attachImage(image);
   };
   const imageControls = canImportImage && (
     <>
@@ -343,7 +398,7 @@ export const CaptureComposer = ({
         hidden
         onChange={(event) => {
           const image = event.target.files?.[0];
-          if (image) setAttachedImage(image);
+          if (image) attachImage(image);
           event.target.value = "";
         }}
       />
@@ -353,7 +408,7 @@ export const CaptureComposer = ({
           result={imageImport}
           onClose={() => setImageImport(null)}
           onImported={() => {
-            setAttachedImage(null);
+            attachImage(null);
             onTextChange("");
             setNote("");
           }}
@@ -388,7 +443,7 @@ export const CaptureComposer = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setAttachedImage(null)}
+                onClick={() => attachImage(null)}
                 aria-label="Bỏ ảnh"
                 className="absolute -right-1.5 -top-1.5 rounded-full bg-neutral-800 p-0.5 text-white shadow hover:bg-rose-600"
               >

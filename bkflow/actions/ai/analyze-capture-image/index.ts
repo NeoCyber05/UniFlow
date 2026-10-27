@@ -8,6 +8,8 @@ import { CAPTURE_IMAGE_SYSTEM_PROMPT } from "@/lib/ai/capture-image-prompt";
 import { generateAiText, generateAiTextFromImage } from "@/lib/ai/client";
 import { parseAiJson } from "@/lib/ai/json";
 import { getZonedDayKey } from "@/lib/capture/analysis";
+import { withCatalogCourses } from "@/lib/courses/hust-catalog";
+import { db } from "@/lib/db";
 import {
   IMAGE_IMPORT_TIME_ZONE,
   ImageTaskItem,
@@ -63,7 +65,14 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     const now = new Date();
     const today = getZonedDayKey(now.toISOString(), IMAGE_IMPORT_TIME_ZONE);
     const instruction = prompt?.trim() ?? "";
-    const user = JSON.stringify({ today, timeZone: IMAGE_IMPORT_TIME_ZONE, ...(instruction ? { instruction } : {}) });
+    const boardCourses = await db.course.findMany({
+      where: { boardId },
+      select: { id: true, name: true, code: true },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+    });
+    // Môn có mã để AI quy tên môn trên ảnh về đúng mã (client/import gán môn theo mã)
+    const courses = withCatalogCourses(boardCourses).flatMap((course) => (course.code ? [{ code: course.code, name: course.name }] : []));
+    const user = JSON.stringify({ today, timeZone: IMAGE_IMPORT_TIME_ZONE, courses, ...(instruction ? { instruction } : {}) });
     let raw: string;
     if (image) {
       const [header, base64] = image.split(",", 2);

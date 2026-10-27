@@ -13,9 +13,10 @@ export const CAPTURE_IMAGE_SYSTEM_PROMPT = [
   '{"type":"tasks","wantsStudyPlan":false,"items":[{"title":"Nộp báo cáo lab 2","kind":"TASK","date":"2026-10-20","start":"23:59","end":null,"courseCode":"IT3080","description":null}]}',
   "- kind TASK = việc phải làm/nộp (date+start là hạn); kind EVENT = sự kiện diễn ra (thi, họp, buổi học; start/end là giờ diễn ra).",
   "- date YYYY-MM-DD; ngày tương đối (mai, thứ 6 tuần sau) tính theo today. Không rõ thì null. Không có giờ thì start/end null.",
-  "- courseCode chỉ khi ảnh ghi rõ mã học phần, không thì null. Tối đa 30 việc.",
+  "- courseCode: ảnh (hoặc instruction) nhắc môn nào trong courses (theo mã, tên, tên viết tắt, không dấu, tiếng Anh, hay mã lớp kèm tên môn) thì courseCode = đúng code của môn đó trong courses. Ảnh ghi rõ mã học phần không có trong courses thì chép mã đó. Không rõ môn thì null. Tối đa 30 việc.",
   "- Lịch thi: mỗi môn thi là 1 item kind EVENT, title \"Thi <tên môn>\", date/start là giờ thi, courseCode là mã môn, description ghi giờ thi và phòng (vd \"07:00, phòng D9-301\").",
   "- wantsStudyPlan=true khi instruction yêu cầu lên lịch/kế hoạch ôn thi; chỉ trả các kỳ thi trong items, KHÔNG tự tạo buổi ôn. Không có ảnh thì đọc lịch thi/việc từ instruction.",
-  "Nếu có instruction (yêu cầu người dùng gõ kèm ảnh): làm theo khi chọn/lọc/đặt tên/gán ngày giờ, nhưng vẫn trả đúng một trong hai dạng JSON trên.",
+  "Nếu có instruction (yêu cầu người dùng gõ kèm ảnh): làm theo khi chọn/lọc/đặt tên/gán ngày giờ/môn, nhưng vẫn trả đúng một trong hai dạng JSON trên.",
+  "- instruction có thể là tiêu đề nháp người dùng đã sửa (dòng 1) và mô tả (các dòng sau) của chính việc trong ảnh: coi đó là bản người dùng muốn, giữ ý họ, chỉ bổ sung ngày giờ/môn/mô tả còn thiếu từ ảnh; câu chung chung kiểu \"thêm việc môn này\" thì tự đặt title cụ thể từ ảnh.",
   "Ảnh không đọc được hoặc không có gì để tạo: {\"type\":\"tasks\",\"items\":[]}.",
 ].join("\n");

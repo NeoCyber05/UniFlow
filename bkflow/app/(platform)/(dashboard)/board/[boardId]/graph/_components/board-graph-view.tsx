@@ -31,7 +31,8 @@ type BoardGraphViewProps = {
   currentUserId: string;
   currentBoardMemberId: string;
   currentMemberRole: BoardMemberRole;
-  initialPlan: GraphPlan | null;
+  plan: GraphPlan | null;
+  onPlanChange: (plan: GraphPlan) => void;
 };
 
 type Range = "today" | "week" | "month";
@@ -57,6 +58,7 @@ const PER_DAY_MIN = 1;
 const PER_DAY_MAX = 10;
 // Giới hạn của action rank-ai-priorities
 const AI_MAX_CARDS = 60;
+const EMPTY_PLAN: GraphPlan = { arranged: null, range: "week", aiOrder: null };
 
 const shortDate = (date: Date) =>
   new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(date);
@@ -84,7 +86,7 @@ const buildLanes = (days: ScheduleDay[], range: Range): Lane[] => {
   }));
 };
 
-export const BoardGraphView = ({ boardId, lists, currentMemberRole, initialPlan }: BoardGraphViewProps) => {
+export const BoardGraphView = ({ boardId, lists, currentMemberRole, plan: savedPlan, onPlanChange }: BoardGraphViewProps) => {
   const router = useRouter();
   const cardModal = useCardModal();
   const canEdit = currentMemberRole !== BoardMemberRole.VIEWER;
@@ -104,14 +106,15 @@ export const BoardGraphView = ({ boardId, lists, currentMemberRole, initialPlan 
 
   // Thứ tự lưu trên server theo người và bảng: mở ở trình duyệt/thiết bị khác vẫn còn
   // arranged null = chưa xếp: thẻ hiện theo danh sách của bảng, chưa nối; chỉ xếp khi người dùng bấm
-  const [plan, setPlan] = useState<GraphPlan>(initialPlan ?? { arranged: null, range: "week", aiOrder: null });
+  const plan = savedPlan ?? EMPTY_PLAN;
   const { arranged, range, aiOrder } = plan;
   const updatePlan = (patch: Partial<GraphPlan>) => {
     const next = { ...plan, ...patch };
-    setPlan(next);
+    onPlanChange(next);
     void saveGraphPlan({ boardId, plan: next }).then((result) => {
       if (result.error) toast.error(result.error);
-    });
+      else onPlanChange(next);
+    }).catch(() => toast.error("Không lưu được thứ tự, thử lại sau."));
   };
   const setRange = (value: Range) => updatePlan({ range: value });
   const setArranged = (value: GraphPlan["arranged"]) => updatePlan({ arranged: value });
@@ -128,8 +131,8 @@ export const BoardGraphView = ({ boardId, lists, currentMemberRole, initialPlan 
   const height = useTempoTransition(spring.height);
 
   const schedule = useMemo(
-    () => buildSchedule(allCards, { perDay, order: arranged === "ai" ? aiOrder?.order : undefined }),
-    [allCards, perDay, arranged, aiOrder],
+    () => buildSchedule(allCards, { perDay, order: plan.arranged === "ai" ? plan.aiOrder?.order : undefined }),
+    [allCards, perDay, plan],
   );
   const flat = schedule.days.flatMap((day) => day.tasks);
   const stepById = new Map(flat.map((task, index) => [task.card.id, index + 1]));

@@ -1,6 +1,7 @@
 -- Enable RLS on all public tables so the PostgREST / anon API cannot read or write them.
 -- Prisma connects via the postgres role which bypasses RLS, so the app is unaffected.
 alter table if exists "Board" enable row level security;
+alter table if exists "BoardGraphPlan" enable row level security;
 alter table if exists "List" enable row level security;
 alter table if exists "Card" enable row level security;
 alter table if exists "CardLabel" enable row level security;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useShouldReduceMotion } from "@animate-ui/react/utils/motion";
 
 import { cn } from "@/lib/utils";
@@ -48,7 +48,8 @@ export const FlowEdges = ({ containerRef, nodes }: { containerRef: React.RefObje
   const [size, setSize] = useState({ width: 0, height: 0 });
   const signature = nodes.map((node) => `${node.lane}:${node.id}`).join("|");
 
-  useLayoutEffect(() => {
+  // Đợi phần tử cha gắn containerRef trước khi đo đường nối.
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const measure = () => {
