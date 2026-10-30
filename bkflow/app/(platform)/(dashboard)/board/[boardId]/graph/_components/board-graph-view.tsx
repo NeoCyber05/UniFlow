@@ -60,13 +60,16 @@ const PER_DAY_MAX = 10;
 const AI_MAX_CARDS = 60;
 const EMPTY_PLAN: GraphPlan = { arranged: null, range: "week", aiOrder: null };
 
-const shortDate = (date: Date) =>
-  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(date);
+// Tạo Intl.DateTimeFormat tốn kém: dùng chung cho mọi cột ngày
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" });
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", weekday: "long" });
+
+const shortDate = (date: Date) => SHORT_DATE_FORMAT.format(date);
 
 const dayTitle = (day: ScheduleDay) => {
   if (day.offset === 0) return "Hôm nay";
   if (day.offset === 1) return "Ngày mai";
-  const weekday = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", weekday: "long" }).format(day.date);
+  const weekday = WEEKDAY_FORMAT.format(day.date);
   return weekday.charAt(0).toUpperCase() + weekday.slice(1);
 };
 

@@ -10,30 +10,18 @@ import type {
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/graph/page.tsx.
 export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: string) => {
-  const currentMembership = await requireBoardMemberForUser({ boardId, userId });
-
-  if (currentMembership.error || !currentMembership.membership) {
-    const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
-  }
-
-  const boardUserId = currentMembership.membership.board.userId;
-
-  const savedPlan = await db.boardGraphPlan.findUnique({
+  // The ownership check runs alongside the data queries; every query is scoped to the user's own board.
+  const planQuery = db.boardGraphPlan.findUnique({
     where: { userId_boardId: { userId, boardId } },
     select: { arranged: true, range: true, aiOrder: true },
   });
-  // Dữ liệu JSON đọc lại phải qua schema trước khi đưa xuống client
-  const parsedPlan = savedPlan ? graphPlanSchema.safeParse(savedPlan) : null;
-  const plan: GraphPlan | null = parsedPlan?.success ? parsedPlan.data : null;
-
-  const listsData = await measureDev(`board:${boardId}:graph-data`, () =>
+  const listsQuery = measureDev(`board:${boardId}:graph-data`, () =>
     db.list.findMany({
       where: {
         boardId,
         archivedAt: null,
         board: {
-          userId: boardUserId,
+          userId,
         },
       },
       select: {
@@ -88,7 +76,7 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      userId: boardUserId,
+                      userId,
                     },
                   },
                 },
@@ -125,7 +113,7 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      userId: boardUserId,
+                      userId,
                     },
                   },
                 },
@@ -171,6 +159,20 @@ export const loadBoardGraph = async ({ boardId }: { boardId: string }, userId: s
       },
     }),
   );
+  const [currentMembership, savedPlan, listsData] = await Promise.all([
+    requireBoardMemberForUser({ boardId, userId }),
+    planQuery,
+    listsQuery,
+  ]);
+
+  if (currentMembership.error || !currentMembership.membership) {
+    const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
+  }
+
+  // Dữ liệu JSON đọc lại phải qua schema trước khi đưa xuống client
+  const parsedPlan = savedPlan ? graphPlanSchema.safeParse(savedPlan) : null;
+  const plan: GraphPlan | null = parsedPlan?.success ? parsedPlan.data : null;
 
   const mapDependency = (
     dependency: {

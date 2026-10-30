@@ -15,26 +15,38 @@ import { useView } from "../lib/use-view";
 
 export type DashboardView = Awaited<ReturnType<typeof loadDashboard>>;
 
-export default function DashboardLayoutRoute() {
-  const { userId } = useAuth();
-  const { data, error } = useView<DashboardView>("/dashboard", { userId, enabled: Boolean(userId) });
+// Child views start loading now instead of after /dashboard returns and the Outlet mounts.
+// Own component: reading the location here keeps navigations from re-rendering the navbar and dialogs.
+const PrefetchRouteViews = ({ userId }: { userId: string | null }) => {
   const queryClient = useQueryClient();
   const { pathname, search } = useLocation();
 
-  // Child views start loading now instead of after /dashboard returns and the Outlet mounts.
   useEffect(() => {
     if (userId) prefetchRouteViews(queryClient, pathname, search);
   }, [userId, pathname, search, queryClient]);
 
-  if (error) return <p className="p-6 text-sm text-red-600">Không tải được dữ liệu ({error.message}). Thử đăng nhập lại hoặc tải lại trang.</p>;
-  if (!data) return null;
+  return null;
+};
 
-  return (
+export default function DashboardLayoutRoute() {
+  const { userId } = useAuth();
+  const { data, error } = useView<DashboardView>("/dashboard", { userId, enabled: Boolean(userId) });
+
+  const content = error ? (
+    <p className="p-6 text-sm text-red-600">Không tải được dữ liệu ({error.message}). Thử đăng nhập lại hoặc tải lại trang.</p>
+  ) : data ? (
     <AppearanceProvider key={userId} initialAppearance={data.appearance}>
       <Navbar />
       <Outlet />
       <OnboardingTour key={userId} />
       <SettingsDialog />
     </AppearanceProvider>
+  ) : null;
+
+  return (
+    <>
+      <PrefetchRouteViews userId={userId} />
+      {content}
+    </>
   );
 }
