@@ -11,6 +11,13 @@ const EMPTY_COURSES: BoardCourse[] = [];
 
 export const boardCoursesQueryKey = (boardId: string) => ["courses", boardId] as const;
 
+const boardCoursesQueryOptions = (boardId: string | null | undefined) => ({
+  queryKey: boardCoursesQueryKey(boardId ?? ""),
+  queryFn: (): Promise<BoardCoursesResponse> => fetcher(`/api/boards/${boardId}/courses`),
+  enabled: Boolean(boardId),
+  staleTime: 60_000,
+});
+
 /**
  * Nguồn dữ liệu môn duy nhất phía client. Card modal mount ngoài board layout
  * nên không dùng React context; cache react-query được layout nạp sẵn.
@@ -19,13 +26,7 @@ export const useBoardCourses = (
   boardId: string | null | undefined,
   initialData?: BoardCoursesResponse,
 ) => {
-  const query = useQuery<BoardCoursesResponse>({
-    queryKey: boardCoursesQueryKey(boardId ?? ""),
-    queryFn: () => fetcher(`/api/boards/${boardId}/courses`),
-    enabled: Boolean(boardId),
-    initialData,
-    staleTime: 60_000,
-  });
+  const query = useQuery<BoardCoursesResponse>({ ...boardCoursesQueryOptions(boardId), initialData });
 
   const courses = query.data?.courses ?? EMPTY_COURSES;
   const courseById = useMemo(
@@ -49,11 +50,15 @@ export const useBoardCourses = (
   };
 };
 
+// Gọi cho từng thẻ trên lịch/sơ đồ: chỉ tìm một môn, không dựng Map hay danh mục HUST cho mỗi thẻ
 export const useBoardCourse = (
   boardId: string | null | undefined,
   courseId: string | null | undefined,
 ) => {
-  const { courseById } = useBoardCourses(boardId);
+  const { data: course } = useQuery({
+    ...boardCoursesQueryOptions(boardId),
+    select: (data) => (courseId ? data.courses.find((item) => item.id === courseId) ?? null : null),
+  });
 
-  return courseId ? courseById.get(courseId) ?? null : null;
+  return course ?? null;
 };

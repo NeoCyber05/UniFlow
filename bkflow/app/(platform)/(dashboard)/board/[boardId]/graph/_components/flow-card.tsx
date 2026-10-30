@@ -17,8 +17,9 @@ const REASON_STYLE: Record<PriorityReason["kind"], { icon: typeof Star; classNam
   important: { icon: Star, className: "bg-yellow-50 text-yellow-700 ring-yellow-200" },
 };
 
-const formatDue = (iso: string) =>
-  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(new Date(iso));
+// Tạo Intl.DateTimeFormat tốn kém: dùng chung một bản cho mọi thẻ
+const DUE_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" });
+const formatDue = (iso: string) => DUE_FORMAT.format(new Date(iso));
 
 const Chip = ({ className, icon: Icon, children }: { className: string; icon?: typeof Star; children: React.ReactNode }) => (
   <span className={cn("inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset", className)}>

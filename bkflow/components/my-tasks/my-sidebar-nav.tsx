@@ -1,12 +1,11 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { tr } from "@/lib/i18n";
 import { useMatch } from "react-router";
 import Link from "@/web/shims/next-link";
 import { usePathname } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion } from "motion/react";
 import {
   Settings,
   CalendarDays,
@@ -23,10 +22,15 @@ import { getBoardNavigation } from "@/lib/boards/navigation";
 import { useBoardFilters } from "@/hooks/use-board-filters";
 import { cn } from "@/lib/utils";
 import { viewQueryOptions } from "@/web/lib/use-view";
+import { preloadRouteCode, preloadRouteCodeWhenIdle } from "@/web/lib/prefetch-route";
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 
 const EMPTY_COURSE_IDS: string[] = [];
 const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network, analytics: BarChart3 };
+
+// Ctrl/Cmd/Shift/chuột giữa mở tab mới, trang hiện tại không đổi
+const isPlainClick = (event: MouseEvent) =>
+  !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 
 const itemClassName = (isActive: boolean) =>
   cn(
@@ -34,15 +38,36 @@ const itemClassName = (isActive: boolean) =>
     isActive && "font-semibold text-violet-700 dark:text-violet-300",
   );
 
-// Trượt giữa các mục khi đổi trang (cùng kiểu với tab Cài đặt); id riêng theo instance để sidebar desktop và sheet mobile không trượt qua nhau.
-const ActiveIndicator = ({ id }: { id: string }) => (
-  <motion.span
-    layoutId={id}
-    aria-hidden="true"
-    className="absolute inset-0 -z-10 rounded-lg bg-violet-500/15 shadow-[inset_3px_0_0_var(--color-violet-500)]"
-    transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-  />
-);
+// Trượt giữa các mục khi đổi trang (cùng kiểu với tab Cài đặt); lastHostRef riêng theo instance để sidebar desktop và sheet mobile không trượt qua nhau.
+// Mỗi lúc chỉ một chỉ báo: khi mở Cài đặt, chỉ báo của trang hiện tại tạm ẩn.
+// FLIP bằng Web Animations trên transform: chạy trên compositor, không tranh main thread với trang mới đang render
+// (layout animation của motion chạy JS mỗi frame, làm trang mới hiện chậm hơn).
+const ActiveIndicator = ({ lastHostRef }: { lastHostRef: RefObject<HTMLElement | null> }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const host = ref.current?.parentElement;
+    const previous = lastHostRef.current;
+    if (!ref.current || !host) return;
+    lastHostRef.current = host;
+    if (!previous || previous === host || !previous.isConnected || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const from = previous.getBoundingClientRect();
+    const to = host.getBoundingClientRect();
+    ref.current.animate(
+      [{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)` }, { transform: "none" }],
+      { duration: 350, easing: "cubic-bezier(0.25, 1.15, 0.5, 1)" },
+    );
+  }, [lastHostRef]);
+
+  return (
+    <span
+      ref={ref}
+      aria-hidden="true"
+      className="absolute inset-0 -z-10 rounded-lg bg-violet-500/15 shadow-[inset_3px_0_0_var(--color-violet-500)]"
+    />
+  );
+};
 
 const Count = ({ value }: { value: number | undefined }) =>
   value ? (
@@ -58,7 +83,11 @@ export const MySidebarNav = () => {
   const { data: context } = useMyTasksContext();
   const { data: counts } = useMyTaskCounts();
   const settingsModal = useSettingsModal();
-  const indicatorId = useId();
+  const indicatorHostRef = useRef<HTMLElement>(null);
+  // Mục vừa bấm sáng ngay; trang mới render trong transition nên pathname đổi sau
+  const [pending, setPending] = useState<{ from: string; href: string } | null>(null);
+  if (pending && pending.from !== pathname) setPending(null);
+  const pendingHref = pending?.from === pathname ? pending.href : null;
 
   const board = context?.board ?? null;
   const boardId = boardRoute?.params.boardId ?? board?.id;
@@ -70,12 +99,19 @@ export const MySidebarNav = () => {
   const clearBoardFilters = () => { if (boardId) useBoardFilters.getState().clearFilters(boardId); };
   const prefetchBoard = (href: string) => {
     if (!boardId) return;
+    preloadRouteCode(href);
     void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/layout`));
     void queryClient.prefetchQuery(viewQueryOptions(href));
     if (href.endsWith("/calendar")) {
       void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
     }
   };
+
+  // Tải sẵn code các tab khi trình duyệt rảnh, lần bấm đầu không phải chờ chunk
+  useEffect(() => {
+    if (!boardId) return;
+    return preloadRouteCodeWhenIdle(getBoardNavigation(boardId, "").map((item) => item.href));
+  }, [boardId]);
 
   const workspaceBoardHref = context?.currentWorkspaceId ? `/workspace/${context.currentWorkspaceId}` : null;
 
@@ -89,17 +125,20 @@ export const MySidebarNav = () => {
           <ListTodo className="h-5.5 w-5.5" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
-          {pathname === workspaceBoardHref && <ActiveIndicator id={indicatorId} />}
+          {pathname === workspaceBoardHref && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
         </Link>
       )}
       {navigation.map(item => {
         const Icon = NAV_ICONS[item.id];
-        const active = item.active && (item.id !== "tasks" || selectedCourseIds.length === 0);
-        return <Link key={item.id} href={item.href} onMouseEnter={() => prefetchBoard(item.href)} onFocus={() => prefetchBoard(item.href)} onClick={() => {
+        const active = pendingHref
+          ? item.href === pendingHref
+          : item.active && (item.id !== "tasks" || selectedCourseIds.length === 0);
+        return <Link key={item.id} href={item.href} onMouseEnter={() => prefetchBoard(item.href)} onFocus={() => prefetchBoard(item.href)} onClick={(event) => {
+          if (isPlainClick(event)) setPending({ from: pathname, href: item.href });
           if (item.id === "tasks" || item.id === "calendar") clearBoardFilters();
           useMobileSidebar.getState().onClose();
         }} aria-current={active ? "page" : undefined} className={itemClassName(active)}>
-          {active && <ActiveIndicator id={indicatorId} />}
+          {active && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
           <Icon aria-hidden="true" className="h-5.5 w-5.5" />
           {item.label}
           {item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
@@ -116,7 +155,7 @@ export const MySidebarNav = () => {
           }}
           className={itemClassName(settingsModal.isOpen)}
         >
-          {settingsModal.isOpen && <ActiveIndicator id={indicatorId} />}
+          {settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
           <Settings aria-hidden="true" className="h-5.5 w-5.5" />
           {tr("common.settings")}
         </button>

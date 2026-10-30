@@ -16,9 +16,11 @@ export const formatTooltipValue = (value: TooltipValueType | undefined) => {
   return value ?? "";
 };
 
-export const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
+// Một formatter dùng chung: tạo mới cho mỗi giá trị rất chậm khi biểu đồ có nhiều điểm
+const DATE_FORMAT = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+export const formatDate = (value: string) => DATE_FORMAT.format(new Date(value));

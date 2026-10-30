@@ -107,19 +107,15 @@ export async function GET(
       );
     }
 
-    const permission = await requireBoardMember({ boardId, userId });
-
-    if (permission.error) {
-      return new Response(permission.error, { status: 403 });
-    }
-
     const dayColumn = (date: Date) => new Date(`${getVNDayKey(getVNDay(date))}T00:00:00.000Z`);
     // `to` là biên mở: timestamp so `< to`, ngày (SQL DATE) so theo ngày VN của mili-giây cuối.
     const lastMoment = new Date(to.getTime() - 1);
     const fromDay = dayColumn(from);
     const toDay = dayColumn(lastMoment);
 
-    const [cards, checklistItems, unscheduledCards] = await Promise.all([
+    // The ownership check runs alongside the queries, which are all scoped to the user's own board.
+    const [permission, cards, checklistItems, unscheduledCards] = await Promise.all([
+      requireBoardMember({ boardId, userId }),
       db.card.findMany({
         where: {
           archivedAt: null,
@@ -362,6 +358,10 @@ export async function GET(
           })
         : Promise.resolve([]),
     ]);
+
+    if (permission.error) {
+      return new Response(permission.error, { status: 403 });
+    }
 
     const cardItems = cards.map((card) => ({
       item: {

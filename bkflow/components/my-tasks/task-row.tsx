@@ -23,8 +23,9 @@ import { TaskLabels } from "@/components/tasks/task-labels";
 
 import { AssigneeStack } from "./assignee-stack";
 
-const formatVNTime = (iso: string) =>
-  new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
+// Dùng chung cho mọi dòng việc thay vì tạo formatter mới mỗi lần render
+const VN_TIME_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const formatVNTime = (iso: string) => VN_TIME_FORMAT.format(new Date(iso));
 
 type TaskRowProps = {
   task: MyTask;

@@ -9,22 +9,14 @@ import type {
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/timeline/page.tsx.
 export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId: string) => {
-  const currentMembership = await requireBoardMemberForUser({ boardId, userId });
-
-  if (currentMembership.error || !currentMembership.membership) {
-    const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
-    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
-  }
-
-  const boardUserId = currentMembership.membership.board.userId;
-
-  const listsData = await measureDev(`board:${boardId}:timeline-data`, () =>
+  // The ownership check runs alongside the data queries; every query is scoped to the user's own board.
+  const listsQuery = measureDev(`board:${boardId}:timeline-data`, () =>
     db.list.findMany({
       where: {
         boardId,
         archivedAt: null,
         board: {
-          userId: boardUserId,
+          userId,
         },
       },
       select: {
@@ -87,7 +79,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      userId: boardUserId,
+                      userId,
                     },
                   },
                 },
@@ -124,7 +116,7 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
                     archivedAt: null,
                     board: {
                       id: boardId,
-                      userId: boardUserId,
+                      userId,
                     },
                   },
                 },
@@ -170,6 +162,15 @@ export const loadBoardTimeline = async ({ boardId }: { boardId: string }, userId
       },
     }),
   );
+  const [currentMembership, listsData] = await Promise.all([
+    requireBoardMemberForUser({ boardId, userId }),
+    listsQuery,
+  ]);
+
+  if (currentMembership.error || !currentMembership.membership) {
+    const errorMessage = currentMembership.error || "Bạn không có quyền truy cập bảng này.";
+    return { redirect: `/my/today?error=${encodeURIComponent(errorMessage)}` } as const;
+  }
 
   const mapDependency = (
     dependency: {
