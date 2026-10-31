@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { tr } from "@/lib/i18n";
+import { getDateFnsLocale, tr } from "@/lib/i18n";
 import {
   Bell,
   CheckSquare,
@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+
 
 import {
   Popover,
@@ -329,7 +329,7 @@ export const NotificationsPopover = () => {
                               new Date(notification.triggerTime || notification.createdAt),
                               {
                                 addSuffix: true,
-                                locale: vi,
+                                locale: getDateFnsLocale(),
                               },
                             )}
                           </span>

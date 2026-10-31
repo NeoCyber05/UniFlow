@@ -21,6 +21,7 @@ import { CardWithAssignees } from "@/types";
 import { useAction } from "@/hooks/use-action";
 import { archiveCard } from "@/actions/cards/archive-card";
 import { updateCard } from "@/actions/cards/update-card";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ListWithCards } from "@/types";
 import { CopyCardDialog } from "@/components/modals/copy-card-dialog";
@@ -301,6 +302,8 @@ export const CardItem = memo(function CardItem({
     void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
   };
 
+  const myDayLabel = isPinned ? tr("kanban.cardItem.unpinToday") : tr("kanban.cardItem.pinToday");
+
   return (
     <>
       <Draggable draggableId={data.id} index={index} isDragDisabled={!canEdit}>
@@ -368,7 +371,7 @@ export const CardItem = memo(function CardItem({
                     type="button"
                     onClick={onToggleCompleted}
                     aria-pressed={data.isCompleted}
-                    aria-label={data.isCompleted ? "Đánh dấu chưa xong" : "Đánh dấu đã xong"}
+                    aria-label={data.isCompleted ? tr("kanban.cardItem.markIncomplete") : tr("kanban.cardItem.markComplete")}
                     className={cn(
                       "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                       data.isCompleted
@@ -391,7 +394,7 @@ export const CardItem = memo(function CardItem({
             </div>
             <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
               {data.description?.trim() && (
-                <Hint description="Thẻ đã có mô tả" side="bottom">
+                <Hint description={tr("kanban.cardItem.hasDescriptionHint")} side="bottom">
                   <AlignLeft className="h-3.5 w-3.5 text-neutral-300 transition-colors group-hover:text-neutral-400" />
                 </Hint>
               )}
@@ -399,8 +402,8 @@ export const CardItem = memo(function CardItem({
                 type="button"
                 onClick={onToggleMyDay}
                 aria-pressed={isPinned}
-                aria-label={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
-                title={isPinned ? "Bỏ khỏi Hôm nay" : "Thêm vào Hôm nay"}
+                aria-label={myDayLabel}
+                title={myDayLabel}
                 className={cn(
                   "rounded p-0.5 transition",
                   isPinned
@@ -414,7 +417,7 @@ export const CardItem = memo(function CardItem({
                 type="button"
                 onClick={onToggleImportant}
                 aria-pressed={Boolean(data.isImportant)}
-                aria-label={data.isImportant ? "Bỏ đánh dấu quan trọng" : "Đánh dấu quan trọng"}
+                aria-label={data.isImportant ? tr("kanban.cardItem.unmarkImportant") : tr("kanban.cardItem.markImportant")}
                 className={cn(
                   "rounded p-0.5 transition",
                   data.isImportant

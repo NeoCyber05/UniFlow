@@ -24,6 +24,7 @@ import { useAction } from "@/hooks/use-action";
 import { useBoardCourses } from "@/hooks/use-board-courses";
 import { useCardModal } from "@/hooks/use-card-modal";
 const isAssignableBoardMember = (_member?: unknown) => true;
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type SmartCaptureDialogProps = {
@@ -99,16 +100,16 @@ const fromDatetimeLocalValue = (value: string) => {
 
 const formatDueDate = (value: string | null) => {
   if (!value) {
-    return "Chưa có hạn";
+    return tr("boardShell.smartCapture.noDue");
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Hạn không hợp lệ";
+    return tr("boardShell.smartCapture.invalidDue");
   }
 
-  return new Intl.DateTimeFormat("vi-VN", {
+  return intlDateFormat({
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -173,7 +174,7 @@ export const SmartCaptureDialog = ({
   );
 
   const getListTitle = (listId: string) =>
-    lists.find((list) => list.id === listId)?.title ?? "Danh sách";
+    lists.find((list) => list.id === listId)?.title ?? tr("boardShell.smartCapture.defaultList");
 
   const resetDialog = () => {
     setStep("input");
@@ -234,7 +235,7 @@ export const SmartCaptureDialog = ({
 
   const { execute: executeCreate, isLoading: isCreating } = useAction(createSmartCaptureCards, {
     onSuccess: (data) => {
-      toast.success(`Đã tạo ${data.length} thẻ từ Smart Capture.`);
+      toast.success(tr("boardShell.smartCapture.toastCreated", { count: data.length }));
       closeDialog();
       router.refresh();
 
@@ -254,17 +255,17 @@ export const SmartCaptureDialog = ({
 
   const onAnalyze = () => {
     if (lists.length === 0) {
-      toast.error("Bảng chưa có cột để tạo thẻ.");
+      toast.error(tr("boardShell.smartCapture.toastNoLists"));
       return;
     }
 
     if (!rawText.trim()) {
-      toast.error("Vui lòng dán nội dung cần phân tích.");
+      toast.error(tr("boardShell.smartCapture.toastEmptyInput"));
       return;
     }
 
     if (isRawTextTooLong) {
-      toast.error("Nội dung quá dài. Vui lòng rút gọn tối đa 4000 ký tự.");
+      toast.error(tr("boardShell.smartCapture.toastTooLong"));
       return;
     }
 
@@ -400,7 +401,7 @@ export const SmartCaptureDialog = ({
 
   const onCreateCards = () => {
     if (selectedDrafts.length === 0) {
-      toast.error("Vui lòng chọn ít nhất một bản nháp để tạo thẻ.");
+      toast.error(tr("boardShell.smartCapture.toastNoSelected"));
       return;
     }
 
@@ -409,7 +410,7 @@ export const SmartCaptureDialog = ({
     );
 
     if (invalidDraft) {
-      toast.error("Một bản nháp đang thiếu tiêu đề hoặc danh sách đích.");
+      toast.error(tr("boardShell.smartCapture.toastInvalidDraft"));
       setActiveDraftId(invalidDraft.localId);
       return;
     }
@@ -462,10 +463,10 @@ export const SmartCaptureDialog = ({
             <div className="min-w-0">
               <DialogTitle className="flex items-center gap-2 text-base font-semibold text-neutral-900">
                 <Sparkles className="h-4 w-4 text-violet-600" />
-                Tạo nhanh thông minh
+                {tr("boardShell.smartCapture.title")}
               </DialogTitle>
               <DialogDescription className="mt-1 text-sm text-neutral-500">
-                Phân tích nội dung nguồn thành một hoặc nhiều bản nháp thẻ có kiểm soát.
+                {tr("boardShell.smartCapture.description")}
               </DialogDescription>
             </div>
             <Button
@@ -475,7 +476,7 @@ export const SmartCaptureDialog = ({
               onClick={closeDialog}
               disabled={isAnalyzing || isCreating}
               className="h-8 w-8 shrink-0 rounded-lg p-0 text-neutral-400 hover:text-neutral-700"
-              aria-label="Đóng Smart Capture"
+              aria-label={tr("boardShell.smartCapture.closeAria")}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -488,7 +489,7 @@ export const SmartCaptureDialog = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <label htmlFor="smart-capture-raw-text" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
-                    Nội dung nguồn
+                    {tr("boardShell.smartCapture.sourceContent")}
                   </label>
                   <span
                     className={cn(
@@ -503,7 +504,7 @@ export const SmartCaptureDialog = ({
                   id="smart-capture-raw-text"
                   value={rawText}
                   onChange={(event) => setRawText(event.target.value)}
-                  placeholder="Dán tin nhắn Slack, Email hoặc biên bản họp vào đây để AI soạn bản nháp thẻ..."
+                  placeholder={tr("boardShell.smartCapture.inputPlaceholder")}
                   disabled={isAnalyzing}
                   rows={15}
                   style={{
@@ -518,7 +519,7 @@ export const SmartCaptureDialog = ({
                 <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-4">
                   <div className="mb-3 flex items-center gap-2 text-sm font-medium text-violet-700">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    AI đang đọc nội dung và phân tích...
+                    {tr("boardShell.smartCapture.analyzing")}
                   </div>
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-3/4 bg-violet-100" />
@@ -534,14 +535,14 @@ export const SmartCaptureDialog = ({
                 <div className="flex items-center justify-between gap-3">
                   <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                     <FileText className="h-3.5 w-3.5" />
-                    Nguồn
+                    {tr("boardShell.smartCapture.sourceLabel")}
                   </label>
                   <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-neutral-500 ring-1 ring-neutral-200">
                     {trimmedRawTextLength}/{SMART_CAPTURE_RAW_TEXT_MAX_LENGTH}
                   </span>
                 </div>
                 <div className="mt-3 rounded-lg border border-violet-100 bg-white px-3 py-3 text-sm leading-6 text-neutral-700">
-                  <p className="font-semibold text-neutral-900">Cách AI xử lý</p>
+                  <p className="font-semibold text-neutral-900">{tr("boardShell.smartCapture.aiSummaryTitle")}</p>
                   <p className="mt-1 text-neutral-600">{splitSummary}</p>
                 </div>
                 <div className="mt-3 min-h-[180px] max-h-[260px] flex-1 overflow-y-auto whitespace-pre-wrap rounded-lg border border-neutral-200 bg-white px-3 py-3 text-sm leading-6 text-neutral-700 styled-scrollbar xl:max-h-[430px]">
@@ -553,7 +554,7 @@ export const SmartCaptureDialog = ({
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Bản nháp thẻ
+                    {tr("boardShell.smartCapture.draftsLabel")}
                   </label>
                   <div className="flex items-center gap-2">
                     <Button
@@ -564,10 +565,10 @@ export const SmartCaptureDialog = ({
                       disabled={isCreating || drafts.length === 0}
                       className="h-8 rounded-lg border-neutral-200 text-xs"
                     >
-                      {allDraftsSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                      {allDraftsSelected ? tr("boardShell.smartCapture.deselectAll") : tr("boardShell.smartCapture.selectAll")}
                     </Button>
                     <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-neutral-600">
-                      {selectedDraftCount}/{drafts.length} được chọn
+                      {tr("boardShell.smartCapture.selectedCount", { selected: selectedDraftCount, total: drafts.length })}
                     </span>
                   </div>
                 </div>
@@ -575,7 +576,7 @@ export const SmartCaptureDialog = ({
                 <div className="space-y-3">
                   {drafts.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center text-sm text-neutral-500">
-                      Chưa có bản nháp thẻ.
+                      {tr("boardShell.smartCapture.emptyDrafts")}
                     </div>
                   ) : drafts.map((draft, index) => {
                     const isActive = activeDraft?.localId === draft.localId;
@@ -596,7 +597,7 @@ export const SmartCaptureDialog = ({
                             onChange={() => onToggleDraftSelection(draft.localId)}
                             disabled={isCreating}
                             className="mt-1 h-4 w-4 rounded border-neutral-300 accent-violet-600"
-                            aria-label={`Chọn bản nháp ${index + 1}`}
+                            aria-label={tr("boardShell.smartCapture.selectDraftAria", { index: index + 1 })}
                           />
                           <button
                             type="button"
@@ -619,15 +620,15 @@ export const SmartCaptureDialog = ({
                               </span>
                             </div>
                             <h3 className="mt-2 line-clamp-2 text-sm font-semibold text-neutral-900">
-                              {draft.title || "Chưa có tiêu đề"}
+                              {draft.title || tr("boardShell.smartCapture.untitledDraft")}
                             </h3>
                             <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">
                               {draft.splitReason}
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                              <span>{draft.assigneeBoardMemberIds.length} người</span>
-                              <span>{draft.labelIds.length} nhãn</span>
-                              <span>{draft.selectedChecklistTitles.length}/{draft.checklistItems.length} checklist</span>
+                              <span>{tr("boardShell.smartCapture.assigneeCount", { count: draft.assigneeBoardMemberIds.length })}</span>
+                              <span>{tr("boardShell.smartCapture.labelCount", { count: draft.labelIds.length })}</span>
+                              <span>{tr("boardShell.smartCapture.checklistCount", { selected: draft.selectedChecklistTitles.length, total: draft.checklistItems.length })}</span>
                             </div>
                           </button>
                           <Button
@@ -637,7 +638,7 @@ export const SmartCaptureDialog = ({
                             onClick={() => onDeleteDraft(draft.localId)}
                             disabled={isCreating || drafts.length <= 1}
                             className="h-8 w-8 shrink-0 rounded-lg p-0 text-neutral-400 hover:text-red-600"
-                            aria-label={`Xóa bản nháp ${index + 1}`}
+                            aria-label={tr("boardShell.smartCapture.deleteDraftAria", { index: index + 1 })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -651,26 +652,26 @@ export const SmartCaptureDialog = ({
               <section className="space-y-4 rounded-xl border border-neutral-200 bg-neutral-50/70 p-4">
                 {!activeDraft ? (
                   <div className="rounded-lg border border-dashed border-neutral-200 bg-white p-5 text-center text-sm text-neutral-500">
-                    Chọn một bản nháp để chỉnh sửa.
+                    {tr("boardShell.smartCapture.pickDraftHint")}
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center justify-between gap-3">
                       <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <LayoutGrid className="h-3.5 w-3.5" />
-                        Chi tiết bản nháp
+                        {tr("boardShell.smartCapture.draftDetailLabel")}
                       </label>
                       <span className={cn(
                         "rounded-full px-2 py-0.5 text-xs font-semibold",
                         activeDraft.isSelected ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500",
                       )}>
-                        {activeDraft.isSelected ? "Sẽ tạo" : "Bỏ qua"}
+                        {activeDraft.isSelected ? tr("boardShell.smartCapture.willCreateBadge") : tr("boardShell.smartCapture.skipBadge")}
                       </span>
                     </div>
 
                     {activeDraft.sourceExcerpt && (
                       <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs leading-5 text-neutral-600">
-                        <span className="font-semibold text-neutral-800">Nguồn: </span>
+                        <span className="font-semibold text-neutral-800">{tr("boardShell.smartCapture.sourceExcerptPrefix")}</span>
                         {activeDraft.sourceExcerpt}
                       </div>
                     )}
@@ -678,7 +679,7 @@ export const SmartCaptureDialog = ({
                     <div className="space-y-2">
                       <label htmlFor="smart-capture-title" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <Type className="h-3.5 w-3.5" />
-                        Tiêu đề
+                        {tr("boardShell.smartCapture.fieldTitle")}
                       </label>
                       <Input
                         id="smart-capture-title"
@@ -692,7 +693,7 @@ export const SmartCaptureDialog = ({
                     <div className="space-y-2">
                       <label htmlFor="smart-capture-description" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <AlignLeft className="h-3.5 w-3.5" />
-                        Mô tả
+                        {tr("boardShell.smartCapture.fieldDescription")}
                       </label>
                       <textarea
                         id="smart-capture-description"
@@ -708,7 +709,7 @@ export const SmartCaptureDialog = ({
                       <div className="space-y-2">
                         <label htmlFor="smart-capture-list" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                           <LayoutGrid className="h-3.5 w-3.5" />
-                          Danh sách
+                          {tr("boardShell.smartCapture.fieldList")}
                         </label>
                         <select
                           id="smart-capture-list"
@@ -729,7 +730,7 @@ export const SmartCaptureDialog = ({
                         <div className="space-y-2">
                           <label htmlFor="smart-capture-course" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                             <GraduationCap className="h-3.5 w-3.5" />
-                            Danh mục
+                            {tr("boardShell.smartCapture.fieldCourse")}
                           </label>
                           <select
                             id="smart-capture-course"
@@ -738,7 +739,7 @@ export const SmartCaptureDialog = ({
                             disabled={isCreating}
                             className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-2.5 text-sm font-semibold text-neutral-800 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
                           >
-                            <option value="">Cá nhân</option>
+                            <option value="">{tr("boardShell.smartCapture.personalCourse")}</option>
                             {courses.map((course) => (
                               <option key={course.id} value={course.id}>
                                 {course.code ? `${course.code} · ${course.name}` : course.name}
@@ -751,7 +752,7 @@ export const SmartCaptureDialog = ({
                       <div className="space-y-2">
                         <label htmlFor="smart-capture-due-date" className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                           <Calendar className="h-3.5 w-3.5" />
-                          Hạn chót
+                          {tr("boardShell.smartCapture.fieldDueDate")}
                         </label>
                         <Input
                           id="smart-capture-due-date"
@@ -767,11 +768,11 @@ export const SmartCaptureDialog = ({
                     <div className="space-y-2">
                       <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <CheckSquare className="h-3.5 w-3.5" />
-                        Checklist
+                        {tr("boardShell.smartCapture.fieldChecklist")}
                       </label>
                       {activeDraft.checklistItems.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-neutral-200 bg-white p-3 text-center text-sm text-neutral-400">
-                          Chưa có đầu việc con.
+                          {tr("boardShell.smartCapture.emptyChecklist")}
                         </div>
                       ) : (
                         <div className="max-h-[170px] space-y-2 overflow-y-auto pr-1 styled-scrollbar">
@@ -783,7 +784,7 @@ export const SmartCaptureDialog = ({
                                 onChange={() => onToggleChecklistItem(item)}
                                 disabled={isCreating}
                                 className="h-4 w-4 rounded border-neutral-300 accent-violet-600"
-                                aria-label="Chọn checklist item"
+                                aria-label={tr("boardShell.smartCapture.selectChecklistItemAria")}
                               />
                               <Input
                                 value={item}
@@ -809,7 +810,7 @@ export const SmartCaptureDialog = ({
                             }
                           }}
                           disabled={isCreating || activeDraft.checklistItems.length >= 20}
-                          placeholder="Thêm đầu việc..."
+                          placeholder={tr("boardShell.smartCapture.addChecklistPlaceholder")}
                           className="h-9 rounded-lg border-neutral-200 bg-white text-sm font-medium text-neutral-800 focus-visible:border-violet-500 focus-visible:ring-violet-200"
                         />
                         <Button
@@ -828,7 +829,7 @@ export const SmartCaptureDialog = ({
                     <div className="space-y-2">
                       <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <User className="h-3.5 w-3.5" />
-                        Người thực hiện
+                        {tr("boardShell.smartCapture.fieldAssignees")}
                       </label>
                       {activeDraft.assigneeWarnings.length > 0 && (
                         <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
@@ -840,7 +841,7 @@ export const SmartCaptureDialog = ({
                       <div className="max-h-[140px] space-y-2 overflow-y-auto p-1 styled-scrollbar">
                         {assignableMembers.length === 0 ? (
                           <p className="rounded-lg border border-dashed border-neutral-200 bg-white p-3 text-xs text-neutral-400">
-                            Bảng chưa có thành viên có thể được giao.
+                            {tr("boardShell.smartCapture.emptyAssignees")}
                           </p>
                         ) : assignableMembers.map((member) => {
                           const isSelected = activeDraft.assigneeBoardMemberIds.includes(member.id);
@@ -876,12 +877,12 @@ export const SmartCaptureDialog = ({
                     <div className="space-y-2">
                       <label className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-700">
                         <Tag className="h-3.5 w-3.5" />
-                        Nhãn công việc
+                        {tr("boardShell.smartCapture.fieldLabels")}
                       </label>
                       <div className="max-h-[140px] space-y-2 overflow-y-auto p-1 styled-scrollbar">
                         {labels.length === 0 ? (
                           <p className="rounded-lg border border-dashed border-neutral-200 bg-white p-3 text-xs text-neutral-400">
-                            Bảng chưa có nhãn.
+                            {tr("boardShell.smartCapture.emptyLabels")}
                           </p>
                         ) : labels.map((label) => {
                           const isSelected = activeDraft.labelIds.includes(label.id);
@@ -904,7 +905,7 @@ export const SmartCaptureDialog = ({
                             >
                               <span className="h-4 w-4 shrink-0 rounded" style={{ backgroundColor: label.color }} />
                               <span className="min-w-0 flex-1 truncate font-semibold text-neutral-700">
-                                {label.title || "Không tên"}
+                                {label.title || tr("boardShell.smartCapture.unnamedLabel")}
                               </span>
                               {isSuggested && <Bot className="h-3.5 w-3.5 shrink-0 text-violet-500" />}
                             </button>
@@ -928,7 +929,7 @@ export const SmartCaptureDialog = ({
               disabled={isCreating}
               className="rounded-lg text-neutral-600"
             >
-              Quay lại
+              {tr("boardShell.smartCapture.back")}
             </Button>
           ) : (
             <Button
@@ -938,7 +939,7 @@ export const SmartCaptureDialog = ({
               disabled={isAnalyzing}
               className="rounded-lg text-neutral-600"
             >
-              Hủy
+              {tr("boardShell.smartCapture.cancel")}
             </Button>
           )}
 
@@ -951,7 +952,7 @@ export const SmartCaptureDialog = ({
                 disabled={isCreating}
                 className="rounded-lg text-neutral-600"
               >
-                Hủy
+                {tr("boardShell.smartCapture.cancel")}
               </Button>
             )}
             {step === "input" ? (
@@ -966,7 +967,7 @@ export const SmartCaptureDialog = ({
                 ) : (
                   <Sparkles className="mr-2 h-4 w-4" />
                 )}
-                Phân tích nội dung
+                {tr("boardShell.smartCapture.analyzeButton")}
               </Button>
             ) : (
               <Button
@@ -976,7 +977,7 @@ export const SmartCaptureDialog = ({
                 className="rounded-lg bg-violet-600 text-white hover:bg-violet-700"
               >
                 {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Tạo {selectedDraftCount} thẻ
+                {tr("boardShell.smartCapture.createCardsButton", { count: selectedDraftCount })}
               </Button>
             )}
           </div>

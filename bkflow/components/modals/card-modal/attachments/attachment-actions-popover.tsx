@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { tr } from "@/lib/i18n";
 
 interface AttachmentActionsPopoverProps {
   item: CardAttachment;
@@ -53,7 +54,7 @@ export const AttachmentActionsPopover = ({
           variant="ghost"
           size="icon-sm"
           className="h-8 w-8 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 cursor-pointer"
-          aria-label="Tác vụ đính kèm"
+          aria-label={tr("attachment.actionsAria")}
           onClick={(e) => e.stopPropagation()}
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -70,7 +71,7 @@ export const AttachmentActionsPopover = ({
           >
             <a href={item.url} target="_blank" rel="noreferrer">
               <Eye className="mr-2 h-3.5 w-3.5" />
-              Mở
+              {tr("attachment.open")}
             </a>
           </Button>
           {item.type === AttachmentType.FILE && (
@@ -83,7 +84,7 @@ export const AttachmentActionsPopover = ({
             >
               <a href={item.url} onClick={onDownload}>
                 <Download className="mr-2 h-3.5 w-3.5" />
-                Tải xuống
+                {tr("attachment.download")}
               </a>
             </Button>
           )}
@@ -95,7 +96,7 @@ export const AttachmentActionsPopover = ({
             onClick={() => onEdit(item.id)}
           >
             <Pencil className="mr-2 h-3.5 w-3.5" />
-            Đổi tên
+            {tr("attachment.rename")}
           </Button>
           <Button
             type="button"
@@ -110,7 +111,7 @@ export const AttachmentActionsPopover = ({
             ) : (
               <Trash2 className="mr-2 h-3.5 w-3.5" />
             )}
-            Xóa
+            {tr("attachment.delete")}
           </Button>
         </div>
       </PopoverContent>

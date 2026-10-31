@@ -18,10 +18,11 @@ import { generateAiBoardReport } from "@/actions/ai/generate-ai-board-report";
 import type { AiBoardReport } from "@/actions/ai/generate-ai-board-report/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAction } from "@/hooks/use-action";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import type { ReportRange } from "../_types";
-import { formatReportMarkdown, reportRangeLabels } from "../_lib/ai-report-markdown";
+import { formatReportMarkdown, getReportRangeLabel } from "../_lib/ai-report-markdown";
 import { ChartPanel } from "./chart-panel";
 import { ReportBullets } from "./report-bullets";
 
@@ -39,7 +40,7 @@ const RangeToggle = ({
   const selectionSpring = useTempoTransition(spring.selection);
 
   return (
-    <div role="radiogroup" aria-label="Khoảng thời gian" className="inline-flex h-9 rounded-xl bg-neutral-100 p-1">
+    <div role="radiogroup" aria-label={tr("analytics.ai.rangeAria")} className="inline-flex h-9 rounded-xl bg-neutral-100 p-1">
       {RANGES.map((item) => (
         <button
           key={item}
@@ -60,7 +61,7 @@ const RangeToggle = ({
               transition={selectionSpring}
             />
           )}
-          <span className="relative">{reportRangeLabels[item]}</span>
+          <span className="relative">{getReportRangeLabel(item)}</span>
         </button>
       ))}
     </div>
@@ -105,7 +106,7 @@ const CopyButton = ({ onCopy }: { onCopy: () => Promise<boolean> }) => {
           </motion.span>
         </AnimatePresence>
       </span>
-      {copied ? "Đã copy" : "Copy"}
+      {copied ? tr("analytics.ai.copied") : tr("analytics.ai.copy")}
     </motion.button>
   );
 };
@@ -134,7 +135,7 @@ const ReportSkeleton = () => (
     </div>
     <p className="flex items-center justify-center gap-2 text-xs font-medium text-violet-700">
       <RefreshCw className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-      Đang tổng hợp dữ liệu và viết báo cáo...
+      {tr("analytics.ai.generatingSkeleton")}
     </p>
   </div>
 );
@@ -144,15 +145,15 @@ const EmptyReport = () => (
     <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-violet-700 text-white shadow-md">
       <Sparkles className="h-6 w-6" />
     </span>
-    <h3 className="mt-4 text-sm font-semibold text-neutral-900">Để AI tóm tắt tiến độ giúp bạn</h3>
+    <h3 className="mt-4 text-sm font-semibold text-neutral-900">{tr("analytics.ai.emptyTitle")}</h3>
     <p className="mt-1 max-w-md text-sm text-neutral-500">
-      Chọn khoảng thời gian rồi bấm tạo báo cáo. AI chỉ tóm tắt từ dữ liệu thật của bảng, không tự tạo số liệu mới.
+      {tr("analytics.ai.emptyDesc")}
     </p>
     <div className="mt-4 flex flex-wrap justify-center gap-2">
       {[
-        { label: "Việc đã xong", icon: CheckCircle2, className: "text-emerald-600" },
-        { label: "Rủi ro cần chú ý", icon: AlertTriangle, className: "text-rose-600" },
-        { label: "Gợi ý hành động", icon: Lightbulb, className: "text-violet-600" },
+        { label: tr("analytics.ai.pillCompleted"), icon: CheckCircle2, className: "text-emerald-600" },
+        { label: tr("analytics.ai.pillRisks"), icon: AlertTriangle, className: "text-rose-600" },
+        { label: tr("analytics.ai.pillActions"), icon: Lightbulb, className: "text-violet-600" },
       ].map(({ label, icon: Icon, className }) => (
         <span key={label} className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-600">
           <Icon className={cn("h-3.5 w-3.5", className)} />
@@ -206,15 +207,15 @@ export const AiReportPanel = ({
       await navigator.clipboard.writeText(formatReportMarkdown(report, reportRange));
       return true;
     } catch {
-      toast.error("Không thể copy báo cáo. Hãy thử lại.");
+      toast.error(tr("analytics.ai.copyError"));
       return false;
     }
   };
 
   return (
     <ChartPanel
-      title="Báo cáo AI"
-      description="Tóm tắt tiến độ từ dữ liệu của bảng"
+      title={tr("analytics.ai.panelTitle")}
+      description={tr("analytics.ai.panelDesc")}
       icon={Sparkles}
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -233,7 +234,11 @@ export const AiReportPanel = ({
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {isLoading ? "Đang tạo..." : report ? "Tạo lại báo cáo" : "Tạo báo cáo bằng AI"}
+            {isLoading
+              ? tr("analytics.ai.generatingButton")
+              : report
+                ? tr("analytics.ai.regenerateButton")
+                : tr("analytics.ai.generateButton")}
           </motion.button>
         </div>
       }
@@ -259,11 +264,13 @@ export const AiReportPanel = ({
                 <div className="relative flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-[11px] font-semibold text-white">
-                      Tổng quan {reportRangeLabels[reportRange]}
+                      {tr("analytics.ai.overviewBadge", { range: getReportRangeLabel(reportRange) })}
                     </span>
                     {generatedAt && (
                       <span className="text-xs text-neutral-500">
-                        Tạo lúc {generatedAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        {tr("analytics.ai.generatedAt", {
+                          time: intlDateFormat({ hour: "2-digit", minute: "2-digit" }).format(generatedAt),
+                        })}
                       </span>
                     )}
                   </div>
@@ -287,25 +294,25 @@ export const AiReportPanel = ({
 
               <div className="grid gap-3 lg:grid-cols-3">
                 <ReportBullets
-                  title="Đã hoàn thành"
+                  title={tr("analytics.ai.sectionCompleted")}
                   items={report.completed}
                   tone="success"
                   icon={CheckCircle2}
-                  emptyLabel="Chưa có việc hoàn thành trong khoảng này."
+                  emptyLabel={tr("analytics.ai.emptyCompleted")}
                 />
                 <ReportBullets
-                  title="Rủi ro"
+                  title={tr("analytics.ai.sectionRisks")}
                   items={report.risks}
                   tone="danger"
                   icon={AlertTriangle}
-                  emptyLabel="Không phát hiện rủi ro đáng chú ý."
+                  emptyLabel={tr("analytics.ai.emptyRisks")}
                 />
                 <ReportBullets
-                  title="Gợi ý hành động"
+                  title={tr("analytics.ai.sectionActions")}
                   items={report.actions}
                   tone="accent"
                   icon={Lightbulb}
-                  emptyLabel="Chưa có gợi ý nào."
+                  emptyLabel={tr("analytics.ai.emptyActions")}
                   numbered
                 />
               </div>

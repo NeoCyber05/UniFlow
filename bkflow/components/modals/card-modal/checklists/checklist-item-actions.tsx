@@ -3,6 +3,7 @@
 import { Trash } from "lucide-react";
 
 import { Hint } from "@/components/hint";
+import { tr } from "@/lib/i18n";
 
 interface ChecklistItemActionsProps {
   isPending: boolean;
@@ -13,14 +14,15 @@ export const ChecklistItemActions = ({
   isPending,
   onDelete,
 }: ChecklistItemActionsProps) => {
+  const label = tr("checklist.deleteItemHint");
   return (
-    <Hint description="Xoá mục công việc">
+    <Hint description={label}>
       <button
         type="button"
         onClick={onDelete}
         disabled={isPending}
         className="rounded-md p-1 text-neutral-400 opacity-100 transition hover:bg-neutral-100 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-        aria-label="Xoá mục công việc"
+        aria-label={label}
       >
         <Trash className="h-4 w-4" />
       </button>

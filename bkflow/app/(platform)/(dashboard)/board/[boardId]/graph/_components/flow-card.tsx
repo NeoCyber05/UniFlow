@@ -7,6 +7,7 @@ import { AlarmClock, AlertTriangle, Check, Lock, Route, Sparkles, Star, Unlock }
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import type { PriorityReason, ScheduledTask } from "@/lib/boards/graph-priority";
 import { getCourseColor, getCourseShortLabel } from "@/lib/courses/course-colors";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const REASON_STYLE: Record<PriorityReason["kind"], { icon: typeof Star; className: string }> = {
@@ -18,8 +19,25 @@ const REASON_STYLE: Record<PriorityReason["kind"], { icon: typeof Star; classNam
 };
 
 // Tạo Intl.DateTimeFormat tốn kém: dùng chung một bản cho mọi thẻ
-const DUE_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" });
-const formatDue = (iso: string) => DUE_FORMAT.format(new Date(iso));
+const formatDue = (iso: string) =>
+  intlDateFormat({ timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit" }).format(new Date(iso));
+
+const formatPriorityReason = (task: ScheduledTask, reason: PriorityReason): string => {
+  switch (reason.kind) {
+    case "overdue":
+      return tr("graph.reason.overdue", { days: task.daysLeft !== null ? -task.daysLeft : 0 });
+    case "due":
+      if (task.daysLeft === 0) return tr("graph.reason.dueToday");
+      if (task.daysLeft === 1) return tr("graph.reason.dueTomorrow");
+      return tr("graph.reason.dueInDays", { days: task.daysLeft ?? 0 });
+    case "chain":
+      return tr("graph.reason.chain", { count: task.chainLength });
+    case "unlocks":
+      return tr("graph.reason.unlocks", { count: task.unlocks });
+    case "important":
+      return tr("graph.reason.important");
+  }
+};
 
 const Chip = ({ className, icon: Icon, children }: { className: string; icon?: typeof Star; children: React.ReactNode }) => (
   <span className={cn("inline-flex max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset", className)}>
@@ -37,8 +55,8 @@ const CheckCircle = ({ checked, onCheck, title }: { checked: boolean; onCheck: (
       type="button"
       role="checkbox"
       aria-checked={checked}
-      aria-label={`Đánh dấu xong: ${title}`}
-      title="Đánh dấu đã xong"
+      aria-label={tr("graph.card.markDoneAria", { title })}
+      title={tr("graph.card.markDoneTitle")}
       disabled={checked}
       whileTap={{ scale: scale.press, transition: press }}
       onClick={(event) => { event.stopPropagation(); onCheck(); }}
@@ -99,18 +117,23 @@ export const FlowCard = ({ boardId, task, step, isNow, checking, canEdit, onChec
         <CheckCircle checked={checking} title={card.title} onCheck={onCheck} />
       ) : (
         <span
-          title={task.ready ? undefined : "Làm sau khi xong việc đứng trước"}
+          title={task.ready ? undefined : tr("graph.card.lockedTitle")}
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200/70 text-neutral-500"
         >
           {!task.ready && <Lock aria-hidden="true" className="h-2.5 w-2.5" />}
         </span>
       )}
 
-      <button type="button" onClick={onOpen} title="Mở chi tiết thẻ" className="min-w-0 flex-1 cursor-pointer space-y-1.5 text-left focus-visible:outline-none">
+      <button
+        type="button"
+        onClick={onOpen}
+        title={tr("graph.card.openDetailTitle")}
+        className="min-w-0 flex-1 cursor-pointer space-y-1.5 text-left focus-visible:outline-none"
+      >
         <span className="flex min-w-0 items-center gap-1.5 text-[10px]">
           {/* Số bước nằm trong thẻ để không đè lên mũi tên nối */}
           {step !== undefined && <span
-            aria-label={`Bước ${step}`}
+            aria-label={tr("graph.card.stepAria", { step })}
             className={cn(
               "flex h-4 min-w-4 shrink-0 items-center justify-center rounded px-1 font-bold tabular-nums text-white",
               isNow ? "bg-violet-600" : step <= 3 ? "bg-neutral-800" : "bg-neutral-400",
@@ -118,7 +141,11 @@ export const FlowCard = ({ boardId, task, step, isNow, checking, canEdit, onChec
           >
             {step}
           </span>}
-          {isNow && <span className="shrink-0 rounded-full bg-violet-600 px-1.5 py-px font-bold uppercase tracking-wide text-white">Làm ngay</span>}
+          {isNow && (
+            <span className="shrink-0 rounded-full bg-violet-600 px-1.5 py-px font-bold uppercase tracking-wide text-white">
+              {tr("graph.card.doNowBadge")}
+            </span>
+          )}
           {course && courseColor && (
             <span className={cn("truncate rounded px-1.5 py-px font-semibold ring-1 ring-inset", courseColor.chip)}>{getCourseShortLabel(course)}</span>
           )}
@@ -134,23 +161,37 @@ export const FlowCard = ({ boardId, task, step, isNow, checking, canEdit, onChec
           {card.title}
         </span>
         {!task.ready && (
-          <span className="line-clamp-1 block text-[10px] text-neutral-400">Sau: {task.waitingOn.map((blocker) => blocker.title).join(", ")}</span>
+          <span className="line-clamp-1 block text-[10px] text-neutral-400">
+            {tr("graph.card.waitingAfter", {
+              titles: task.waitingOn.map((blocker) => blocker.title).join(", "),
+            })}
+          </span>
         )}
         <span className="flex flex-wrap gap-1">
           {lateRisk && card.dueDate && (
-            <Chip icon={AlertTriangle} className="bg-rose-50 text-rose-700 ring-rose-200">Hạn {formatDue(card.dueDate)}, sẽ trễ</Chip>
+            <Chip icon={AlertTriangle} className="bg-rose-50 text-rose-700 ring-rose-200">
+              {tr("graph.card.dueLateChip", { date: formatDue(card.dueDate) })}
+            </Chip>
           )}
           {task.aiReason ? (
             <Chip icon={Sparkles} className="bg-violet-50 text-violet-700 ring-violet-200">{task.aiReason}</Chip>
           ) : (
             reasons.map((reason) => (
-              <Chip key={reason.kind} icon={REASON_STYLE[reason.kind].icon} className={REASON_STYLE[reason.kind].className}>{reason.label}</Chip>
+              <Chip key={reason.kind} icon={REASON_STYLE[reason.kind].icon} className={REASON_STYLE[reason.kind].className}>
+                {formatPriorityReason(task, reason)}
+              </Chip>
             ))
           )}
           {!lateRisk && card.dueDate && reasons.every((reason) => reason.kind !== "due" && reason.kind !== "overdue") && (
-            <Chip className="bg-neutral-50 text-neutral-500 ring-neutral-200">Hạn {formatDue(card.dueDate)}</Chip>
+            <Chip className="bg-neutral-50 text-neutral-500 ring-neutral-200">
+              {tr("graph.card.dueChip", { date: formatDue(card.dueDate) })}
+            </Chip>
           )}
-          {step !== undefined && task.unranked && <Chip className="bg-neutral-100 text-neutral-500 ring-neutral-200">AI chưa xếp</Chip>}
+          {step !== undefined && task.unranked && (
+            <Chip className="bg-neutral-100 text-neutral-500 ring-neutral-200">
+              {tr("graph.card.unrankedChip")}
+            </Chip>
+          )}
         </span>
       </button>
     </div>

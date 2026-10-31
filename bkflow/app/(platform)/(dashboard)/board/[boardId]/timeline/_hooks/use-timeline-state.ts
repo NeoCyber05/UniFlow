@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { useLocale } from "@/lib/i18n";
 import type { BoardTimelineList } from "@/types";
 
 import type {
@@ -14,6 +15,7 @@ import {
 } from "../_lib/layout-utils";
 
 export const useTimelineState = (lists: BoardTimelineList[]) => {
+  const locale = useLocale((s) => s.locale);
   const [zoom, setZoom] = useState<TimelineZoom>("day");
   const [dateOverrides, setDateOverrides] = useState<Record<string, TimelineDateOverride>>({});
   const [isUnscheduledPanelOpen, setIsUnscheduledPanelOpen] = useState(false);
@@ -22,8 +24,11 @@ export const useTimelineState = (lists: BoardTimelineList[]) => {
     [lists, dateOverrides],
   );
   const derived = useMemo(
-    () => getTimelineDerivedData(timelineLists, zoom),
-    [timelineLists, zoom],
+    () => {
+      void locale;
+      return getTimelineDerivedData(timelineLists, zoom);
+    },
+    [timelineLists, zoom, locale],
   );
   const removeDateOverride = (cardId: string) => {
     setDateOverrides((current) => {

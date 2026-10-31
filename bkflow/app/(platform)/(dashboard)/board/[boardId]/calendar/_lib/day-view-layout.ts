@@ -1,3 +1,4 @@
+import { getIntlLocale, tr } from "@/lib/i18n";
 import type { BoardCalendarItem } from "@/types";
 
 import {
@@ -114,7 +115,7 @@ export const getDayViewBlocks = (
     .sort((left, right) => (
       left.startMinute - right.startMinute ||
       right.endMinute - left.endMinute ||
-      left.item.title.localeCompare(right.item.title, "vi")
+      left.item.title.localeCompare(right.item.title, getIntlLocale())
     ));
 
 export const dayBlocksOverlap = (
@@ -269,11 +270,11 @@ export const getDayViewBlockTimeLabel = (block: DayViewBlock) => {
   const itemDueDate = parseCalendarDate(block.item.dueDate);
 
   if (itemStartDate && !itemDueDate) {
-    return `Bắt đầu ${formatGmt7Time(itemStartDate)}`;
+    return tr("calendar.dayBlock.startsAt", { time: formatGmt7Time(itemStartDate) });
   }
 
   if (!itemStartDate && itemDueDate) {
-    return `Kết thúc ${formatGmt7Time(itemDueDate)}`;
+    return tr("calendar.dayBlock.endsAt", { time: formatGmt7Time(itemDueDate) });
   }
 
   const startTime = formatGmt7Time(block.startsAt);
@@ -297,19 +298,19 @@ export const getDayViewBlockTooltip = (block: DayViewBlock) => {
   const parts = item.type === "checklist-item"
     ? [
         item.title,
-        `Danh sách kiểm tra: ${item.checklistTitle}`,
-        `Thẻ: ${item.cardTitle}`,
-        `Kết thúc: ${formatGmt7DateTime(checklistDueDate ?? block.endsAt)} GMT+7`,
+        tr("calendar.tooltip.checklist", { title: item.checklistTitle }),
+        tr("calendar.tooltip.card", { title: item.cardTitle }),
+        tr("calendar.tooltip.endsAtGmt7", { datetime: formatGmt7DateTime(checklistDueDate ?? block.endsAt) }),
       ]
     : [
         item.title,
-        `Danh sách: ${item.listTitle}`,
-        item.startDate ? `Bắt đầu: ${formatGmt7DateTime(parseCalendarDate(item.startDate) ?? block.startsAt)} GMT+7` : null,
-        item.dueDate ? `Kết thúc: ${formatGmt7DateTime(parseCalendarDate(item.dueDate) ?? block.endsAt)} GMT+7` : null,
+        tr("calendar.tooltip.list", { title: item.listTitle }),
+        item.startDate ? tr("calendar.tooltip.startsAtGmt7", { datetime: formatGmt7DateTime(parseCalendarDate(item.startDate) ?? block.startsAt) }) : null,
+        item.dueDate ? tr("calendar.tooltip.endsAtGmt7", { datetime: formatGmt7DateTime(parseCalendarDate(item.dueDate) ?? block.endsAt) }) : null,
       ];
 
   if (item.isCompleted) {
-    parts.push("Trạng thái: Hoàn thành");
+    parts.push(tr("calendar.tooltip.completed"));
   }
 
   return parts.filter((part): part is string => !!part).join("\n");

@@ -8,6 +8,7 @@ import { Navbar } from "@/app/(platform)/(dashboard)/_components/navbar";
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { skeletonForPath, ViewSkeleton } from "@/components/view-skeleton";
+import { tr } from "@/lib/i18n";
 
 import { useAuth } from "../lib/auth";
 import { prefetchRouteViews } from "../lib/prefetch-route";
@@ -35,7 +36,7 @@ export default function DashboardLayoutRoute() {
   const { pathname } = useLocation();
 
   const content = error ? (
-    <p className="p-6 text-sm text-red-600">Không tải được dữ liệu ({error.message}). Thử đăng nhập lại hoặc tải lại trang.</p>
+    <p className="p-6 text-sm text-red-600">{tr("route.dashboardLoadError", { message: error.message })}</p>
   ) : data ? (
     <AppearanceProvider key={userId} initialAppearance={data.appearance}>
       <Navbar />

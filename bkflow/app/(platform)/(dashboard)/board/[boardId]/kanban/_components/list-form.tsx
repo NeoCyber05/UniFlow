@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { createList } from "@/actions/lists/create-list";
 import { FormInput } from "@/components/form/form-input";
 import { FormSubmit } from "@/components/form/form-submit";
+import { tr } from "@/lib/i18n";
 
 import { ListWrapper } from "./list-wrapper";
 import { useBoardState } from "./board-state-context";
@@ -126,7 +127,7 @@ export const ListForm = () => {
             id="title"
             disabled={isLoading}
             className="text-sm px-2 py-1.5 h-8 font-medium border-neutral-200 hover:border-violet-300 focus:border-violet-400 focus:ring-1 focus:ring-violet-200 transition rounded-lg"
-            placeholder="Nhập tên danh sách…"
+            placeholder={tr("kanban.listForm.placeholder")}
           />
           <input
             hidden
@@ -135,7 +136,7 @@ export const ListForm = () => {
           />
           <div className="flex items-center gap-x-2">
             <FormSubmit disabled={isLoading} className="h-8 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-3">
-              Thêm danh sách
+              {tr("kanban.listForm.addList")}
             </FormSubmit>
             <Button
               onClick={disableEditing}
@@ -159,7 +160,7 @@ export const ListForm = () => {
         className="w-full rounded-xl bg-white/10 hover:bg-white/20 border border-transparent transition-all duration-150 p-3 flex items-center gap-x-2 font-semibold text-sm text-white backdrop-blur-xs shadow-sm cursor-pointer"
       >
         <Plus className="h-4 w-4" />
-        Thêm danh sách
+        {tr("kanban.listForm.addList")}
       </button>
     </ListWrapper>
   );

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Hint } from "@/components/hint";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import type { ViewMode } from "../_types";
@@ -42,9 +43,9 @@ type CalendarToolbarProps = {
 };
 
 const VIEW_MODES = [
-  ["month", "Tháng", CalendarDays],
-  ["week", "Tuần", CalendarRange],
-  ["day", "Ngày", CalendarClock],
+  ["month", "calendar.view.month", CalendarDays],
+  ["week", "calendar.view.week", CalendarRange],
+  ["day", "calendar.view.day", CalendarClock],
 ] as const;
 
 const controlClassName =
@@ -111,7 +112,7 @@ export const CalendarToolbar = ({
             onClick={onToday}
             className={cn(controlClassName, "border border-neutral-200 bg-white px-3.5 text-sm font-medium text-neutral-800 shadow-xs hover:bg-neutral-50")}
           >
-            Hôm nay
+            {tr("calendar.toolbar.today")}
           </button>
 
           <div className="flex items-center">
@@ -148,23 +149,23 @@ export const CalendarToolbar = ({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <ul aria-label="Thống kê lịch" className="hidden items-center gap-1.5 md:flex">
-            <StatChip dotClassName="bg-violet-500" count={scheduledItemsCount} label="có lịch" />
+          <ul aria-label={tr("calendar.toolbar.statsAria")} className="hidden items-center gap-1.5 md:flex">
+            <StatChip dotClassName="bg-violet-500" count={scheduledItemsCount} label={tr("calendar.toolbar.statScheduled")} />
             {completedItemsCount > 0 && (
-              <StatChip dotClassName="bg-emerald-500" count={completedItemsCount} label="xong" />
+              <StatChip dotClassName="bg-emerald-500" count={completedItemsCount} label={tr("calendar.toolbar.statCompleted")} />
             )}
             {overdueItemsCount > 0 && (
-              <StatChip dotClassName="bg-rose-500" count={overdueItemsCount} label="quá hạn" tone="text-rose-700" />
+              <StatChip dotClassName="bg-rose-500" count={overdueItemsCount} label={tr("calendar.toolbar.statOverdue")} tone="text-rose-700" />
             )}
           </ul>
 
           <div
             role="radiogroup"
-            aria-label="Chế độ xem lịch"
+            aria-label={tr("calendar.toolbar.viewModeAria")}
             onKeyDown={handleViewModeKeyDown}
             className="flex h-9 shrink-0 items-center gap-0.5 rounded-lg border border-neutral-200 bg-neutral-100/80 p-[3px]"
           >
-            {VIEW_MODES.map(([mode, label, Icon]) => {
+            {VIEW_MODES.map(([mode, labelKey, Icon]) => {
               const isActive = viewMode === mode;
               return (
                 <button
@@ -191,7 +192,7 @@ export const CalendarToolbar = ({
                     aria-hidden
                     className={cn("relative z-10 h-4 w-4 transition-colors duration-200", isActive ? "text-violet-600" : "text-neutral-400")}
                   />
-                  <span className="relative z-10">{label}</span>
+                  <span className="relative z-10">{tr(labelKey)}</span>
                 </button>
               );
             })}
@@ -210,7 +211,7 @@ export const CalendarToolbar = ({
             )}
           >
             <CalendarX2 aria-hidden className="h-4 w-4 shrink-0" />
-            Chưa xếp lịch
+            {tr("calendar.toolbar.unscheduled")}
             <span
               className={cn(
                 "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",

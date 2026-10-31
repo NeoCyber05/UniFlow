@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { tr } from "@/lib/i18n";
 
 import { AttachmentAddPopover } from "./attachment-add-popover";
 import { AttachmentItem } from "./attachment-item";
@@ -65,7 +66,7 @@ export const AttachmentsSection = ({
       <div className="w-full min-w-0">
         <div className="mb-4 flex items-center justify-between gap-x-3">
           <p className="font-semibold text-base text-neutral-800">
-            Các tập tin đính kèm
+            {tr("attachment.sectionTitle")}
           </p>
 
           {canEdit && (
@@ -81,7 +82,7 @@ export const AttachmentsSection = ({
                 size="sm"
                 className="h-8 text-sm text-neutral-700 bg-white border border-neutral-300 hover:bg-neutral-50 px-3 cursor-pointer"
               >
-                Thêm
+                {tr("attachment.add")}
               </Button>
             </AttachmentAddPopover>
           )}
@@ -92,7 +93,7 @@ export const AttachmentsSection = ({
             {links.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                  Liên kết
+                  {tr("attachment.linksHeading")}
                 </p>
                 <Droppable
                   droppableId={`attachments-${AttachmentType.LINK}`}
@@ -137,7 +138,7 @@ export const AttachmentsSection = ({
             {files.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                  Tệp
+                  {tr("attachment.filesHeading")}
                 </p>
                 <Droppable
                   droppableId={`attachments-${AttachmentType.FILE}`}

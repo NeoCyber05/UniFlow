@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { createCard } from "@/actions/cards/create-card";
 import { runCalendarAction } from "@/lib/calendar/calendar-action";
 import { useAction } from "@/hooks/use-action";
+import { tr } from "@/lib/i18n";
 import type { BoardCalendarResponse } from "@/types";
 
 import {
@@ -130,12 +131,12 @@ export const useCalendarCreateCard = ({
     const title = createTitle.trim();
 
     if (!title || title.length < 1) {
-      toast.error("Tiêu đề quá ngắn (tối thiểu 1 ký tự).");
+      toast.error(tr("calendar.toast.titleTooShort"));
       return;
     }
 
     if (!createListId) {
-      toast.error("Vui lòng chọn danh sách đích.");
+      toast.error(tr("calendar.toast.selectTargetList"));
       return;
     }
 
@@ -147,12 +148,12 @@ export const useCalendarCreateCard = ({
     const dueDate = parseGmt7DateTimeInput(createDueValue);
 
     if (!startDate || !dueDate) {
-      toast.error("Khoảng thời gian tạo thẻ không hợp lệ.");
+      toast.error(tr("calendar.toast.invalidCreateRange"));
       return;
     }
 
     if (dueDate.getTime() <= startDate.getTime()) {
-      toast.error("Ngày kết thúc phải sau ngày bắt đầu.");
+      toast.error(tr("calendar.toast.endAfterStart"));
       return;
     }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { tr } from "@/lib/i18n";
+
 import type { CalendarGridSizeControls } from "../../_hooks/use-calendar-grid-size";
 
 const BOUNDARIES = [1, 2, 3, 4, 5, 6];
@@ -16,8 +18,8 @@ export const ColumnResizeHandles = ({ grid }: ColumnResizeHandlesProps) => (
         key={boundary}
         role="separator"
         aria-orientation="vertical"
-        aria-label={`Co giãn cột ngày ${boundary} và ${boundary + 1}`}
-        title="Kéo để co giãn cột, nhấp đúp để chia đều"
+        aria-label={tr("calendar.resize.colAria", { col: boundary, nextCol: boundary + 1 })}
+        title={tr("calendar.resize.colTitle")}
         tabIndex={0}
         onPointerDown={(event) => grid.startColumnResize(event, boundary)}
         onKeyDown={(event) => grid.handleColumnKeyDown(event, boundary)}
@@ -39,8 +41,8 @@ export const RowResizeHandle = ({ grid, weekIndex }: RowResizeHandleProps) => (
   <span
     role="separator"
     aria-orientation="horizontal"
-    aria-label={`Co giãn chiều cao tuần ${weekIndex + 1}`}
-    title="Kéo để đổi chiều cao, nhấp đúp để về mặc định"
+    aria-label={tr("calendar.resize.rowAria", { week: weekIndex + 1 })}
+    title={tr("calendar.resize.rowTitle")}
     tabIndex={0}
     onPointerDown={(event) => grid.startRowResize(event, weekIndex)}
     onKeyDown={(event) => grid.handleRowKeyDown(event, weekIndex)}

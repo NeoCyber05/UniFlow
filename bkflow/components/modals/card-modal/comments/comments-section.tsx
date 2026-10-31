@@ -1,12 +1,12 @@
-import { BoardMemberRole, type BoardMember } from "@/types";
 "use client";
+
 import { useMemo, useState } from "react";
 import { useUser } from "@/web/lib/auth";
 import { MessageSquare } from "lucide-react";
 
-
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CardCommentWithReplies } from "@/types";
+import { tr, useLocale } from "@/lib/i18n";
+import { BoardMemberRole, type BoardMember, type CardCommentWithReplies } from "@/types";
 
 import { CommentEditor } from "./comment-editor";
 import { CommentItem } from "./comment-item";
@@ -28,6 +28,7 @@ export const CommentsSection = ({
   boardMembers = [],
   currentMemberRole,
 }: CommentsProps) => {
+  useLocale((state) => state.locale);
   const { user } = useUser();
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
@@ -58,15 +59,15 @@ export const CommentsSection = ({
       <div className="mb-4 flex items-center gap-x-3">
         <MessageSquare className="h-5 w-5 flex-shrink-0 text-neutral-500" />
         <p className="text-base font-semibold text-neutral-800">
-          Bình luận
+          {tr("comment.sectionTitle")}
         </p>
       </div>
 
       <div className="space-y-5">
         {canWriteComments && (
           <CommentEditor
-            placeholder="Viết bình luận..."
-            submitLabel="Gửi"
+            placeholder={tr("comment.writePlaceholder")}
+            submitLabel={tr("comment.send")}
             isLoading={isCreating}
             onSubmit={(content) => onCreateComment(content)}
             boardMembers={boardMembers}
@@ -75,7 +76,7 @@ export const CommentsSection = ({
 
         {items.length === 0 ? (
           <p className="text-sm italic text-neutral-400">
-            Chưa có bình luận nào.
+            {tr("comment.empty")}
           </p>
         ) : (
           <div className="max-h-[350px] overflow-y-auto pr-2 space-y-5 styled-scrollbar">

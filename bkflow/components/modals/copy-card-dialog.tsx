@@ -19,6 +19,8 @@ import { useAction } from "@/hooks/use-action";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { fetcher } from "@/lib/fetcher";
+import { tr, useLocale } from "@/lib/i18n";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -101,6 +103,7 @@ export const CopyCardDialog = ({
   data,
   triggerRect,
 }: CopyCardDialogProps) => {
+  useLocale((state) => state.locale);
   const router = useRouter();
   const queryClient = useQueryClient();
   const cardModal = useCardModal();
@@ -128,6 +131,7 @@ export const CopyCardDialog = ({
     () => new Map((options?.organizations ?? []).map((organization) => [organization.id, organization])),
     [options?.organizations],
   );
+  void organizationById;
 
   const selectedBoard = useMemo(
     () => options?.boards.find((board) => board.id === selectedBoardId) ?? null,
@@ -147,7 +151,7 @@ export const CopyCardDialog = ({
 
   const { execute: executeCopyCard, isLoading: isSubmitting } = useAction(copyCard, {
     onSuccess: (createdCard) => {
-      toast.success(`Đã tạo thẻ "${createdCard.title}"`);
+      toast.success(tr("copyCard.createdToast", { title: createdCard.title }));
       queryClient.invalidateQueries({ queryKey: ["card-copy-options", data.id] });
       queryClient.invalidateQueries({ queryKey: ["card", data.id] });
       invalidateSourceCalendar();
@@ -288,16 +292,16 @@ export const CopyCardDialog = ({
         )}
       >
         <DialogTitle className="px-6 pt-4 text-center text-base font-bold text-neutral-600">
-          Sao chép thẻ
+          {tr("copyCard.title")}
         </DialogTitle>
         <DialogDescription className="sr-only">
-          Chọn nội dung giữ lại và vị trí tạo thẻ được sao chép.
+          {tr("copyCard.descriptionSrOnly")}
         </DialogDescription>
 
         <div className="space-y-4 px-4 pb-4 pt-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500" htmlFor="copy-card-title">
-              Tên
+              {tr("copyCard.nameLabel")}
             </label>
             <textarea
               id="copy-card-title"
@@ -308,45 +312,45 @@ export const CopyCardDialog = ({
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Giữ...</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">{tr("copyCard.keepHeading")}</p>
             <div className="space-y-1.5">
               <KeepOption
                 checked={keepChecklists}
                 count={sourceCounts.checklists}
                 disabled={sourceCounts.checklists === 0}
-                label="Danh sách công việc"
+                label={tr("copyCard.keepChecklists")}
                 onChange={setKeepChecklists}
               />
               <KeepOption
                 checked={keepLabels}
                 count={sourceCounts.labels}
                 disabled={sourceCounts.labels === 0}
-                label="Nhãn"
+                label={tr("copyCard.keepLabels")}
                 onChange={setKeepLabels}
               />
               <KeepOption
                 checked={keepAttachments}
                 count={sourceCounts.attachments}
                 disabled={sourceCounts.attachments === 0}
-                label="Tệp đính kèm"
+                label={tr("copyCard.keepAttachments")}
                 onChange={setKeepAttachments}
               />
               <KeepOption
                 checked={keepComments}
                 count={sourceCounts.comments}
                 disabled={sourceCounts.comments === 0}
-                label="Nhận xét"
+                label={tr("copyCard.keepComments")}
                 onChange={setKeepComments}
               />
             </div>
           </div>
 
           <div className="space-y-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Sao chép tới...</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">{tr("copyCard.copyToHeading")}</p>
 
             <div className="space-y-1.5">
               <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500" htmlFor="copy-card-board">
-                Bảng thông tin
+                {tr("copyCard.boardLabel")}
               </label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -362,10 +366,10 @@ export const CopyCardDialog = ({
                       {selectedBoard ? (
                         <>
                           {selectedBoard.title}
-                          {selectedBoard.isCurrent && " (hiện tại)"}
+                          {selectedBoard.isCurrent && tr("copyCard.currentSuffix")}
                         </>
                       ) : (
-                        "Chọn bảng..."
+                        tr("copyCard.selectBoard")
                       )}
                     </span>
                     <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-600" />
@@ -390,10 +394,10 @@ export const CopyCardDialog = ({
                               isSelected && "bg-blue-50/70 hover:bg-blue-50 text-blue-600 font-semibold"
                             )}
                           >
-                            <div className="leading-snug">{board.title}</div>
+                            <div className="leading-snug">{formatWorkspaceTitle(board.title)}</div>
                             {board.isCurrent && (
                               <div className="text-[11px] text-neutral-500 font-normal mt-0.5 leading-tight">
-                                (hiện tại)
+                                {tr("copyCard.currentBadge")}
                               </div>
                             )}
                           </button>
@@ -408,7 +412,7 @@ export const CopyCardDialog = ({
             <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500" htmlFor="copy-card-list">
-                  Danh sách
+                  {tr("copyCard.listLabel")}
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -424,10 +428,10 @@ export const CopyCardDialog = ({
                         {selectedList ? (
                           <>
                             {selectedList.title}
-                            {selectedList.isCurrent && " (hiện tại)"}
+                            {selectedList.isCurrent && tr("copyCard.currentSuffix")}
                           </>
                         ) : (
-                          "Chọn danh sách..."
+                          tr("copyCard.selectList")
                         )}
                       </span>
                       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-600" />
@@ -455,7 +459,7 @@ export const CopyCardDialog = ({
                               <div className="leading-snug">{list.title}</div>
                               {list.isCurrent && (
                                 <div className="text-[11px] text-blue-500 font-normal mt-0.5 leading-tight">
-                                  (hiện tại)
+                                  {tr("copyCard.currentBadge")}
                                 </div>
                               )}
                             </button>
@@ -469,7 +473,7 @@ export const CopyCardDialog = ({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500" htmlFor="copy-card-position">
-                  Vị trí
+                  {tr("copyCard.positionLabel")}
                 </label>
                 <SelectShell>
                   <select
@@ -497,7 +501,7 @@ export const CopyCardDialog = ({
             disabled={!canSubmit}
             className="h-9 w-full rounded-md bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            {isSubmitting ? "Đang tạo..." : "Tạo thẻ"}
+            {isSubmitting ? tr("copyCard.creating") : tr("copyCard.createButton")}
           </Button>
         </div>
       </DialogContent>

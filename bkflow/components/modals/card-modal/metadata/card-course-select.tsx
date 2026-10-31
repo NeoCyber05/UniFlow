@@ -13,6 +13,7 @@ import { useAction } from "@/hooks/use-action";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { boardCoursesQueryKey, useBoardCourses } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { patchBoardCardPreview, patchCardQueryData } from "../card-cache-utils";
@@ -50,7 +51,8 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit, compact =
   }
 
   const current = courseId ? courseById.get(courseId) ?? null : null;
-  const label = current ? current.name : "Cá nhân";
+  const personalLabel = tr("cardMeta.personal");
+  const label = current ? current.name : personalLabel;
 
   const trigger = (
     <span className={cn("flex h-8 items-center gap-2 rounded-md px-2 text-xs font-medium", compact ? "hover:bg-accent" : "border border-border bg-background text-foreground")}>
@@ -67,7 +69,7 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit, compact =
 
   return (
     <div className={compact ? "grid min-h-10 grid-cols-[116px_minmax(0,1fr)] items-center gap-3" : "flex flex-col gap-y-1.5"}>
-      <span className="flex items-center gap-2 text-xs text-muted-foreground">{compact && <FolderOpen className="size-4" />}Danh mục</span>
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">{compact && <FolderOpen className="size-4" />}{tr("cardMeta.category")}</span>
       {canEdit ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild disabled={isLoading}>
@@ -77,7 +79,7 @@ export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit, compact =
             <CoursePicker
               courses={courseOptions}
               value={courseId}
-              noneLabel="Cá nhân"
+              noneLabel={personalLabel}
               onChange={(value) => {
                 setOpen(false);
                 if (value !== courseId) execute({ id: cardId, boardId, courseId: value });

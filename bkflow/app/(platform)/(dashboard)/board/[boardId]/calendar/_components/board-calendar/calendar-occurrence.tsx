@@ -6,6 +6,7 @@ import { CheckCircle2, ListChecks } from "lucide-react";
 import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr, useLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import {
@@ -68,6 +69,7 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
   onPlanSchedule,
   onClearSchedule,
 }: CalendarOccurrenceItemProps) {
+  useLocale((s) => s.locale);
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
   const timeLabel = getOccurrenceTimeLabel(occurrence);
@@ -80,6 +82,12 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
     (!!cardItem || isChecklistItem) &&
     !isUpdatingCardDate &&
     !isUpdatingChecklistItemDueDate;
+  const openItemLabel = occurrence.item.type === "checklist-item"
+    ? tr("calendar.occurrence.openChecklistAria", {
+      title: occurrence.item.title,
+      cardTitle: occurrence.item.cardTitle,
+    })
+    : tr("calendar.occurrence.openCardAria", { title: occurrence.item.title });
 
   return (
     <Hint
@@ -113,12 +121,8 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
               ? { checklistItemId: occurrence.item.checklistItemId }
               : undefined,
           )}
-          aria-label={occurrence.item.type === "checklist-item"
-            ? `Mở mục checklist ${occurrence.item.title} trong thẻ ${occurrence.item.cardTitle}`
-            : `Mở thẻ ${occurrence.item.title}`}
-          title={occurrence.item.type === "checklist-item"
-            ? `Mở mục checklist ${occurrence.item.title} trong thẻ ${occurrence.item.cardTitle}`
-            : `Mở thẻ ${occurrence.item.title}`}
+          aria-label={openItemLabel}
+          title={openItemLabel}
           className="flex h-full min-w-0 flex-1 items-center gap-x-1 overflow-hidden text-left"
         >
           {cardItem?.labels[0] && (

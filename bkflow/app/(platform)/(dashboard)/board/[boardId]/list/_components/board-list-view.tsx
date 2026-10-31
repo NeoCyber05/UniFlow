@@ -21,6 +21,7 @@ import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { filterableCardMatchesBoardFilters, PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
 import { getListStatus } from "@/lib/boards/list-status";
 import { fetcher } from "@/lib/fetcher";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { todoTaskMatchesFilters } from "@/lib/my-tasks/todo-filters";
 import {
   boardTasksQueryKey,
@@ -33,7 +34,7 @@ import { cn } from "@/lib/utils";
 const TODO_GROUPS_STORAGE_KEY = "uniflow:todo-groups";
 
 const formatToday = () =>
-  new Intl.DateTimeFormat("vi-VN", {
+  intlDateFormat({
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -120,6 +121,7 @@ export const BoardListView = ({
   const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, !isTeamBoard);
 
   // Lọc theo cột; nhóm Xong chỉ gom việc đã tích từ mọi cột, cột "Xong" trống thì ẩn
+  const doneGroupLabel = tr("boardList.doneGroup");
   const columnGroups = useMemo(() => {
     const open: MyTaskGroup[] = [];
     const done: MyTask[] = [];
@@ -130,8 +132,8 @@ export const BoardListView = ({
       if (pending.length === 0 && getListStatus(group.label) === "done") continue;
       open.push({ ...group, tasks: pending });
     }
-    return [...open, { key: "done", label: "Xong", collapsed: true, tasks: done }];
-  }, [listData?.groups, filters, currentBoardMemberId]);
+    return [...open, { key: "done", label: doneGroupLabel, collapsed: true, tasks: done }];
+  }, [listData?.groups, filters, currentBoardMemberId, doneGroupLabel]);
 
   // Lọc theo thời hạn
   const allAgendaGroups = useMemo(() => agendaData?.groups ?? [], [agendaData?.groups]);
@@ -172,14 +174,19 @@ export const BoardListView = ({
             <div className="min-w-0">
               <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-neutral-900">
                 <ListTodo className="h-6 w-6 text-violet-600" />
-                Việc cần làm
+                {tr("boardList.title")}
               </h1>
               <p className="mt-1 text-sm text-neutral-500">
                 <span className="capitalize">{formatToday()}</span>
                 {!isTeamBoard && hasAnyAgendaTask && (
                   <>
-                    {" · "}còn {pendingCount} việc
-                    {overdueCount > 0 && <span className="font-semibold text-rose-600"> · {overdueCount} quá hạn</span>}
+                    {" · "}
+                    {tr("boardList.pendingCount", { count: pendingCount })}
+                    {overdueCount > 0 && (
+                      <span className="font-semibold text-rose-600">
+                        {tr("boardList.overdueCount", { count: overdueCount })}
+                      </span>
+                    )}
                   </>
                 )}
               </p>
@@ -209,7 +216,7 @@ export const BoardListView = ({
               courses={isTeamBoard ? undefined : courseOptions}
               members={isTeamBoard ? assignableMembers : undefined}
               defaults={groupMode === "agenda" ? quickAddDefaults : undefined}
-              placeholder="Tên việc, vd: nộp bài giải tích @mai ! #toán"
+              placeholder={tr("boardList.quickAddPlaceholder")}
               onCancel={() => setAdding(false)}
             />
           ) : (
@@ -219,7 +226,7 @@ export const BoardListView = ({
               className="flex w-full items-center gap-2 rounded-xl border border-white/40 glass-row px-3.5 py-3 text-left text-sm text-neutral-600 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
             >
               <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
-              Thêm việc…
+              {tr("boardList.addTaskButton")}
             </button>
           ))}
 
@@ -228,17 +235,17 @@ export const BoardListView = ({
             <>
               {!hasAnyAgendaTask ? (
                 <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
-                  Không có việc nào. Thêm việc ở ô phía trên.
+                  {tr("boardList.emptyAgenda")}
                 </p>
               ) : !hasVisibleAgendaTask ? (
                 <div className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
-                  Không có việc khớp bộ lọc.{" "}
+                  {tr("boardList.emptyFiltered")}{" "}
                   <button
                     type="button"
                     onClick={() => clearFilters(boardId)}
                     className="font-medium text-violet-600 hover:underline"
                   >
-                    Xoá lọc
+                    {tr("boardList.clearFilters")}
                   </button>
                 </div>
               ) : (
@@ -258,7 +265,9 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 2: THEO CỘT KANBAN --- */
             <>
               {(listData?.groups ?? []).length === 0 && (
-                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">Bảng chưa có cột nào.</p>
+                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
+                  {tr("boardList.emptyBoardLists")}
+                </p>
               )}
               {columnGroups.map((group) => (
                 <TaskGroupSection

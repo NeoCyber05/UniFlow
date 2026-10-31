@@ -79,6 +79,7 @@ export const FormPopover = ({
           <Button
             className="h-7 w-7 p-0 absolute top-3 right-3 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-md"
             variant="ghost"
+            aria-label={tr("form.closeAria")}
           >
             <X className="h-3.5 w-3.5" />
           </Button>

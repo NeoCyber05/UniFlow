@@ -1,4 +1,5 @@
 
+import { getIntlLocale } from "@/lib/i18n";
 import type { BoardCalendarItem } from "@/types";
 
 import {
@@ -134,7 +135,7 @@ export const getRangeSegmentsForWeeks = (
     }, []).sort((left, right) => (
       left.startIndex - right.startIndex ||
       right.endIndex - left.endIndex ||
-      left.range.item.title.localeCompare(right.range.item.title, "vi")
+      left.range.item.title.localeCompare(right.range.item.title, getIntlLocale())
     ));
 
     const laneEnds: number[] = [];

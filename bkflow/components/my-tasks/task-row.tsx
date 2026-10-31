@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { tr } from "@/lib/i18n";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { AnimatePresence, motion } from "motion/react";
 import {
   blur,
@@ -23,9 +23,9 @@ import { TaskLabels } from "@/components/tasks/task-labels";
 
 import { AssigneeStack } from "./assignee-stack";
 
-// Dùng chung cho mọi dòng việc thay vì tạo formatter mới mỗi lần render
-const VN_TIME_FORMAT = new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const formatVNTime = (iso: string) => VN_TIME_FORMAT.format(new Date(iso));
+// Dùng chung bộ nhớ đệm intlDateFormat theo locale thay vì tạo formatter mới mỗi lần render
+const formatVNTime = (iso: string) =>
+  intlDateFormat({ timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
 
 type TaskRowProps = {
   task: MyTask;
@@ -118,7 +118,7 @@ export const TaskRow = memo(function TaskRow({
         </button>
         {task.checklist.total > 0 && (
           <div className="mt-1.5 flex max-w-36 items-center gap-2">
-            <div role="progressbar" aria-label="Tiến độ checklist trên task" aria-valuemin={0}
+            <div role="progressbar" aria-label={tr("agenda.checklistProgressAria")} aria-valuemin={0}
               aria-valuemax={task.checklist.total} aria-valuenow={task.checklist.completed}
               className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
               <div className="h-full origin-left rounded-full bg-primary transition-transform duration-300 ease-out motion-reduce:transition-none"

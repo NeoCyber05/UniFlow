@@ -10,6 +10,7 @@ import { deleteCardAttachment } from "@/actions/attachments/delete-card-attachme
 import { updateCardAttachment } from "@/actions/attachments/update-card-attachment";
 import { updateCardAttachmentOrder } from "@/actions/attachments/update-card-attachment-order";
 import { useAction } from "@/hooks/use-action";
+import { tr } from "@/lib/i18n";
 import { patchBoardCardCount } from "../card-cache-utils";
 
 import { compareAttachmentOrder, reorder } from "./attachment-utils";
@@ -44,8 +45,8 @@ export const useAttachmentActions = ({
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
       toast.success(
         attachment.type === AttachmentType.FILE
-          ? "Đã xóa file đính kèm."
-          : "Đã xóa liên kết đính kèm.",
+          ? tr("attachment.fileDeletedToast")
+          : tr("attachment.linkDeletedToast"),
         { id: `card-attachment-delete-${attachment.id}` },
       );
       setDeletingId(null);

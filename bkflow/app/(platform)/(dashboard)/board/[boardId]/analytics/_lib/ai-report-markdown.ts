@@ -1,11 +1,10 @@
 import type { AiBoardReport } from "@/actions/ai/generate-ai-board-report/types";
+import { tr } from "@/lib/i18n";
 
 import type { ReportRange } from "../_types";
 
-export const reportRangeLabels: Record<ReportRange, string> = {
-  "7d": "7 ngày",
-  "30d": "30 ngày",
-};
+export const getReportRangeLabel = (range: ReportRange): string =>
+  range === "7d" ? tr("analytics.range.7d") : tr("analytics.range.30d");
 
 export const formatReportMarkdown = (report: AiBoardReport, range: ReportRange) => {
   const section = (title: string, items: string[]) => [
@@ -13,18 +12,20 @@ export const formatReportMarkdown = (report: AiBoardReport, range: ReportRange) 
     ...items.map((item) => `- ${item}`),
   ].join("\n");
 
+  const rangeLabel = getReportRangeLabel(range);
+
   return [
-    `# Báo cáo AI (${reportRangeLabels[range]})`,
+    `# ${tr("analytics.markdown.heading", { range: rangeLabel })}`,
     "",
-    `## Tổng quan`,
+    `## ${tr("analytics.markdown.overview")}`,
     report.summary,
     "",
-    section("Chỉ số", report.metrics.map((metric) => `${metric.label}: ${metric.value}`)),
+    section(tr("analytics.markdown.metrics"), report.metrics.map((metric) => `${metric.label}: ${metric.value}`)),
     "",
-    section("Đã hoàn thành", report.completed),
+    section(tr("analytics.ai.sectionCompleted"), report.completed),
     "",
-    section("Rủi ro", report.risks),
+    section(tr("analytics.ai.sectionRisks"), report.risks),
     "",
-    section("Gợi ý hành động", report.actions),
+    section(tr("analytics.ai.sectionActions"), report.actions),
   ].join("\n");
 };

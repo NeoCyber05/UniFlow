@@ -13,6 +13,7 @@ import {
   PopoverClose,
 } from "@/components/ui/popover";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const CHIP_TONES = {
@@ -110,7 +111,7 @@ export const BoardFilters = ({
     <div className="flex items-center gap-x-1.5">
       <Popover>
         <Hint
-          description="Lọc thẻ"
+          description={tr("boardShell.filters.title")}
           side="bottom"
           sideOffset={8}
         >
@@ -126,7 +127,7 @@ export const BoardFilters = ({
                   : "border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
                 hasActiveFilters && "border-violet-200 bg-white text-violet-700 hover:bg-violet-50",
               )}
-              aria-label="Lọc thẻ"
+              aria-label={tr("boardShell.filters.title")}
             >
               <Filter className="h-4 w-4" />
               {hasActiveFilters && (
@@ -144,7 +145,7 @@ export const BoardFilters = ({
         >
           <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3">
             <Filter aria-hidden="true" className="h-4 w-4 text-violet-600" />
-            <span className="text-sm font-semibold text-neutral-900">Lọc thẻ</span>
+            <span className="text-sm font-semibold text-neutral-900">{tr("boardShell.filters.title")}</span>
             {hasActiveFilters && (
               <span className="rounded-full bg-violet-100 px-1.5 text-[11px] font-semibold tabular-nums text-violet-700">{activeFilterCount}</span>
             )}
@@ -154,13 +155,13 @@ export const BoardFilters = ({
                 onClick={() => clearFilters(boardId)}
                 className="ml-auto cursor-pointer rounded-md px-1.5 py-0.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
               >
-                Xóa lọc
+                {tr("boardShell.filters.clear")}
               </button>
             )}
             <PopoverClose asChild>
               <button
                 type="button"
-                aria-label="Đóng"
+                aria-label={tr("boardShell.filters.close")}
                 className={cn("cursor-pointer rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700", !hasActiveFilters && "ml-auto")}
               >
                 <X className="h-4 w-4" />
@@ -169,25 +170,25 @@ export const BoardFilters = ({
           </div>
 
           <div className="max-h-[420px] space-y-4 overflow-y-auto px-4 py-3.5 styled-scrollbar">
-            <FilterSection title="Trạng thái">
+            <FilterSection title={tr("boardShell.filters.sectionStatus")}>
               <div className="grid grid-cols-2 gap-1.5">
-                <FilterChip icon={CheckCircle2} label="Đã xong" active={completedEnabled} onToggle={() => toggleCompleted(boardId)} tone="emerald" />
-                <FilterChip icon={Circle} label="Chưa xong" active={notCompletedEnabled} onToggle={() => toggleNotCompleted(boardId)} />
+                <FilterChip icon={CheckCircle2} label={tr("boardShell.filters.completed")} active={completedEnabled} onToggle={() => toggleCompleted(boardId)} tone="emerald" />
+                <FilterChip icon={Circle} label={tr("boardShell.filters.notCompleted")} active={notCompletedEnabled} onToggle={() => toggleNotCompleted(boardId)} />
               </div>
             </FilterSection>
 
-            <FilterSection title="Hạn nộp">
+            <FilterSection title={tr("boardShell.filters.sectionDueDate")}>
               <div className="grid grid-cols-2 gap-1.5">
-                <FilterChip icon={AlarmClock} label="Quá hạn" active={selectedDueDateFilters.includes("overdue")} onToggle={() => toggleDueDateFilter(boardId, "overdue")} tone="rose" />
-                <FilterChip icon={Clock} label="Ngày mai" active={selectedDueDateFilters.includes("due-tomorrow")} onToggle={() => toggleDueDateFilter(boardId, "due-tomorrow")} tone="amber" />
-                <FilterChip icon={CalendarDays} label="Tuần tới" active={selectedDueDateFilters.includes("due-next-week")} onToggle={() => toggleDueDateFilter(boardId, "due-next-week")} />
-                <FilterChip icon={CalendarOff} label="Chưa có hạn" active={selectedDueDateFilters.includes("no-due")} onToggle={() => toggleDueDateFilter(boardId, "no-due")} />
+                <FilterChip icon={AlarmClock} label={tr("boardShell.filters.overdue")} active={selectedDueDateFilters.includes("overdue")} onToggle={() => toggleDueDateFilter(boardId, "overdue")} tone="rose" />
+                <FilterChip icon={Clock} label={tr("boardShell.filters.dueTomorrow")} active={selectedDueDateFilters.includes("due-tomorrow")} onToggle={() => toggleDueDateFilter(boardId, "due-tomorrow")} tone="amber" />
+                <FilterChip icon={CalendarDays} label={tr("boardShell.filters.dueNextWeek")} active={selectedDueDateFilters.includes("due-next-week")} onToggle={() => toggleDueDateFilter(boardId, "due-next-week")} />
+                <FilterChip icon={CalendarOff} label={tr("boardShell.filters.noDue")} active={selectedDueDateFilters.includes("no-due")} onToggle={() => toggleDueDateFilter(boardId, "no-due")} />
               </div>
             </FilterSection>
 
-            <FilterSection title="Nhãn">
+            <FilterSection title={tr("boardShell.filters.sectionLabels")}>
               <div className="flex flex-wrap gap-1.5">
-                <FilterChip icon={Tag} label="Không có nhãn" active={noLabelsEnabled} onToggle={() => toggleNoLabels(boardId)} />
+                <FilterChip icon={Tag} label={tr("boardShell.filters.noLabels")} active={noLabelsEnabled} onToggle={() => toggleNoLabels(boardId)} />
                 {labels.map((label) => {
                   const active = selectedLabelIds.includes(label.id);
                   return (
@@ -202,13 +203,13 @@ export const BoardFilters = ({
                       )}
                     >
                       <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
-                      <span className="truncate">{label.title || "Không có tiêu đề"}</span>
+                      <span className="truncate">{label.title || tr("boardShell.filters.untitledLabel")}</span>
                       {active && <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
                     </button>
                   );
                 })}
               </div>
-              {labels.length === 0 && <p className="mt-1.5 text-xs text-neutral-400">Bảng chưa có nhãn.</p>}
+              {labels.length === 0 && <p className="mt-1.5 text-xs text-neutral-400">{tr("boardShell.filters.emptyLabels")}</p>}
             </FilterSection>
           </div>
         </PopoverContent>

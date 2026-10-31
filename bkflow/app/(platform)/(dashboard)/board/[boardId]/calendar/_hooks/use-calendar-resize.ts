@@ -4,6 +4,7 @@ import { useState, type PointerEvent } from "react";
 import { toast } from "sonner";
 
 import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
+import { tr } from "@/lib/i18n";
 import { DAY_VIEW_SLOT_HEIGHT } from "@/lib/calendar/calendar-day-view";
 
 import { MINUTES_IN_DAY } from "../_lib/constants";
@@ -189,7 +190,7 @@ export const useCalendarResize = ({
     targetMinute: number,
   ) => {
     if (!isCalendarCardItem(block.item)) {
-      failDayViewBlockResize("Checklist item chưa hỗ trợ resize trong Day View.");
+      failDayViewBlockResize(tr("calendar.toast.checklistResizeUnsupported"));
       return;
     }
 
@@ -197,7 +198,7 @@ export const useCalendarResize = ({
     const currentDueDate = parseCalendarDate(block.item.dueDate);
 
     if (!currentStartDate || !currentDueDate) {
-      failDayViewBlockResize("Chỉ thẻ có cả ngày bắt đầu và hết hạn mới resize được.");
+      failDayViewBlockResize(tr("calendar.toast.resizeRequiresBothDates"));
       return;
     }
 
@@ -213,11 +214,11 @@ export const useCalendarResize = ({
       const nextDurationMs = currentDueDate.getTime() - targetDate.getTime();
 
       if (targetDate.getTime() >= currentDueDate.getTime() || nextDurationMs <= 0) {
-        failDayViewBlockResize("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
+        failDayViewBlockResize(tr("calendar.toast.endTimeAfterStartTime"));
         return;
       }
 
-      setUpdateSuccessToast("Đã resize thẻ");
+      setUpdateSuccessToast(tr("calendar.toast.cardResized"));
       scheduleCard(block.item.cardId, { type: "resize", edge: "start", at: targetDate.toISOString() });
       return;
     }
@@ -233,11 +234,11 @@ export const useCalendarResize = ({
     const nextDurationMs = targetDate.getTime() - currentStartDate.getTime();
 
     if (targetDate.getTime() <= currentStartDate.getTime() || nextDurationMs <= 0) {
-      failDayViewBlockResize("Thời điểm kết thúc phải sau thời điểm bắt đầu.");
+      failDayViewBlockResize(tr("calendar.toast.endTimeAfterStartTime"));
       return;
     }
 
-    setUpdateSuccessToast("Đã resize thẻ");
+    setUpdateSuccessToast(tr("calendar.toast.cardResized"));
     scheduleCard(block.item.cardId, { type: "resize", edge: "end", at: targetDate.toISOString() });
   };
 
@@ -340,7 +341,7 @@ export const useCalendarResize = ({
     const dueDate = parseCalendarDate(range.item.dueDate);
 
     if (!startDate || !dueDate) {
-      toast.error("Không tìm thấy khoảng thời gian của thẻ.");
+      toast.error(tr("calendar.toast.missingCardRange"));
       resetRangeResize();
       return;
     }
@@ -349,7 +350,7 @@ export const useCalendarResize = ({
       const nextStartDate = getDateWithPreservedTime(startDate, targetDay);
 
       if (nextStartDate.getTime() > dueDate.getTime()) {
-        toast.error("Ngày bắt đầu phải trước hoặc bằng ngày hết hạn.");
+        toast.error(tr("calendar.toast.startBeforeOrEqualDue"));
         resetRangeResize();
         return;
       }
@@ -359,7 +360,7 @@ export const useCalendarResize = ({
         return;
       }
 
-      setUpdateSuccessToast("Đã cập nhật khoảng thời gian");
+      setUpdateSuccessToast(tr("calendar.toast.rangeUpdated"));
       scheduleCard(range.item.cardId, { type: "resize", edge: "start", at: nextStartDate.toISOString() });
       return;
     }
@@ -367,7 +368,7 @@ export const useCalendarResize = ({
     const nextDueDate = copyRangeEndToDay(dueDate, targetDay);
 
     if (nextDueDate.getTime() < startDate.getTime()) {
-      toast.error("Ngày hết hạn phải sau hoặc bằng ngày bắt đầu.");
+      toast.error(tr("calendar.toast.dueAfterOrEqualStart"));
       resetRangeResize();
       return;
     }
@@ -377,7 +378,7 @@ export const useCalendarResize = ({
       return;
     }
 
-    setUpdateSuccessToast("Đã cập nhật khoảng thời gian");
+    setUpdateSuccessToast(tr("calendar.toast.rangeUpdated"));
     scheduleCard(range.item.cardId, { type: "resize", edge: "end", at: nextDueDate.toISOString() });
   };
 

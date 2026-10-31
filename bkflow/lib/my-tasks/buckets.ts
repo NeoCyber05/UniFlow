@@ -1,4 +1,6 @@
 import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
+import { tr } from "@/lib/i18n";
+import type { ExtraMessageKey } from "@/lib/i18n/messages/vi-extra";
 
 import {
   addVNDays,
@@ -30,14 +32,29 @@ export type TaskGroup<T> = {
 
 export type AgendaGroupKey = "overdue" | "today" | "tomorrow" | "week" | "later" | "nodue" | "done";
 
+const AGENDA_LABEL_KEYS: Record<AgendaGroupKey, ExtraMessageKey> = {
+  overdue: "agenda.overdue",
+  today: "agenda.today",
+  tomorrow: "agenda.tomorrow",
+  week: "agenda.week",
+  later: "agenda.later",
+  nodue: "agenda.nodue",
+  done: "agenda.done",
+};
+
+export const getAgendaGroupLabel = (key: string): string | undefined => {
+  const msgKey = (AGENDA_LABEL_KEYS as Record<string, ExtraMessageKey | undefined>)[key];
+  return msgKey ? tr(msgKey) : undefined;
+};
+
 export const AGENDA_GROUPS: { key: AgendaGroupKey; label: string; collapsed: boolean }[] = [
-  { key: "overdue", label: "Quá hạn", collapsed: false },
-  { key: "today", label: "Hôm nay", collapsed: false },
-  { key: "tomorrow", label: "Ngày mai", collapsed: false },
-  { key: "week", label: "Tuần này", collapsed: true },
-  { key: "later", label: "Sau đó", collapsed: true },
-  { key: "nodue", label: "Không hạn", collapsed: true },
-  { key: "done", label: "Đã xong hôm nay", collapsed: true },
+  { key: "overdue", get label() { return tr("agenda.overdue"); }, collapsed: false },
+  { key: "today", get label() { return tr("agenda.today"); }, collapsed: false },
+  { key: "tomorrow", get label() { return tr("agenda.tomorrow"); }, collapsed: false },
+  { key: "week", get label() { return tr("agenda.week"); }, collapsed: true },
+  { key: "later", get label() { return tr("agenda.later"); }, collapsed: true },
+  { key: "nodue", get label() { return tr("agenda.nodue"); }, collapsed: true },
+  { key: "done", get label() { return tr("agenda.done"); }, collapsed: true },
 ];
 
 export const byDueAsc = <T extends { dueDate: Date | null; deadlineOn?: string | null }>(tasks: T[]): T[] =>

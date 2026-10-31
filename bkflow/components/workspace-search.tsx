@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { parseRecentItems, rememberSearchItem, type SearchReference, type WorkspaceSearchItem } from "@/lib/search/workspace-search";
 import { useCardModal } from "@/hooks/use-card-modal";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 
 const labels: Record<string, MessageKey> = { card: "search.kindTask", course: "search.kindCourse", board: "search.kindBoard", note: "search.kindNote", page: "search.kindPage" };
 
@@ -115,7 +116,7 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
         <div id={listId} role="listbox" aria-label={tr("search.results")} className="max-h-[50dvh] overflow-y-auto">
           {items.map(item => <a key={`${item.type}:${item.id}`} id={`${listId}-${item.type}-${item.id}`} role="option" aria-selected={chosen === item} href={item.href} onClick={() => remember(item)}
             className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 focus-visible:outline-2 focus-visible:outline-ring ${chosen === item ? "bg-accent text-accent-foreground" : "hover:bg-muted"}`}>
-            <span className="min-w-0 flex-1"><span className="block truncate font-medium">{item.title}</span><span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span></span><span className="shrink-0 text-xs text-muted-foreground">{tr(labels[item.type])}</span>
+            <span className="min-w-0 flex-1"><span className="block truncate font-medium">{item.type === "board" ? formatWorkspaceTitle(item.title) : item.title}</span><span className="block truncate text-xs text-muted-foreground">{item.subtitle}</span></span><span className="shrink-0 text-xs text-muted-foreground">{tr(labels[item.type])}</span>
           </a>)}
           {!items.length && <p role="status" className="py-6 text-center text-muted-foreground">{tr("search.noResults")}</p>}
         </div>

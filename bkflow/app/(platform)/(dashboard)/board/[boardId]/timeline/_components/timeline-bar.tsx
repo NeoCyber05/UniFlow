@@ -7,6 +7,7 @@ import { AlertTriangle } from "lucide-react";
 import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { BoardTimelineCard } from "@/types";
 
@@ -60,7 +61,7 @@ export const DependencyPreviewBadge = ({
         {preview.hasConflict && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
         <span>{preview.unresolvedBlockerCount}</span>
         {preview.hasConflict && (
-          <span className="sr-only">, {preview.conflictCount} xung dot lich phu thuoc</span>
+          <span className="sr-only">, {tr("timeline.dependency.scheduleConflicts", { count: preview.conflictCount })}</span>
         )}
       </span>
     </Hint>

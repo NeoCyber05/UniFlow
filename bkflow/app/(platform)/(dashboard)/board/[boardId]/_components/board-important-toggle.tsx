@@ -6,6 +6,7 @@ import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { useBoardFilters } from "@/hooks/use-board-filters";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /** Lọc thẻ đã gắn ⭐ (trạng thái riêng từng người). Ẩn ở tab không áp bộ lọc. */
@@ -19,14 +20,14 @@ export const BoardImportantToggle = ({ boardId, tone = "dark" }: { boardId: stri
   }
 
   return (
-    <Hint description={importantOnly ? "Đang lọc việc quan trọng" : "Chỉ hiện việc quan trọng"} side="bottom" sideOffset={8}>
+    <Hint description={importantOnly ? tr("boardShell.important.activeHint") : tr("boardShell.important.inactiveHint")} side="bottom" sideOffset={8}>
       <Button
         type="button"
         size="icon"
         variant="transparent"
         onClick={() => toggleImportant(boardId)}
         aria-pressed={importantOnly}
-        aria-label="Lọc việc quan trọng"
+        aria-label={tr("boardShell.important.ariaLabel")}
         className={cn(
           "h-8 w-8 rounded-lg shadow-sm cursor-pointer",
           tone === "dark"

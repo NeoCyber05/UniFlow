@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/popover";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { fetcher } from "@/lib/fetcher";
+import { tr } from "@/lib/i18n";
+import type { BoardMessageKey } from "@/lib/i18n/messages/vi-board";
 import { cn } from "@/lib/utils";
 import type { BoardSearchResponse, BoardSearchResult } from "@/types";
 
@@ -52,37 +54,37 @@ type BoardSearchSurfaceProps = BoardSearchProps & {
 
 const typeMeta = {
   card: {
-    label: "Thẻ",
+    labelKey: "boardShell.search.typeCard",
     icon: FileText,
     tone: "bg-sky-50 text-sky-700",
   },
   description: {
-    label: "Mô tả",
+    labelKey: "boardShell.search.typeDescription",
     icon: Text,
     tone: "bg-violet-50 text-violet-700",
   },
   checklist: {
-    label: "Checklist",
+    labelKey: "boardShell.search.typeChecklist",
     icon: ListChecks,
     tone: "bg-amber-50 text-amber-700",
   },
   "checklist-item": {
-    label: "Mục checklist",
+    labelKey: "boardShell.search.typeChecklistItem",
     icon: CheckSquare,
     tone: "bg-amber-50 text-amber-700",
   },
   comment: {
-    label: "Bình luận",
+    labelKey: "boardShell.search.typeComment",
     icon: MessageSquare,
     tone: "bg-emerald-50 text-emerald-700",
   },
   attachment: {
-    label: "Đính kèm",
+    labelKey: "boardShell.search.typeAttachment",
     icon: Paperclip,
     tone: "bg-rose-50 text-rose-700",
   },
 } satisfies Record<BoardSearchResult["type"], {
-  label: string;
+  labelKey: BoardMessageKey;
   icon: ComponentType<{ className?: string }>;
   tone: string;
 }>;
@@ -169,7 +171,7 @@ const ResultBreadcrumbs = ({ item }: { item: BoardSearchResult }) => {
   if (item.type === "attachment") {
     const isLink = item.attachmentType === "LINK";
     const AttachmentIcon = isLink ? Link2 : File;
-    const label = isLink ? "Liên kết" : "Tệp";
+    const label = isLink ? tr("boardShell.search.attachmentLink") : tr("boardShell.search.attachmentFile");
 
     return (
       <div className="flex items-center text-xs font-medium text-neutral-500">
@@ -228,19 +230,19 @@ const BoardSearchSurface = ({
 
   const statusLabel = useMemo(() => {
     if (trimmedQuery.length < MIN_SEARCH_LENGTH) {
-      return "Nhập ít nhất 1 ký tự để tìm trong bảng.";
+      return tr("boardShell.search.minCharsHint");
     }
 
     if (searchQuery.isLoading || debouncedQuery !== trimmedQuery) {
-      return "Đang tìm...";
+      return tr("boardShell.search.searching");
     }
 
     if (searchQuery.isError) {
-      return "Không tải được kết quả tìm kiếm.";
+      return tr("boardShell.search.loadError");
     }
 
     if (items.length === 0) {
-      return "Không có kết quả phù hợp.";
+      return tr("boardShell.search.noResults");
     }
 
     return null;
@@ -275,7 +277,7 @@ const BoardSearchSurface = ({
             setFocused(false);
           }
         }}
-        placeholder="Tìm thẻ, checklist, bình luận, tệp..."
+        placeholder={tr("boardShell.search.placeholder")}
         className={cn(
           "h-9 rounded-lg border-neutral-200 bg-neutral-100 pl-9 pr-9 text-sm text-neutral-800 placeholder:text-neutral-400 focus-visible:border-violet-500 focus-visible:ring-1 focus-visible:ring-violet-200 focus-visible:bg-white transition-all font-medium",
           compact ? "w-full" : "w-[min(50vw,500px)]",
@@ -289,7 +291,7 @@ const BoardSearchSurface = ({
             setFocused(false);
           }}
           className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-neutral-400 transition hover:bg-neutral-200 hover:text-neutral-700"
-          aria-label="Xóa tìm kiếm"
+          aria-label={tr("boardShell.search.clearAria")}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -314,7 +316,7 @@ const BoardSearchSurface = ({
       >
         <div className="border-b border-neutral-100 px-3 py-2">
           <p className="text-xs font-semibold text-neutral-500">
-            Tìm trong bảng hiện tại
+            {tr("boardShell.search.inCurrentBoard")}
           </p>
         </div>
         {statusLabel ? (
@@ -348,14 +350,14 @@ const BoardSearchSurface = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-x-2">
                       <span className="shrink-0 rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-neutral-500">
-                        {meta.label}
+                        {tr(meta.labelKey)}
                       </span>
                       <p className="truncate text-sm font-semibold text-neutral-900">
                         {item.title}
                       </p>
                       {item.isArchived ? (
                         <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                          Đã lưu trữ
+                          {tr("boardShell.search.archivedBadge")}
                         </span>
                       ) : null}
                     </div>
@@ -391,7 +393,7 @@ export const BoardSearch = ({ boardId }: BoardSearchProps) => {
           <Button
             variant="ghost"
             className="h-8 w-8 p-0 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800 md:hidden"
-            aria-label="Tìm trong bảng"
+            aria-label={tr("boardShell.search.mobileTitle")}
           >
             <Search className="h-4 w-4" />
           </Button>
@@ -400,9 +402,9 @@ export const BoardSearch = ({ boardId }: BoardSearchProps) => {
           className="top-24 w-[calc(100%-2rem)] max-w-lg translate-y-0 border-neutral-200 bg-white p-3 text-neutral-900 shadow-xl"
           showCloseButton={false}
         >
-          <DialogTitle className="sr-only">Tìm trong bảng</DialogTitle>
+          <DialogTitle className="sr-only">{tr("boardShell.search.mobileTitle")}</DialogTitle>
           <DialogDescription className="sr-only">
-            Tìm thẻ, checklist, bình luận và tệp trong bảng hiện tại.
+            {tr("boardShell.search.mobileDesc")}
           </DialogDescription>
           <BoardSearchSurface
             boardId={boardId}

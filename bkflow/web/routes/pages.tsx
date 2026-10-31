@@ -2,6 +2,7 @@ import { Outlet } from "react-router";
 
 import { NotePagesList } from "@/components/notes/note-pages-list";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
+import { tr } from "@/lib/i18n";
 
 import { useTitle } from "../lib/use-title";
 
@@ -16,6 +17,6 @@ export function PagesLayoutRoute() {
 
 // pages/page.tsx (pure client list).
 export default function PagesRoute() {
-  useTitle("Trang của tôi");
+  useTitle(tr("route.titleMyPages"));
   return <NotePagesList />;
 }

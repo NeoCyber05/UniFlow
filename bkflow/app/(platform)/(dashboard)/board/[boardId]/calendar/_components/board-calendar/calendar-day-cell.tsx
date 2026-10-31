@@ -4,17 +4,25 @@ import { memo, type DragEvent, type MouseEvent } from "react";
 import { Plus } from "lucide-react";
 
 import { Hint } from "@/components/hint";
+import { tr, useLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { CalendarOccurrenceItem } from "./calendar-occurrence";
 import {
+  getWeekDays,
   MONTH_RANGE_LANES,
   RANGE_LANE_GAP,
   RANGE_LANE_HEIGHT,
-  WEEK_DAYS,
   WEEK_RANGE_LANES,
 } from "../../_lib/constants";
-import { getDayKey, isSameCalendarMonth, isCalendarToday, formatCalendarDate, getGmt7Parts } from "../../_lib/date-utils";
+import {
+  formatCalendarDate,
+  formatCalendarDayMonth,
+  getDayKey,
+  getGmt7Parts,
+  isCalendarToday,
+  isSameCalendarMonth,
+} from "../../_lib/date-utils";
 import type {
   CalendarMarkerListStyle,
   CalendarOccurrence,
@@ -114,6 +122,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
   onDayDrop,
   onDayDragLeave,
 }: CalendarDayCellProps) {
+  useLocale((s) => s.locale);
   const dayKey = getDayKey(day);
   const dayOccurrences = occurrencesByDay[dayKey] ?? [];
   const dayRangeOccurrences = rangeOccurrencesByDay[dayKey] ?? [];
@@ -151,6 +160,11 @@ export const CalendarDayCell = memo(function CalendarDayCell({
       : { "--pt-desktop": `${pt}px` }
     : undefined;
 
+  const formattedDate = formatCalendarDate(day);
+  const addCardLabel = listsCount === 0
+    ? tr("calendar.cell.createListFirst")
+    : tr("calendar.cell.addCardOnDate", { date: formattedDate });
+
   return (
     <div
       key={dayKey}
@@ -178,7 +192,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
         <div className="flex min-w-0 items-center gap-x-1.5">
           {viewMode === "week" && (
             <span className="truncate text-[11px] font-semibold uppercase text-neutral-500">
-              {WEEK_DAYS[index]}
+              {getWeekDays()[index]}
             </span>
           )}
           <span
@@ -188,10 +202,10 @@ export const CalendarDayCell = memo(function CalendarDayCell({
               isCalendarToday(day) && "bg-violet-600 text-white",
             )}
           >
-            {viewMode === "week" ? formatCalendarDate(day).slice(0, 5) : getGmt7Parts(day).date}
+            {viewMode === "week" ? formatCalendarDayMonth(day) : getGmt7Parts(day).date}
           </span>
         </div>
-        <Hint description={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${formatCalendarDate(day)}`} side="top">
+        <Hint description={addCardLabel} side="top">
           <button
             type="button"
             onClick={(event) => onOpenCreateDialog(day, event)}
@@ -202,7 +216,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
               isUpdatingCardDate ||
               isUpdatingChecklistItemDueDate
             }
-            aria-label={listsCount === 0 ? "Tạo danh sách trước khi thêm thẻ từ lịch" : `Thêm thẻ vào ngày ${formatCalendarDate(day)}`}
+            aria-label={addCardLabel}
             className={cn(
               "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-neutral-400 opacity-100 transition hover:bg-violet-50 hover:text-violet-700 focus-visible:bg-violet-50 focus-visible:text-violet-700 disabled:cursor-not-allowed disabled:opacity-30 md:opacity-0 md:group-hover/day:opacity-100 md:focus-visible:opacity-100",
               isCalendarToday(day) && "text-violet-700",
@@ -266,20 +280,20 @@ export const CalendarDayCell = memo(function CalendarDayCell({
           <button
             type="button"
             onClick={() => onSetExpandedDayKey(dayKey)}
-            aria-label={`Xem thêm ${mobileOverflow} thẻ trong ngày ${formatCalendarDate(day)}`}
+            aria-label={tr("calendar.cell.showMoreCardsAria", { count: mobileOverflow, date: formattedDate })}
             className="flex h-6 w-full items-center rounded-md px-1.5 text-left text-[11px] font-semibold text-neutral-500 transition hover:bg-neutral-100 sm:hidden"
           >
-            +{mobileOverflow} thẻ
+            {tr("calendar.cell.moreCards", { count: mobileOverflow })}
           </button>
         )}
         {desktopOverflow > 0 && (
           <button
             type="button"
             onClick={() => onSetExpandedDayKey(dayKey)}
-            aria-label={`Xem thêm ${desktopOverflow} thẻ trong ngày ${formatCalendarDate(day)}`}
+            aria-label={tr("calendar.cell.showMoreCardsAria", { count: desktopOverflow, date: formattedDate })}
             className="hidden h-6 w-full items-center rounded-md px-1.5 text-left text-[11px] font-semibold text-neutral-500 transition hover:bg-neutral-100 sm:flex"
           >
-            +{desktopOverflow} thẻ
+            {tr("calendar.cell.moreCards", { count: desktopOverflow })}
           </button>
         )}
       </div>

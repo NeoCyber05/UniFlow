@@ -1,6 +1,5 @@
 import { format, formatDistanceToNow, isPast } from "date-fns";
-import { tr } from "@/lib/i18n";
-import { vi } from "date-fns/locale";
+import { getDateFnsLocale, tr, useLocale } from "@/lib/i18n";
 
 import { NotificationItem } from "@/components/notifications/types";
 import { formatNotificationText } from "@/lib/utils";
@@ -15,10 +14,13 @@ const parseNotificationDate = (date: string | null) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const dateTimePattern = () =>
+  useLocale.getState().locale === "ja" ? "yyyy/MM/dd HH:mm" : "dd/MM/yyyy 'lúc' HH:mm";
+
 export const formatNotificationDateTime = (date: string | null) => {
   const parsed = parseNotificationDate(date);
 
-  return parsed ? format(parsed, "dd/MM/yyyy 'lúc' HH:mm", { locale: vi }) : null;
+  return parsed ? format(parsed, dateTimePattern(), { locale: getDateFnsLocale() }) : null;
 };
 
 export const getReminderNotificationDisplay = (
@@ -38,9 +40,10 @@ export const getReminderNotificationDisplay = (
     };
   }
 
+  const locale = getDateFnsLocale();
   const overdue = isPast(dueDate);
-  const timeText = format(dueDate, "HH:mm", { locale: vi });
-  const relative = formatDistanceToNow(dueDate, { locale: vi });
+  const timeText = format(dueDate, "HH:mm", { locale });
+  const relative = formatDistanceToNow(dueDate, { locale });
   const reminderActionText = overdue ? tr("notif.overdueAt") : tr("notif.dueAt");
   const fallbackSubject = overdue ? tr("notif.cardOverdue") : tr("notif.cardDue");
 
@@ -49,7 +52,7 @@ export const getReminderNotificationDisplay = (
     message: cardTitle
       ? tr("notif.cardTemplate", { title: cardTitle, action: reminderActionText, time: timeText })
       : tr("notif.atTime", { subject: fallbackSubject, time: timeText }),
-    dueDateText: format(dueDate, "dd/MM/yyyy 'lúc' HH:mm", { locale: vi }),
+    dueDateText: format(dueDate, dateTimePattern(), { locale }),
     statusText: overdue
       ? tr("notif.overdueBy", { relative })
       : tr("notif.dueIn", { relative }),

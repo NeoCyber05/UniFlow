@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr, useLocale } from "@/lib/i18n";
 import { motion } from "motion/react";
 import { ReducedMotionConfig, spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { ArrowRight } from "lucide-react";
@@ -17,7 +17,15 @@ import { cn } from "@/lib/utils";
 
 import { TaskRow } from "./task-row";
 
-const WEEKDAY_LABELS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+const WEEKDAY_LABEL_KEYS = [
+  "agenda.weekday.0",
+  "agenda.weekday.1",
+  "agenda.weekday.2",
+  "agenda.weekday.3",
+  "agenda.weekday.4",
+  "agenda.weekday.5",
+  "agenda.weekday.6",
+] as const;
 const RING_RADIUS = 30;
 
 type TodoInsightsProps = {
@@ -29,11 +37,13 @@ type TodoInsightsProps = {
 export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => {
   // Ngày (YYYY-MM-DD, giờ VN) đang xem; việc của ngày hiện ngay dưới cụm 7 ngày
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const locale = useLocale((state) => state.locale);
   const setSelectedCourses = useBoardFilters((state) => state.setSelectedCourses);
   const progressSpring = useTempoTransition(spring.progress);
   const barSpring = useTempoTransition(spring.number);
 
   const stats = useMemo(() => {
+    void locale;
     const byKey = Object.fromEntries(groups.map((group) => [group.key, group.tasks])) as Record<string, MyTask[]>;
     const doneToday = byKey.done?.length ?? 0;
     const dueToday = (byKey.overdue?.length ?? 0) + (byKey.today?.length ?? 0);
@@ -52,7 +62,7 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
       const day = addVNDays(today, offset);
       return {
         key: getVNDayKey(day),
-        weekday: WEEKDAY_LABELS[getVNWeekday(day)],
+        weekday: tr(WEEKDAY_LABEL_KEYS[getVNWeekday(day)]),
         date: day.day,
         count: countByDay.get(getVNDayKey(day)) ?? 0,
       };
@@ -73,7 +83,7 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
     const courses = [...courseMap.values()].sort((a, b) => b.count - a.count);
 
     return { doneToday, total: doneToday + dueToday, next, days, courses };
-  }, [groups]);
+  }, [groups, locale]);
 
   const dayTasks = useMemo(() => {
     if (!selectedDayKey) return [];
@@ -128,7 +138,7 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
                   <span className="font-semibold text-neutral-800">{tr("insights.next")}</span> {stats.next.title}
                   {nextDue && (
                     <span className="text-neutral-500">
-                      {" "}· {nextDue.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })}
+                      {" "}· {nextDue.toLocaleTimeString(getIntlLocale(), { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })}
                     </span>
                   )}
                 </p>
@@ -184,18 +194,18 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
           <section className="rounded-2xl border border-white/40 glass-row p-4">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-bold text-neutral-900">
-                Việc ngày {selectedDayKey.slice(8)}/{selectedDayKey.slice(5, 7)}
+                {tr("agenda.tasksOnDay", { day: selectedDayKey.slice(8), month: selectedDayKey.slice(5, 7) })}
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedDayKey(null)}
                 className="text-xs font-semibold text-violet-700 transition-colors duration-200 hover:text-violet-900"
               >
-                Đóng
+                {tr("common.close")}
               </button>
             </div>
             {dayTasks.length === 0 ? (
-              <p className="text-xs text-neutral-500">Không có việc đến hạn ngày này.</p>
+              <p className="text-xs text-neutral-500">{tr("agenda.noTasksOnDay")}</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {dayTasks.map((task) => (

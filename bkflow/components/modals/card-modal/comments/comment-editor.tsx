@@ -1,10 +1,11 @@
-import { BoardMember } from "@/types";
 "use client";
-import { useMemo, useRef, useState } from "react";
 
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { tr, useLocale } from "@/lib/i18n";
+import { BoardMember } from "@/types";
 
 import { MentionSuggestions } from "./mention-suggestions";
 import {
@@ -31,6 +32,7 @@ export const CommentEditor = ({
   onCancel?: () => void;
   boardMembers?: BoardMember[];
 }) => {
+  const locale = useLocale((state) => state.locale);
   const [content, setContent] = useState(initialValue);
   const trimmedContent = content.trim();
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -40,8 +42,11 @@ export const CommentEditor = ({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const suggestionOptions = useMemo(
-    () => getMentionSuggestionOptions(boardMembers, mentionQuery),
-    [boardMembers, mentionQuery],
+    () => {
+      void locale;
+      return getMentionSuggestionOptions(boardMembers, mentionQuery);
+    },
+    [boardMembers, mentionQuery, locale],
   );
 
   const updateMentionState = (value: string, selectionStart: number) => {
@@ -160,7 +165,7 @@ export const CommentEditor = ({
               onClick={onCancel}
               className="h-8 rounded-lg px-3 text-xs text-neutral-500 hover:bg-neutral-100"
             >
-              Hủy
+              {tr("comment.cancel")}
             </Button>
           )}
         </div>

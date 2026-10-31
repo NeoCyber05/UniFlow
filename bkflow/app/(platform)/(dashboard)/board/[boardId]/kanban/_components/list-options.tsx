@@ -20,6 +20,7 @@ import { archiveList } from "@/actions/lists/archive-list";
 import { archiveListCards } from "@/actions/lists/archive-list-cards";
 import { FormSubmit } from "@/components/form/form-submit";
 import { Separator } from "@/components/ui/separator";
+import { tr } from "@/lib/i18n";
 import { useBoardState } from "./board-state-context";
 
 interface ListOptionsProps {
@@ -141,7 +142,7 @@ export const ListOptions = ({
       </PopoverTrigger>
       <PopoverContent className="px-0 pt-3 pb-2 w-60 shadow-lg rounded-xl border border-neutral-200" side="bottom" align="start">
         <div className="text-sm font-semibold text-center text-neutral-700 pb-2 border-b border-neutral-100 mb-2 px-4">
-          Thao tác danh sách
+          {tr("kanban.listOptions.title")}
         </div>
         <PopoverClose ref={closeRef} asChild>
           <Button
@@ -158,7 +159,7 @@ export const ListOptions = ({
           variant="ghost"
         >
           <Plus className="h-4 w-4 text-neutral-400" />
-          Thêm thẻ
+          {tr("kanban.listOptions.addCard")}
         </Button>
         <Button
           onClick={handleRename}
@@ -167,7 +168,7 @@ export const ListOptions = ({
           variant="ghost"
         >
           <Pencil className="h-4 w-4 text-neutral-400" />
-          Đổi tên danh sách
+          {tr("kanban.listOptions.renameList")}
         </Button>
         <form action={onCopy}>
           <input hidden name="id" id="id" value={data.id} readOnly />
@@ -178,7 +179,7 @@ export const ListOptions = ({
             className="w-full h-9 px-4 justify-start font-normal text-sm text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 gap-x-2 rounded-none"
           >
             <Copy className="h-4 w-4 text-neutral-400" />
-            Sao chép danh sách
+            {tr("kanban.listOptions.copyList")}
           </FormSubmit>
         </form>
         <Separator className="my-1" />
@@ -195,7 +196,7 @@ export const ListOptions = ({
           >
             <Archive className="h-4 w-4 text-neutral-400 shrink-0" />
             <span className="text-left whitespace-normal">
-              {isLoadingArchiveList ? "Đang lưu trữ…" : "Lưu trữ danh sách này"}
+              {isLoadingArchiveList ? tr("kanban.listOptions.archiving") : tr("kanban.listOptions.archiveList")}
             </span>
           </FormSubmit>
         </form>
@@ -212,7 +213,7 @@ export const ListOptions = ({
           >
             <Archive className="h-4 w-4 text-neutral-400 shrink-0" />
             <span className="text-left whitespace-normal">
-              {isLoadingArchiveListCards ? "Đang lưu trữ…" : "Lưu trữ tất cả thẻ trong danh sách này"}
+              {isLoadingArchiveListCards ? tr("kanban.listOptions.archiving") : tr("kanban.listOptions.archiveAllCards")}
             </span>
           </FormSubmit>
         </form>

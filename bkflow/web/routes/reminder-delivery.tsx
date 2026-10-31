@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
+import { tr } from "@/lib/i18n";
+
 /** Đích của click thông báo nhắc: máy chủ kiểm quyền rồi mới cho biết board/task, không tin URL từ push. */
 export default function ReminderDeliveryRoute() {
   const { deliveryId } = useParams();
@@ -24,7 +26,7 @@ export default function ReminderDeliveryRoute() {
 
   return (
     <div className="h-full flex items-center justify-center text-muted-foreground">
-      {unavailable ? "Thông báo này không còn khả dụng." : "Đang mở nhắc hạn..."}
+      {unavailable ? tr("reminderPage.unavailable") : tr("reminderPage.opening")}
     </div>
   );
 }

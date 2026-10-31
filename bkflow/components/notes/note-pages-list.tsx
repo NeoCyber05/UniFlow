@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/web/shims/next-link";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useState } from "react";
 import { useAuth } from "@/web/lib/auth";
@@ -57,13 +57,13 @@ export const NotePagesList = () => {
     </header>
     <p className="mb-8 text-sm text-muted-foreground">{tr("notes.list.empty")}</p>
     {!userId ? <p role="status">{tr("notes.list.loginPrompt")}</p> : isPending ? <p role="status" className="text-sm text-muted-foreground">{tr("notes.list.loading")}</p> : isError ? <div role="alert">{tr("notes.list.loadError")}<Button variant="link" onClick={() => void refetch()}>{tr("common.retry")}</Button></div> : data?.length ? <>
-      <div className="mb-2 flex items-center justify-between border-b border-border px-3 pb-2 text-xs font-medium text-muted-foreground"><span>Trang</span><span>{tr("notes.list.recent")}</span></div>
+      <div className="mb-2 flex items-center justify-between border-b border-border px-3 pb-2 text-xs font-medium text-muted-foreground"><span>{tr("notesExtra.pageCol")}</span><span>{tr("notes.list.recent")}</span></div>
       <ul className="space-y-0.5">{data.map(page => <li key={page.id}>
         <Link href={`/pages/${encodeURIComponent(page.id)}`} className="flex h-11 items-center gap-3 rounded-md px-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
           <span aria-hidden="true" className="flex w-5 shrink-0 justify-center text-base">{page.icon ?? <FileText className="size-4 text-muted-foreground" />}</span>
           <span className="min-w-0 flex-1 truncate font-medium">{page.title || tr("notes.page.untitled")}</span>
-          {titleOf(page.parentId) && <span className="hidden max-w-40 truncate text-xs text-muted-foreground sm:inline">trong {titleOf(page.parentId)}</span>}
-          <span className="shrink-0 text-xs text-muted-foreground">{new Date(page.updatedAt).toLocaleDateString("vi-VN", { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}</span>
+          {titleOf(page.parentId) && <span className="hidden max-w-40 truncate text-xs text-muted-foreground sm:inline">{tr("notesExtra.inParent", { title: titleOf(page.parentId)! })}</span>}
+          <span className="shrink-0 text-xs text-muted-foreground">{new Date(page.updatedAt).toLocaleDateString(getIntlLocale(), { day: "numeric", month: "short", timeZone: "Asia/Ho_Chi_Minh" })}</span>
         </Link>
       </li>)}</ul>
       {data.length === 100 && <p className="mt-4 text-sm text-muted-foreground">{tr("notes.list.limitNote")}</p>}

@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { tr } from "@/lib/i18n";
 import { UploadButton } from "@/lib/uploads/uploadthing";
 import { patchBoardCardCount } from "../card-cache-utils";
 
@@ -66,7 +67,7 @@ export const AttachmentAddPopover = ({
       );
       patchBoardCardCount(boardId, cardId, "attachments", 1);
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      toast.success("Đã thêm liên kết đính kèm.", { id: "card-attachment-link" });
+      toast.success(tr("attachment.linkAddedToast"), { id: "card-attachment-link" });
       setIsOpen(false);
     },
     onError: (error) => {
@@ -102,7 +103,7 @@ export const AttachmentAddPopover = ({
       patchBoardCardCount(boardId, cardId, "attachments", attachments.length);
       queryClient.invalidateQueries({ queryKey: ["card", cardId] });
       setUploadProgress(null);
-      toast.success(`Đã tải ${attachments.length} file đính kèm.`, { id: "card-attachment-upload" });
+      toast.success(tr("attachment.filesUploadedToast", { count: attachments.length }), { id: "card-attachment-upload" });
       setIsOpen(false);
     },
     onError: (error) => {
@@ -119,7 +120,7 @@ export const AttachmentAddPopover = ({
     const url = formData.get("url") as string;
     const name = formData.get("name") as string;
 
-    toast.loading("Đang thêm liên kết...", { id: "card-attachment-link" });
+    toast.loading(tr("attachment.addingLinkToast"), { id: "card-attachment-link" });
     executeCreate({
       cardId,
       boardId,
@@ -143,12 +144,13 @@ export const AttachmentAddPopover = ({
       <PopoverContent className="w-80 p-4" align={align} side={side} sideOffset={6}>
         <div className="flex items-center justify-between border-b pb-2 mb-3">
           <span className="text-sm font-semibold text-neutral-700 flex-1 text-center">
-            Đính kèm
+            {tr("attachment.popoverTitle")}
           </span>
           <PopoverClose asChild>
             <Button
               variant="ghost"
               size="icon-sm"
+              aria-label={tr("cardModal.close")}
               className="h-6 w-6 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 cursor-pointer"
               onClick={() => onOpenChange(false)}
             >
@@ -160,7 +162,7 @@ export const AttachmentAddPopover = ({
         {/* Section 1: Attach file */}
         <div className="space-y-1 mb-4">
           <p className="text-sm font-medium text-neutral-700">
-            Đính kèm tệp từ máy tính của bạn
+            {tr("attachment.uploadFromComputer")}
           </p>
           <div className="pt-2">
             <UploadButton
@@ -177,7 +179,7 @@ export const AttachmentAddPopover = ({
               onClientUploadComplete={(files) => {
                 if (files.length === 0) {
                   setUploadProgress(null);
-                  toast.error("Không nhận được thông tin file đã tải.", { id: "card-attachment-upload" });
+                  toast.error(tr("attachment.uploadNoInfoError"), { id: "card-attachment-upload" });
                   return;
                 }
 
@@ -195,14 +197,14 @@ export const AttachmentAddPopover = ({
               }}
               onUploadError={(error) => {
                 setUploadProgress(null);
-                toast.error(error.message || "Tải file thất bại.", { id: "card-attachment-upload" });
+                toast.error(error.message || tr("attachment.uploadFailedError"), { id: "card-attachment-upload" });
               }}
               content={{
                 button({ ready, isUploading }) {
-                  if (!ready) return "Đang chuẩn bị...";
+                  if (!ready) return tr("attachment.uploadPreparing");
                   return isUploading 
-                    ? `Đang tải lên... ${uploadProgress !== null ? `${uploadProgress}%` : ""}`
-                    : "Chọn tệp";
+                    ? tr("attachment.uploading", { progress: uploadProgress !== null ? `${uploadProgress}%` : "" }).trim()
+                    : tr("attachment.chooseFile");
                 },
                 allowedContent() {
                   return null;
@@ -223,12 +225,12 @@ export const AttachmentAddPopover = ({
         <form action={onSubmit} className="space-y-3">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-neutral-700 flex items-center">
-              Dán liên kết <span className="text-rose-500 ml-0.5">*</span>
+              {tr("attachment.pasteLinkLabel")} <span className="text-rose-500 ml-0.5">*</span>
             </label>
             <FormInput
               id="url"
               type="text"
-              placeholder="Tìm các liên kết gần đây hoặc dán một..."
+              placeholder={tr("attachment.pasteLinkPlaceholder")}
               disabled={isCreating}
               errors={fieldErrors}
               className="h-9 rounded-lg bg-white border border-neutral-300"
@@ -237,17 +239,17 @@ export const AttachmentAddPopover = ({
           
           <div className="space-y-1">
             <label className="text-sm font-semibold text-neutral-700">
-              Văn bản hiển thị (không bắt buộc)
+              {tr("attachment.displayTextOptional")}
             </label>
             <FormInput
               id="name"
-              placeholder="Văn bản cần hiển thị"
+              placeholder={tr("attachment.displayTextPlaceholder")}
               disabled={isCreating}
               errors={fieldErrors}
               className="h-9 rounded-lg bg-white border border-neutral-300"
             />
             <p className="text-[11px] text-neutral-500 leading-normal">
-              Cung cấp tiêu đề hoặc mô tả cho liên kết này
+              {tr("attachment.displayTextHint")}
             </p>
           </div>
 
@@ -259,14 +261,14 @@ export const AttachmentAddPopover = ({
                 size="sm"
                 className="h-8 rounded-lg px-3 text-xs text-neutral-500 cursor-pointer"
               >
-                Hủy
+                {tr("attachment.cancel")}
               </Button>
             </PopoverClose>
             <FormSubmit
               disabled={isCreating}
               className="h-8 rounded-lg px-4 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
             >
-              Thêm
+              {tr("attachment.add")}
             </FormSubmit>
           </div>
         </form>

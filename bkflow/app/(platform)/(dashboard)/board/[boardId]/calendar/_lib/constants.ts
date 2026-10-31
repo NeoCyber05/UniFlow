@@ -1,5 +1,29 @@
-export const WEEK_DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-export const DAY_VIEW_LABELS = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
+import { tr } from "@/lib/i18n";
+import type { CalendarMessageKey } from "@/lib/i18n/messages/vi-calendar";
+
+
+const WEEK_DAY_KEYS: readonly CalendarMessageKey[] = [
+  "calendar.weekday.short.mon",
+  "calendar.weekday.short.tue",
+  "calendar.weekday.short.wed",
+  "calendar.weekday.short.thu",
+  "calendar.weekday.short.fri",
+  "calendar.weekday.short.sat",
+  "calendar.weekday.short.sun",
+];
+
+const DAY_VIEW_LABEL_KEYS: readonly CalendarMessageKey[] = [
+  "calendar.weekday.long.sun",
+  "calendar.weekday.long.mon",
+  "calendar.weekday.long.tue",
+  "calendar.weekday.long.wed",
+  "calendar.weekday.long.thu",
+  "calendar.weekday.long.fri",
+  "calendar.weekday.long.sat",
+];
+
+export const getWeekDays = () => WEEK_DAY_KEYS.map((key) => tr(key));
+export const getDayViewLabels = () => DAY_VIEW_LABEL_KEYS.map((key) => tr(key));
 export const GMT7_OFFSET_MINUTES = 7 * 60;
 export const GMT7_OFFSET_MS = GMT7_OFFSET_MINUTES * 60 * 1000;
 export const MINUTES_IN_DAY = 24 * 60;

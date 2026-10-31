@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { QueryClient } from "@tanstack/react-query";
 
 import { CardWithAssignees, ListWithCards } from "@/types";
+import { tr } from "@/lib/i18n";
 import { debugBoardRealtime } from "@/lib/realtime/debug";
 import type {
   AttachmentReorderedPayload,
@@ -576,9 +577,9 @@ export const useBoardRealtimeSync = ({
         if (isCardInDeletedList) {
           cardModal.onClose();
           if (payload.archived) {
-            toast.error("Danh sách chứa thẻ này đã được lưu trữ.");
+            toast.error(tr("kanban.realtime.listArchived"));
           } else {
-            toast.error("Danh sách chứa thẻ này đã bị xóa.");
+            toast.error(tr("kanban.realtime.listDeleted"));
           }
         }
       }
@@ -715,7 +716,7 @@ export const useBoardRealtimeSync = ({
       return;
     }
 
-    toast.error("Bảng này đã bị xóa.");
+    toast.error(tr("kanban.realtime.boardDeleted"));
     cardModal.onClose();
     router.push("/my/today");
   }, [boardId, cardModal, processBoardEvent, router]);
@@ -741,7 +742,7 @@ export const useBoardRealtimeSync = ({
     accessLossHandledRef.current = true;
 
     if (payload.actorUserId !== currentUserId) {
-      toast.error("Bạn không còn quyền truy cập bảng này.");
+      toast.error(tr("kanban.realtime.accessRevoked"));
     }
 
     cardModal.onClose();
@@ -761,7 +762,7 @@ export const useBoardRealtimeSync = ({
       accessLossHandledRef.current = true;
 
       if (payload.actorUserId !== currentUserId) {
-        toast.error("Bạn không còn quyền truy cập bảng này.");
+        toast.error(tr("kanban.realtime.accessRevoked"));
       }
 
       cardModal.onClose();
@@ -784,9 +785,9 @@ export const useBoardRealtimeSync = ({
     if (cardModal.id === payload.cardId) {
       cardModal.onClose();
       if (payload.archived) {
-        toast.error("Thẻ này đã được lưu trữ.");
+        toast.error(tr("kanban.realtime.cardArchived"));
       } else {
-        toast.error("Thẻ này đã bị xóa.");
+        toast.error(tr("kanban.realtime.cardDeleted"));
       }
     }
 

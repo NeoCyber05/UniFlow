@@ -1,6 +1,6 @@
 import { addDays, differenceInCalendarDays, format, isAfter, isBefore, startOfDay } from "date-fns";
-import { vi } from "date-fns/locale";
 
+import { getDateFnsLocale, getIntlLocale, tr } from "@/lib/i18n";
 import type {
   BoardTimelineCard,
   BoardTimelineList,
@@ -127,13 +127,22 @@ export const isCardOverdue = (card: BoardTimelineCard) => {
 };
 
 export const getCardTimelineTitle = (row: ScheduledCard) => {
-  const prefix = row.hasInvalidRange ? "Khoảng ngày cần kiểm tra: " : "";
+  const prefix = row.hasInvalidRange ? tr("timeline.bar.invalidRangePrefix") : "";
 
   if (row.isMilestone) {
-    return `${prefix}${row.card.title} - Mốc ${formatTimelineDate(row.card.startDate ?? row.card.dueDate)}`;
+    return tr("timeline.bar.milestoneTitle", {
+      prefix,
+      title: row.card.title,
+      date: formatTimelineDate(row.card.startDate ?? row.card.dueDate),
+    });
   }
 
-  return `${prefix}${row.card.title} - ${formatTimelineDate(row.card.startDate)} đến ${formatTimelineDate(row.card.dueDate)}`;
+  return tr("timeline.bar.rangeTitle", {
+    prefix,
+    title: row.card.title,
+    start: formatTimelineDate(row.card.startDate),
+    end: formatTimelineDate(row.card.dueDate),
+  });
 };
 
 export const getCardTone = (
@@ -164,19 +173,22 @@ export const getUnscheduledCardMeta = (card: BoardTimelineCard) => {
   const meta = [];
 
   if (card.assignees.length > 0) {
-    meta.push(`${card.assignees.length} thành viên`);
+    meta.push(tr("timeline.meta.members", { count: card.assignees.length }));
   }
 
   if (card.checklistProgress.total > 0) {
-    meta.push(`${card.checklistProgress.completed}/${card.checklistProgress.total} checklist`);
+    meta.push(tr("timeline.meta.checklist", {
+      completed: card.checklistProgress.completed,
+      total: card.checklistProgress.total,
+    }));
   }
 
   if (card.commentCount > 0) {
-    meta.push(`${card.commentCount} bình luận`);
+    meta.push(tr("timeline.meta.comments", { count: card.commentCount }));
   }
 
   if (card.attachmentCount > 0) {
-    meta.push(`${card.attachmentCount} tệp`);
+    meta.push(tr("timeline.meta.attachments", { count: card.attachmentCount }));
   }
 
   return meta;
@@ -241,4 +253,8 @@ export const getTimelineDerivedData = (
 };
 
 export const formatTimelineRangeEndpoint = (date: Date) =>
-  format(date, "dd/MM/yyyy", { locale: vi });
+  format(
+    date,
+    getIntlLocale() === "ja-JP" ? "yyyy/MM/dd" : "dd/MM/yyyy",
+    { locale: getDateFnsLocale() },
+  );

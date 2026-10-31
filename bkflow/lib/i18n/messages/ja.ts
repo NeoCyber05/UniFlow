@@ -1,4 +1,15 @@
 import type { MessageKey } from "./vi";
+import { jaBoard } from "./ja-board";
+import { jaCalendar } from "./ja-calendar";
+import { jaCard } from "./ja-card";
+import { jaCore } from "./ja-core";
+import { jaExtra } from "./ja-extra";
 
-// Người dịch: điền dần các key từ vi.ts. Key thiếu tự động dùng tiếng Việt.
-export const ja: Partial<Record<MessageKey, string>> = {};
+// Bộ từ điển tiếng Nhật đầy đủ 100% khớp với MessageKey của tiếng Việt.
+export const ja: Record<MessageKey, string> = {
+  ...jaCore,
+  ...jaExtra,
+  ...jaBoard,
+  ...jaCalendar,
+  ...jaCard,
+};

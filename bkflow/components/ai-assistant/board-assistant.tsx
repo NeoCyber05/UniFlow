@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { Hint } from "@/components/hint";
 import { useCardModal } from "@/hooks/use-card-modal";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
+import { tr, useLocale } from "@/lib/i18n";
+import type { CardMessageKey } from "@/lib/i18n/messages/vi-card";
 import { cn } from "@/lib/utils";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 
@@ -44,13 +46,13 @@ import { AiLogo } from "./ai-logo";
 import { AssistantMessage } from "./assistant-message";
 
 /**
- * Danh sách câu hỏi gợi ý nhanh hiển thị khi cuộc trò chuyện chưa có tin nhắn nào.
+ * Danh sách key câu hỏi gợi ý nhanh hiển thị khi cuộc trò chuyện chưa có tin nhắn nào.
  */
-const SUGGESTIONS = [
-  "Tạo lịch học 5h sáng mỗi ngày",
-  "Tìm ghi chú về đồ án trong workspace",
-  "Hôm nay có hạn nào từ công việc và ghi chú?",
-  "Đánh dấu xong một bước trong checklist đồ án",
+const SUGGESTION_KEYS: readonly CardMessageKey[] = [
+  "aiAssistant.suggestion1",
+  "aiAssistant.suggestion2",
+  "aiAssistant.suggestion3",
+  "aiAssistant.suggestion4",
 ];
 
 /**
@@ -111,6 +113,7 @@ const clampOffset = (offset: Offset, width: number, height: number): Offset => {
  * @param props.boardId - Định danh bảng làm việc hiện tại.
  */
 export const BoardAssistant = ({ boardId, context: supplied, label, onEditPage }: { boardId?: string; context?: AssistantContext; label?: string; onEditPage?: (text: string) => Promise<boolean | undefined> }) => {
+  useLocale((s) => s.locale);
   const location = useLocation();
   const card = useAssistantTask(state => state.task);
   const navigation = readCalendarLocation(new URLSearchParams(location.search));
@@ -119,7 +122,7 @@ export const BoardAssistant = ({ boardId, context: supplied, label, onEditPage }
     : supplied ?? (boardId ? calendar ? { kind: "calendar", boardId, date: navigation.day, filters: { ...(navigation.filters?.selectedCourseIds.length === 1 && { courseId: navigation.filters.selectedCourseIds[0] }), ...(navigation.filters && { includeCompleted: navigation.filters.completedEnabled }) } } : { kind: "board", boardId } : null);
   if (!context) return null;
   return <AssistantPanel key={assistantContextKey(context)} boardId={card?.boardId ?? boardId} context={context}
-    contextLabel={card ? `Công việc: ${card.title}` : label ?? (calendar ? `Lịch: ${navigation.day}` : "Bảng công việc")}
+    contextLabel={card ? tr("aiAssistant.contextTask", { title: card.title }) : label ?? (calendar ? tr("aiAssistant.contextCalendar", { day: navigation.day }) : tr("aiAssistant.contextBoard"))}
     onEditPage={context.kind === "page" ? onEditPage : undefined} />;
 };
 
@@ -132,7 +135,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   const requested = context.kind === "task" && pendingOpen.openTaskId === context.cardId;
   const [isOpen, setIsOpen] = useState(requested);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [input, setInput] = useState(requested ? "Chia công việc này thành các bước tổng quát." : "");
+  const [input, setInput] = useState(requested ? tr("aiAssistant.defaultChecklistPrompt") : "");
   const [historyLoaded, setHistoryLoaded] = useState(!boardId || context.kind === "page");
   const [enabled, setEnabled] = useState(true);
   const [operation, setOperation] = useState<AiOperation>(requested ? "add_checklist" : "answer");
@@ -140,7 +143,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   useEffect(() => {
     return useAssistantTask.subscribe((request, previous) => {
       if (request.openSequence !== previous.openSequence && activeTaskId && request.openTaskId === activeTaskId) {
-        setIsOpen(true); setOperation("add_checklist"); setInput("Chia công việc này thành các bước tổng quát.");
+        setIsOpen(true); setOperation("add_checklist"); setInput(tr("aiAssistant.defaultChecklistPrompt"));
       }
     });
   }, [activeTaskId]);
@@ -154,7 +157,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   // Ảnh đính kèm (data URL đã nén), gửi cùng câu hỏi
   const [image, setImage] = useState<string | null>(null);
   const attachImage = (file: File) => {
-    void compressImage(file).then(setImage).catch(() => toast.error("Không đọc được ảnh."));
+    void compressImage(file).then(setImage).catch(() => toast.error(tr("aiAssistant.imageReadError")));
   };
   const dragRef = useRef<{ startX: number; startY: number; origin: Offset } | null>(null);
   const handledToolCalls = useRef(new Set<string>());
@@ -186,7 +189,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
       id: `assistant-${assistantContextKey(context)}`,
       transport,
       onError: (chatError) => {
-        toast.error(chatError.message || "Trợ lý AI gặp sự cố.");
+        toast.error(chatError.message || tr("aiAssistant.chatError"));
       },
     });
 
@@ -356,7 +359,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
     }).catch(() => null);
 
     if (!response?.ok) {
-      toast.error("Không xóa được lịch sử trò chuyện.");
+      toast.error(tr("aiAssistant.clearHistoryError"));
       return;
     }
 
@@ -412,11 +415,11 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
 
   if (!isOpen) {
     return (
-      <Hint description="Trợ lý AI quản lý deadline" side="left" sideOffset={10}>
+      <Hint description={tr("aiAssistant.fabHint")} side="left" sideOffset={10}>
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          aria-label="Mở trợ lý AI"
+          aria-label={tr("aiAssistant.openAria")}
           className="fixed bottom-5 right-5 z-[60] flex h-12 items-center justify-center gap-2 rounded-xl border border-violet-700 bg-violet-700 px-3 text-white shadow-sm transition-colors hover:bg-violet-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-500"
         >
           <AiLogo className="size-7" />
@@ -433,7 +436,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
     <div
       ref={panelRef}
       role="dialog"
-      aria-label="Trợ lý AI UniFlow"
+      aria-label={tr("aiAssistant.logoAria")}
       style={{ right: EDGE_GAP + offset.x, bottom: EDGE_GAP + offset.y }}
       className={cn(
         "fixed z-[60] flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
@@ -451,9 +454,9 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
       >
         <AiLogo className="ring-2 ring-white/30 rounded-[9px]" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight">Trợ lý UniFlow</p>
+          <p className="text-sm font-semibold leading-tight">{tr("aiAssistant.panelTitle")}</p>
           <p className="text-[11px] leading-tight text-white/80">
-            {contextLabel}{isBusy ? " · Đang xử lý…" : ""}
+            {contextLabel}{isBusy ? tr("aiAssistant.processingSuffix") : ""}
           </p>
         </div>
         <GripHorizontal className="size-4 text-white/60" />
@@ -461,8 +464,8 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           type="button"
           onClick={handleClear}
           disabled={messages.length === 0}
-          aria-label="Xóa lịch sử trò chuyện"
-          title="Xóa lịch sử trò chuyện"
+          aria-label={tr("aiAssistant.clearHistoryAria")}
+          title={tr("aiAssistant.clearHistoryAria")}
           className="rounded-md p-1.5 hover:bg-white/20 disabled:opacity-40"
         >
           <Trash2 className="size-4" />
@@ -470,8 +473,8 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         <button
           type="button"
           onClick={() => setIsExpanded((value) => !value)}
-          aria-label={isExpanded ? "Thu nhỏ khung chat" : "Mở rộng khung chat"}
-          title={isExpanded ? "Thu nhỏ" : "Mở rộng"}
+          aria-label={isExpanded ? tr("aiAssistant.collapseChatAria") : tr("aiAssistant.expandChatAria")}
+          title={isExpanded ? tr("aiAssistant.collapseTitle") : tr("aiAssistant.expandTitle")}
           className="rounded-md p-1.5 hover:bg-white/20"
         >
           {isExpanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
@@ -479,8 +482,8 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          aria-label="Ẩn trợ lý"
-          title="Ẩn"
+          aria-label={tr("aiAssistant.minimizeAria")}
+          title={tr("aiAssistant.minimizeTitle")}
           className="rounded-md p-1.5 hover:bg-white/20"
         >
           <Minus className="size-4" />
@@ -492,15 +495,14 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <AiLogo className="size-12 shadow-sm" />
             <div className="space-y-1">
-              <p className="text-sm font-semibold">Xin chào! Mình là trợ lý deadline của bạn.</p>
+              <p className="text-sm font-semibold">{tr("aiAssistant.welcomeHeading")}</p>
               <p className="px-4 text-xs text-muted-foreground">
-                Hỏi về việc cần làm, tiến độ bảng, hoặc nhờ mình tạo / gia hạn deadline bằng
-                ngôn ngữ tự nhiên.
+                {tr("aiAssistant.welcomeBody")}
               </p>
             </div>
             {!enabled ? (
               <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-                Chưa cấu hình GEMINI_API_KEY trên máy chủ.
+                {tr("aiAssistant.missingApiKey")}
               </p>
             ) : null}
           </div>
@@ -517,13 +519,13 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
               <span className="size-1.5 animate-bounce rounded-full bg-violet-500 [animation-delay:-0.15s]" />
               <span className="size-1.5 animate-bounce rounded-full bg-violet-500" />
             </span>
-            Đang suy nghĩ…
+            {tr("aiAssistant.thinking")}
           </div>
         ) : null}
 
         {error && !isBusy ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error.message || "Có lỗi xảy ra. Vui lòng thử lại."}
+            {error.message || tr("aiAssistant.genericError")}
           </p>
         ) : null}
       </div>
@@ -531,26 +533,29 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
       <div className="border-t bg-background p-3">
         {/* Trang cần chọn giữa hỏi và sửa; bảng/công việc mặc định hỏi, thay đổi đi qua đề xuất + "Đồng ý". */}
         {onEditPage ? (
-          <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">Yêu cầu
-            <select aria-label="Loại yêu cầu AI" value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
-              <option value="answer">Hỏi về Trang</option>
-              <option value="edit_page">Sửa/bố trí Trang · có hoàn tác</option>
+          <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">{tr("aiAssistant.requestTypeLabel")}
+            <select aria-label={tr("aiAssistant.requestTypeAria")} value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
+              <option value="answer">{tr("aiAssistant.requestAskPage")}</option>
+              <option value="edit_page">{tr("aiAssistant.requestEditPage")}</option>
             </select>
           </label>
         ) : null}
         {messages.length === 0 || (!isBusy && messages.length < 2) ? (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => submit(suggestion)}
-                disabled={isBusy || !enabled}
-                className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition hover:border-violet-400 hover:bg-violet-500/10 disabled:opacity-50"
-              >
-                {suggestion}
-              </button>
-            ))}
+            {SUGGESTION_KEYS.map((key) => {
+              const suggestion = tr(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => submit(suggestion)}
+                  disabled={isBusy || !enabled}
+                  className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition hover:border-violet-400 hover:bg-violet-500/10 disabled:opacity-50"
+                >
+                  {suggestion}
+                </button>
+              );
+            })}
           </div>
         ) : null}
         <form
@@ -562,11 +567,11 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         >
           {image && (
             <div className="relative basis-full pt-1">
-              <img src={image} alt="Ảnh đính kèm" className="h-16 rounded-lg border object-cover" />
+              <img src={image} alt={tr("aiAssistant.attachedImageAlt")} className="h-16 rounded-lg border object-cover" />
               <button
                 type="button"
                 onClick={() => setImage(null)}
-                aria-label="Bỏ ảnh"
+                aria-label={tr("aiAssistant.removeImageAria")}
                 className="absolute left-1 top-2 rounded-full bg-background/90 p-0.5 text-muted-foreground shadow hover:text-rose-600"
               >
                 <X className="size-3.5" />
@@ -577,8 +582,8 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={!enabled || isBusy}
-            aria-label="Đính kèm ảnh"
-            title="Đính kèm ảnh (hoặc dán ảnh vào ô)"
+            aria-label={tr("aiAssistant.attachImageAria")}
+            title={tr("aiAssistant.attachImageTitle")}
             className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-violet-600 disabled:opacity-40"
           >
             <ImagePlus className="size-4" />
@@ -608,14 +613,14 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             rows={1}
             maxLength={2000}
             disabled={!enabled}
-            placeholder={enabled ? "Hỏi về deadline hoặc nhờ tạo nhắc hẹn…" : "Trợ lý AI chưa được cấu hình"}
+            placeholder={enabled ? tr("aiAssistant.inputPlaceholder") : tr("aiAssistant.disabledPlaceholder")}
             className="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground [field-sizing:content]"
           />
           {isBusy ? (
             <button
               type="button"
               onClick={() => stop()}
-              aria-label="Dừng"
+              aria-label={tr("aiAssistant.stopAria")}
               className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background"
             >
               <Square className="size-3.5 fill-current" />
@@ -624,7 +629,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             <button
               type="submit"
               disabled={(!input.trim() && !image) || !enabled}
-              aria-label="Gửi"
+              aria-label={tr("aiAssistant.sendAria")}
               className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-sky-500 text-white disabled:opacity-40"
             >
               <ArrowUp className="size-4" />

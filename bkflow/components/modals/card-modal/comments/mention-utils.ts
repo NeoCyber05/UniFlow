@@ -1,3 +1,4 @@
+import { tr } from "@/lib/i18n";
 import { BoardMember } from "@/types";
 
 export type MentionSuggestionOption = {
@@ -43,14 +44,14 @@ export const getMentionSuggestionOptions = (
   const allOptions: MentionSuggestionOption[] = [
     {
       id: "card",
-      name: "Toàn bộ thành viên trong thẻ",
+      name: tr("comment.mentionAllCard"),
       tag: "@card",
       isSpecial: true,
       image: undefined,
     },
     {
       id: "board",
-      name: "Toàn bộ thành viên trong bảng",
+      name: tr("comment.mentionAllBoard"),
       tag: "@board",
       isSpecial: true,
       image: undefined,

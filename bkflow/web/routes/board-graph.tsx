@@ -6,6 +6,7 @@ import { BoardCardModalFromUrl } from "@/app/(platform)/(dashboard)/board/[board
 import { BoardGraphView } from "@/app/(platform)/(dashboard)/board/[boardId]/graph/_components/board-graph-view";
 import { ViewSkeleton } from "@/components/view-skeleton";
 import type { GraphPlan } from "@/lib/boards/graph-plan";
+import { tr } from "@/lib/i18n";
 
 import { useView, viewQueryOptions } from "../lib/use-view";
 
@@ -27,9 +28,9 @@ export default function BoardGraphRoute() {
   if (isError) {
     return (
       <div role="alert" className="p-4">
-        <p className="text-sm text-neutral-700">Không tải được sơ đồ. Vui lòng thử lại.</p>
+        <p className="text-sm text-neutral-700">{tr("route.graphLoadError")}</p>
         <button type="button" className="mt-3 text-sm underline" onClick={() => void refetch()}>
-          Thử lại
+          {tr("route.retry")}
         </button>
       </div>
     );

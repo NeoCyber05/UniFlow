@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NOTE_PAGES_KEY, useNotePages } from "@/components/notes/note-pages-list";
 import { getSubtreeIds, type PageSummary } from "@/lib/notes/page-tree";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 import { cn } from "@/lib/utils";
 
 const EMOJIS = "📄 📝 📚 📖 🎓 🧠 💡 🔬 🧪 🧮 📐 📊 📈 🗂️ 📌 📎 ✅ ⏰ 📅 🗓️ 🎯 🚀 ⭐ 🔥 💼 🏫 💻 🧑‍💻 🎨 🎵 🌱 ☕ 🏃 💰 ✈️ ❤️".split(" ");
@@ -184,7 +185,7 @@ const ConvertDeadlinesDialog = ({ page, open, onOpenChange }: { page: PageSummar
             <span className="font-medium">{tr("notes.convert.personalBoard")}</span>
             <select value={boardId} onChange={event => { setBoardId(event.target.value); setListId(""); }} className={selectClass}>
               <option value="">{tr("notes.convert.pickBoard")}</option>
-              {data.boards.map(board => <option key={board.id} value={board.id}>{board.title}</option>)}
+              {data.boards.map(board => <option key={board.id} value={board.id}>{formatWorkspaceTitle(board.title)}</option>)}
             </select>
           </label>
           <label className="grid gap-1">
@@ -228,7 +229,7 @@ export const PageActionsMenu = ({ page, className }: { page: PageSummary; classN
     </DropdownMenu>
     <Dialog open={dialog === "icon"} onOpenChange={open => setDialog(open ? "icon" : null)}>
       <DialogContent className="sm:max-w-sm">
-        <DialogHeader><DialogTitle>Icon trang</DialogTitle><DialogDescription>{tr("notes.menu.favoriteHint")}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{tr("notesExtra.pageIconTitle")}</DialogTitle><DialogDescription>{tr("notes.menu.favoriteHint")}</DialogDescription></DialogHeader>
         <IconPicker value={page.icon} onSelect={icon => { void updateMeta(page.id, { icon }); setDialog(null); }} />
       </DialogContent>
     </Dialog>

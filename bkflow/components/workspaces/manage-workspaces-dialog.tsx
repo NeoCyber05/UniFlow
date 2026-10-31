@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useAction } from "@/hooks/use-action";
 import type { CourseColorKey } from "@/lib/courses/course-colors";
 import { MY_TASKS_ROOT_KEY, type SerializedWorkspace } from "@/lib/my-tasks/types";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 
 import { WorkspaceIconPicker } from "./workspace-icon-picker";
 
@@ -107,13 +108,13 @@ export const ManageWorkspacesDialog = ({ open, onOpenChange, workspaces, onCreat
                 </form>
               ) : (
                 <>
-                  <span className="flex-1 truncate text-sm font-medium">{workspace.title}</span>
+                  <span className="flex-1 truncate text-sm font-medium">{formatWorkspaceTitle(workspace.title)}</span>
                   {workspace.isCurrent && <Badge variant="violet" className="px-1.5 py-0 text-[10px]">{tr("workspace.current")}</Badge>}
-                  <Button type="button" variant="ghost" size="icon-sm" aria-label={tr("workspace.edit")} onClick={() => { setEditingId(workspace.id); setEditTitle(workspace.title); }}><Pencil /></Button>
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label={tr("workspace.edit")} onClick={() => { setEditingId(workspace.id); setEditTitle(formatWorkspaceTitle(workspace.title)); }}><Pencil /></Button>
                 </>
               )}
               <ConfirmModal
-                title={tr("workspace.deleteTitle", { title: workspace.title })}
+                title={tr("workspace.deleteTitle", { title: formatWorkspaceTitle(workspace.title) })}
                 description={tr("workspace.deleteDesc")}
                 onConfirm={() => executeDelete({ id: workspace.id })}
                 disabled={isBusy}

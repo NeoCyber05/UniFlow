@@ -22,11 +22,12 @@ import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { getTodayKey } from "@/lib/calendar/calendar-navigation";
+import { tr } from "@/lib/i18n";
 import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
 import {
   MONTH_VISIBLE_DESKTOP,
   MONTH_VISIBLE_MOBILE,
-  WEEK_DAYS,
+  getWeekDays,
   WEEK_VISIBLE_DESKTOP,
   WEEK_VISIBLE_MOBILE,
 } from "../_lib/constants";
@@ -187,8 +188,8 @@ export const BoardCalendarView = ({
     : [];
 
   const monthParts = getGmt7Parts(anchorDate);
-  const monthLabel = `Tháng ${monthParts.month + 1}, ${monthParts.year}`;
-  const weekLabel = `Tuần ${formatCalendarDate(new Date(fromIso))} - ${formatCalendarDate(new Date(Date.parse(toIso) - 1))}`;
+  const monthLabel = tr("calendar.toolbar.monthTitle", { month: monthParts.month + 1, year: monthParts.year });
+  const weekLabel = tr("calendar.toolbar.weekTitle", { from: formatCalendarDate(new Date(fromIso)), to: formatCalendarDate(new Date(Date.parse(toIso) - 1)) });
   const dayLabel = formatDayTitle(anchorDate);
   // Hướng chuyển khoảng xem (tới = 1, lui = -1) để lưới trượt đúng chiều
   const [rangeNav, setRangeNav] = useState({ from: fromIso, mode: viewMode, dir: 0 });
@@ -212,15 +213,15 @@ export const BoardCalendarView = ({
       ? weekLabel
       : dayLabel;
   const previousLabel = viewMode === "month"
-    ? "Tháng trước"
+    ? tr("calendar.toolbar.prevMonth")
     : viewMode === "week"
-      ? "Tuần trước"
-      : "Ngày trước";
+      ? tr("calendar.toolbar.prevWeek")
+      : tr("calendar.toolbar.prevDay");
   const nextLabel = viewMode === "month"
-    ? "Tháng sau"
+    ? tr("calendar.toolbar.nextMonth")
     : viewMode === "week"
-      ? "Tuần sau"
-      : "Ngày sau";
+      ? tr("calendar.toolbar.nextWeek")
+      : tr("calendar.toolbar.nextDay");
   const currentMonth = anchorDate;
   const maxVisibleDesktop = viewMode === "month" ? MONTH_VISIBLE_DESKTOP : WEEK_VISIBLE_DESKTOP;
   const maxVisibleMobile = viewMode === "month" ? MONTH_VISIBLE_MOBILE : WEEK_VISIBLE_MOBILE;
@@ -466,8 +467,8 @@ export const BoardCalendarView = ({
           return {
             key: entry.key,
             cardId: entry.cardId,
-            title: entry.title ?? dayCardMeta[entry.cardId]?.title ?? "Thẻ",
-            label: entry.kind === "checklist-deadline" ? "Hạn checklist" : entry.kind === "deadline" ? "Hạn nộp" : "Bắt đầu",
+            title: entry.title ?? dayCardMeta[entry.cardId]?.title ?? tr("calendar.common.cardFallback"),
+            label: entry.kind === "checklist-deadline" ? tr("calendar.marker.checklistDeadlineShort") : entry.kind === "deadline" ? tr("calendar.occurrence.deadline") : tr("calendar.occurrence.start"),
             minute: hours * 60 + minutes,
             time: formatGmt7Time(at),
             isCompleted: dayCardMeta[entry.cardId]?.isCompleted ?? false,
@@ -579,7 +580,7 @@ export const BoardCalendarView = ({
       <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4" style={grid.gridStyle}>
         {viewMode === "month" && (
           <div className="relative grid [grid-template-columns:var(--cal-cols)] rounded-t-xl border border-b-0 border-neutral-200 bg-neutral-50/80">
-            {WEEK_DAYS.map((day, dayIndex) => (
+            {getWeekDays().map((day, dayIndex) => (
               <div
                 key={day}
                 className={cn(
@@ -728,7 +729,7 @@ export const BoardCalendarView = ({
       isLoading={isUpdatingCardDate}
       onClose={() => setScheduleDialog(null)}
       onSubmit={(cardId: string, intent: ScheduleIntent) => {
-        scheduleCard(cardId, intent, "Đã cập nhật lịch làm");
+        scheduleCard(cardId, intent, tr("calendar.toast.scheduleUpdated"));
       }}
     />
     <CreateCardDialog

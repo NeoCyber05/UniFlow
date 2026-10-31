@@ -6,6 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { useEffect, useState } from "react";
 
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { unsplash } from "@/lib/unsplash/unsplash";
 import { defaultImages } from "@/constants/images";
@@ -112,7 +113,7 @@ export const FormPicker = ({
           >
             <Image
               src={image.urls.thumb}
-              alt="Unsplash image"
+              alt={tr("form.unsplashAlt")}
               className="object-cover rounded-sm"
               fill  
             />

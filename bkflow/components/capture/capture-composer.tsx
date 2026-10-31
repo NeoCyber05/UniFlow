@@ -36,7 +36,8 @@ import type { TaskDeadline } from "@/lib/cards/task-schedule";
 import { formatRepeat } from "@/lib/cards/task-repeat";
 import { getZonedDayKey, zonedTimeToIso, type CaptureIssue } from "@/lib/capture/analysis";
 import { imageItemToCaptureFields } from "@/lib/capture/image-import";
-import { tr } from "@/lib/i18n";
+import { intlDateFormat, tr } from "@/lib/i18n";
+import type { ExtraMessageKey } from "@/lib/i18n/messages/vi-extra";
 import { isStudyPlanRequest } from "@/lib/study-plan/validate";
 import {
   captureReducer,
@@ -60,16 +61,25 @@ import type { CardWithAssignees } from "@/types";
 
 const AI_DEBOUNCE_MS = 900;
 const AI_MIN_TEXT_LENGTH = 6;
-const REMINDER_OPTIONS = [["none", "Không nhắc"], ["0", "Đúng hạn"], ["15", "Trước 15 phút"], ["60", "Trước 1 giờ"], ["1440", "Trước 1 ngày"], ["2880", "Trước 2 ngày"], ["10080", "Trước 1 tuần"]] as const;
-const FIELD_LABELS: Record<keyof CaptureFields, string> = {
-  title: "Tiêu đề",
-  deadline: "Hạn nộp",
-  schedule: "Lịch làm",
-  reminder: "Nhắc",
-  repeat: "Lặp lại",
-  isImportant: "Ưu tiên",
-  courseId: "Danh mục",
-  checklistItems: "Việc cần làm",
+const getReminderOptions = () => [
+  ["none", tr("quickAdd.reminder.none")],
+  ["0", tr("quickAdd.reminder.onTime")],
+  ["15", tr("quickAdd.reminder.m15")],
+  ["60", tr("quickAdd.reminder.h1")],
+  ["1440", tr("quickAdd.reminder.d1")],
+  ["2880", tr("quickAdd.reminder.d2")],
+  ["10080", tr("quickAdd.reminder.w1")],
+] as const;
+
+const FIELD_LABEL_KEYS: Record<keyof CaptureFields, ExtraMessageKey> = {
+  title: "quickAdd.field.title",
+  deadline: "quickAdd.field.deadline",
+  schedule: "quickAdd.field.schedule",
+  reminder: "quickAdd.field.reminder",
+  repeat: "quickAdd.field.repeat",
+  isImportant: "quickAdd.field.important",
+  courseId: "quickAdd.field.course",
+  checklistItems: "quickAdd.field.checklist",
 };
 
 const newId = () => globalThis.crypto.randomUUID();
@@ -84,7 +94,7 @@ const formatInstant = (iso: string) => `${formatDay(getZonedDayKey(iso, CAPTURE_
 
 /** Ngày tuyệt đối có năm và múi giờ, không để người dùng đoán "mai" là ngày nào. */
 export const formatDeadlinePreview = (deadline: TaskDeadline) =>
-  deadline.dueDate ? `${formatInstant(deadline.dueDate)} (GMT+7)` : `${formatDay(deadline.deadlineOn!)} · cả ngày`;
+  deadline.dueDate ? `${formatInstant(deadline.dueDate)} (GMT+7)` : tr("quickAdd.allDayDeadline", { date: formatDay(deadline.deadlineOn!) });
 
 const parserFields = (rawText: string, courses?: QuickAddCourse[], members?: QuickAddMember[]) => {
   const parsed = parseQuickAdd(rawText, { courses, members });
@@ -104,7 +114,8 @@ const initialState = ({ source, courses, members }: { source: CaptureSource | nu
     : state;
 };
 
-const reminderLabel = (value: string) => REMINDER_OPTIONS.find(([key]) => key === value)?.[1] ?? `Trước ${value} phút`;
+const reminderLabel = (value: string) =>
+  getReminderOptions().find(([key]) => key === value)?.[1] ?? tr("quickAdd.reminder.minutesBefore", { minutes: value });
 
 type CaptureComposerProps = {
   /** Bỏ trống → bảng kỳ hiện tại (server tự tìm); khi đó không gọi AI. */
@@ -134,7 +145,7 @@ export const CaptureComposer = ({
   courses,
   members,
   defaults,
-  placeholder = "Thêm việc…",
+  placeholder = tr("quickAdd.placeholder"),
   disabled = false,
   disabledHint,
   trailing,
@@ -211,11 +222,11 @@ export const CaptureComposer = ({
           dispatch({ type: "analysis/success", analysis: result.data });
           return;
         }
-        const error = result.error ?? "AI chưa phân tích được.";
+        const error = result.error ?? tr("quickAdd.aiAnalyzeFailed");
         if (/Chưa cấu hình AI/.test(error)) aiUnavailable.current = true;
         dispatch({ type: "analysis/failure", ...request, error });
       } catch {
-        dispatch({ type: "analysis/failure", ...request, error: "Không kết nối được AI." });
+        dispatch({ type: "analysis/failure", ...request, error: tr("quickAdd.aiConnectFailed") });
       }
     }, AI_DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -278,7 +289,7 @@ export const CaptureComposer = ({
         dispatch({ type: "submit/success", creationId, nextDraftId: newId() });
         setNote("");
         attachImage(null);
-        if (plan.retry) toast.success("Đã lưu lần gửi trước. Nội dung mới vẫn còn trong ô nhập.");
+        if (plan.retry) toast.success(tr("quickAdd.savedPreviousRetry"));
         await queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
         // Môn danh mục/tự đặt vừa thành Course thật → nạp lại danh sách môn
         if (isCourseRef(input.courseId)) void queryClient.invalidateQueries({ queryKey: ["courses"] });
@@ -287,7 +298,7 @@ export const CaptureComposer = ({
       }
 
       const fieldError = result.fieldErrors ? Object.values(result.fieldErrors).flat().find(Boolean) : undefined;
-      const error = result.error ?? (fieldError as string | undefined) ?? "Tạo việc thất bại.";
+      const error = result.error ?? (fieldError as string | undefined) ?? tr("quickAdd.createFailed");
       // Chỉ lỗi server khẳng định chưa lưu mới cho đổi id; còn lại phải retry đúng bản cũ.
       const kind = result.errorCode === CAPTURE_ALREADY_PROCESSED
         ? "conflict"
@@ -297,8 +308,8 @@ export const CaptureComposer = ({
       dispatch({ type: "submit/failure", creationId, error, kind });
       toast.error(error);
     } catch {
-      dispatch({ type: "submit/failure", creationId, error: "Mất kết nối, chưa rõ đã lưu chưa.", kind: "uncertain" });
-      toast.error("Mất kết nối, chưa rõ đã lưu chưa. Bấm Thêm để thử lại.");
+      dispatch({ type: "submit/failure", creationId, error: tr("quickAdd.connectionLostUncertain"), kind: "uncertain" });
+      toast.error(tr("quickAdd.connectionLostRetryToast"));
     } finally {
       submitting.current = false;
       inputRef.current?.focus();
@@ -355,7 +366,7 @@ export const CaptureComposer = ({
       // Lỗi: bấm Thêm đọc lại; sửa chữ thì đọc lại sau debounce
       scannedImage.current = null;
       filledPrompt.current = prompt;
-      toast.error(caught instanceof Error ? caught.message : "Không đọc được ảnh.");
+      toast.error(caught instanceof Error ? caught.message : tr("quickAdd.imageReadFailed"));
     } finally {
       if (seq === scanSeq.current) setReadingImage(false);
     }
@@ -385,8 +396,8 @@ export const CaptureComposer = ({
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        title="Tạo từ ảnh (hoặc dán ảnh vào ô)"
-        aria-label="Tạo việc từ ảnh"
+        title={tr("quickAdd.imageButtonTitle")}
+        aria-label={tr("quickAdd.imageButtonAria")}
         className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-violet-600"
       >
         <ImagePlus className="h-4 w-4" aria-hidden="true" />
@@ -434,17 +445,17 @@ export const CaptureComposer = ({
             exit={{ opacity: 0, scale: scale.icon, transition: popOut }}
             className="relative h-16 w-16 origin-bottom-left"
           >
-            <img src={attachedPreview} alt="Ảnh đính kèm" className="h-full w-full rounded-lg border border-neutral-200 object-cover" />
+            <img src={attachedPreview} alt={tr("quickAdd.attachedImageAlt")} className="h-full w-full rounded-lg border border-neutral-200 object-cover" />
             {readingImage ? (
               <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-white/60 motion-safe:animate-pulse" role="status">
                 <Loader2 className="h-5 w-5 text-violet-600 motion-safe:animate-spin" aria-hidden="true" />
-                <span className="sr-only">AI đang đọc ảnh…</span>
+                <span className="sr-only">{tr("import.reading")}</span>
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => attachImage(null)}
-                aria-label="Bỏ ảnh"
+                aria-label={tr("quickAdd.removeImageAria")}
                 className="absolute -right-1.5 -top-1.5 rounded-full bg-neutral-800 p-0.5 text-white shadow hover:bg-rose-600"
               >
                 <X className="h-3 w-3" aria-hidden="true" />
@@ -455,7 +466,7 @@ export const CaptureComposer = ({
       </AnimatePresence>
     </>
   );
-  const inputPlaceholder = attachedImage ? "Yêu cầu cho AI về ảnh (tuỳ chọn), vd: chỉ lấy lịch thi" : placeholder;
+  const inputPlaceholder = attachedImage ? tr("quickAdd.imagePromptPlaceholder") : placeholder;
   const canSubmit = Boolean(rawText.trim() || attachedImage);
   const busy = isSaving || readingImage;
 
@@ -473,8 +484,9 @@ export const CaptureComposer = ({
   const issues = draft.issues;
   const hasPreview = Boolean(rawText.trim()) || detailsOpen;
   const mustConfirmDates = needsDateConfirmation(draft) && !isDateConfirmed(draft);
-  const hint = members ? "+tên  ! quan trọng  @mai  @t6  @15/10" : "#danh_mục  ! quan trọng  @mai  @t6  @15/10";
+  const hint = members ? tr("quickAdd.syntaxHintTeam") : tr("quickAdd.syntaxHintPersonal");
   const courseLabel = getCourseOptionLabel(courses, values.courseId);
+  const reminderOptions = getReminderOptions();
 
   if (variant === "card") {
     const hasDeadline = Boolean(values.deadline);
@@ -501,7 +513,7 @@ export const CaptureComposer = ({
             placeholder={inputPlaceholder}
             disabled={disabled}
             maxLength={4_000}
-            aria-label="Tên việc"
+            aria-label={tr("quickAdd.taskNameAria")}
             className="w-full bg-transparent text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-400"
           />
           <textarea
@@ -510,21 +522,21 @@ export const CaptureComposer = ({
             onKeyDown={(event) => {
               if (event.key === "Escape") onCancel?.();
             }}
-            placeholder="Mô tả"
+            placeholder={tr("quickAdd.descriptionPlaceholder")}
             rows={2}
             maxLength={2_500}
             disabled={disabled}
-            aria-label="Mô tả"
+            aria-label={tr("quickAdd.descriptionPlaceholder")}
             className="block w-full resize-none bg-transparent text-sm text-neutral-700 outline-none placeholder:text-neutral-400"
           />
           <p className="min-h-4 text-[11px] text-neutral-400">
-            {readingImage ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />AI đang đọc ảnh…</span> : analyzing ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />AI đang đọc…</span> : hint}
+            {readingImage ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />{tr("import.reading")}</span> : analyzing ? <span className="inline-flex items-center gap-1 text-violet-500"><Sparkles className="h-3 w-3 animate-pulse" aria-hidden="true" />{tr("quickAdd.aiReading")}</span> : hint}
           </p>
           <div className="flex flex-wrap items-center gap-1.5 pb-3">
-            <PickerChip icon={CalendarDays} label={values.deadline ? formatDeadlinePreview(values.deadline) : "Hạn nộp"} active={hasDeadline} onClear={() => setField("deadline", null)}>
+            <PickerChip icon={CalendarDays} label={values.deadline ? formatDeadlinePreview(values.deadline) : tr("quickAdd.field.deadline")} active={hasDeadline} onClear={() => setField("deadline", null)}>
               <DeadlineEditor key={`deadline:${JSON.stringify(values.deadline)}`} value={values.deadline} onChange={(value) => setField("deadline", value)} />
             </PickerChip>
-            <PickerChip icon={Repeat} label={values.repeat ? formatRepeat(values.repeat) : "Lặp lại"} active={Boolean(values.repeat)} onClear={() => setField("repeat", null)}>
+            <PickerChip icon={Repeat} label={values.repeat ? formatRepeat(values.repeat) : tr("quickAdd.field.repeat")} active={Boolean(values.repeat)} onClear={() => setField("repeat", null)}>
               <TaskRepeatEditor
                 value={values.repeat}
                 onChange={(value) => {
@@ -541,22 +553,22 @@ export const CaptureComposer = ({
               className={cn(chipClass, values.isImportant && chipActiveClass)}
             >
               <Star className="h-3.5 w-3.5" aria-hidden="true" />
-              Ưu tiên
+              {tr("quickAdd.field.important")}
             </button>
             {hasDeadline && (
-              <PickerChip icon={Bell} label={values.reminder && values.reminder !== "none" ? reminderLabel(values.reminder) : "Nhắc"} active={Boolean(values.reminder && values.reminder !== "none")} onClear={() => setField("reminder", null)}>
-                <select value={values.reminder ?? "none"} onChange={(event) => setField("reminder", event.target.value === "none" ? null : event.target.value)} className={inputClass} aria-label="Nhắc hạn">
-                  {REMINDER_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              <PickerChip icon={Bell} label={values.reminder && values.reminder !== "none" ? reminderLabel(values.reminder) : tr("quickAdd.field.reminder")} active={Boolean(values.reminder && values.reminder !== "none")} onClear={() => setField("reminder", null)}>
+                <select value={values.reminder ?? "none"} onChange={(event) => setField("reminder", event.target.value === "none" ? null : event.target.value)} className={inputClass} aria-label={tr("quickAdd.reminderAria")}>
+                  {reminderOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </PickerChip>
             )}
             {courses && courses.length > 0 && (
-              <PickerChip icon={BookOpen} label={courseLabel ?? "Danh mục"} active={Boolean(courseLabel)} onClear={() => setField("courseId", null)}>
+              <PickerChip icon={BookOpen} label={courseLabel ?? tr("quickAdd.field.course")} active={Boolean(courseLabel)} onClear={() => setField("courseId", null)}>
                 <CoursePicker courses={courses} value={values.courseId} onChange={(value) => setField("courseId", value)} />
               </PickerChip>
             )}
             {values.checklistItems.length > 0 && (
-              <Chip icon={ListChecks} label={`${values.checklistItems.length} việc con`} onClear={() => setField("checklistItems", [])} />
+              <Chip icon={ListChecks} label={tr("quickAdd.subtaskCount", { count: values.checklistItems.length })} onClear={() => setField("checklistItems", [])} />
             )}
             {imageControls}
             {trailing}
@@ -564,12 +576,12 @@ export const CaptureComposer = ({
         </form>
       {state.confirmingSubmit && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-violet-50 px-3 py-1.5 text-xs text-violet-800" role="alert">
-          <span>AI đang phân tích câu này.</span>
+          <span>{tr("quickAdd.aiAnalyzingConfirm")}</span>
           <button type="button" onClick={() => dispatch({ type: "submit/dismiss" })} className="rounded-md px-2 py-0.5 font-medium ring-1 ring-violet-300 hover:bg-white">
-            Chờ AI
+            {tr("quickAdd.waitAi")}
           </button>
           <button type="button" onClick={() => void submit(true)} className="rounded-md bg-violet-600 px-2 py-0.5 font-medium text-white hover:bg-violet-700">
-            Thêm với thông tin hiện có
+            {tr("quickAdd.addWithCurrent")}
           </button>
         </div>
       )}
@@ -579,21 +591,21 @@ export const CaptureComposer = ({
             {issues.map((issue: CaptureIssue, index) => (
               <p key={`${issue.field}-${index}`} className="flex items-start gap-1 text-amber-700">
                 <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
-                <span><strong className="font-medium">{FIELD_LABELS[issue.field]}:</strong> {issue.reason}</span>
+                <span><strong className="font-medium">{tr(FIELD_LABEL_KEYS[issue.field])}:</strong> {issue.reason}</span>
               </p>
             ))}
             {mustConfirmDates && (
               <p className="flex flex-wrap items-center gap-1.5 text-amber-700">
-                Đoạn chọn không rõ gửi lúc nào, ngày trên được tính từ hôm nay.
-                <button type="button" onClick={() => dispatch({ type: "confirm-dates" })} className="rounded-md px-1.5 py-0.5 font-medium ring-1 ring-amber-300 hover:bg-amber-50">Xác nhận ngày</button>
+                {tr("quickAdd.uncertainSourceDate")}
+                <button type="button" onClick={() => dispatch({ type: "confirm-dates" })} className="rounded-md px-1.5 py-0.5 font-medium ring-1 ring-amber-300 hover:bg-amber-50">{tr("quickAdd.confirmDate")}</button>
               </p>
             )}
-            {submission?.status === "uncertain" && <p className="text-rose-600" role="alert">Chưa rõ lần gửi trước đã lưu chưa. Bấm “Thử lại” để gửi lại đúng nội dung đó.</p>}
+            {submission?.status === "uncertain" && <p className="text-rose-600" role="alert">{tr("quickAdd.uncertainSubmitAlert")}</p>}
             {notice && <p className="text-rose-600" role="alert">{notice}</p>}
           </div>
         )}
         <div className="flex items-center justify-end gap-2 border-t border-neutral-100 px-3 py-2.5">
-          <button type="button" onClick={onCancel} className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100">Hủy</button>
+          <button type="button" onClick={onCancel} className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100">{tr("quickAdd.cancel")}</button>
           <button
             type="button"
             disabled={busy || disabled || !canSubmit}
@@ -601,7 +613,7 @@ export const CaptureComposer = ({
             className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {submission?.status === "uncertain" && !attachedImage ? "Thử lại" : "Thêm việc"}
+            {submission?.status === "uncertain" && !attachedImage ? tr("quickAdd.retry") : tr("quickAdd.addTaskButton")}
           </button>
         </div>
       </div>
@@ -634,14 +646,14 @@ export const CaptureComposer = ({
           placeholder={inputPlaceholder}
           disabled={disabled}
           maxLength={4_000}
-          aria-label="Thêm việc nhanh"
+          aria-label={tr("quickAdd.quickAddAria")}
           aria-describedby={notice ? `${detailsId}-notice` : undefined}
           className="min-w-0 flex-1 bg-transparent text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
         />
         {analyzing && (
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-violet-500" role="status">
             <Sparkles className="h-3.5 w-3.5 animate-pulse" aria-hidden="true" />
-            <span className="sr-only sm:not-sr-only">AI đang đọc…</span>
+            <span className="sr-only sm:not-sr-only">{tr("quickAdd.aiReading")}</span>
           </span>
         )}
         {imageControls}
@@ -653,18 +665,18 @@ export const CaptureComposer = ({
               onClick={() => setDetailsOpen((open) => !open)}
               aria-expanded={detailsOpen}
               aria-controls={detailsId}
-              title="Chi tiết"
+              title={tr("quickAdd.details")}
               className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100"
             >
               <ChevronDown className={cn("h-4 w-4 transition-transform", detailsOpen && "rotate-180")} aria-hidden="true" />
-              <span className="sr-only">Chi tiết</span>
+              <span className="sr-only">{tr("quickAdd.details")}</span>
             </button>
             <button
               type="submit"
               disabled={busy}
               className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-60"
             >
-              {submission?.status === "uncertain" && !attachedImage ? "Thử lại" : "Thêm"}
+              {submission?.status === "uncertain" && !attachedImage ? tr("quickAdd.retry") : tr("quickAdd.addShort")}
             </button>
           </>
         )}
@@ -672,12 +684,12 @@ export const CaptureComposer = ({
 
       {state.confirmingSubmit && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-violet-50 px-3 py-1.5 text-xs text-violet-800" role="alert">
-          <span>AI đang phân tích câu này.</span>
+          <span>{tr("quickAdd.aiAnalyzingConfirm")}</span>
           <button type="button" onClick={() => dispatch({ type: "submit/dismiss" })} className="rounded-md px-2 py-0.5 font-medium ring-1 ring-violet-300 hover:bg-white">
-            Chờ AI
+            {tr("quickAdd.waitAi")}
           </button>
           <button type="button" onClick={() => void submit(true)} className="rounded-md bg-violet-600 px-2 py-0.5 font-medium text-white hover:bg-violet-700">
-            Thêm với thông tin hiện có
+            {tr("quickAdd.addWithCurrent")}
           </button>
         </div>
       )}
@@ -689,18 +701,18 @@ export const CaptureComposer = ({
           <>
             {values.title && values.title !== rawText.trim() && <span className="text-neutral-500">“{values.title}”</span>}
             {values.deadline && (
-              <Chip icon={CalendarDays} label={`Hạn ${formatDeadlinePreview(values.deadline)}`} onClear={() => setField("deadline", null)} />
+              <Chip icon={CalendarDays} label={tr("quickAdd.deadlineChip", { deadline: formatDeadlinePreview(values.deadline) })} onClear={() => setField("deadline", null)} />
             )}
             {values.deadline && values.reminder && values.reminder !== "none" && (
               <Chip icon={Bell} label={reminderLabel(values.reminder)} onClear={() => setField("reminder", null)} />
             )}
-            {values.isImportant && <Chip icon={Star} label="Quan trọng" onClear={() => setField("isImportant", false)} />}
+            {values.isImportant && <Chip icon={Star} label={tr("quickAdd.importantChip")} onClear={() => setField("isImportant", false)} />}
             {courseLabel && <Chip icon={BookOpen} label={courseLabel} onClear={() => setField("courseId", null)} />}
             {values.checklistItems.length > 0 && (
-              <Chip icon={ListChecks} label={`${values.checklistItems.length} việc con`} onClear={() => setField("checklistItems", [])} />
+              <Chip icon={ListChecks} label={tr("quickAdd.subtaskCount", { count: values.checklistItems.length })} onClear={() => setField("checklistItems", [])} />
             )}
             {state.analysisError && !analyzing && (
-              <span className="text-neutral-400">AI chưa dùng được — vẫn thêm thủ công được.</span>
+              <span className="text-neutral-400">{tr("quickAdd.aiFallbackManual")}</span>
             )}
           </>
         ) : (
@@ -713,20 +725,20 @@ export const CaptureComposer = ({
           {issues.map((issue: CaptureIssue, index) => (
             <p key={`${issue.field}-${index}`} className="flex items-start gap-1 text-amber-700">
               <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
-              <span><strong className="font-medium">{FIELD_LABELS[issue.field]}:</strong> {issue.reason}</span>
+              <span><strong className="font-medium">{tr(FIELD_LABEL_KEYS[issue.field])}:</strong> {issue.reason}</span>
             </p>
           ))}
           {mustConfirmDates && (
             <p className="flex flex-wrap items-center gap-1.5 text-amber-700">
               <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
-              Đoạn chọn không rõ gửi lúc nào, ngày trên được tính từ hôm nay.
+              {tr("quickAdd.uncertainSourceDate")}
               <button type="button" onClick={() => dispatch({ type: "confirm-dates" })} className="rounded-md px-1.5 py-0.5 font-medium ring-1 ring-amber-300 hover:bg-amber-50">
-                Xác nhận ngày
+                {tr("quickAdd.confirmDate")}
               </button>
             </p>
           )}
           {submission?.status === "uncertain" && (
-            <p className="text-rose-600" role="alert">Chưa rõ lần gửi trước đã lưu chưa. Bấm “Thử lại” để gửi lại đúng nội dung đó.</p>
+            <p className="text-rose-600" role="alert">{tr("quickAdd.uncertainSubmitAlert")}</p>
           )}
           {notice && <p id={`${detailsId}-notice`} className="text-rose-600" role="alert">{notice}</p>}
         </div>
@@ -757,7 +769,7 @@ const Chip = ({
   <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 py-0.5 pl-2 pr-1 font-medium text-violet-700 ring-1 ring-violet-200">
     <Icon className="h-3 w-3" />
     {label}
-    <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-violet-100" aria-label={`Bỏ ${label}`}>
+    <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-violet-100" aria-label={tr("quickAdd.removeChipAria", { label })}>
       <X className="h-2.5 w-2.5" aria-hidden="true" />
     </button>
   </span>
@@ -784,43 +796,44 @@ const CaptureDetails = ({
   setField: <K extends keyof CaptureFields>(key: K, value: CaptureFields[K]) => void;
 }) => {
   const [newItem, setNewItem] = useState("");
+  const reminderOptions = getReminderOptions();
 
   return (
     <div id={id} className="grid gap-2 rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 text-xs text-neutral-600 sm:grid-cols-2">
       <label className="grid gap-1 sm:col-span-2">
-        <span className="font-medium">Tiêu đề</span>
+        <span className="font-medium">{tr("quickAdd.field.title")}</span>
         <input value={values.title} maxLength={200} onChange={(event) => setField("title", event.target.value)} className={inputClass} />
       </label>
 
       <DeadlineEditor key={`deadline:${JSON.stringify(values.deadline)}`} value={values.deadline} onChange={(value) => setField("deadline", value)} />
 
       <label className="grid gap-1">
-        <span className="font-medium">Nhắc hạn</span>
+        <span className="font-medium">{tr("quickAdd.reminderAria")}</span>
         <select
           value={values.reminder ?? "none"}
           disabled={!values.deadline}
           onChange={(event) => setField("reminder", event.target.value === "none" ? null : event.target.value)}
           className={inputClass}
         >
-          {REMINDER_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          {reminderOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        {!values.deadline && <span className="text-neutral-400">Chọn hạn nộp để bật nhắc.</span>}
-        {values.deadline?.deadlineOn && <span className="text-neutral-400">Hạn cả ngày nhắc theo 9:00 sáng ngày hạn.</span>}
+        {!values.deadline && <span className="text-neutral-400">{tr("quickAdd.pickDeadlineForReminder")}</span>}
+        {values.deadline?.deadlineOn && <span className="text-neutral-400">{tr("quickAdd.allDayReminderHint")}</span>}
       </label>
 
       <div className="grid content-start gap-1">
-        <span className="font-medium">Ưu tiên</span>
+        <span className="font-medium">{tr("quickAdd.field.important")}</span>
         <label className="inline-flex items-center gap-1.5">
           <input type="checkbox" checked={values.isImportant} onChange={(event) => setField("isImportant", event.target.checked)} />
-          Quan trọng
+          {tr("quickAdd.importantChip")}
         </label>
       </div>
 
       {courses && courses.length > 0 && (
         <div className="grid content-start gap-1">
-          <span className="font-medium">Danh mục</span>
+          <span className="font-medium">{tr("quickAdd.field.course")}</span>
           <div>
-            <PickerChip icon={BookOpen} label={getCourseOptionLabel(courses, values.courseId) ?? "Chọn danh mục"} active={Boolean(values.courseId)} onClear={() => setField("courseId", null)}>
+            <PickerChip icon={BookOpen} label={getCourseOptionLabel(courses, values.courseId) ?? tr("quickAdd.pickCourse")} active={Boolean(values.courseId)} onClear={() => setField("courseId", null)}>
               <CoursePicker courses={courses} value={values.courseId} onChange={(value) => setField("courseId", value)} />
             </PickerChip>
           </div>
@@ -828,7 +841,7 @@ const CaptureDetails = ({
       )}
 
       <div className="grid gap-1 sm:col-span-2">
-        <span className="font-medium">Việc cần làm</span>
+        <span className="font-medium">{tr("quickAdd.field.checklist")}</span>
         {values.checklistItems.length > 0 && (
           <ul className="grid gap-1">
             {values.checklistItems.map((item, index) => (
@@ -836,7 +849,7 @@ const CaptureDetails = ({
                 <input
                   value={item}
                   maxLength={120}
-                  aria-label={`Việc con ${index + 1}`}
+                  aria-label={tr("quickAdd.subtaskIndexAria", { index: index + 1 })}
                   onChange={(event) => setField("checklistItems", values.checklistItems.map((current, i) => i === index ? event.target.value : current))}
                   className={cn(inputClass, "flex-1")}
                 />
@@ -844,7 +857,7 @@ const CaptureDetails = ({
                   type="button"
                   onClick={() => setField("checklistItems", values.checklistItems.filter((_, i) => i !== index))}
                   className="rounded-md p-1 hover:bg-neutral-200"
-                  aria-label={`Xóa việc con ${index + 1}`}
+                  aria-label={tr("quickAdd.deleteSubtaskIndexAria", { index: index + 1 })}
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
                 </button>
@@ -856,8 +869,8 @@ const CaptureDetails = ({
           <input
             value={newItem}
             maxLength={120}
-            placeholder="Thêm việc con, Enter để thêm"
-            aria-label="Thêm việc con"
+            placeholder={tr("quickAdd.addSubtaskPlaceholder")}
+            aria-label={tr("quickAdd.addSubtaskAria")}
             onChange={(event) => setNewItem(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -874,7 +887,7 @@ const CaptureDetails = ({
 
       {description && (
         <div className="grid gap-1 sm:col-span-2">
-          <span className="font-medium">Mô tả kèm nguồn (sẽ lưu)</span>
+          <span className="font-medium">{tr("quickAdd.sourceDescriptionLabel")}</span>
           <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-white p-2 font-sans text-[11px] text-neutral-500 ring-1 ring-neutral-200">{description}</pre>
         </div>
       )}
@@ -886,15 +899,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const dayKeyFromToday = (days: number) =>
   new Date(Date.parse(`${getZonedDayKey(new Date().toISOString(), CAPTURE_TIME_ZONE)}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 const weekdayOf = (key: string) =>
-  new Intl.DateTimeFormat("vi-VN", { weekday: "short", timeZone: "UTC" }).format(new Date(`${key}T00:00:00Z`));
+  intlDateFormat({ weekday: "short", timeZone: "UTC" }).format(new Date(`${key}T00:00:00Z`));
 
 /** Hôm nay / Ngày mai / Thứ hai tuần tới. */
 const quickDeadlines = () => {
   const todayDow = new Date(`${dayKeyFromToday(0)}T00:00:00Z`).getUTCDay();
   return [
-    { label: "Hôm nay", icon: CalendarCheck, key: dayKeyFromToday(0) },
-    { label: "Ngày mai", icon: CalendarPlus, key: dayKeyFromToday(1) },
-    { label: "Tuần tới", icon: CalendarRange, key: dayKeyFromToday(((8 - todayDow) % 7) || 7) },
+    { label: tr("quickAdd.today"), icon: CalendarCheck, key: dayKeyFromToday(0) },
+    { label: tr("quickAdd.tomorrow"), icon: CalendarPlus, key: dayKeyFromToday(1) },
+    { label: tr("quickAdd.nextWeek"), icon: CalendarRange, key: dayKeyFromToday(((8 - todayDow) % 7) || 7) },
   ];
 };
 
@@ -916,7 +929,7 @@ const DeadlineEditor = ({ value, onChange }: { value: TaskDeadline | null; onCha
     <fieldset className="grid gap-1">
       <div className="-mx-1 mb-1 grid gap-0.5 border-b border-neutral-100 pb-1.5">
         {quickDeadlines().map(({ label, icon: Icon, key }) => (
-          <PopoverClose asChild key={label}>
+          <PopoverClose asChild key={key}>
             <button type="button" onClick={() => update({ ...form, date: key })} className={cn(menuItemClass, form.date === key && "bg-violet-50 text-violet-700")}>
               <Icon className="h-4 w-4 text-neutral-500" aria-hidden="true" />
               <span className="flex-1">{label}</span>
@@ -925,12 +938,12 @@ const DeadlineEditor = ({ value, onChange }: { value: TaskDeadline | null; onCha
           </PopoverClose>
         ))}
       </div>
-      <span className="mb-1 font-medium">Chọn ngày (giờ VN)</span>
+      <span className="mb-1 font-medium">{tr("quickAdd.pickDateVN")}</span>
       <div className="flex flex-wrap gap-1.5">
-        <input type="date" aria-label="Ngày hạn" value={form.date} onChange={(event) => update({ ...form, date: event.target.value })} className={inputClass} />
-        <input type="time" aria-label="Giờ hạn" value={form.time} disabled={!form.date} onChange={(event) => update({ ...form, time: event.target.value })} className={inputClass} />
+        <input type="date" aria-label={tr("quickAdd.dueDateAria")} value={form.date} onChange={(event) => update({ ...form, date: event.target.value })} className={inputClass} />
+        <input type="time" aria-label={tr("quickAdd.dueTimeAria")} value={form.time} disabled={!form.date} onChange={(event) => update({ ...form, time: event.target.value })} className={inputClass} />
       </div>
-      {form.date && !form.time && <span className="text-neutral-400">Không chọn giờ = hạn cả ngày.</span>}
+      {form.date && !form.time && <span className="text-neutral-400">{tr("quickAdd.noTimeMeansAllDay")}</span>}
     </fieldset>
   );
 };
@@ -958,7 +971,7 @@ const PickerChip = ({
         {label}
       </PopoverTrigger>
       {active && (
-        <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-violet-100" aria-label={`Bỏ ${label}`}>
+        <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-violet-100" aria-label={tr("quickAdd.removeChipAria", { label })}>
           <X className="h-3 w-3" aria-hidden="true" />
         </button>
       )}

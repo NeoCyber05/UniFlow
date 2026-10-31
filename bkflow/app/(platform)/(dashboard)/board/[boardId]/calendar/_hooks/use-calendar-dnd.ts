@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
 import type { InputType as SetChecklistItemDueDateInput } from "@/actions/checklists/set-checklist-item-due-date/types";
 import type { ScheduleIntent } from "@/lib/calendar/schedule-command";
+import { tr } from "@/lib/i18n";
 import {
   DAY_VIEW_SLOT_COUNT,
   DAY_VIEW_SLOT_HEIGHT,
@@ -301,7 +302,7 @@ export const useCalendarDnd = ({
     }
 
     if (!isCalendarCardItem(block.item)) {
-      toast.error("Chỉ hỗ trợ di chuyển thẻ trong Day View.");
+      toast.error(tr("calendar.toast.dayViewMoveCardsOnly"));
       resetCalendarDragState();
       return;
     }
@@ -311,14 +312,14 @@ export const useCalendarDnd = ({
       return;
     }
 
-    scheduleCard(block.item.cardId, { type: "move", startsAt: targetDate.toISOString() }, "Đã di chuyển thẻ");
+    scheduleCard(block.item.cardId, { type: "move", startsAt: targetDate.toISOString() }, tr("calendar.toast.cardMoved"));
   };
 
   const updateOccurrenceDate = (occurrence: CalendarOccurrence, targetDay: Date) => {
     const { item } = occurrence;
 
     if (!isCalendarCardItem(item) && !isCalendarChecklistItem(item)) {
-      toast.error("Không thể cập nhật mục lịch này.");
+      toast.error(tr("calendar.toast.cannotUpdateItem"));
       handleOccurrenceDragEnd();
       return;
     }
@@ -354,7 +355,7 @@ export const useCalendarDnd = ({
     if (item.displayKind === "deadline") {
       const deadlineAt = parseCalendarDate(item.deadlineAt ?? item.dueDate);
 
-      setUpdateSuccessToast("Đã dời hạn nộp");
+      setUpdateSuccessToast(tr("calendar.toast.deadlineMoved"));
       executeUpdateCard(item.deadlineOn || !deadlineAt
         ? { id: item.cardId, boardId, deadlineOn: targetDayKey }
         : { id: item.cardId, boardId, dueDate: copyDateToDay(deadlineAt, targetDay) });
@@ -362,7 +363,7 @@ export const useCalendarDnd = ({
     }
 
     if (item.displayKind === "legacy-start" && currentStartDate) {
-      setUpdateSuccessToast("Đã dời ngày bắt đầu");
+      setUpdateSuccessToast(tr("calendar.toast.startDateMoved"));
       executeUpdateCard({ id: item.cardId, boardId, startDate: copyDateToDay(currentStartDate, targetDay) });
       return;
     }
@@ -374,19 +375,19 @@ export const useCalendarDnd = ({
       scheduleCard(
         item.cardId,
         { type: "move", startsAt: new Date(currentStartDate.getTime() + shiftMs).toISOString() },
-        "Đã cập nhật ngày",
+        tr("calendar.toast.dateUpdated"),
       );
       return;
     }
 
-    scheduleCard(item.cardId, { type: "day", day: targetDayKey }, "Đã cập nhật ngày");
+    scheduleCard(item.cardId, { type: "day", day: targetDayKey }, tr("calendar.toast.dateUpdated"));
   };
 
   const scheduleCardForDay = (
     card: SchedulableCardPayload,
     targetDay: Date,
   ) => {
-    scheduleCard(card.cardId, { type: "day", day: getDayKey(targetDay) }, "Đã lên lịch thẻ");
+    scheduleCard(card.cardId, { type: "day", day: getDayKey(targetDay) }, tr("calendar.toast.cardScheduled"));
   };
 
   // Thả vào giờ chưa biết thời lượng: scheduleCard sẽ hỏi giờ kết thúc thay vì tự đặt 30/60 phút.
@@ -394,7 +395,7 @@ export const useCalendarDnd = ({
     card: SchedulableCardPayload,
     startDate: Date,
   ) => {
-    scheduleCard(card.cardId, { type: "time", startsAt: startDate.toISOString() }, "Đã lên lịch thẻ");
+    scheduleCard(card.cardId, { type: "time", startsAt: startDate.toISOString() }, tr("calendar.toast.cardScheduled"));
   };
 
   const handleDayViewBlockDragStart = (
@@ -509,7 +510,7 @@ export const useCalendarDnd = ({
     const occurrence = getDraggedOccurrence(event);
 
     if (!occurrence) {
-      toast.error("Không thể xác định mục lịch đang kéo.");
+      toast.error(tr("calendar.toast.cannotIdentifyDraggedItem"));
       invalidateBoardCalendar();
       resetCalendarDragState();
       return;
@@ -584,7 +585,7 @@ export const useCalendarDnd = ({
       return;
     }
 
-    toast.error("Không thể xác định thẻ đang kéo.");
+    toast.error(tr("calendar.toast.cannotIdentifyDraggedCard"));
     invalidateBoardCalendar();
     resetCalendarDragState();
   };

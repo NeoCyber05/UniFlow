@@ -16,13 +16,14 @@ import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
 import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { PERSONAL_COURSE_FILTER } from "@/lib/boards/board-filters";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { todoTaskMatchesFilters } from "@/lib/my-tasks/todo-filters";
 import { MY_TASKS_ROOT_KEY, type TaskListResponse } from "@/lib/my-tasks/types";
 
 const TODO_GROUPS_STORAGE_KEY = "uniflow:todo-groups";
 
 const formatToday = () =>
-  new Intl.DateTimeFormat("vi-VN", {
+  intlDateFormat({
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -85,7 +86,7 @@ export const BoardTodoView = ({
           <header>
             <h1 className="flex items-center gap-2 text-xl font-bold text-neutral-900">
               <ListTodo className="h-5 w-5 text-violet-600" />
-              Việc cần làm
+              {tr("boardTodo.title")}
             </h1>
             <p className="mt-0.5 text-sm capitalize text-neutral-500">{formatToday()}</p>
           </header>
@@ -106,7 +107,7 @@ export const BoardTodoView = ({
                 <button
                   type="button"
                   onClick={() => setCaptureOpen(true)}
-                  title="Smart Capture: dán ghi chú dài, AI tách thành nhiều việc"
+                  title={tr("boardTodo.smartCaptureTitle")}
                   className="rounded-md p-1 text-violet-500 hover:bg-violet-50"
                 >
                   <Sparkles className="h-4 w-4" />
@@ -117,17 +118,17 @@ export const BoardTodoView = ({
 
           {!hasAnyTask ? (
             <p className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
-              Không có việc nào. Thêm việc ở ô phía trên.
+              {tr("boardTodo.emptyTasks")}
             </p>
           ) : !hasVisibleTask ? (
             <div className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-500">
-              Không có việc khớp bộ lọc.{" "}
+              {tr("boardTodo.emptyFiltered")}{" "}
               <button
                 type="button"
                 onClick={() => clearFilters(boardId)}
                 className="font-medium text-violet-600 hover:underline"
               >
-                Xoá lọc
+                {tr("boardTodo.clearFilters")}
               </button>
             </div>
           ) : (

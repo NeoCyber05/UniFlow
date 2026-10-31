@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { AlarmClock, ArrowDownAZ, ArrowUpAZ } from "lucide-react";
 
+import { tr } from "@/lib/i18n";
+
 import type { OverdueCardInsight } from "../_types";
 import { formatDate } from "../_lib/chart-formatters";
 import { CardInsightButton } from "./card-insight-button";
@@ -28,8 +30,8 @@ export const OverdueCardsPanel = ({
 
   return (
     <ChartPanel
-      title={`Thẻ quá hạn (${sortedOverdueCards.length})`}
-      description="Bấm vào thẻ để mở chi tiết"
+      title={tr("analytics.overdue.title", { count: sortedOverdueCards.length })}
+      description={tr("analytics.overdue.desc")}
       icon={AlarmClock}
       action={
         sortedOverdueCards.length > 1 && (
@@ -37,14 +39,14 @@ export const OverdueCardsPanel = ({
             type="button"
             onClick={() => setOverdueSort((current) => (current === "asc" ? "desc" : "asc"))}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-800 shadow-xs cursor-pointer"
-            title={overdueSort === "asc" ? "Đổi sang hạn xa nhất trước" : "Đổi sang hạn gần nhất trước"}
+            title={overdueSort === "asc" ? tr("analytics.overdue.sortToNewestTitle") : tr("analytics.overdue.sortToOldestTitle")}
           >
             {overdueSort === "asc" ? (
               <ArrowUpAZ className="h-3.5 w-3.5 text-neutral-400" />
             ) : (
               <ArrowDownAZ className="h-3.5 w-3.5 text-neutral-400" />
             )}
-            {overdueSort === "asc" ? "Cũ nhất" : "Mới nhất"}
+            {overdueSort === "asc" ? tr("analytics.overdue.oldest") : tr("analytics.overdue.newest")}
           </button>
         )
       }
@@ -55,12 +57,16 @@ export const OverdueCardsPanel = ({
             <CardInsightButton
               key={card.id}
               card={card}
-              meta={<span className="font-bold text-rose-500">Hạn {formatDate(card.dueDate)}</span>}
+              meta={
+                <span className="font-bold text-rose-500">
+                  {tr("analytics.overdue.dueMeta", { date: formatDate(card.dueDate) })}
+                </span>
+              }
             />
           ))}
         </div>
       ) : (
-        <EmptyState label="Hiện không có thẻ nào quá hạn." />
+        <EmptyState label={tr("analytics.overdue.empty")} />
       )}
     </ChartPanel>
   );

@@ -8,6 +8,7 @@ import { getCalendarRange, getTodayKey, readCalendarLocation } from "@/lib/calen
 import { buildDayTimeline } from "@/lib/calendar/day-timeline";
 import { toCalendarDisplayItems } from "@/lib/calendar/schedule-adapter";
 import { fetcher } from "@/lib/fetcher";
+import { getIntlLocale, useLocale } from "@/lib/i18n";
 import {
   boardFiltersAreActive,
   calendarItemMatchesBoardFilters,
@@ -160,11 +161,12 @@ export const useCalendarQuery = ({
       unscheduledCardMatchesBoardFilters(card, filters, currentBoardMemberId),
     );
   }, [currentBoardMemberId, filters, unscheduledCards]);
+  const locale = useLocale((s) => s.locale);
   const occurrences = useMemo(() => getOccurrences(items), [items]);
   const ranges = useMemo(() => getRanges(items), [items]);
   const dayViewBlocks = useMemo(
-    () => getDayViewBlocks(items, anchorDate),
-    [anchorDate, items],
+    () => (void locale, getDayViewBlocks(items, anchorDate)),
+    [anchorDate, items, locale],
   );
   const dayViewBlocksById = useMemo(() => {
     return dayViewBlocks.reduce<Record<string, DayViewBlock>>((acc, block) => {
@@ -210,8 +212,8 @@ export const useCalendarQuery = ({
     }, {});
   }, [days]);
   const rangeSegmentsByWeek = useMemo(
-    () => getRangeSegmentsForWeeks(ranges, weekRows),
-    [ranges, weekRows],
+    () => (void locale, getRangeSegmentsForWeeks(ranges, weekRows)),
+    [ranges, weekRows, locale],
   );
   const rangeOccurrencesByDay = useMemo(
     () => getRangeOccurrencesByDay(ranges, days),
@@ -225,6 +227,7 @@ export const useCalendarQuery = ({
     }, {});
   }, [occurrences]);
   const occurrencesByDay = useMemo(() => {
+    void locale;
     const grouped: Record<string, CalendarOccurrence[]> = {};
     for (const occurrence of occurrences) {
       const key = getDayKey(occurrence.date);
@@ -248,12 +251,12 @@ export const useCalendarQuery = ({
           return left.item.isCompleted ? 1 : -1;
         }
 
-        return left.item.title.localeCompare(right.item.title, "vi");
+        return left.item.title.localeCompare(right.item.title, getIntlLocale());
       });
     }
 
     return grouped;
-  }, [occurrences]);
+  }, [occurrences, locale]);
 
   return {
     fromIso,

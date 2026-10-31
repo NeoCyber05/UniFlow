@@ -16,10 +16,14 @@ import {
   type TaskDatesForm,
   type TaskDatesPatch,
 } from "@/lib/cards/task-dates-form";
+import { tr } from "@/lib/i18n";
+import type { CardMessageKey } from "@/lib/i18n/messages/vi-card";
 import { addVNDays, getVNDay, getVNDayKey } from "@/lib/my-tasks/vn-day";
 import { cn } from "@/lib/utils";
 import { getDefaultReminder } from "@/web/lib/local-prefs";
 import type { CardWithList } from "@/types";
+
+import { translateTaskDateMessage } from "./metadata-utils";
 
 interface CardDatePopoverProps {
   open: boolean;
@@ -36,7 +40,11 @@ const inputClass = "h-9 w-full rounded-lg border border-neutral-200 bg-white px-
 const chipClass = "h-6 cursor-pointer rounded-full border border-neutral-200 bg-white px-2.5 text-[11px] font-medium text-neutral-600 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-50";
 const ghostButtonClass = "h-8 rounded-lg px-3 text-xs text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700";
 const dayKeyFromToday = (offset: number) => getVNDayKey(addVNDays(getVNDay(new Date()), offset));
-const DAY_CHIPS = [["Hôm nay", 0], ["Ngày mai", 1], ["Tuần sau", 7]] as const;
+const DAY_CHIPS: ReadonlyArray<readonly [CardMessageKey, number]> = [
+  ["cardMeta.today", 0],
+  ["cardMeta.tomorrow", 1],
+  ["cardMeta.nextWeek", 7],
+];
 const TIME_CHIPS = ["09:00", "12:00", "23:59"] as const;
 
 const Section = ({ icon: Icon, title, tone, action, children }: {
@@ -101,13 +109,13 @@ export const CardDatePopover = ({
       <PopoverContent align="start" className="z-[9999] w-[360px] gap-0 rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" sideOffset={6}>
         <div className="flex items-start justify-between gap-3 border-b border-neutral-100 px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-neutral-800">Hạn nộp và lịch làm</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-neutral-400">Hạn nộp là mốc cuối cùng; lịch làm là lúc bạn dự định bắt tay vào việc.</p>
+            <p className="text-sm font-semibold text-neutral-800">{tr("cardMeta.datePopoverTitle")}</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-neutral-400">{tr("cardMeta.datePopoverDesc")}</p>
           </div>
           <button
             type="button"
             onClick={() => handleOpenChange(false)}
-            aria-label="Đóng"
+            aria-label={tr("cardModal.close")}
             className="cursor-pointer rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
           >
             <X className="h-4 w-4" />
@@ -116,7 +124,7 @@ export const CardDatePopover = ({
         <form onSubmit={handleSubmit} className="space-y-3 p-4">
           <Section
             icon={Flag}
-            title="Hạn nộp"
+            title={tr("cardMeta.deadlineSection")}
             tone="bg-rose-100 text-rose-600"
             action={form.deadlineDate && (
               <button
@@ -124,17 +132,17 @@ export const CardDatePopover = ({
                 onClick={() => patchForm({ deadlineDate: "", deadlineTime: "", reminder: "none" })}
                 className="cursor-pointer text-[11px] text-neutral-400 transition-colors hover:text-rose-600"
               >
-                Xóa hạn
+                {tr("cardMeta.removeDeadline")}
               </button>
             )}
           >
             <div className="grid grid-cols-[1fr_7rem] gap-2">
-              <input aria-label="Ngày hạn nộp" type="date" value={form.deadlineDate} onChange={set("deadlineDate")} disabled={isLoadingUpdate} className={inputClass} />
-              <input aria-label="Giờ hạn nộp (để trống nếu chỉ có ngày)" type="time" value={form.deadlineTime} onChange={set("deadlineTime")} disabled={isLoadingUpdate || !form.deadlineDate} className={inputClass} />
+              <input aria-label={tr("cardMeta.deadlineDateAria")} type="date" value={form.deadlineDate} onChange={set("deadlineDate")} disabled={isLoadingUpdate} className={inputClass} />
+              <input aria-label={tr("cardMeta.deadlineTimeAria")} type="time" value={form.deadlineTime} onChange={set("deadlineTime")} disabled={isLoadingUpdate || !form.deadlineDate} className={inputClass} />
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {DAY_CHIPS.map(([label, offset]) => (
-                <button key={label} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ deadlineDate: dayKeyFromToday(offset) })} className={chipClass}>{label}</button>
+              {DAY_CHIPS.map(([labelKey, offset]) => (
+                <button key={labelKey} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ deadlineDate: dayKeyFromToday(offset) })} className={chipClass}>{tr(labelKey)}</button>
               ))}
               <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-neutral-200" />
               {TIME_CHIPS.map((time) => (
@@ -143,56 +151,56 @@ export const CardDatePopover = ({
             </div>
           </Section>
 
-          <Section icon={CalendarClock} title="Lịch làm" tone="bg-violet-100 text-violet-600">
+          <Section icon={CalendarClock} title={tr("cardMeta.scheduleSection")} tone="bg-violet-100 text-violet-600">
             <div className="grid grid-cols-[1fr_7rem] gap-2">
-              <input aria-label="Ngày bắt đầu làm" type="date" value={form.scheduleStartDate} onChange={set("scheduleStartDate")} disabled={isLoadingUpdate} className={inputClass} />
-              <input aria-label="Giờ bắt đầu làm" type="time" value={form.scheduleStartTime} onChange={set("scheduleStartTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
+              <input aria-label={tr("cardMeta.scheduleStartDateAria")} type="date" value={form.scheduleStartDate} onChange={set("scheduleStartDate")} disabled={isLoadingUpdate} className={inputClass} />
+              <input aria-label={tr("cardMeta.scheduleStartTimeAria")} type="time" value={form.scheduleStartTime} onChange={set("scheduleStartTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
             </div>
             <div className="grid grid-cols-[1fr_7rem] gap-2">
-              <input aria-label="Ngày kết thúc làm (để trống nếu cùng ngày)" type="date" value={form.scheduleEndDate} onChange={set("scheduleEndDate")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
-              <input aria-label="Giờ kết thúc làm" type="time" value={form.scheduleEndTime} onChange={set("scheduleEndTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
+              <input aria-label={tr("cardMeta.scheduleEndDateAria")} type="date" value={form.scheduleEndDate} onChange={set("scheduleEndDate")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
+              <input aria-label={tr("cardMeta.scheduleEndTimeAria")} type="time" value={form.scheduleEndTime} onChange={set("scheduleEndTime")} disabled={isLoadingUpdate || !hasSchedule} className={inputClass} />
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {DAY_CHIPS.slice(0, 2).map(([label, offset]) => (
-                <button key={label} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ scheduleStartDate: dayKeyFromToday(offset) })} className={chipClass}>{label}</button>
+              {DAY_CHIPS.slice(0, 2).map(([labelKey, offset]) => (
+                <button key={labelKey} type="button" disabled={isLoadingUpdate} onClick={() => patchForm({ scheduleStartDate: dayKeyFromToday(offset) })} className={chipClass}>{tr(labelKey)}</button>
               ))}
-              <p className="ml-auto text-[11px] text-neutral-400">Chưa biết giờ thì bỏ trống.</p>
+              <p className="ml-auto text-[11px] text-neutral-400">{tr("cardMeta.scheduleTimeHint")}</p>
             </div>
           </Section>
 
-          <Section icon={Bell} title="Nhắc nhở" tone="bg-amber-100 text-amber-600">
+          <Section icon={Bell} title={tr("cardMeta.reminderSection")} tone="bg-amber-100 text-amber-600">
             <select
-              aria-label="Thiết lập nhắc nhở"
+              aria-label={tr("cardMeta.reminderAria")}
               value={form.reminder}
               onChange={set("reminder")}
               disabled={isLoadingUpdate || !form.deadlineDate}
               className={cn(inputClass, "cursor-pointer")}
             >
-              <option value="none">Không có</option>
-              <option value="0">Vào thời điểm hết hạn</option>
-              <option value="5">5 phút trước</option>
-              <option value="10">10 phút trước</option>
-              <option value="15">15 phút trước</option>
-              <option value="30">30 phút trước</option>
-              <option value="60">1 giờ trước</option>
-              <option value="120">2 giờ trước</option>
-              <option value="1440">1 ngày trước</option>
-              <option value="2880">2 ngày trước</option>
-              <option value="10080">1 tuần trước</option>
-              <option value="20160">2 tuần trước</option>
+              <option value="none">{tr("cardMeta.reminderNone")}</option>
+              <option value="0">{tr("cardMeta.reminderAtDue")}</option>
+              <option value="5">{tr("cardMeta.reminder5m")}</option>
+              <option value="10">{tr("cardMeta.reminder10m")}</option>
+              <option value="15">{tr("cardMeta.reminder15m")}</option>
+              <option value="30">{tr("cardMeta.reminder30m")}</option>
+              <option value="60">{tr("cardMeta.reminder1h")}</option>
+              <option value="120">{tr("cardMeta.reminder2h")}</option>
+              <option value="1440">{tr("cardMeta.reminder1d")}</option>
+              <option value="2880">{tr("cardMeta.reminder2d")}</option>
+              <option value="10080">{tr("cardMeta.reminder1w")}</option>
+              <option value="20160">{tr("cardMeta.reminder2w")}</option>
             </select>
-            {!form.deadlineDate && <p className="text-[11px] text-neutral-400">Đặt hạn nộp để bật nhắc nhở.</p>}
+            {!form.deadlineDate && <p className="text-[11px] text-neutral-400">{tr("cardMeta.reminderNeedDeadlineHint")}</p>}
             {form.deadlineDate && !form.deadlineTime && (
-              <p className="text-[11px] text-neutral-400">Hạn chỉ có ngày: nhắc tính từ 09:00 ngày hạn.</p>
+              <p className="text-[11px] text-neutral-400">{tr("cardMeta.reminderDateOnlyHint")}</p>
             )}
             <DesktopReminderControl />
           </Section>
 
           {"error" in preview && (
-            <p role="alert" className="text-xs text-red-600">{preview.error}</p>
+            <p role="alert" className="text-xs text-red-600">{translateTaskDateMessage(preview.error)}</p>
           )}
           {"warning" in preview && preview.warning && (
-            <p role="status" className="text-xs text-amber-600">{preview.warning}</p>
+            <p role="status" className="text-xs text-amber-600">{translateTaskDateMessage(preview.warning)}</p>
           )}
 
           <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
@@ -202,16 +210,16 @@ export const CardDatePopover = ({
               disabled={isLoadingUpdate || "error" in preview}
               className="h-8 rounded-lg bg-violet-600 px-5 text-xs text-white hover:bg-violet-700"
             >
-              Lưu
+              {tr("cardMeta.save")}
             </Button>
             {Boolean(data.scheduledOn || data.scheduledStartAt) && (
               <Button type="button" size="sm" variant="ghost" disabled={isLoadingUpdate} onClick={onClearSchedule} className={ghostButtonClass}>
-                Bỏ lịch làm (giữ hạn)
+                {tr("cardMeta.clearScheduleKeepDeadline")}
               </Button>
             )}
             {data.startDate && (
               <Button type="button" size="sm" variant="ghost" disabled={isLoadingUpdate} onClick={onClearLegacyStart} className={ghostButtonClass}>
-                Xóa mốc bắt đầu cũ
+                {tr("cardMeta.clearLegacyStart")}
               </Button>
             )}
           </div>

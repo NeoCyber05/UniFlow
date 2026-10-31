@@ -3,8 +3,8 @@
 import { ChevronDown } from "lucide-react";
 
 import type { CardWithList } from "@/types";
-
 import type { TaskDatesPatch } from "@/lib/cards/task-dates-form";
+import { tr } from "@/lib/i18n";
 
 import { CardDatePopover } from "./card-date-popover";
 
@@ -42,7 +42,7 @@ export const CardDateStatusColumn = ({
   return (
     <div className="flex flex-col gap-y-1.5">
       <span className="text-xs font-semibold text-neutral-600 pl-0.5">
-        Hạn và lịch
+        {tr("cardMeta.datesAndSchedule")}
       </span>
       <div className="flex items-center gap-x-2">
         {canEdit ? (
@@ -63,15 +63,15 @@ export const CardDateStatusColumn = ({
 
                 {data.isCompleted ? (
                   <span className="shrink-0 bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                    Hoàn thành
+                    {tr("cardMeta.statusCompleted")}
                   </span>
                 ) : status === "overdue" ? (
                   <span className="shrink-0 bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                    Quá hạn
+                    {tr("cardMeta.statusOverdue")}
                   </span>
                 ) : status === "warning" ? (
                   <span className="shrink-0 bg-yellow-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                    Sắp hết hạn
+                    {tr("cardMeta.statusDueSoon")}
                   </span>
                 ) : null}
 

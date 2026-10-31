@@ -9,6 +9,7 @@ import {
   useRealtimeInvalidation,
 } from "@/hooks/use-realtime-channel";
 import { useCardModal } from "@/hooks/use-card-modal";
+import { tr } from "@/lib/i18n";
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
 import { REALTIME_EVENTS } from "@/lib/realtime/events";
@@ -95,8 +96,8 @@ export const CardRealtimeSync = ({
 
     toast.error(
       payload.archived
-        ? "Thẻ này đã được lưu trữ."
-        : "Thẻ này đã bị xóa."
+        ? tr("cardModal.realtimeArchived")
+        : tr("cardModal.realtimeDeleted")
     );
     cardModal.onClose();
   }, [cardId, cardModal, user]);

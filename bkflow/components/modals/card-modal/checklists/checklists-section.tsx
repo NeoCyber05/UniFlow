@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAction } from "@/hooks/use-action";
 import { patchTaskListData } from "@/hooks/use-my-task-mutations";
+import { tr } from "@/lib/i18n";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { ChecklistItemWithAssignee } from "@/types";
 import { cn } from "@/lib/utils";
@@ -158,7 +159,7 @@ export const ChecklistsSection = ({
     rollbackLocalChecklists();
     toast.error(
       errorCode === "CHECKLIST_CONFLICT"
-        ? "Danh sách đã thay đổi ở nơi khác, đã tải lại. Hãy sắp xếp lại."
+        ? tr("checklist.conflictError")
         : error,
     );
     invalidateCard();
@@ -180,7 +181,7 @@ export const ChecklistsSection = ({
 
   const { execute: executeDeleteChecklist } = useAction(deleteChecklist, {
     onSuccess: (data) => {
-      toast.success(`Đã xoá danh sách "${data.title}"`);
+      toast.success(tr("checklist.deletedToast", { title: data.title }));
       invalidateCard();
     },
     onError: (error) => toast.error(error),
@@ -356,27 +357,12 @@ export const ChecklistsSection = ({
     [cardDueDate],
   );
 
-  const getChecklistDueDateRangeError = () => {
-    if (!parentCardDueDate) {
-      return "Hạn checklist phải trước hoặc bằng hạn chót của thẻ.";
-    }
-
-    return `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${parentCardDueDate.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })}).`;
-  };
-
   const rollbackLocalChecklists = () => {
     if (mutationRollbackRef.current) {
       setLocalChecklists(mutationRollbackRef.current);
       mutationRollbackRef.current = null;
     }
   };
-  void getChecklistDueDateRangeError;
 
   const handleRenameChecklist = async (checklistId: string, title: string) => {
     setChecklistPending(checklistId, true);
@@ -743,7 +729,7 @@ export const ChecklistsSection = ({
                     className="mt-1 space-y-3"
                   >
                     <Input
-                      placeholder="Thêm một mục"
+                      placeholder={tr("checklist.addItemPlaceholder")}
                       value={newItemTitle}
                       onChange={(event) => setNewItemTitle(event.target.value)}
                       onKeyDown={(event) => {
@@ -762,7 +748,7 @@ export const ChecklistsSection = ({
                         disabled={isCreatingItem}
                         className="h-8 rounded-lg bg-violet-600 px-4 text-xs font-semibold text-white hover:bg-violet-700"
                       >
-                        Thêm
+                        {tr("checklist.add")}
                       </Button>
                       <Button
                         type="button"
@@ -773,7 +759,7 @@ export const ChecklistsSection = ({
                         }}
                         className="h-8 rounded-lg px-3 text-xs font-semibold text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
                       >
-                        Huỷ
+                        {tr("checklist.cancel")}
                       </Button>
                     </div>
                   </form>
@@ -786,7 +772,7 @@ export const ChecklistsSection = ({
                     variant="outline"
                     className="mt-1 h-8.5 rounded-lg border-neutral-200 px-3 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
                   >
-                    Thêm một mục
+                    {tr("checklist.addItemPlaceholder")}
                   </Button>
                 )}
               </div>}

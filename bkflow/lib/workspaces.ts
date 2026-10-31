@@ -1,8 +1,26 @@
 import { z } from "zod";
 
 import { COURSE_COLOR_KEYS } from "@/lib/courses/course-colors";
+import { tr } from "@/lib/i18n";
 
 export const DEFAULT_WORKSPACE_TITLE = "Workspace của tôi";
+
+export const DEFAULT_WORKSPACE_TITLES = new Set([
+  "Workspace của tôi",
+  "Không gian của tôi",
+  "マイワークスペース",
+  "My Workspace",
+]);
+
+/** Format tên workspace hiển thị trên UI: workspace mặc định tự động dịch theo ngôn ngữ hiện tại. */
+export const formatWorkspaceTitle = (title?: string | null): string => {
+  if (!title) return tr("workspace.label");
+  const trimmed = title.trim();
+  if (DEFAULT_WORKSPACE_TITLES.has(trimmed)) {
+    return tr("workspace.defaultTitle");
+  }
+  return title;
+};
 
 /** Icon lucide cho workspace. Thêm tên ở đây thì phải thêm vào WORKSPACE_LUCIDE_ICONS (TS báo nếu thiếu). */
 export const WORKSPACE_ICON_NAMES = [

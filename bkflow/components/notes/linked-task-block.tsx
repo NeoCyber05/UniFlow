@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, Link2, LoaderCircle, Search, Unlink } from "lucide-react";
 
@@ -37,8 +37,8 @@ export const linkedTasksQueryState = (query: ReturnType<typeof useLinkedTasks>) 
 };
 
 const formatDue = (task: Extract<LinkedTaskView, { state: "available" }>["task"]) => {
-  if (task.dueDate) return new Date(task.dueDate).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" });
-  if (task.deadlineOn) return new Date(`${task.deadlineOn}T00:00:00Z`).toLocaleDateString("vi-VN", { dateStyle: "medium", timeZone: "UTC" });
+  if (task.dueDate) return new Date(task.dueDate).toLocaleString(getIntlLocale(), { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" });
+  if (task.deadlineOn) return new Date(`${task.deadlineOn}T00:00:00Z`).toLocaleDateString(getIntlLocale(), { dateStyle: "medium", timeZone: "UTC" });
   return null;
 };
 

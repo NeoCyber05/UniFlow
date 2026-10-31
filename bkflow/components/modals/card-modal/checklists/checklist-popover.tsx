@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { tr } from "@/lib/i18n";
 
 interface ChecklistPopoverProps {
   cardId: string;
@@ -33,11 +34,11 @@ export const ChecklistPopover = ({
 }: ChecklistPopoverProps) => {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState("Checklist");
+  const [title, setTitle] = useState(() => tr("checklist.defaultTitle"));
 
   const onOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open) setTitle("Checklist");
+    setTitle(tr("checklist.defaultTitle"));
   };
 
   const { execute, isLoading } = useAction(createChecklist, {
@@ -68,11 +69,11 @@ export const ChecklistPopover = ({
       >
         <form onSubmit={onSubmit}>
           <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
-            <h3 className="text-sm font-semibold text-neutral-900">Thêm checklist</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{tr("checklist.addTitle")}</h3>
             <PopoverClose asChild>
               <button
                 type="button"
-                aria-label="Đóng"
+                aria-label={tr("cardModal.close")}
                 className="rounded-md p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 cursor-pointer"
               >
                 <X className="h-4 w-4" />
@@ -82,12 +83,12 @@ export const ChecklistPopover = ({
 
           <div className="space-y-1.5 px-4 py-4">
             <label htmlFor="checklist-title" className="text-xs font-medium text-neutral-600">
-              Tiêu đề
+              {tr("checklist.titleLabel")}
             </label>
             <Input
               id="checklist-title"
               autoFocus
-              placeholder="Checklist"
+              placeholder={tr("checklist.defaultTitle")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isLoading}
@@ -98,7 +99,7 @@ export const ChecklistPopover = ({
           <div className="flex justify-end gap-2 border-t border-neutral-100 px-4 py-3">
             <PopoverClose asChild>
               <Button type="button" variant="ghost" size="sm" className="h-8 rounded-lg text-xs text-neutral-600 cursor-pointer">
-                Hủy
+                {tr("checklist.cancel")}
               </Button>
             </PopoverClose>
             <Button
@@ -107,7 +108,7 @@ export const ChecklistPopover = ({
               disabled={isLoading || !title.trim()}
               className="h-8 rounded-lg bg-violet-600 px-4 text-xs font-semibold text-white hover:bg-violet-700 cursor-pointer"
             >
-              {isLoading ? "Đang thêm…" : "Thêm"}
+              {isLoading ? tr("checklist.adding") : tr("checklist.add")}
             </Button>
           </div>
         </form>

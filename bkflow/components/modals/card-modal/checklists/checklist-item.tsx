@@ -8,6 +8,7 @@ import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import { GripVertical } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
+import { tr } from "@/lib/i18n";
 import { ChecklistItemWithAssignee } from "@/types";
 
 import { ChecklistItemActions } from "./checklist-item-actions";
@@ -85,7 +86,7 @@ export const ChecklistItem = ({
           <button
             type="button"
             className="mt-1 text-neutral-400 hover:text-neutral-600 cursor-grab active:cursor-grabbing"
-            aria-label="Kéo để sắp xếp mục"
+            aria-label={tr("checklist.dragItemAria")}
             {...dragHandleProps}
           >
             <GripVertical className="h-4 w-4" />
@@ -94,7 +95,7 @@ export const ChecklistItem = ({
         <input
           type="checkbox"
           id={titleId}
-          aria-label={`Hoàn thành: ${item.title}`}
+          aria-label={tr("checklist.completeItemAria", { title: item.title })}
           checked={item.isCompleted}
           disabled={!canEdit}
           onChange={(e) => onToggle(item.id, e.target.checked)}
@@ -109,7 +110,7 @@ export const ChecklistItem = ({
               onKeyDown={handleKeyDown}
               onBlur={handleBlur}
               autoFocus
-              aria-label="Tên mục checklist"
+              aria-label={tr("checklist.itemTitleAria")}
               className="min-h-0 resize-none rounded-md border-neutral-300 px-2 py-1 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-neutral-400"
             />
           ) : (
@@ -117,7 +118,7 @@ export const ChecklistItem = ({
               <button
                 type="button"
                 disabled={!canEdit}
-                aria-label={`Sửa: ${item.title}`}
+                aria-label={tr("checklist.editItemAria", { title: item.title })}
                 onClick={(e) => {
                   if (canEdit) {
                     e.preventDefault();

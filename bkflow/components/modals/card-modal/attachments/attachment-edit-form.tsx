@@ -8,6 +8,7 @@ import { FormInput } from "@/components/form/form-input";
 import { FormSubmit } from "@/components/form/form-submit";
 import { Button } from "@/components/ui/button";
 import type { FieldErrors } from "@/lib/create-safe-action";
+import { tr } from "@/lib/i18n";
 
 interface AttachmentEditFormProps {
   item: CardAttachment;
@@ -34,7 +35,7 @@ export const AttachmentEditForm = ({
         <FormInput
           id="url"
           type="text"
-          label="URL"
+          label={tr("attachment.urlLabel")}
           defaultValue={item.url}
           placeholder="https://example.com"
           disabled={isUpdating}
@@ -43,9 +44,9 @@ export const AttachmentEditForm = ({
         />
         <FormInput
           id="name"
-          label="Tên hiển thị"
+          label={tr("attachment.displayNameLabel")}
           defaultValue={item.name}
-          placeholder="Tùy chọn"
+          placeholder={tr("attachment.optionalPlaceholder")}
           disabled={isUpdating}
           errors={fieldErrors}
           className="h-9 rounded-lg bg-white"
@@ -55,7 +56,7 @@ export const AttachmentEditForm = ({
             disabled={isUpdating}
             className="h-8 rounded-lg px-3 text-xs"
           >
-            {isUpdating ? "Đang lưu..." : "Lưu"}
+            {isUpdating ? tr("attachment.saving") : tr("attachment.save")}
           </FormSubmit>
           <Button
             type="button"
@@ -66,7 +67,7 @@ export const AttachmentEditForm = ({
             onClick={onCancel}
           >
             <X className="h-3.5 w-3.5" />
-            Hủy
+            {tr("attachment.cancel")}
           </Button>
         </div>
       </form>
@@ -81,9 +82,9 @@ export const AttachmentEditForm = ({
     >
       <FormInput
         id="name"
-        label="Tên file"
+        label={tr("attachment.fileNameLabel")}
         defaultValue={item.name}
-        placeholder="Tên file"
+        placeholder={tr("attachment.fileNameLabel")}
         disabled={isUpdating}
         errors={fieldErrors}
         className="h-9 rounded-lg bg-white"
@@ -93,7 +94,7 @@ export const AttachmentEditForm = ({
           disabled={isUpdating}
           className="h-8 rounded-lg px-3 text-xs"
         >
-          {isUpdating ? "Đang lưu..." : "Lưu"}
+          {isUpdating ? tr("attachment.saving") : tr("attachment.save")}
         </FormSubmit>
         <Button
           type="button"
@@ -104,7 +105,7 @@ export const AttachmentEditForm = ({
           onClick={onCancel}
         >
           <X className="h-3.5 w-3.5" />
-          Hủy
+          {tr("attachment.cancel")}
         </Button>
       </div>
     </form>

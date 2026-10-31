@@ -14,6 +14,7 @@ import { isAfter } from "date-fns";
 import { toast } from "sonner";
 
 import { getDateTimezoneOffset } from "@/lib/date-utils";
+import { tr } from "@/lib/i18n";
 
 import type {
   ScheduledCard,
@@ -83,7 +84,7 @@ export const useTimelineInteraction = ({
     columnWidth: number,
   ) => {
     if (!canEditTimeline) {
-      toast.error("Bạn cần quyền chỉnh sửa để cập nhật timeline.");
+      toast.error(tr("timeline.toast.editPermissionRequired"));
       return;
     }
 
@@ -92,7 +93,7 @@ export const useTimelineInteraction = ({
     }
 
     if (row.hasInvalidRange) {
-      toast.error("Khoảng ngày chưa hợp lệ. Hãy sửa trong thẻ trước khi kéo.");
+      toast.error(tr("timeline.toast.invalidCardRange"));
       return;
     }
 
@@ -211,7 +212,7 @@ export const useTimelineInteraction = ({
       ) {
         removeDateOverride(currentInteraction.cardId);
         setActiveInteraction(null);
-        toast.error("Ngày bắt đầu phải trước hoặc bằng ngày hết hạn.");
+        toast.error(tr("timeline.toast.startBeforeOrEqualDue"));
         return;
       }
 

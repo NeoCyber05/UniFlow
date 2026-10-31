@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export type ViewSkeletonVariant = "columns" | "rows" | "grid" | "panels" | "canvas" | "doc";
@@ -64,7 +65,7 @@ let mountedSkeletons = 0;
 
 // Shaped like the view it stands in for, so content lands without a jump. Hidden for the first 150ms so
 // fast loads never flash it, and one pulse drives the whole shape instead of one animation per block.
-export const ViewSkeleton = ({ variant, label = "Đang tải", className }: { variant: ViewSkeletonVariant; label?: string; className?: string }) => {
+export const ViewSkeleton = ({ variant, label = tr("common.loading"), className }: { variant: ViewSkeletonVariant; label?: string; className?: string }) => {
   const [replacesAnother] = useState(() => mountedSkeletons > 0);
   useEffect(() => {
     mountedSkeletons += 1;

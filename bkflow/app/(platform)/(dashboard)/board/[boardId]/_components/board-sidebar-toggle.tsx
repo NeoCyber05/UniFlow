@@ -5,6 +5,7 @@ import { PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBoardSidebar } from "@/hooks/use-board-sidebar";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface BoardSidebarToggleProps {
@@ -31,8 +32,8 @@ export const BoardSidebarToggle = ({
         effectiveIsOpen && "bg-muted text-foreground",
         className
       )}
-      title={effectiveIsOpen ? "Thu gọn thanh bên" : "Mở thanh bên"}
-      aria-label={effectiveIsOpen ? "Thu gọn thanh bên" : "Mở thanh bên"}
+      title={effectiveIsOpen ? tr("boardShell.sidebar.collapse") : tr("boardShell.sidebar.expand")}
+      aria-label={effectiveIsOpen ? tr("boardShell.sidebar.collapse") : tr("boardShell.sidebar.expand")}
       aria-expanded={effectiveIsOpen}
     >
       <PanelLeft className="h-4 w-4" />

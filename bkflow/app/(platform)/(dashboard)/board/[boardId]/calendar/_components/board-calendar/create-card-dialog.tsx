@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { FieldErrors } from "@/lib/create-safe-action";
+import { tr } from "@/lib/i18n";
 
 import type { BoardCalendarList } from "../../_types";
 
@@ -59,9 +60,9 @@ export const CreateCardDialog = ({
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-w-md">
       <DialogHeader>
-        <DialogTitle>Thêm thẻ vào {selectedDayLabel}</DialogTitle>
+        <DialogTitle>{tr("calendar.createDialog.title", { day: selectedDayLabel })}</DialogTitle>
         <DialogDescription>
-          Chọn danh sách và khoảng thời gian theo GMT+7.
+          {tr("calendar.createDialog.desc")}
         </DialogDescription>
       </DialogHeader>
 
@@ -74,7 +75,7 @@ export const CreateCardDialog = ({
       >
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-title" className="text-xs font-semibold text-neutral-600">
-            Tiêu đề
+            {tr("calendar.createDialog.titleLabel")}
           </label>
           <input
             id="calendar-card-title"
@@ -82,7 +83,7 @@ export const CreateCardDialog = ({
             onChange={(event) => onTitleChange(event.target.value)}
             disabled={isLoading}
             autoFocus
-            placeholder="Nhập tiêu đề thẻ..."
+            placeholder={tr("calendar.createDialog.titlePlaceholder")}
             className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-800 shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-violet-400 focus:ring-1 focus:ring-violet-200 disabled:cursor-not-allowed disabled:bg-neutral-50"
           />
           {fieldErrors?.title?.[0] && (
@@ -92,7 +93,7 @@ export const CreateCardDialog = ({
 
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-list" className="text-xs font-semibold text-neutral-600">
-            Danh sách
+            {tr("calendar.createDialog.listLabel")}
           </label>
           <select
             id="calendar-card-list"
@@ -102,7 +103,7 @@ export const CreateCardDialog = ({
             className="h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-neutral-800 shadow-sm outline-none transition focus:border-violet-400 focus:ring-1 focus:ring-violet-200 disabled:cursor-not-allowed disabled:bg-neutral-50"
           >
             {lists.length === 0 ? (
-              <option value="">Tạo danh sách trước khi thêm thẻ từ lịch</option>
+              <option value="">{tr("calendar.cell.createListFirst")}</option>
             ) : (
               lists.map((list) => (
                 <option key={list.id} value={list.id}>
@@ -115,7 +116,7 @@ export const CreateCardDialog = ({
 
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-start" className="text-xs font-semibold text-neutral-600">
-            Bắt đầu buổi làm (không bắt buộc)
+            {tr("calendar.createDialog.startOptional")}
           </label>
           <input
             id="calendar-card-start"
@@ -130,7 +131,7 @@ export const CreateCardDialog = ({
 
         <div className="space-y-1.5">
           <label htmlFor="calendar-card-due" className="text-xs font-semibold text-neutral-600">
-            Kết thúc buổi làm (không bắt buộc)
+            {tr("calendar.createDialog.endOptional")}
           </label>
           <input
             id="calendar-card-due"
@@ -150,14 +151,14 @@ export const CreateCardDialog = ({
             disabled={isLoading}
             onClick={() => onOpenChange(false)}
           >
-            Hủy
+            {tr("calendar.common.cancel")}
           </Button>
           <Button
             type="submit"
             variant="primary"
             disabled={isLoading || lists.length === 0}
           >
-            Tạo thẻ
+            {tr("calendar.createDialog.submit")}
           </Button>
         </DialogFooter>
       </form>

@@ -7,7 +7,7 @@ import {
 
 import { getCourseColor } from "@/lib/courses/course-colors";
 import { cn } from "@/lib/utils";
-import { parseWorkspaceIcon, type WorkspaceIconName } from "@/lib/workspaces";
+import { DEFAULT_WORKSPACE_TITLES, parseWorkspaceIcon, type WorkspaceIconName } from "@/lib/workspaces";
 
 export const WORKSPACE_LUCIDE_ICONS: Record<WorkspaceIconName, LucideIcon> = {
   BookOpen, GraduationCap, Briefcase, Code, Target, FlaskConical,
@@ -42,5 +42,7 @@ export const WorkspaceIcon = ({ icon, color, title, size = "sm", className }: Wo
     return <span aria-hidden="true" className={box}><Icon className={size === "sm" ? "size-3.5" : "size-4"} /></span>;
   }
 
-  return <span aria-hidden="true" className={cn(box, "font-semibold")}>{title.trim().charAt(0).toUpperCase() || "W"}</span>;
+  const trimmed = title.trim();
+  const letter = DEFAULT_WORKSPACE_TITLES.has(trimmed) ? "W" : (trimmed.charAt(0).toUpperCase() || "W");
+  return <span aria-hidden="true" className={cn(box, "font-semibold")}>{letter}</span>;
 };

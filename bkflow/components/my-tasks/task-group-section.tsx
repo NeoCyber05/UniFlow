@@ -11,6 +11,7 @@ import {
 } from "@animate-ui/react/utils/motion";
 import { ChevronDown } from "lucide-react";
 
+import { getAgendaGroupLabel } from "@/lib/my-tasks/buckets";
 import type { MyTaskGroup } from "@/lib/my-tasks/types";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +92,7 @@ export const TaskGroupSection = ({
           className="group/head flex w-full items-center gap-2 rounded-md py-1 text-left"
         >
           <span className={cn("h-3.5 w-[3px] shrink-0 rounded-full", tone.bar)} />
-          <span className={cn("text-xs font-bold uppercase tracking-wider", tone.text)}>{group.label}</span>
+          <span className={cn("text-xs font-bold uppercase tracking-wider", tone.text)}>{getAgendaGroupLabel(group.key) ?? group.label}</span>
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-600 tabular-nums">
             {group.tasks.length}
           </span>

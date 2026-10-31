@@ -2,6 +2,8 @@
 
 import { CalendarDays } from "lucide-react";
 
+import { tr } from "@/lib/i18n";
+
 import type { ViewMode } from "../_types";
 
 type CalendarEmptyStateProps = {
@@ -18,8 +20,8 @@ export const CalendarEmptyState = ({
       <div className="mt-3 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-4 py-3 text-center">
         <p className="text-sm font-semibold text-neutral-700">
           {filtersAreActive
-            ? "Không có mục nào phù hợp với bộ lọc."
-            : "Chưa có thẻ nào trong ngày này."}
+            ? tr("calendar.empty.filtered")
+            : tr("calendar.empty.day")}
         </p>
       </div>
     );
@@ -30,12 +32,12 @@ export const CalendarEmptyState = ({
       <CalendarDays className="mb-2 h-6 w-6 text-neutral-400" />
       <p className="text-sm font-semibold text-neutral-700">
         {filtersAreActive
-          ? "Không có mục nào phù hợp với bộ lọc."
-          : "Chưa có thẻ nào trong khoảng thời gian này."}
+          ? tr("calendar.empty.filtered")
+          : tr("calendar.empty.range")}
       </p>
       {!filtersAreActive && (
         <p className="mt-1 max-w-md text-xs text-neutral-500">
-          Các thẻ có ngày bắt đầu hoặc ngày hết hạn sẽ xuất hiện trong lịch.
+          {tr("calendar.empty.rangeHint")}
         </p>
       )}
     </div>

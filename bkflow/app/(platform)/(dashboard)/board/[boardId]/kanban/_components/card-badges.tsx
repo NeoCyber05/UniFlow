@@ -7,8 +7,56 @@ import { DueDateBadge } from "@/components/due-date-badge";
 import { Hint } from "@/components/hint";
 import { TaskLabels } from "@/components/tasks/task-labels";
 import { safeLabelColor } from "@/lib/cards/task-labels";
-import { cn, getColorName } from "@/lib/utils";
+import { tr } from "@/lib/i18n";
+import type { BoardMessageKey } from "@/lib/i18n/messages/vi-board";
+import { cn } from "@/lib/utils";
 import type { CardBadgesProps } from "../_types";
+
+const COLOR_KEY_MAP: Record<string, BoardMessageKey> = {
+  // Row 1
+  "#bbf7d0": "kanban.color.lightGreen",
+  "#fef08a": "kanban.color.lightYellow",
+  "#fed7aa": "kanban.color.lightOrange",
+  "#fecaca": "kanban.color.lightRed",
+  "#f3e8ff": "kanban.color.lightPurple",
+  // Row 2
+  "#4ade80": "kanban.color.green",
+  "#facc15": "kanban.color.yellow",
+  "#fb923c": "kanban.color.orange",
+  "#f87171": "kanban.color.red",
+  "#c084fc": "kanban.color.purple",
+  // Row 3
+  "#15803d": "kanban.color.darkGreen",
+  "#a16207": "kanban.color.darkYellow",
+  "#c2410c": "kanban.color.darkOrange",
+  "#b91c1c": "kanban.color.darkRed",
+  "#7e22ce": "kanban.color.darkPurple",
+  // Row 4
+  "#dbeafe": "kanban.color.lightBlue",
+  "#e0f2fe": "kanban.color.lightSky",
+  "#d9f99d": "kanban.color.lightLime",
+  "#fce7f3": "kanban.color.lightPink",
+  "#e5e7eb": "kanban.color.lightGray",
+  // Row 5
+  "#3b82f6": "kanban.color.blue",
+  "#0ea5e9": "kanban.color.sky",
+  "#84cc16": "kanban.color.lime",
+  "#db2777": "kanban.color.pink",
+  "#9ca3af": "kanban.color.gray",
+  // Row 6
+  "#1d4ed8": "kanban.color.darkBlue",
+  "#0369a1": "kanban.color.darkSky",
+  "#4d7c0f": "kanban.color.darkLime",
+  "#9d174d": "kanban.color.darkPink",
+  "#4b5563": "kanban.color.darkGray",
+  // Seeded default blue
+  "#60a5fa": "kanban.color.blue",
+};
+
+function getLocalizedColorName(colorHex: string): string {
+  const key = COLOR_KEY_MAP[colorHex.toLowerCase()];
+  return tr(key ?? "kanban.color.other");
+}
 
 const LABELS_STORAGE_KEY = "uniflow:labels-expanded";
 let cachedSnapshot: boolean | null = null;
@@ -89,7 +137,10 @@ export const CardLabels = ({
         card.labels.map((cardLabel) => (
           <Hint
             key={cardLabel.id}
-            description={`Màu: ${getColorName(cardLabel.label.color)}, Tiêu đề: ${cardLabel.label.title || "Không"}`}
+            description={tr("kanban.badges.labelTooltip", {
+              color: getLocalizedColorName(cardLabel.label.color),
+              title: cardLabel.label.title || tr("kanban.badges.noLabelTitle"),
+            })}
             side="top"
             sideOffset={4}
           >
@@ -141,16 +192,16 @@ export const CardBadges = ({
           />
         )}
         {!card.dueDate && card.isCompleted && (
-          <Hint description="Thẻ đã hoàn thành" side="bottom">
+          <Hint description={tr("kanban.badges.completedHint")} side="bottom">
             <span className="task-badge task-badge-success h-7 px-2">
               <CheckSquare aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-              Hoàn thành
+              {tr("kanban.badges.completedLabel")}
             </span>
           </Hint>
         )}
         {isBlocked && (
           <Hint
-            description={`Đang bị chặn bởi ${unresolvedBlockerCount} công việc`}
+            description={tr("kanban.badges.blockedHint", { count: unresolvedBlockerCount })}
             side="bottom"
           >
             <div className="task-badge task-badge-warning">
@@ -160,7 +211,7 @@ export const CardBadges = ({
           </Hint>
         )}
         {card._count && card._count.comments > 0 && (
-          <Hint description={`${card._count.comments} bình luận`} side="bottom">
+          <Hint description={tr("kanban.badges.commentsHint", { count: card._count.comments })} side="bottom">
             <div className="task-badge task-badge-neutral">
               <MessageSquare aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span className="leading-none">{card._count.comments}</span>
@@ -168,7 +219,7 @@ export const CardBadges = ({
           </Hint>
         )}
         {hasAttachments && (
-          <Hint description={`${attachmentCount} tệp đính kèm`} side="bottom">
+          <Hint description={tr("kanban.badges.attachmentsHint", { count: attachmentCount })} side="bottom">
             <div className="task-badge task-badge-neutral">
               <Paperclip aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               <span className="leading-none">{attachmentCount}</span>
@@ -176,7 +227,13 @@ export const CardBadges = ({
           </Hint>
         )}
         {hasChecklistProgress && (
-          <Hint description={`${checklistCompletedItems}/${checklistTotalItems} mục hoàn thành`} side="bottom">
+          <Hint
+            description={tr("kanban.badges.checklistHint", {
+              completed: checklistCompletedItems,
+              total: checklistTotalItems,
+            })}
+            side="bottom"
+          >
             <div className={cn(
               "task-badge",
               isChecklistAllDone

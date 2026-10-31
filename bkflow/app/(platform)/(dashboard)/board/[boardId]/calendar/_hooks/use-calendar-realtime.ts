@@ -5,6 +5,7 @@ import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { realtimeChannels } from "@/lib/realtime/channels";
+import { tr } from "@/lib/i18n";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
 
 import type {
@@ -74,7 +75,7 @@ export const useCalendarRealtime = ({
       return;
     }
 
-    toast.error("Bảng này đã bị xóa.");
+    toast.error(tr("calendar.toast.boardDeleted"));
     cardModal.onClose();
     router.push("/my/today");
   }, [cardModal, processRealtimeEvent, router]);
@@ -85,7 +86,7 @@ export const useCalendarRealtime = ({
     }
 
     if (payload.targetUserId === currentUserId) {
-      toast.error("Bạn không còn quyền truy cập bảng này.");
+      toast.error(tr("calendar.toast.accessRevoked"));
       cardModal.onClose();
       router.push("/my/today");
       return;
