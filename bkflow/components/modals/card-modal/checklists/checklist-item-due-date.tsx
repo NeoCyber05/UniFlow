@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { intlDateFormat, tr } from "@/lib/i18n";
+import { formatDayMonth, intlDateFormat, tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { getChecklistDueDateRangeError } from "./checklist-utils";
@@ -102,12 +102,7 @@ export const ChecklistItemDueDate = ({
             <Clock className="h-3.5 w-3.5 shrink-0" />
             {dueDate && (
               <span className="truncate">
-                {intlDateFormat({
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }).format(new Date(dueDate))}
+                {formatDayMonth(new Date(dueDate))} {intlDateFormat({ hour: "2-digit", minute: "2-digit" }).format(new Date(dueDate))}
               </span>
             )}
           </button>

@@ -1,5 +1,5 @@
 import { getCalendarRange, getTodayKey } from "@/lib/calendar/calendar-navigation";
-import { intlDateFormat, tr } from "@/lib/i18n";
+import { formatDayMonth, intlDateFormat, tr } from "@/lib/i18n";
 import {
   DEFAULT_CREATE_HOUR,
   DEFAULT_CREATE_TIME,
@@ -249,12 +249,7 @@ export const formatCalendarDate = (date: Date) =>
     month: "2-digit",
     day: "2-digit",
   }).format(date);
-export const formatCalendarDayMonth = (date: Date) =>
-  intlDateFormat({
-    timeZone: "Asia/Ho_Chi_Minh",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+export const formatCalendarDayMonth = (date: Date) => formatDayMonth(date, "Asia/Ho_Chi_Minh");
 export const formatDayTitle = (date: Date) => {
   const parts = getGmt7Parts(date);
 

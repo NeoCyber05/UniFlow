@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { formatWorkspaceTitle } from "@/lib/workspaces";
 
-import { getDateFnsLocale, getIntlLocale, intlDateFormat, tr, useLocale } from "./index";
+import { formatDayMonth, getDateFnsLocale, getIntlLocale, intlDateFormat, tr, useLocale } from "./index";
 import { ja } from "./messages/ja";
 import { vi, type MessageKey } from "./messages/vi";
 import { viBoard } from "./messages/vi-board";
@@ -57,8 +57,10 @@ test("tr and locale formatters switch between vi and ja cleanly", () => {
     assert.equal(getDateFnsLocale().code, "vi");
     assert.equal(formatWorkspaceTitle("Workspace của tôi"), "Workspace của tôi");
     assert.equal(formatWorkspaceTitle("Custom"), "Custom");
+    assert.equal(formatDayMonth(new Date("2026-10-05T20:00:00Z"), "Asia/Ho_Chi_Minh"), "06/10");
 
     useLocale.getState().setLocale("ja");
+    assert.equal(formatDayMonth(new Date("2026-10-05T20:00:00Z"), "Asia/Ho_Chi_Minh"), "10/06");
     assert.equal(tr("settings.title"), ja["settings.title"]);
     assert.notEqual(tr("settings.title"), "Cài đặt");
     assert.equal(getIntlLocale(), "ja-JP");

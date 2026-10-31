@@ -68,6 +68,10 @@ export const intlDateFormat = (options?: Intl.DateTimeFormatOptions): Intl.DateT
   return fmt;
 };
 
+// vi-VN của Intl ra "06-10"; giữ "06/10" như trước (ja-JP đã là "10/06").
+export const formatDayMonth = (date: Date, timeZone?: string): string =>
+  intlDateFormat({ timeZone, month: "2-digit", day: "2-digit" }).format(date).replace("-", "/");
+
 // Dùng được ngoài React (toast, helper). Chuỗi thiếu rơi về tiếng Việt.
 // Placeholder dạng {name}, ví dụ tr("x", { goal: 5 }).
 export const tr = (key: MessageKey, params?: TParams): string => {

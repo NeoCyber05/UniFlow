@@ -214,7 +214,7 @@ export const jaBoard: Record<BoardMessageKey, string> = {
   "boardList.title": "タスク",
   "boardList.pendingCount": "残り{count}件",
   "boardList.overdueCount": " · {count}件期限切れ",
-  "boardList.quickAddPlaceholder": "タスク名（例: 微積分の課題提出 @明日 ! #数学）",
+  "boardList.quickAddPlaceholder": "タスク名（例: 微積分の課題提出 @mai ! #数学）",
   "boardList.addTaskButton": "タスクを追加…",
   "boardList.emptyAgenda": "タスクはありません。上の入力欄から追加できます。",
   "boardList.emptyFiltered": "フィルターに一致するタスクはありません。",
