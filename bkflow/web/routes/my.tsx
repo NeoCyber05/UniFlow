@@ -8,6 +8,7 @@ import type { loadMy } from "@/server/views/my";
 import { NoWorkspaceState } from "@/components/my-tasks/no-workspace-state";
 import { MyTasksView } from "@/components/my-tasks/my-tasks-view";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
+import { ViewSkeleton } from "@/components/view-skeleton";
 
 import { myViewPath } from "../lib/prefetch-route";
 import { useTitle } from "../lib/use-title";
@@ -31,7 +32,7 @@ export default function MyRoute() {
 }
 
 const render = (data: View | undefined) => {
-  if (!data) return null;
+  if (!data) return <ViewSkeleton variant="rows" className="p-0" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
   if (!data.context) return <NoWorkspaceState />;

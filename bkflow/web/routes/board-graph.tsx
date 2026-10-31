@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { loadBoardGraph } from "@/server/views/board-graph";
 import { BoardCardModalFromUrl } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-card-modal-from-url";
 import { BoardGraphView } from "@/app/(platform)/(dashboard)/board/[boardId]/graph/_components/board-graph-view";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ViewSkeleton } from "@/components/view-skeleton";
 import type { GraphPlan } from "@/lib/boards/graph-plan";
 
 import { useView, viewQueryOptions } from "../lib/use-view";
@@ -34,7 +34,7 @@ export default function BoardGraphRoute() {
       </div>
     );
   }
-  if (!data) return <Skeleton className="m-4 h-64" />;
+  if (!data) return <ViewSkeleton variant="canvas" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
 
   return (

@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import type { loadBoardCalendar } from "@/server/views/board-calendar";
 import { BoardCalendarView } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_components/board-calendar-view";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ViewSkeleton } from "@/components/view-skeleton";
 import { CalendarErrorState } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_components/calendar-error-state";
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 
@@ -36,7 +36,7 @@ export default function BoardCalendarRoute() {
       </div>
     );
   }
-  if (!data) return <Skeleton className="m-4 h-64" />;
+  if (!data) return <ViewSkeleton variant="grid" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
 
   return (

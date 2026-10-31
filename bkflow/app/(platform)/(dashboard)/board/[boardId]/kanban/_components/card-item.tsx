@@ -51,7 +51,7 @@ export const CardItem = memo(function CardItem({
   
   const [showMenu, setShowMenu] = useState(false);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, origin: "left top" });
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const archiveRollbackRef = useRef<ListWithCards[] | null>(null);
@@ -197,6 +197,7 @@ export const CardItem = memo(function CardItem({
         left: hasSpaceRight
           ? rect.right + gap
           : Math.max(8, rect.left - menuWidth - gap),
+        origin: hasSpaceRight ? "left top" : "right top",
       });
       setTriggerRect(rect);
     }
@@ -321,7 +322,8 @@ export const CardItem = memo(function CardItem({
             className={cn(
               "group relative flex flex-col justify-between border border-neutral-200/80 pb-2.5 pt-3 px-3 text-sm bg-white rounded-lg shadow-sm transition-[border-color,box-shadow,background-color] duration-100 !cursor-pointer select-none overflow-hidden",
               !snapshot.isDragging && "hover:border-violet-200 hover:shadow",
-              snapshot.isDragging && "shadow-sm opacity-95 border-violet-300 z-[9999] pointer-events-none",
+              // rotate/scale are their own CSS properties in Tailwind v4, so they compose with dnd's inline transform.
+              snapshot.isDragging && "rotate-2 scale-[1.02] shadow-xl opacity-95 border-violet-300 z-[9999] pointer-events-none",
               (showMenu || copyDialogOpen) && "relative z-[100] ring-2 ring-violet-500 shadow-xl bg-white",
               courseColor && cn("border-l-[3px]", courseColor.stripe),
             )}

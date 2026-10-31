@@ -1,7 +1,7 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
+import { skeletonForPath, ViewSkeleton } from "@/components/view-skeleton";
 
 import type { loadBoardLayout } from "@/server/views/board-layout";
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
@@ -24,6 +24,9 @@ export default function BoardLayoutRoute() {
   const { data, error, refetch } = useView<View>(`/board/${boardId}/layout`);
   const queryClient = useQueryClient();
   const { pathname, search } = useLocation();
+  const [firstPathname] = useState(pathname);
+  const [switchedView, setSwitchedView] = useState(false);
+  if (!switchedView && pathname !== firstPathname) setSwitchedView(true);
   // Trang Việc cần làm không có thanh bảng; bộ lọc được đặt ngay trong trang
   const isListRoute = pathname.endsWith("/list");
   // Lịch / Sơ đồ / Thống kê dùng thanh lọc sáng, không nền tối
@@ -35,7 +38,7 @@ export default function BoardLayoutRoute() {
   useTitle(data?.title ?? "Bảng");
 
   if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">Chưa tải được bảng. <button type="button" className="underline" onClick={() => void refetch()}>Thử lại</button></div>;
-  if (!data) return <div className="pt-14" role="status" aria-label="Đang tải bảng"><Skeleton className="m-4 h-12" /><Skeleton className="m-4 h-96" /></div>;
+  if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label="Đang tải bảng" /></div>;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
 
@@ -73,7 +76,10 @@ export default function BoardLayoutRoute() {
           />
         )}
       >
-        <Outlet />
+        {/* Fades in on a tab or board switch, not on the board's first paint: its skeleton is already up there. */}
+        <div key={pathname} className={switchedView ? "h-full view-enter" : "h-full"}>
+          <Outlet />
+        </div>
       </BoardShell>
 
       <BoardAssistant boardId={boardId} />

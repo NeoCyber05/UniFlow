@@ -3,7 +3,7 @@ import { Navigate, useParams } from "react-router";
 import type { loadBoardTimeline } from "@/server/views/board-timeline";
 import { BoardCardModalFromUrl } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-card-modal-from-url";
 import { BoardTimelineView } from "@/app/(platform)/(dashboard)/board/[boardId]/timeline/_components/board-timeline-view";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ViewSkeleton } from "@/components/view-skeleton";
 
 import { useView } from "../lib/use-view";
 
@@ -13,7 +13,7 @@ export default function BoardTimelineRoute() {
   const { boardId } = useParams<{ boardId: string }>();
   const { data } = useView<View>(`/board/${boardId}/timeline`);
 
-  if (!data) return <Skeleton className="m-4 h-64" />;
+  if (!data) return <ViewSkeleton variant="rows" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
 
   return (

@@ -1,13 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
+import { ReducedMotionConfig, scale, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { Archive, Copy, ExternalLink, Pencil } from "lucide-react";
 
 import type { CardContextMenuProps } from "../_types";
 
-export const CardContextMenu = ({
+// Every card renders one of these: keep closed cards at null, mount the motion layer only while open or exiting.
+export const CardContextMenu = (props: CardContextMenuProps) => {
+  const [mounted, setMounted] = useState(props.isOpen);
+  if (props.isOpen && !mounted) setMounted(true);
+
+  if (!props.canEdit || !mounted) {
+    return null;
+  }
+
+  return <CardContextMenuLayer {...props} onExited={() => setMounted(false)} />;
+};
+
+const CardContextMenuLayer = ({
   isOpen,
-  canEdit,
   position,
   isLoadingArchive,
   onClose,
@@ -15,14 +29,19 @@ export const CardContextMenu = ({
   onRename,
   onCopy,
   onArchive,
-}: CardContextMenuProps) => {
-  if (!canEdit || !isOpen) {
-    return null;
-  }
+  onExited,
+}: CardContextMenuProps & { onExited: () => void }) => {
+  const menu = useTempoTransition(transition.menu);
 
   return createPortal(
-    <>
-      <div
+    <ReducedMotionConfig>
+      <AnimatePresence onExitComplete={onExited}>
+      {isOpen && (
+      <motion.div
+        key="overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: menu }}
+        exit={{ opacity: 0, pointerEvents: "none", transition: menu }}
         className="fixed inset-0 bg-black/40 z-[45] cursor-default"
         onClick={(event) => {
           event.stopPropagation();
@@ -34,12 +53,19 @@ export const CardContextMenu = ({
           onClose();
         }}
       />
-      <div
+      )}
+      {isOpen && (
+      <motion.div
+        key="menu"
         data-context-menu="true"
+        initial={{ opacity: 0, scale: scale.menu }}
+        animate={{ opacity: 1, scale: 1, transition: menu }}
+        exit={{ opacity: 0, scale: scale.menu, pointerEvents: "none", transition: menu }}
         className="fixed z-[100] w-52 bg-white rounded-xl shadow-2xl border border-neutral-200 p-1.5 flex flex-col gap-y-1"
         style={{
           top: position.top,
           left: position.left,
+          transformOrigin: position.origin,
         }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -73,8 +99,10 @@ export const CardContextMenu = ({
           <Archive className="h-4 w-4 text-neutral-400" />
           {isLoadingArchive ? "Đang lưu trữ thẻ…" : "Lưu trữ thẻ"}
         </button>
-      </div>
-    </>,
+      </motion.div>
+      )}
+      </AnimatePresence>
+    </ReducedMotionConfig>,
     document.body,
   );
 };

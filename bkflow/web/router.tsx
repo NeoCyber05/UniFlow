@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { SignInPage, SignUpPage } from "./routes/auth-pages";
 
 import { ModalProvider } from "@/components/providers/modal-provider";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ViewSkeleton, type ViewSkeletonVariant } from "@/components/view-skeleton";
 
 import DashboardLayoutRoute from "./routes/dashboard-layout";
 import BoardListRoute from "./routes/board-list";
@@ -14,10 +14,10 @@ import { RedirectIfSignedIn, RequireAuth } from "./routes/guards";
 import { boardTabRoutes, type RouteLoader } from "./lib/prefetch-route";
 
 // The landing path (/my/today -> board list) stays in the main bundle; other routes load their chunk on first visit.
-const lazyRoute = (load: () => Promise<{ default: ComponentType }>) => {
+const lazyRoute = (load: () => Promise<{ default: ComponentType }>, skeleton?: ViewSkeletonVariant) => {
   const Route = lazy(load);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={skeleton ? <ViewSkeleton variant={skeleton} /> : null}>
       <Route />
     </Suspense>
   );
@@ -26,13 +26,13 @@ const lazyRoute = (load: () => Promise<{ default: ComponentType }>) => {
 // lazy() suspends on its first render even when the chunk is already preloaded, so a preloaded tab renders directly.
 // The choice is fixed at mount: switching branches later would remount the tab. The fallback is the same skeleton
 // the tabs show while their data loads, so a slow chunk never blanks the board.
-const boardTab = (load: RouteLoader) => {
+const boardTab = (load: RouteLoader, skeleton: ViewSkeletonVariant) => {
   const Lazy = lazy(load);
   const Tab = () => {
     const [Loaded] = useState(() => load.loaded);
     if (Loaded) return <Loaded />;
     return (
-      <Suspense fallback={<Skeleton className="m-4 h-64" />}>
+      <Suspense fallback={<ViewSkeleton variant={skeleton} />}>
         <Lazy />
       </Suspense>
     );
@@ -77,13 +77,13 @@ export const router = createBrowserRouter([
                 path: "board/:boardId",
                 element: <BoardLayoutRoute />,
                 children: [
-                  { index: true, element: boardTab(boardTabRoutes.kanban) },
-                  { path: "calendar", element: boardTab(boardTabRoutes.calendar) },
+                  { index: true, element: boardTab(boardTabRoutes.kanban, "columns") },
+                  { path: "calendar", element: boardTab(boardTabRoutes.calendar, "grid") },
                   { path: "list", element: <BoardListRoute /> },
-                  { path: "timeline", element: boardTab(boardTabRoutes.timeline) },
-                  { path: "graph", element: boardTab(boardTabRoutes.graph) },
-                  { path: "analytics", element: boardTab(boardTabRoutes.analytics) },
-                  { path: "todo", element: boardTab(boardTabRoutes.todo) },
+                  { path: "timeline", element: boardTab(boardTabRoutes.timeline, "rows") },
+                  { path: "graph", element: boardTab(boardTabRoutes.graph, "canvas") },
+                  { path: "analytics", element: boardTab(boardTabRoutes.analytics, "panels") },
+                  { path: "todo", element: boardTab(boardTabRoutes.todo, "rows") },
                 ],
               },
               { path: "my/:view", element: <MyRoute /> },
@@ -93,7 +93,7 @@ export const router = createBrowserRouter([
                 element: lazyRoute(() => import("./routes/pages").then((m) => ({ default: m.PagesLayoutRoute }))),
                 children: [
                   { index: true, element: lazyRoute(() => import("./routes/pages")) },
-                  { path: ":pageId", element: lazyRoute(() => import("./routes/page")) },
+                  { path: ":pageId", element: lazyRoute(() => import("./routes/page"), "doc") },
                 ],
               },
               { path: "workspace/:workspaceId", element: <WorkspaceRoute /> },

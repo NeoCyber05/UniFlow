@@ -14,6 +14,8 @@ export type ListContainerProps = {
 export type CardContextMenuPosition = {
   top: number;
   left: number;
+  /** CSS transform-origin on the card's side, so the menu grows out of the card. */
+  origin?: string;
 };
 
 export type CardContextMenuProps = {
