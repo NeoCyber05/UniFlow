@@ -5,6 +5,7 @@ import type { loadBoardKanban } from "@/server/views/board-kanban";
 import { BoardCardModalFromUrl } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-card-modal-from-url";
 import { ListContainer } from "@/app/(platform)/(dashboard)/board/[boardId]/kanban/_components/list-container";
 import { ViewSkeleton } from "@/components/view-skeleton";
+import { tr } from "@/lib/i18n";
 
 import { useView } from "../lib/use-view";
 
@@ -23,7 +24,7 @@ export default function BoardKanbanRoute() {
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl glass-surface px-5 py-4 shadow-sm">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-neutral-900">
           <ListTodo aria-hidden="true" className="h-6 w-6 text-violet-600" />
-          Việc cần làm
+          {tr("route.kanbanTasksTitle")}
         </h1>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">

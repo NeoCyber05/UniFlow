@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getScheduleFormIntent, type ScheduleIntent } from "@/lib/calendar/schedule-command";
+import { tr } from "@/lib/i18n";
 
 export type ScheduleDialogState = {
   cardId: string;
@@ -71,18 +72,20 @@ const ScheduleForm = ({
   const submit = () => {
     const intent = getScheduleFormIntent({ day, endDay, start, end });
     if ("error" in intent) { setError(intent.error); return; }
-    if (needsEnd && intent.type !== "time") { setError("Vui lòng chọn thời điểm kết thúc."); return; }
+    if (needsEnd && intent.type !== "time") { setError(tr("calendar.scheduleDialog.selectEndRequired")); return; }
     onSubmit(state.cardId, intent);
   };
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{needsEnd ? "Chọn giờ kết thúc" : "Xếp lịch làm"}</DialogTitle>
+        <DialogTitle>
+          {needsEnd ? tr("calendar.scheduleDialog.titleNeedsEnd") : tr("calendar.scheduleDialog.titlePlan")}
+        </DialogTitle>
         <DialogDescription>
           {needsEnd
-            ? `“${state.cardTitle}” chưa có thời lượng. Giờ theo GMT+7; hạn nộp không thay đổi.`
-            : `Chọn ngày hoặc khoảng giờ làm cho “${state.cardTitle}”. Giờ theo GMT+7; hạn nộp không thay đổi.`}
+            ? tr("calendar.scheduleDialog.descNeedsEnd", { title: state.cardTitle })
+            : tr("calendar.scheduleDialog.descPlan", { title: state.cardTitle })}
         </DialogDescription>
       </DialogHeader>
 
@@ -94,7 +97,7 @@ const ScheduleForm = ({
         }}
       >
         <div className="space-y-1.5">
-          <label htmlFor="schedule-day" className="text-xs font-semibold text-neutral-600">Ngày làm</label>
+          <label htmlFor="schedule-day" className="text-xs font-semibold text-neutral-600">{tr("calendar.scheduleDialog.workDayLabel")}</label>
           <input
             id="schedule-day"
             type="date"
@@ -109,12 +112,12 @@ const ScheduleForm = ({
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="schedule-end-day" className="text-xs font-semibold text-neutral-600">Ngày kết thúc (khi chọn giờ)</label>
+          <label htmlFor="schedule-end-day" className="text-xs font-semibold text-neutral-600">{tr("calendar.scheduleDialog.endDayLabel")}</label>
           <input id="schedule-end-day" type="date" value={endDay} min={day} onChange={(event) => setEndDay(event.target.value)} disabled={isLoading} className={inputClass} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label htmlFor="schedule-start" className="text-xs font-semibold text-neutral-600">Giờ bắt đầu</label>
+            <label htmlFor="schedule-start" className="text-xs font-semibold text-neutral-600">{tr("calendar.scheduleDialog.startTimeLabel")}</label>
             <input
               id="schedule-start"
               type="time"
@@ -125,7 +128,7 @@ const ScheduleForm = ({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="schedule-end" className="text-xs font-semibold text-neutral-600">Giờ kết thúc</label>
+            <label htmlFor="schedule-end" className="text-xs font-semibold text-neutral-600">{tr("calendar.scheduleDialog.endTimeLabel")}</label>
             <input
               id="schedule-end"
               type="time"
@@ -147,12 +150,12 @@ const ScheduleForm = ({
               disabled={isLoading}
               onClick={() => onSubmit(state.cardId, { type: "clear" })}
             >
-              Bỏ lịch làm
+              {tr("calendar.action.clearSchedule")}
             </Button>
           ) : <span />}
           <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={isLoading} onClick={onClose}>Hủy</Button>
-            <Button type="submit" variant="primary" disabled={isLoading}>Lưu lịch</Button>
+            <Button type="button" variant="outline" disabled={isLoading} onClick={onClose}>{tr("calendar.common.cancel")}</Button>
+            <Button type="submit" variant="primary" disabled={isLoading}>{tr("calendar.scheduleDialog.save")}</Button>
           </div>
         </DialogFooter>
       </form>

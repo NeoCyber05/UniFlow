@@ -17,6 +17,7 @@ import {
 import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr } from "@/lib/i18n";
 import {
   Popover,
   PopoverContent,
@@ -200,6 +201,7 @@ const DayViewTimelineBlock = ({
       height: `${((previewEndMinute - previewStartMinute) / MINUTES_IN_DAY) * 100}%`,
     }
     : getDayViewBlockStyle(block);
+  const contextLabel = getDayViewBlockContext(block);
 
   return (
     <Hint
@@ -238,8 +240,8 @@ const DayViewTimelineBlock = ({
           );
         }}
         aria-label={isChecklistItem
-          ? `Mở mục kiểm tra ${block.item.title}`
-          : `Mở thẻ ${block.item.title}`}
+          ? tr("calendar.dayGrid.openChecklistItemAria", { title: block.item.title })
+          : tr("calendar.occurrence.openCardAria", { title: block.item.title })}
         className={cn(
           "group/day-block pointer-events-auto absolute z-10 min-w-0 overflow-hidden rounded-md border text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300",
           "flex flex-col justify-start",
@@ -256,7 +258,7 @@ const DayViewTimelineBlock = ({
             <span
               role="separator"
               aria-orientation="horizontal"
-              aria-label={`Resize bắt đầu thẻ ${block.item.title}`}
+              aria-label={tr("calendar.dayGrid.resizeStartAria", { title: block.item.title })}
               data-calendar-day-view-resize-handle="true"
               tabIndex={0}
               draggable={false}
@@ -271,7 +273,7 @@ const DayViewTimelineBlock = ({
             <span
               role="separator"
               aria-orientation="horizontal"
-              aria-label={`Resize kết thúc thẻ ${block.item.title}`}
+              aria-label={tr("calendar.dayGrid.resizeEndAria", { title: block.item.title })}
               data-calendar-day-view-resize-handle="true"
               tabIndex={0}
               draggable={false}
@@ -306,7 +308,7 @@ const DayViewTimelineBlock = ({
           ) : (
             isOverdue(block.item) && !block.item.isCompleted && (
               <span className="hidden shrink-0 text-[10px] uppercase opacity-80 sm:inline">
-                Quá hạn
+                {tr("calendar.dayGrid.overdue")}
               </span>
             )
           )}
@@ -321,7 +323,7 @@ const DayViewTimelineBlock = ({
             "min-w-0 truncate leading-none opacity-75",
             isChecklistItem ? "text-[8.5px] text-neutral-500 mt-[1px]" : "text-[11px] mt-0.5"
           )}>
-            {isChecklistItem ? `Checklist: ${getDayViewBlockContext(block)}` : getDayViewBlockContext(block)}
+            {isChecklistItem ? tr("calendar.dayGrid.checklistContext", { title: contextLabel }) : contextLabel}
           </span>
         )}
         {canShowLabels && (
@@ -429,9 +431,9 @@ const DayOverflowGroup = ({
           "pointer-events-auto absolute right-2 z-20 rounded-full border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300",
           className,
         )}
-        aria-label={`Xem thêm ${group.hiddenBlocks.length} mục bị chồng lịch`}
+        aria-label={tr("calendar.dayGrid.overflowAria", { count: group.hiddenBlocks.length })}
       >
-        +{group.hiddenBlocks.length} mục
+        {tr("calendar.dayGrid.overflowBadge", { count: group.hiddenBlocks.length })}
       </button>
     </PopoverTrigger>
     <PopoverContent
@@ -442,10 +444,10 @@ const DayOverflowGroup = ({
     >
       <div className="border-b border-neutral-100 px-2 pb-2">
         <p className="text-xs font-semibold text-neutral-800">
-          Mục bị chồng lịch
+          {tr("calendar.dayGrid.overflowTitle")}
         </p>
         <p className="mt-0.5 text-[11px] text-neutral-500">
-          {group.hiddenBlocks.length} mục chưa hiển thị trực tiếp
+          {tr("calendar.dayGrid.overflowSubtitle", { count: group.hiddenBlocks.length })}
         </p>
       </div>
       <div className="mt-2 max-h-64 overflow-y-auto">
@@ -527,11 +529,11 @@ export const DayViewTimeGrid = ({
           </span>
           {isCurrentGmt7Day && (
             <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
-              Hôm nay
+              {tr("calendar.toolbar.today")}
             </span>
           )}
           <span className="ml-auto hidden text-xs text-neutral-400 sm:inline">
-            Kéo trên lưới để thêm buổi làm
+            {tr("calendar.dayGrid.dragToCreateHint")}
           </span>
         </div>
       </div>
@@ -574,7 +576,7 @@ export const DayViewTimeGrid = ({
                 slot.minute === 30 && "border-t border-t-neutral-100",
               )}
               style={{ height: DAY_VIEW_SLOT_HEIGHT }}
-              aria-label={`Khung giờ ${slot.label} GMT+7`}
+              aria-label={tr("calendar.dayGrid.slotAria", { time: slot.label })}
             >
               {isSkeleton && slot.index % 16 === 4 && (
                 <Skeleton className="ml-3 mt-1 h-3 w-24 rounded bg-neutral-100" />
@@ -721,7 +723,7 @@ export const DayViewTimeGrid = ({
               style={{ top: `${(focusMinute / MINUTES_IN_DAY) * 100}%` }}
             >
               <span className="rounded-full border border-dashed border-neutral-300 bg-white/90 px-3 py-1 text-xs text-neutral-500">
-                Ngày trống — kéo trên lưới để thêm buổi làm
+                {tr("calendar.dayGrid.emptyOverlay")}
               </span>
             </div>
           )}

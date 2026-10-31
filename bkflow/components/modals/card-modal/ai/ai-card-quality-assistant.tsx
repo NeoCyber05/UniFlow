@@ -10,6 +10,7 @@ import { createAiChecklistItems } from "@/actions/ai/create-ai-checklist-items";
 import { generateAiChecklist } from "@/actions/ai/generate-ai-checklist";
 import { Button } from "@/components/ui/button";
 import { useAction } from "@/hooks/use-action";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type ChecklistOption = Checklist & {
@@ -26,7 +27,6 @@ interface AiCardQualityAssistantProps {
 }
 
 const NEW_CHECKLIST_VALUE = "__new__";
-const DEFAULT_CHECKLIST_TITLE = "Việc cần làm";
 
 export const AiCardQualityAssistant = ({
   boardId,
@@ -34,6 +34,7 @@ export const AiCardQualityAssistant = ({
   checklists,
 }: AiCardQualityAssistantProps) => {
   const queryClient = useQueryClient();
+  const defaultChecklistTitle = tr("cardAi.defaultChecklistTitle");
   const [activeTask, setActiveTask] = useState<"suggest_checklist" | null>(null);
   const [checklistSuggestions, setChecklistSuggestions] = useState<string[]>([]);
   const [selectedChecklistItems, setSelectedChecklistItems] = useState<Set<string>>(new Set());
@@ -74,7 +75,7 @@ export const AiCardQualityAssistant = ({
 
   const { execute: executeCreateChecklistItems, isLoading: isCreatingChecklistItems } = useAction(createAiChecklistItems, {
     onSuccess: (data) => {
-      toast.success(`Đã thêm ${data.items.length} việc cần làm`);
+      toast.success(tr("cardAi.addedItemsToast", { count: data.items.length }));
       setActiveTask(null);
       setChecklistSuggestions([]);
       setSelectedChecklistItems(new Set());
@@ -121,7 +122,7 @@ export const AiCardQualityAssistant = ({
       checklistId: effectiveChecklistId === NEW_CHECKLIST_VALUE
         ? undefined
         : effectiveChecklistId,
-      checklistTitle: DEFAULT_CHECKLIST_TITLE,
+      checklistTitle: defaultChecklistTitle,
       items,
     });
   };
@@ -137,10 +138,10 @@ export const AiCardQualityAssistant = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold text-neutral-800">
-              Cải thiện thẻ bằng AI
+              {tr("cardAi.title")}
             </p>
             <p className="mt-0.5 text-xs text-neutral-500">
-              Gợi ý các việc cần làm phù hợp với ngữ cảnh của thẻ.
+              {tr("cardAi.subtitle")}
             </p>
           </div>
           {activeTask && (
@@ -151,7 +152,7 @@ export const AiCardQualityAssistant = ({
               className="inline-flex h-8 items-center rounded-lg px-2 text-xs font-semibold text-neutral-500 transition hover:bg-white hover:text-neutral-700 disabled:opacity-50"
             >
               <X className="mr-1 h-3.5 w-3.5" />
-              Hủy
+              {tr("cardAi.cancel")}
             </button>
           )}
         </div>
@@ -172,7 +173,11 @@ export const AiCardQualityAssistant = ({
             ) : (
               <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {isGeneratingChecklist ? "Đang gợi ý..." : checklistSuggestions.length > 0 ? "Tạo lại" : "Gợi ý việc cần làm"}
+            {isGeneratingChecklist
+              ? tr("cardAi.suggesting")
+              : checklistSuggestions.length > 0
+                ? tr("cardAi.regenerate")
+                : tr("cardAi.suggestButton")}
           </Button>
         </div>
 
@@ -181,7 +186,7 @@ export const AiCardQualityAssistant = ({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               {canSelectChecklist ? (
                 <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-neutral-600">
-                  Thêm vào
+                  {tr("cardAi.addToLabel")}
                   <select
                      value={effectiveChecklistId}
                      onChange={(event) => setSelectedChecklistId(event.target.value)}
@@ -194,13 +199,13 @@ export const AiCardQualityAssistant = ({
                       </option>
                     ))}
                     <option value={NEW_CHECKLIST_VALUE}>
-                      Tạo danh sách mới: {DEFAULT_CHECKLIST_TITLE}
+                      {tr("cardAi.createNewListOption", { title: defaultChecklistTitle })}
                     </option>
                   </select>
                 </label>
               ) : (
                 <p className="text-xs font-semibold text-neutral-600">
-                  Sẽ tạo danh sách mới: {DEFAULT_CHECKLIST_TITLE}
+                  {tr("cardAi.willCreateNewList", { title: defaultChecklistTitle })}
                 </p>
               )}
             </div>
@@ -228,7 +233,7 @@ export const AiCardQualityAssistant = ({
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3">
               <span className="text-xs font-medium text-neutral-500">
-                Đã chọn {selectedChecklistItemCount}/{checklistSuggestions.length} việc cần làm
+                {tr("cardAi.selectedCount", { selected: selectedChecklistItemCount, total: checklistSuggestions.length })}
               </span>
               <Button
                 type="button"
@@ -236,7 +241,7 @@ export const AiCardQualityAssistant = ({
                 disabled={isBusy || selectedChecklistItemCount === 0}
                 className="h-8 rounded-lg bg-sky-600 px-3 text-xs font-semibold text-white hover:bg-sky-700"
               >
-                {isCreatingChecklistItems ? "Đang thêm..." : "Thêm việc đã chọn"}
+                {isCreatingChecklistItems ? tr("cardAi.adding") : tr("cardAi.addSelected")}
               </Button>
             </div>
           </div>

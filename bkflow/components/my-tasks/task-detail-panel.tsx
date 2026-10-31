@@ -57,7 +57,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
         >
           <Star className={cn("h-4 w-4", context?.isImportant && "fill-amber-400 text-amber-400")} />
         </button>
-        <button type="button" onClick={onExpand} aria-label={expanded ? "Thu gọn chi tiết" : "Mở rộng chi tiết"} aria-pressed={expanded} className="hidden rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:inline-flex">
+        <button type="button" onClick={onExpand} aria-label={expanded ? tr("task.collapseDetail") : tr("task.expandDetail")} aria-pressed={expanded} className="hidden rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:inline-flex">
           {expanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
         </button>
         {context && (
@@ -84,7 +84,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
           <CardRealtimeSync cardId={taskId} isOpen />
           <CardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} beforeCloseRef={beforeCloseRef} />
           <footer className="flex shrink-0 items-center justify-end gap-1.5 border-t border-border px-6 py-2 text-[10px] text-muted-foreground">
-            <kbd className="rounded border border-border px-1">Esc</kbd>để đóng
+            <kbd className="rounded border border-border px-1">Esc</kbd>{tr("task.escToClose")}
           </footer>
         </>
       ) : isError ? (

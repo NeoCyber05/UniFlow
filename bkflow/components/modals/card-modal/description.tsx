@@ -33,6 +33,7 @@ import { CardWithList } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   createDescriptionSaveState,
@@ -70,8 +71,6 @@ type PreviewMode = "edit" | "preview";
 
 const AUTOSAVE_DELAY_MS = 800;
 const DESCRIPTION_CONFLICT_ERROR_CODE = "DESCRIPTION_CONFLICT";
-const DESCRIPTION_CONFLICT_MESSAGE =
-  "Dữ liệu đã được cập nhật bởi một thành viên khác. Vui lòng reload thẻ để xem bản mới nhất.";
 
 const toTimestampString = (value: Date | string | null | undefined) => {
   if (!value) {
@@ -85,16 +84,15 @@ const toTimestampString = (value: Date | string | null | undefined) => {
 
 const HEADING_OPTIONS: Array<{
   value: HeadingOption;
-  label: string;
   previewClassName: string;
 }> = [
-  { value: "normal", label: "Văn bản bình thường", previewClassName: "text-sm font-normal" },
-  { value: 1, label: "Heading 1", previewClassName: "text-2xl font-semibold" },
-  { value: 2, label: "Heading 2", previewClassName: "text-xl font-semibold" },
-  { value: 3, label: "Heading 3", previewClassName: "text-lg font-semibold" },
-  { value: 4, label: "Heading 4", previewClassName: "text-base font-semibold" },
-  { value: 5, label: "Heading 5", previewClassName: "text-sm font-semibold" },
-  { value: 6, label: "Heading 6", previewClassName: "text-xs font-semibold text-neutral-500" },
+  { value: "normal", previewClassName: "text-sm font-normal" },
+  { value: 1, previewClassName: "text-2xl font-semibold" },
+  { value: 2, previewClassName: "text-xl font-semibold" },
+  { value: 3, previewClassName: "text-lg font-semibold" },
+  { value: 4, previewClassName: "text-base font-semibold" },
+  { value: 5, previewClassName: "text-sm font-semibold" },
+  { value: 6, previewClassName: "text-xs font-semibold text-neutral-500" },
 ];
 
 const getSelectedLineRange = (value: string, selectionStart: number, selectionEnd: number) => {
@@ -239,7 +237,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
 
       if (!current.baseUpdatedAt) {
         dispatch({ type: "saveFailure", seq, conflict: false });
-        toast.error("Không thể xác định mốc cập nhật nội dung. Hãy tải lại thẻ.");
+        toast.error(tr("cardModal.descNoTimestampError"));
         return false;
       }
 
@@ -279,13 +277,13 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
         if (conflict) {
           setIsConflictOpen(true);
         } else {
-          toast.error(result?.error ?? "Không lưu được nội dung. Bản nháp vẫn được giữ.");
+          toast.error(result?.error ?? tr("cardModal.descSaveError"));
         }
 
         return false;
       } catch {
         dispatch({ type: "saveFailure", seq, conflict: false });
-        toast.error("Mất kết nối khi lưu. Bản nháp vẫn được giữ.");
+        toast.error(tr("cardModal.descOfflineError"));
         return false;
       }
     };
@@ -689,7 +687,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
           textareaRef.current?.focus();
         });
         
-        toast.success("Đã tạo mô tả bằng AI!");
+        toast.success(tr("cardModal.descAiCreated"));
       }
       setActiveAiTask(null);
     },
@@ -723,22 +721,22 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
 
   const hasDescription = !!draftDescription.trim();
   const statusLabel = {
-    saved: "Đã lưu",
-    dirty: "Chưa lưu",
-    saving: "Đang lưu…",
-    error: "Lưu lỗi, bản nháp vẫn được giữ",
-    conflict: "Nội dung đã đổi ở nơi khác",
+    saved: tr("cardModal.descStatusSaved"),
+    dirty: tr("cardModal.descStatusDirty"),
+    saving: tr("cardModal.descStatusSaving"),
+    error: tr("cardModal.descStatusError"),
+    conflict: tr("cardModal.descStatusConflict"),
   }[save.status];
   const toolbarItems: Array<{
     action: MarkdownToolbarAction;
     label: string;
     icon: ReactNode;
   }> = [
-    { action: "bold", label: "In đậm", icon: <Bold className="h-3.5 w-3.5" /> },
-    { action: "italic", label: "In nghiêng", icon: <Italic className="h-3.5 w-3.5" /> },
-    { action: "underline", label: "Gạch chân", icon: <Underline className="h-3.5 w-3.5" /> },
-    { action: "bullet", label: "Danh sách", icon: <List className="h-3.5 w-3.5" /> },
-    { action: "link", label: "Liên kết", icon: <Link2 className="h-3.5 w-3.5" /> },
+    { action: "bold", label: tr("cardModal.toolbarBold"), icon: <Bold className="h-3.5 w-3.5" /> },
+    { action: "italic", label: tr("cardModal.toolbarItalic"), icon: <Italic className="h-3.5 w-3.5" /> },
+    { action: "underline", label: tr("cardModal.toolbarUnderline"), icon: <Underline className="h-3.5 w-3.5" /> },
+    { action: "bullet", label: tr("cardModal.toolbarBullet"), icon: <List className="h-3.5 w-3.5" /> },
+    { action: "link", label: tr("cardModal.toolbarLink"), icon: <Link2 className="h-3.5 w-3.5" /> },
   ];
 
   return (
@@ -751,7 +749,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
           <div className="w-full min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2.5">
               <p className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-base")}>
-                {compact ? "Mô tả" : "Nội dung"}
+                {compact ? tr("cardModal.titleCompact") : tr("cardModal.titleFull")}
               </p>
               {canEdit && (
                 <div className="flex items-center gap-x-1.5 ml-1">
@@ -767,7 +765,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                     ) : (
                       <Sparkles className={cn("mr-1 h-3 w-3", compact ? "text-primary" : "text-sky-500")} />
                     )}
-                    {isGeneratingAi && activeAiTask === "create_description" ? "Đang tạo..." : "Tạo mô tả từ tiêu đề"}
+                    {isGeneratingAi && activeAiTask === "create_description" ? tr("cardModal.aiCreatingDesc") : tr("cardModal.aiCreateFromTitle")}
                   </Button>
                   {hasDescription && (
                     <Button
@@ -782,7 +780,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                       ) : (
                         <Sparkles className={cn("mr-1 h-3 w-3", compact ? "text-primary" : "text-sky-500")} />
                       )}
-                      {isGeneratingAi && activeAiTask === "rewrite_description" ? "Đang viết lại..." : "Viết lại mô tả"}
+                      {isGeneratingAi && activeAiTask === "rewrite_description" ? tr("cardModal.aiRewritingDesc") : tr("cardModal.aiRewriteDesc")}
                     </Button>
                   )}
                 </div>
@@ -810,7 +808,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                         >
                           <Type className="h-3.5 w-3.5" />
                           <ChevronDown className="h-3 w-3" />
-                          <span className="sr-only">Kiểu văn bản</span>
+                          <span className="sr-only">{tr("cardModal.toolbarTextStyle")}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent
@@ -829,7 +827,9 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                               option.previewClassName,
                             )}
                           >
-                            {option.label}
+                            {option.value === "normal"
+                              ? tr("cardModal.headingNormal")
+                              : tr("cardModal.headingN", { level: option.value })}
                           </button>
                         ))}
                       </PopoverContent>
@@ -868,7 +868,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                         ) : (
                           <Eye className="h-3.5 w-3.5" />
                         )}
-                        {mode === "edit" ? "Viết" : "Xem trước"}
+                        {mode === "edit" ? tr("cardModal.modeEdit") : tr("cardModal.modePreview")}
                       </button>
                     ))}
                   </div>
@@ -901,7 +901,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                           }
                         }}
                         disabled={isGeneratingAi}
-                        placeholder="Viết nội dung hoặc gõ / để chèn tiêu đề, danh sách…"
+                        placeholder={tr("cardModal.descPlaceholder")}
                         aria-describedby="description-error"
                         className="min-h-[260px] w-full resize-y rounded-xl border-neutral-200 bg-white px-4 py-3.5 text-base leading-relaxed shadow-sm focus-visible:border-violet-400 focus-visible:ring-1 focus-visible:ring-violet-200"
                       />
@@ -910,7 +910,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                     <div className="min-h-[260px] rounded-xl border border-neutral-200 bg-white px-4 py-3.5 text-base leading-relaxed shadow-sm">
                       <MarkdownPreview
                         value={draftDescription}
-                        emptyText="Xem trước mô tả sẽ hiển thị ở đây."
+                        emptyText={tr("cardModal.previewEmpty")}
                       />
                     </div>
                   )}
@@ -923,10 +923,10 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                     className="h-9 rounded-lg bg-violet-600 px-5 text-sm text-white hover:bg-violet-700"
                   >
                     {save.status === "error" || save.status === "conflict"
-                      ? "Thử lại"
+                      ? tr("cardModal.retry")
                       : save.status === "saved"
-                        ? "Xong"
-                        : "Lưu"}
+                        ? tr("cardModal.done")
+                        : tr("cardModal.save")}
                   </Button>
                   <Button
                     type="button"
@@ -936,7 +936,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                     variant="ghost"
                     className="h-9 text-sm text-neutral-500 rounded-lg px-4"
                   >
-                    Bỏ thay đổi
+                    {tr("cardModal.discardChanges")}
                   </Button>
                   <p
                     role="status"
@@ -952,7 +952,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
                   </p>
                 </div>
                 <p className="text-xs text-neutral-500">
-                  Ghi chú bằng Markdown. Ô &quot;- [ ]&quot; ở đây chỉ là ghi chú; để theo dõi tiến độ, dùng mục Checklist bên dưới.
+                  {tr("cardModal.markdownHint")}
                 </p>
               </form>
             ) : (
@@ -988,14 +988,14 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
               >
                 <MarkdownPreview
                   value={draftDescription}
-                  emptyText={canEdit ? "Thêm nội dung" : "Chưa có nội dung."}
+                  emptyText={canEdit ? tr("cardModal.emptyAddDesc") : tr("cardModal.emptyNoDesc")}
                 />
               </div>
             )}
           </div>
         </PopoverAnchor>
         <PopoverContent align="start" side="bottom" className="w-80 description-conflict-popover">
-          <PopoverDescription>{DESCRIPTION_CONFLICT_MESSAGE}</PopoverDescription>
+          <PopoverDescription>{tr("cardModal.descConflictMessage")}</PopoverDescription>
           <Button
             type="button"
             size="sm"
@@ -1004,7 +1004,7 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
             className="h-8 self-start rounded-lg text-xs font-semibold"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Reload thẻ
+            {tr("cardModal.reloadCard")}
           </Button>
         </PopoverContent>
       </Popover>
@@ -1017,23 +1017,23 @@ export const Description = ({ data, canEdit = true, beforeCloseRef, compact = fa
         }}
       >
         <DialogContent className="description-guard-dialog sm:max-w-md" showCloseButton={false}>
-          <DialogTitle>Chưa lưu được nội dung</DialogTitle>
+          <DialogTitle>{tr("cardModal.unsavedDialogTitle")}</DialogTitle>
           <DialogDescription>
             {decision?.conflict
-              ? "Nội dung đã được cập nhật ở nơi khác nên bản của bạn chưa thể ghi đè. Bạn có thể ở lại để sao chép bản nháp, hoặc bỏ thay đổi."
-              : "Kết nối hoặc máy chủ đang lỗi. Bản nháp vẫn được giữ cho tới khi bạn chọn."}
+              ? tr("cardModal.unsavedConflictDesc")
+              : tr("cardModal.unsavedNetworkDesc")}
           </DialogDescription>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => decisionRef.current?.("stay")}>
-              Ở lại
+              {tr("cardModal.stay")}
             </Button>
             {!decision?.conflict && (
               <Button type="button" variant="outline" onClick={() => decisionRef.current?.("retry")}>
-                Thử lại
+                {tr("cardModal.retry")}
               </Button>
             )}
             <Button type="button" variant="destructive" onClick={() => decisionRef.current?.("discard")}>
-              Bỏ thay đổi
+              {tr("cardModal.discardChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>

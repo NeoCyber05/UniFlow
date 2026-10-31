@@ -1,16 +1,17 @@
 import type { AccentId, Appearance, BackgroundId } from "@/constants/appearance";
+import { tr } from "@/lib/i18n";
 
 export const THEME_PRESETS = [
-  { id: "classic", label: "Mặc định", accent: "blue", background: "glow" },
-  { id: "lavender", label: "Oải hương", accent: "violet", background: "lavender" },
-  { id: "mint", label: "Bạc hà", accent: "emerald", background: "mint" },
-] as const;
+  { id: "classic" as const, get label() { return tr("preset.theme.classic.label"); }, accent: "blue" as const, background: "glow" as const },
+  { id: "lavender" as const, get label() { return tr("preset.theme.lavender.label"); }, accent: "violet" as const, background: "lavender" as const },
+  { id: "mint" as const, get label() { return tr("preset.theme.mint.label"); }, accent: "emerald" as const, background: "mint" as const },
+];
 
 export const THEME_COLLECTIONS = [
-  { id: "essentials", label: "Tinh giản", description: "Nhẹ nhàng, để ý tưởng có chỗ lên tiếng." },
-  { id: "seasons", label: "Bốn mùa", description: "Một khung cửa nhỏ mở ra thiên nhiên." },
-  { id: "places", label: "Góc thân quen", description: "Mang một nơi bạn yêu vào ngày học mới." },
-] as const;
+  { id: "essentials" as const, get label() { return tr("preset.collection.essentials.label"); }, get description() { return tr("preset.collection.essentials.desc"); } },
+  { id: "seasons" as const, get label() { return tr("preset.collection.seasons.label"); }, get description() { return tr("preset.collection.seasons.desc"); } },
+  { id: "places" as const, get label() { return tr("preset.collection.places.label"); }, get description() { return tr("preset.collection.places.desc"); } },
+];
 export type PresetCategory = (typeof THEME_COLLECTIONS)[number]["id"];
 
 export type ThemePreset = {
@@ -23,19 +24,19 @@ export type ThemePreset = {
 };
 
 export const ALL_THEME_PRESETS = [
-  { id: "classic", label: "Mặc định", accent: "blue", background: "glow", category: "essentials", description: "Trong trẻo & gọn gàng" },
-  { id: "lavender", label: "Oải hương", accent: "violet", background: "lavender", category: "essentials", description: "Một chút dịu dàng" },
-  { id: "mint", label: "Bạc hà", accent: "emerald", background: "mint", category: "essentials", description: "Mát lành & nhẹ tênh" },
-  { id: "espresso", label: "Cà phê sữa", accent: "coffee", background: "espresso", category: "essentials", description: "Ấm áp như trang giấy" },
-  { id: "spring-garden", label: "Vườn xuân", accent: "emerald", background: "scene-spring", category: "seasons", description: "Lối nhỏ qua mùa hoa" },
-  { id: "summer-coast", label: "Hạ bên biển", accent: "cyan", background: "scene-summer", category: "seasons", description: "Nắng vàng, sóng xanh" },
-  { id: "autumn-walk", label: "Lá thu", accent: "amber", background: "scene-autumn", category: "seasons", description: "Chậm một nhịp giữa sắc thu" },
-  { id: "winter-silence", label: "Đông yên", accent: "slate", background: "scene-winter", category: "seasons", description: "Góc ấm giữa ngày tuyết" },
-  { id: "campus", label: "Sân trường", accent: "ruby", background: "scene-campus", category: "places", description: "Một ngày nắng ở Bách Khoa" },
-  { id: "library", label: "Góc thư viện", accent: "coffee", background: "scene-library", category: "places", description: "Nơi những ý tưởng bắt đầu" },
-  { id: "hanoi", label: "Hà Nội chiều", accent: "coral", background: "scene-hanoi", category: "places", description: "Mặt hồ giữ lại hoàng hôn" },
-  { id: "observatory", label: "Trạm ngắm sao", accent: "indigo", background: "scene-observatory", category: "places", description: "Cho những giấc mơ xa" },
-] as const satisfies readonly ThemePreset[];
+  { id: "classic" as const, get label() { return tr("preset.theme.classic.label"); }, accent: "blue" as const, background: "glow" as const, category: "essentials" as const, get description() { return tr("preset.theme.classic.desc"); } },
+  { id: "lavender" as const, get label() { return tr("preset.theme.lavender.label"); }, accent: "violet" as const, background: "lavender" as const, category: "essentials" as const, get description() { return tr("preset.theme.lavender.desc"); } },
+  { id: "mint" as const, get label() { return tr("preset.theme.mint.label"); }, accent: "emerald" as const, background: "mint" as const, category: "essentials" as const, get description() { return tr("preset.theme.mint.desc"); } },
+  { id: "espresso" as const, get label() { return tr("preset.theme.espresso.label"); }, accent: "coffee" as const, background: "espresso" as const, category: "essentials" as const, get description() { return tr("preset.theme.espresso.desc"); } },
+  { id: "spring-garden" as const, get label() { return tr("preset.theme.spring-garden.label"); }, accent: "emerald" as const, background: "scene-spring" as const, category: "seasons" as const, get description() { return tr("preset.theme.spring-garden.desc"); } },
+  { id: "summer-coast" as const, get label() { return tr("preset.theme.summer-coast.label"); }, accent: "cyan" as const, background: "scene-summer" as const, category: "seasons" as const, get description() { return tr("preset.theme.summer-coast.desc"); } },
+  { id: "autumn-walk" as const, get label() { return tr("preset.theme.autumn-walk.label"); }, accent: "amber" as const, background: "scene-autumn" as const, category: "seasons" as const, get description() { return tr("preset.theme.autumn-walk.desc"); } },
+  { id: "winter-silence" as const, get label() { return tr("preset.theme.winter-silence.label"); }, accent: "slate" as const, background: "scene-winter" as const, category: "seasons" as const, get description() { return tr("preset.theme.winter-silence.desc"); } },
+  { id: "campus" as const, get label() { return tr("preset.theme.campus.label"); }, accent: "ruby" as const, background: "scene-campus" as const, category: "places" as const, get description() { return tr("preset.theme.campus.desc"); } },
+  { id: "library" as const, get label() { return tr("preset.theme.library.label"); }, accent: "coffee" as const, background: "scene-library" as const, category: "places" as const, get description() { return tr("preset.theme.library.desc"); } },
+  { id: "hanoi" as const, get label() { return tr("preset.theme.hanoi.label"); }, accent: "coral" as const, background: "scene-hanoi" as const, category: "places" as const, get description() { return tr("preset.theme.hanoi.desc"); } },
+  { id: "observatory" as const, get label() { return tr("preset.theme.observatory.label"); }, accent: "indigo" as const, background: "scene-observatory" as const, category: "places" as const, get description() { return tr("preset.theme.observatory.desc"); } },
+] satisfies readonly ThemePreset[];
 
 export type ThemePresetId = (typeof ALL_THEME_PRESETS)[number]["id"];
 
@@ -61,13 +62,13 @@ export const createAppearanceQueue = (options: {
       current = { ...current, ...patch }; options.onChange(current); options.onStatus("saving");
       tail = tail.then(async () => {
         if (!active()) return;
-        const result = await options.save({ ...patch, expectedUserId: options.owner }).catch(() => ({ error: "Không thể lưu giao diện.", data: undefined }));
+        const result = await options.save({ ...patch, expectedUserId: options.owner }).catch(() => ({ error: tr("preset.saveError"), data: undefined }));
         if (!active()) return;
         if (result.data) saved = result.data;
         if (request !== version) return;
         current = saved; options.onChange(saved);
         options.onStatus(result.data ? "saved" : "error");
-        if (!result.data) options.onError(result.error || "Không thể lưu giao diện.");
+        if (!result.data) options.onError(result.error || tr("preset.saveError"));
       });
       return tail;
     },

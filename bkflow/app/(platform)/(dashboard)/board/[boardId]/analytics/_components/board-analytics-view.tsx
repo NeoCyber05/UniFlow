@@ -5,6 +5,8 @@ import { Effect } from "@animate-ui/react/primitives/effects/effect";
 import { ReducedMotionConfig } from "@animate-ui/react/utils/motion";
 import { BarChart3, PieChart, Users } from "lucide-react";
 
+import { tr } from "@/lib/i18n";
+
 import type { BoardAnalyticsViewProps } from "../_types";
 import { AiReportPanel } from "./ai-report-panel";
 import { ChartPanel } from "./chart-panel";
@@ -44,8 +46,8 @@ export const BoardAnalyticsView = ({
 
           <Cell index={1} className="lg:col-span-2">
             <ChartPanel
-              title="Phân bổ theo danh sách"
-              description="Số thẻ trong từng danh sách"
+              title={tr("analytics.listDist.title")}
+              description={tr("analytics.listDist.desc")}
               icon={BarChart3}
             >
               <ListDistributionChart data={listDistribution} hasCards={hasCards} />
@@ -59,16 +61,16 @@ export const BoardAnalyticsView = ({
           <Cell index={3} className="lg:col-span-2">
             {boardType === "WORKSPACE" ? (
               <ChartPanel
-                title="Khối lượng theo danh mục"
-                description="Hoàn thành, đang mở, quá hạn theo từng môn"
+                title={tr("analytics.courseWorkload.title")}
+                description={tr("analytics.courseWorkload.desc")}
                 icon={BarChart3}
               >
                 <CourseWorkloadChart data={courseBreakdown} />
               </ChartPanel>
             ) : (
               <ChartPanel
-                title="Khối lượng thành viên"
-                description="Số lượt được giao thẻ"
+                title={tr("analytics.memberWorkload.title")}
+                description={tr("analytics.memberWorkload.desc")}
                 icon={Users}
               >
                 <WorkloadChart data={workload} />
@@ -78,8 +80,8 @@ export const BoardAnalyticsView = ({
 
           <Cell index={4}>
             <ChartPanel
-              title="Trạng thái hạn"
-              description="Thẻ theo tình trạng deadline"
+              title={tr("analytics.scheduleHealth.title")}
+              description={tr("analytics.scheduleHealth.desc")}
               icon={PieChart}
             >
               <ScheduleHealthChart kpis={kpis} data={scheduleHealth} />

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { getPersonalBoardDestination } from "@/lib/my-tasks/personal-navigation";
 import { MY_TASKS_CONTEXT_KEY, type MyTasksContext } from "@/lib/my-tasks/types";
+import { tr } from "@/lib/i18n";
 
 import type { loadMy } from "@/server/views/my";
 import { NoWorkspaceState } from "@/components/my-tasks/no-workspace-state";
@@ -25,7 +26,7 @@ export default function MyRoute() {
   const cachedBoardId = useQueryClient().getQueryData<MyTasksContext>(MY_TASKS_CONTEXT_KEY)?.board?.id;
   const fastRedirect = !error && cachedBoardId ? getPersonalBoardDestination(view, cachedBoardId) : null;
   const { data } = useView<View>(myViewPath(view, error), { enabled: !fastRedirect });
-  useTitle("Không gian cá nhân");
+  useTitle(tr("route.titlePersonalSpace"));
 
   if (fastRedirect) return <Navigate to={fastRedirect} replace />;
   return <SidebarShell>{render(data)}</SidebarShell>;

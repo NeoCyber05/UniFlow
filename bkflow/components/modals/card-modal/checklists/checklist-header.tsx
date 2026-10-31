@@ -5,6 +5,7 @@ import { CheckSquare, Eye, EyeOff, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { tr } from "@/lib/i18n";
 
 interface ChecklistHeaderProps {
   title: string;
@@ -64,6 +65,8 @@ export const ChecklistHeader = ({
     setIsEditing(false);
   };
 
+  const toggleLabel = isHidingCompleted ? tr("checklist.showCompleted") : tr("checklist.hideCompleted");
+
   return (
     <div className="flex items-start justify-between gap-x-3 w-full">
       <div className="flex min-w-0 items-start gap-x-3.5">
@@ -89,7 +92,7 @@ export const ChecklistHeader = ({
             }}
             disabled={isRenaming}
             className="h-9 min-w-0 rounded-lg border-violet-400 text-base font-semibold focus-visible:ring-1 focus-visible:ring-violet-200"
-            aria-label="Đổi tên danh sách công việc"
+            aria-label={tr("checklist.renameAria")}
           />
         ) : (
           <button
@@ -109,21 +112,21 @@ export const ChecklistHeader = ({
             onClick={onToggleHideCompleted}
             variant="outline"
             size="sm"
-            aria-label={isHidingCompleted ? "Hiện đã hoàn thành" : "Ẩn đã hoàn thành"}
+            aria-label={toggleLabel}
             className="h-8 rounded-lg border-neutral-200 text-xs text-neutral-600 hover:bg-neutral-50 font-semibold cursor-pointer"
           >
-            {compact ? (isHidingCompleted ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />) : isHidingCompleted ? "Hiện đã hoàn thành" : "Ẩn đã hoàn thành"}
+            {compact ? (isHidingCompleted ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />) : toggleLabel}
           </Button>
         )}
         {canEdit && (
           <Button
             onClick={onDelete}
-            aria-label="Xóa checklist"
+            aria-label={tr("checklist.deleteAria")}
             variant="outline"
             size="sm"
             className="h-8 rounded-lg border-neutral-200 text-xs text-neutral-600 hover:bg-neutral-50 font-semibold cursor-pointer"
           >
-            {compact ? <Trash2 className="size-3.5" /> : "Xóa"}
+            {compact ? <Trash2 className="size-3.5" /> : tr("checklist.delete")}
           </Button>
         )}
       </div>

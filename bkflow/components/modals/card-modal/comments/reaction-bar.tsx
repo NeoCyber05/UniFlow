@@ -1,5 +1,5 @@
-import { BoardMember } from "@/types";
 "use client";
+
 import { SmilePlus } from "lucide-react";
 
 import { Hint } from "@/components/hint";
@@ -9,7 +9,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { BoardMember } from "@/types";
 
 import {
   REACTION_EMOJIS,
@@ -36,11 +38,11 @@ export const ReactionBar = ({
 }) => {
   const getReactingUserNames = (reactionUserId: string) => {
     if (reactionUserId === currentUserId) {
-      return "Bạn";
+      return tr("comment.you");
     }
 
     const member = boardMembers?.find((m) => m.userId === reactionUserId);
-    return member ? member.userName : "Người dùng UniFlow";
+    return member ? member.userName : tr("comment.fallbackUser");
   };
 
   return (
@@ -87,7 +89,7 @@ export const ReactionBar = ({
             <button
               type="button"
               className="flex h-6 w-6 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50/50 hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer"
-              aria-label="Thêm cảm xúc"
+              aria-label={tr("comment.addReactionAria")}
             >
               <SmilePlus className="h-3.5 w-3.5" />
             </button>

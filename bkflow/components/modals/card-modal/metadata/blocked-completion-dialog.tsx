@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { tr } from "@/lib/i18n";
 import type { CardDependencyWithBlockerCard } from "@/types";
 
 interface BlockedCompletionDialogProps {
@@ -43,11 +44,11 @@ export const BlockedCompletionDialog = ({
               <AlertTriangle className="h-4 w-4" />
             </span>
             <DialogTitle className="text-lg font-semibold text-neutral-900">
-              Cảnh báo tiến độ
+              {tr("cardMeta.blockedTitle")}
             </DialogTitle>
           </div>
           <DialogDescription className="text-sm leading-relaxed text-neutral-600">
-            Thẻ này hiện đang bị chặn bởi các thẻ sau chưa hoàn thành:
+            {tr("cardMeta.blockedDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -63,7 +64,7 @@ export const BlockedCompletionDialog = ({
                 </span>
                 {dependency.blockerCard.archivedAt && (
                   <span className="shrink-0 rounded-md border border-neutral-200 bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-500">
-                    Đã lưu trữ
+                    {tr("cardMeta.archivedBadge")}
                   </span>
                 )}
               </div>
@@ -79,7 +80,7 @@ export const BlockedCompletionDialog = ({
             onClick={() => onOpenChange(false)}
             className="h-9 w-full rounded-xl border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 sm:w-auto"
           >
-            Hủy
+            {tr("cardMeta.cancel")}
           </Button>
           <Button
             type="button"
@@ -88,7 +89,7 @@ export const BlockedCompletionDialog = ({
             onClick={onConfirm}
             className="h-9 w-full rounded-xl sm:w-auto"
           >
-            {isLoading ? "Đang hoàn thành..." : "Vẫn hoàn thành"}
+            {isLoading ? tr("cardMeta.completing") : tr("cardMeta.completeAnyway")}
           </Button>
         </DialogFooter>
       </DialogContent>

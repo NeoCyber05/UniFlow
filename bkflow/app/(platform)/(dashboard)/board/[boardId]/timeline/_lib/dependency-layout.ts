@@ -1,5 +1,6 @@
 import { isAfter } from "date-fns";
 
+import { getIntlLocale, tr } from "@/lib/i18n";
 import type {
   BoardTimelineCard,
 } from "@/types";
@@ -47,14 +48,14 @@ export const getDependencyPreviewLabel = (card: BoardTimelineCard) => {
   const parts = [];
 
   if (preview.hasBlockers) {
-    parts.push(`${preview.unresolvedBlockerCount} thẻ chặn chưa hoàn thành`);
+    parts.push(tr("timeline.dependency.unresolvedBlockers", { count: preview.unresolvedBlockerCount }));
   }
 
   if (preview.hasConflict) {
-    parts.push(`${preview.conflictCount} xung đột lịch phụ thuộc`);
+    parts.push(tr("timeline.dependency.scheduleConflicts", { count: preview.conflictCount }));
   }
 
-  return parts.join(". ");
+  return parts.join(getIntlLocale() === "ja-JP" ? "・" : ". ");
 };
 
 export const hasDependencyLineConflict = (

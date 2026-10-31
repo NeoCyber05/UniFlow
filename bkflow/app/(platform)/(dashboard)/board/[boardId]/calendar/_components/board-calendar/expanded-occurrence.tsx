@@ -11,6 +11,7 @@ import {
 import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import {
@@ -61,6 +62,12 @@ export const ExpandedOccurrence = ({
 }: ExpandedOccurrenceProps) => {
   const course = useBoardCourse(occurrence.item.boardId, occurrence.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
+  const openItemLabel = occurrence.item.type === "checklist-item"
+    ? tr("calendar.occurrence.openChecklistAria", {
+      title: occurrence.item.title,
+      cardTitle: occurrence.item.cardTitle,
+    })
+    : tr("calendar.occurrence.openCardAria", { title: occurrence.item.title });
 
   return (
     <Hint key={`expanded:${occurrence.id}`} description={getCalendarItemTitle(occurrence.item)} side="top" sideOffset={4} className="max-w-[280px]">
@@ -76,12 +83,8 @@ export const ExpandedOccurrence = ({
               ? { checklistItemId: occurrence.item.checklistItemId }
               : undefined,
           )}
-          aria-label={occurrence.item.type === "checklist-item"
-            ? `Mở mục checklist ${occurrence.item.title} trong thẻ ${occurrence.item.cardTitle}`
-            : `Mở thẻ ${occurrence.item.title}`}
-          title={occurrence.item.type === "checklist-item"
-            ? `Mở mục checklist ${occurrence.item.title} trong thẻ ${occurrence.item.cardTitle}`
-            : `Mở thẻ ${occurrence.item.title}`}
+          aria-label={openItemLabel}
+          title={openItemLabel}
           className="flex min-w-0 flex-1 items-start gap-x-2 text-left"
         >
           <div className={cn(

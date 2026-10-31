@@ -3,6 +3,7 @@
 import { Sidebar } from "@/app/(platform)/(dashboard)/_components/sidebar";
 import { useBoardSidebar } from "@/hooks/use-board-sidebar";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const BoardSidebar = () => {
@@ -19,7 +20,7 @@ export const BoardSidebar = () => {
         // Width snaps (one reflow); only the panel slides. On close the width waits for the slide.
         effectiveIsOpen ? "w-60" : "w-0 [transition:width_0s_200ms]"
       )}
-      aria-label="Thanh điều hướng cá nhân"
+      aria-label={tr("boardShell.sidebar.navLabel")}
       inert={!effectiveIsOpen}
     >
       <div

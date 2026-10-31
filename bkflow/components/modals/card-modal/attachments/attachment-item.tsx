@@ -3,13 +3,13 @@
 import { AttachmentType, type CardAttachment } from "@prisma/client";
 import { Draggable } from "@hello-pangea/dnd";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 import { ExternalLink } from "lucide-react";
 import { createPortal } from "react-dom";
 
 import type { InputType as UpdateCardAttachmentInput } from "@/actions/attachments/update-card-attachment/types";
 import { Button } from "@/components/ui/button";
 import type { FieldErrors } from "@/lib/create-safe-action";
+import { getDateFnsLocale, tr } from "@/lib/i18n";
 
 import { AttachmentActionsPopover } from "./attachment-actions-popover";
 import { AttachmentEditForm } from "./attachment-edit-form";
@@ -128,7 +128,7 @@ export const AttachmentItem = ({
   }
 
   const isImage = isImageAttachment(item);
-  const timeLabel = formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: vi });
+  const timeLabel = formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: getDateFnsLocale() });
 
   return (
     <Draggable
@@ -163,7 +163,7 @@ export const AttachmentItem = ({
                     target="_blank"
                     rel="noreferrer"
                     className="relative flex h-14 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-white text-neutral-500"
-                    aria-label="Mở đính kèm"
+                    aria-label={tr("attachment.openAttachmentAria")}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {isImage ? (
@@ -189,7 +189,7 @@ export const AttachmentItem = ({
                       {item.name}
                     </p>
                     <p className="mt-0.5 text-xs text-neutral-400">
-                      {`Đã thêm ${timeLabel}`}
+                      {tr("attachment.addedTime", { time: timeLabel })}
                     </p>
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export const AttachmentItem = ({
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      aria-label="Mở liên kết"
+                      aria-label={tr("attachment.openLinkAria")}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>

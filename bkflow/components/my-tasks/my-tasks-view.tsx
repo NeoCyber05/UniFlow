@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 import { useRouter } from "@/web/shims/next-navigation";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -35,7 +35,7 @@ export const MyTasksView = ({ initialContext, initialData, initialNow, canEdit, 
 
   return <div className="personal-workspace mx-auto w-full max-w-6xl">
     <header className="mb-7 flex items-start justify-between gap-4">
-      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tr("common.today")}</h1></div>
+      <div><p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{now.toLocaleDateString(getIntlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" })}</p><h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{tr("common.today")}</h1></div>
       <div className="flex shrink-0 items-center gap-1"><Button variant="ghost" size="icon" disabled={isFetching} onClick={() => void refetch()} aria-label={tr("tasks.refresh")}><RefreshCw aria-hidden="true" className={`size-4 ${isFetching ? "animate-spin" : ""}`} /></Button></div>
     </header>
     {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}

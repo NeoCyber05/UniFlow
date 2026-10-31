@@ -1,5 +1,6 @@
 import { useId } from "react";
 
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /** Logo Trợ lý AI: tile đỏ + bong bóng chat có tia sáng, cùng ngôn ngữ hình với public/logo.svg. */
@@ -7,7 +8,7 @@ export const AiLogo = ({ className }: { className?: string }) => {
   // Mỗi instance cần id gradient riêng; bỏ ký tự đặc biệt để url(#...) luôn hợp lệ.
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   return (
-    <svg viewBox="0 0 64 64" role="img" aria-label="Trợ lý AI UniFlow" className={cn("size-8 shrink-0", className)}>
+    <svg viewBox="0 0 64 64" role="img" aria-label={tr("aiAssistant.logoAria")} className={cn("size-8 shrink-0", className)}>
       <defs>
         <linearGradient id={`${id}bg`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#d70a2d" />

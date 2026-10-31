@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 
 import { getGridColumnSpanStyle } from "@/lib/calendar/calendar-grid-size";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import {
@@ -60,7 +61,7 @@ export const CalendarRangeOverflows = ({
         )}
       >
         <div className="flex h-full w-full items-center justify-center rounded-md bg-neutral-100 px-1.5 text-[11px] font-semibold text-neutral-500 hover:bg-neutral-200 transition">
-          +{rangeOverflowCount} dải
+          {tr("calendar.range.moreRanges", { count: rangeOverflowCount })}
         </div>
       </button>
     );

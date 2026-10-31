@@ -1,6 +1,6 @@
 "use client";
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
@@ -240,7 +240,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <span className="mr-2 hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex" aria-live="polite">
           {saving ? <><LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{tr("notes.page.saving")}</> : saved ? <><Check aria-hidden="true" className="size-3.5" />{tr("notes.page.saved")}</> : tr("notes.page.unsaved")}
-          <span className="sr-only">{tr("notes.page.updatedAt", { time: new Date(updatedAt).toLocaleTimeString("vi-VN") })}</span>
+          <span className="sr-only">{tr("notes.page.updatedAt", { time: new Date(updatedAt).toLocaleTimeString(getIntlLocale()) })}</span>
         </span>
         {!trashed && <>
           {!preserved && <>
@@ -252,7 +252,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
                 <Input aria-label={tr("notes.ai.promptLabel")} value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void runAiEdit(); }} placeholder={tr("notes.ai.promptPlaceholder")} />
                 <Button onClick={() => void runAiEdit()} disabled={saving || aiBusy || !prompt.trim()}>{aiBusy ? <LoaderCircle className="animate-spin" /> : tr("common.apply")}</Button>
               </div>
-              {!!history.length && <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-2.5 py-1.5 text-xs"><span>{new Date(change.createdAt).toLocaleString("vi-VN")}</span>{change.undoneAt ? <span className="text-muted-foreground">{tr("notes.undo.done")}</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" />{tr("notes.undo.button")}</Button>}</li>)}</ul>}
+              {!!history.length && <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">{history.map(change => <li key={change.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/60 px-2.5 py-1.5 text-xs"><span>{new Date(change.createdAt).toLocaleString(getIntlLocale())}</span>{change.undoneAt ? <span className="text-muted-foreground">{tr("notes.undo.done")}</span> : <Button type="button" variant="ghost" size="sm" disabled={saving || aiBusy} onClick={() => void undoAiEdit(change.id)}><Undo2 aria-hidden="true" />{tr("notes.undo.button")}</Button>}</li>)}</ul>}
             </PopoverContent>
           </Popover>
           <Popover>
@@ -320,6 +320,6 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
         </div>
       </fieldset>
     </article>
-    {!trashed && !preserved && <BoardAssistant context={{ kind: "page", pageId: page.id, expectedUpdatedAt: updatedAt }} label={`Trang: ${title}`} onEditPage={runAiEdit} />}
+    {!trashed && !preserved && <BoardAssistant context={{ kind: "page", pageId: page.id, expectedUpdatedAt: updatedAt }} label={tr("notesExtra.pageContextLabel", { title })} onEditPage={runAiEdit} />}
   </div>;
 };

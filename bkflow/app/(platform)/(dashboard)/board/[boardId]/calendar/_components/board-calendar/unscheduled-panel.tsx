@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/avatar";
 import { Hint } from "@/components/hint";
 import { Skeleton } from "@/components/ui/skeleton";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { BoardCalendarUnscheduledCard } from "@/types";
 import type { BoardCalendarList } from "../../_types";
@@ -91,7 +92,7 @@ const UnscheduledCard = ({
       draggingUnscheduledCardId === card.cardId && "opacity-60 ring-2 ring-violet-300",
     )}
     disabled={isUpdatingCardDate || isUpdatingChecklistItemDueDate}
-    aria-label={`Mở thẻ ${card.title}`}
+    aria-label={tr("calendar.occurrence.openCardAria", { title: card.title })}
   >
     <div className="flex min-w-0 items-start justify-between gap-x-2">
       <div className="min-w-0 flex-1">
@@ -118,7 +119,7 @@ const UnscheduledCard = ({
           {card.labels.slice(0, 4).map((label) => (
             <span
               key={label.id}
-              title={label.title || "Nhãn"}
+              title={label.title || tr("calendar.common.labelFallback")}
               className="h-2 w-8 rounded-full"
               style={{ backgroundColor: label.color }}
             />
@@ -166,11 +167,11 @@ const UnscheduledCard = ({
     type="button"
     disabled={isUpdatingCardDate || isUpdatingChecklistItemDueDate}
     onClick={() => onPlan(card)}
-    aria-label={`Xếp lịch làm cho thẻ ${card.title}`}
+    aria-label={tr("calendar.unscheduled.planCardAria", { title: card.title })}
     className="flex h-7 w-full items-center justify-center gap-x-1 rounded-md border border-neutral-200 text-xs font-semibold text-neutral-600 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-60"
   >
     <CalendarPlus className="h-3.5 w-3.5" />
-    Xếp lịch
+    {tr("calendar.action.schedule")}
   </button>
   </div>
 );
@@ -218,19 +219,19 @@ export const UnscheduledPanel = ({
         <div className="min-w-0">
           <div className="flex items-center gap-x-2">
             <h2 className="truncate text-sm font-semibold text-neutral-900">
-              Chưa xếp lịch làm
+              {tr("calendar.unscheduled.title")}
             </h2>
             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
               {countLabel}
             </span>
           </div>
         </div>
-        <Hint description={isCollapsed ? "Mở panel" : "Thu gọn panel"} side="top">
+        <Hint description={isCollapsed ? tr("calendar.unscheduled.expandHint") : tr("calendar.unscheduled.collapseHint")} side="top">
           <button
             type="button"
             onClick={() => setIsCollapsed((value) => !value)}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800"
-            aria-label={isCollapsed ? "Mở panel chưa lên lịch" : "Thu gọn panel chưa lên lịch"}
+            aria-label={isCollapsed ? tr("calendar.unscheduled.expandAria") : tr("calendar.unscheduled.collapseAria")}
           >
             {isCollapsed ? (
               <ChevronDown className="h-4 w-4" />
@@ -253,9 +254,9 @@ export const UnscheduledPanel = ({
                 )
               }
               className="h-8 w-full rounded-md border border-neutral-200 bg-white px-2 text-xs font-medium text-neutral-700 outline-none transition focus:border-violet-400 focus:ring-1 focus:ring-violet-200"
-              aria-label="Lọc thẻ chưa lên lịch theo danh sách"
+              aria-label={tr("calendar.unscheduled.filterByListAria")}
             >
-              <option value="all">Tất cả danh sách</option>
+              <option value="all">{tr("calendar.unscheduled.allLists")}</option>
               {lists.map((list) => (
                 <option key={list.id} value={list.id}>
                   {list.title}
@@ -277,7 +278,7 @@ export const UnscheduledPanel = ({
               <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-red-100 bg-red-50 px-3 text-center text-red-700">
                 <AlertCircle className="mb-2 h-5 w-5" />
                 <p className="text-xs font-semibold">
-                  Không tải được thẻ chưa lên lịch.
+                  {tr("calendar.unscheduled.loadError")}
                 </p>
               </div>
             )}
@@ -305,8 +306,8 @@ export const UnscheduledPanel = ({
                 <CalendarX2 className="mb-2 h-5 w-5 text-neutral-400" />
                 <p className="text-xs font-semibold text-neutral-700">
                   {unscheduledCards.length === 0
-                    ? "Không có thẻ chưa lên lịch."
-                    : "Không có thẻ phù hợp với bộ lọc."}
+                    ? tr("calendar.unscheduled.empty")
+                    : tr("calendar.unscheduled.emptyFiltered")}
                 </p>
               </div>
             )}

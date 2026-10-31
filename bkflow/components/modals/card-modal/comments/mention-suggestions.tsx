@@ -2,6 +2,7 @@
 
 import type { MentionSuggestionOption } from "./mention-utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { getInitials } from "./comment-utils";
@@ -20,7 +21,7 @@ export const MentionSuggestions = ({
   return (
     <div className="absolute bottom-full left-0 z-[60] mb-1 w-full max-w-[320px] max-h-[220px] overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl styled-scrollbar">
       <p className="px-2 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-        Đề xuất nhắc nhở
+        {tr("comment.mentionTitle")}
       </p>
       <div className="space-y-0.5 mt-1">
         {options.map((option, idx) => {

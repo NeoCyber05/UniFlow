@@ -1,5 +1,6 @@
 import type { Checklist } from "@prisma/client";
 
+import { intlDateFormat, tr } from "@/lib/i18n";
 import type { ChecklistItemWithAssignee } from "@/types";
 
 export type ChecklistWithItems = Checklist & {
@@ -54,14 +55,16 @@ export const parseParentCardDueDate = (cardDueDate: Date | string | null) => {
 
 export const getChecklistDueDateRangeError = (parentCardDueDate: Date | null) => {
   if (!parentCardDueDate) {
-    return "Hạn checklist phải trước hoặc bằng hạn chót của thẻ.";
+    return tr("checklist.dueRangeError");
   }
 
-  return `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${parentCardDueDate.toLocaleString("vi-VN", {
+  const max = intlDateFormat({
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  })}).`;
+  }).format(parentCardDueDate);
+
+  return tr("checklist.dueRangeErrorWithMax", { max });
 };

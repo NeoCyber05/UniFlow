@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
+import { ja as dateFnsJa, vi as dateFnsVi, type Locale as DateFnsLocale } from "date-fns/locale";
 import { create } from "zustand";
 
 import { ja } from "./messages/ja";
@@ -27,7 +28,9 @@ const readLocale = (): Locale => {
 };
 
 const applyLocale = (locale: Locale) => {
-  document.documentElement.lang = locale;
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = locale;
+  }
 };
 
 const initial = typeof window === "undefined" ? "vi" : readLocale();
@@ -45,6 +48,25 @@ export const useLocale = create<{ locale: Locale; setLocale: (l: Locale) => void
     set({ locale });
   },
 }));
+
+export const getIntlLocale = (): "vi-VN" | "ja-JP" =>
+  useLocale.getState().locale === "ja" ? "ja-JP" : "vi-VN";
+
+export const getDateFnsLocale = (): DateFnsLocale =>
+  useLocale.getState().locale === "ja" ? dateFnsJa : dateFnsVi;
+
+const intlCache = new Map<string, Intl.DateTimeFormat>();
+
+export const intlDateFormat = (options?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat => {
+  const tag = getIntlLocale();
+  const key = `${tag}:${JSON.stringify(options ?? {})}`;
+  let fmt = intlCache.get(key);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(tag, options);
+    intlCache.set(key, fmt);
+  }
+  return fmt;
+};
 
 // Dùng được ngoài React (toast, helper). Chuỗi thiếu rơi về tiếng Việt.
 // Placeholder dạng {name}, ví dụ tr("x", { goal: 5 }).

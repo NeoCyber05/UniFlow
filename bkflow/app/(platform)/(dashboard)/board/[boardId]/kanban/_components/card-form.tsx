@@ -17,6 +17,7 @@ import { createCard } from "@/actions/cards/create-card";
 import { Button } from "@/components/ui/button";
 import { FormSubmit } from "@/components/form/form-submit";
 import { FormTextarea } from "@/components/form/form-textarea";
+import { tr } from "@/lib/i18n";
 import type { CardWithAssignees, ListWithCards } from "@/types";
 
 import { useBoardState } from "./board-state-context";
@@ -201,7 +202,7 @@ export const CardForm = forwardRef<HTMLTextAreaElement, CardFormProps>(({
           id="title"
           onKeyDown={onTextareakeyDown}
           ref={ref}
-          placeholder="Nhập tiêu đề thẻ…"
+          placeholder={tr("kanban.cardForm.placeholder")}
           errors={fieldErrors}
           disabled={isLoading}
           className="text-sm resize-none rounded-lg border-neutral-200 focus:border-violet-400 focus:ring-1 focus:ring-violet-200 shadow-sm"
@@ -214,7 +215,7 @@ export const CardForm = forwardRef<HTMLTextAreaElement, CardFormProps>(({
         />
         <div className="flex items-center gap-x-2">
           <FormSubmit disabled={isLoading} className="h-8 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-3">
-            Thêm thẻ
+            {tr("kanban.cardForm.addCard")}
           </FormSubmit>
           <Button onClick={disableEditing} disabled={isLoading} size="sm" variant="ghost" className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600 rounded-lg">
             <X className="h-4 w-4" />
@@ -233,7 +234,7 @@ export const CardForm = forwardRef<HTMLTextAreaElement, CardFormProps>(({
         variant="ghost"
       >
         <Plus className="h-3.5 w-3.5 mr-1.5" />
-        Thêm thẻ
+        {tr("kanban.cardForm.addCard")}
       </Button>
     </div>
   );

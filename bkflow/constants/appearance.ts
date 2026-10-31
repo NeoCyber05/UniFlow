@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import { tr } from "@/lib/i18n";
+import type { ExtraMessageKey } from "@/lib/i18n/messages/vi-extra";
 import type { PageStyle } from "@/lib/notes/page-style";
 
 export const ACCENT_IDS = [
@@ -111,34 +113,34 @@ export const DEFAULT_APPEARANCE: Appearance = {
 
 // 28 màu chủ đạo (Accent colors)
 export const ACCENTS: { id: AccentId; label: string; swatch: string }[] = [
-  { id: "blue", label: "Xanh dương cổ điển", swatch: "#2563eb" },
-  { id: "indigo", label: "Chàm trí tuệ", swatch: "#4f46e5" },
-  { id: "violet", label: "Tím thanh lịch", swatch: "#7c3aed" },
-  { id: "purple", label: "Tím hoàng gia", swatch: "#9333ea" },
-  { id: "fuchsia", label: "Hồng cánh sen", swatch: "#a21caf" },
-  { id: "pink", label: "Hồng phấn tươi", swatch: "#db2777" },
-  { id: "rose", label: "Hồng đào dịu", swatch: "#e11d48" },
-  { id: "ruby", label: "Đỏ Bách Khoa", swatch: "#dc2626" },
-  { id: "crimson", label: "Đỏ thẫm sang", swatch: "#be123c" },
-  { id: "coral", label: "Cam san hô", swatch: "#ea580c" },
-  { id: "orange", label: "Cam cháy năng lượng", swatch: "#c2410c" },
-  { id: "amber", label: "Hổ phách ấm áp", swatch: "#b45309" },
-  { id: "gold", label: "Vàng hoàng kim", swatch: "#ca8a04" },
-  { id: "yellow", label: "Vàng nắng rực rỡ", swatch: "#d97706" },
-  { id: "lime", label: "Xanh cốm non", swatch: "#4d7c0f" },
-  { id: "green", label: "Xanh lá tự nhiên", swatch: "#16a34a" },
-  { id: "emerald", label: "Ngọc lục bảo", swatch: "#047857" },
-  { id: "forest", label: "Xanh rừng sâu", swatch: "#15803d" },
-  { id: "teal", label: "Xanh mòng két", swatch: "#0f766e" },
-  { id: "cyan", label: "Xanh ngọc bích", swatch: "#0e7490" },
-  { id: "sky", label: "Xanh da trời tự do", swatch: "#0284c7" },
-  { id: "navy", label: "Xanh hải quân đậm", swatch: "#1d4ed8" },
-  { id: "sage", label: "Xanh xô thơm tĩnh", swatch: "#4e6e56" },
-  { id: "slate", label: "Xám than chì", swatch: "#475569" },
-  { id: "zinc", label: "Ánh kim hiện đại", swatch: "#52525b" },
-  { id: "neutral", label: "Xám tối giản", swatch: "#525252" },
-  { id: "stone", label: "Đá cuội mộc", swatch: "#57534e" },
-  { id: "coffee", label: "Cà phê đậm đà", swatch: "#78350f" },
+  { id: "blue", get label() { return tr("preset.accent.blue"); }, swatch: "#2563eb" },
+  { id: "indigo", get label() { return tr("preset.accent.indigo"); }, swatch: "#4f46e5" },
+  { id: "violet", get label() { return tr("preset.accent.violet"); }, swatch: "#7c3aed" },
+  { id: "purple", get label() { return tr("preset.accent.purple"); }, swatch: "#9333ea" },
+  { id: "fuchsia", get label() { return tr("preset.accent.fuchsia"); }, swatch: "#a21caf" },
+  { id: "pink", get label() { return tr("preset.accent.pink"); }, swatch: "#db2777" },
+  { id: "rose", get label() { return tr("preset.accent.rose"); }, swatch: "#e11d48" },
+  { id: "ruby", get label() { return tr("preset.accent.ruby"); }, swatch: "#dc2626" },
+  { id: "crimson", get label() { return tr("preset.accent.crimson"); }, swatch: "#be123c" },
+  { id: "coral", get label() { return tr("preset.accent.coral"); }, swatch: "#ea580c" },
+  { id: "orange", get label() { return tr("preset.accent.orange"); }, swatch: "#c2410c" },
+  { id: "amber", get label() { return tr("preset.accent.amber"); }, swatch: "#b45309" },
+  { id: "gold", get label() { return tr("preset.accent.gold"); }, swatch: "#ca8a04" },
+  { id: "yellow", get label() { return tr("preset.accent.yellow"); }, swatch: "#d97706" },
+  { id: "lime", get label() { return tr("preset.accent.lime"); }, swatch: "#4d7c0f" },
+  { id: "green", get label() { return tr("preset.accent.green"); }, swatch: "#16a34a" },
+  { id: "emerald", get label() { return tr("preset.accent.emerald"); }, swatch: "#047857" },
+  { id: "forest", get label() { return tr("preset.accent.forest"); }, swatch: "#15803d" },
+  { id: "teal", get label() { return tr("preset.accent.teal"); }, swatch: "#0f766e" },
+  { id: "cyan", get label() { return tr("preset.accent.cyan"); }, swatch: "#0e7490" },
+  { id: "sky", get label() { return tr("preset.accent.sky"); }, swatch: "#0284c7" },
+  { id: "navy", get label() { return tr("preset.accent.navy"); }, swatch: "#1d4ed8" },
+  { id: "sage", get label() { return tr("preset.accent.sage"); }, swatch: "#4e6e56" },
+  { id: "slate", get label() { return tr("preset.accent.slate"); }, swatch: "#475569" },
+  { id: "zinc", get label() { return tr("preset.accent.zinc"); }, swatch: "#52525b" },
+  { id: "neutral", get label() { return tr("preset.accent.neutral"); }, swatch: "#525252" },
+  { id: "stone", get label() { return tr("preset.accent.stone"); }, swatch: "#57534e" },
+  { id: "coffee", get label() { return tr("preset.accent.coffee"); }, swatch: "#78350f" },
 ];
 
 export type BackgroundItem = {
@@ -149,21 +151,21 @@ export type BackgroundItem = {
   style: CSSProperties;
 };
 
-const SCENIC_BACKGROUNDS = [
-  { id: "scene-spring", label: "Vườn xuân", file: "spring", color: "#dcebd9" },
-  { id: "scene-summer", label: "Hạ bên biển", file: "summer", color: "#c2e9ed" },
-  { id: "scene-autumn", label: "Lá thu", file: "autumn", color: "#f6dbb8" },
-  { id: "scene-winter", label: "Đông yên", file: "winter", color: "#cbd9ef" },
-  { id: "scene-campus", label: "Sân trường", file: "campus", color: "#f5d9c0" },
-  { id: "scene-library", label: "Góc thư viện", file: "library", color: "#e9d8b7" },
-  { id: "scene-hanoi", label: "Hà Nội chiều", file: "hanoi", color: "#efb5a1" },
-  { id: "scene-observatory", label: "Trạm ngắm sao", file: "observatory", color: "#292b5b" },
-] as const;
+const SCENIC_BACKGROUNDS: readonly { id: BackgroundId; labelKey: ExtraMessageKey; file: string; color: string }[] = [
+  { id: "scene-spring", labelKey: "preset.bg.scene-spring", file: "spring", color: "#dcebd9" },
+  { id: "scene-summer", labelKey: "preset.bg.scene-summer", file: "summer", color: "#c2e9ed" },
+  { id: "scene-autumn", labelKey: "preset.bg.scene-autumn", file: "autumn", color: "#f6dbb8" },
+  { id: "scene-winter", labelKey: "preset.bg.scene-winter", file: "winter", color: "#cbd9ef" },
+  { id: "scene-campus", labelKey: "preset.bg.scene-campus", file: "campus", color: "#f5d9c0" },
+  { id: "scene-library", labelKey: "preset.bg.scene-library", file: "library", color: "#e9d8b7" },
+  { id: "scene-hanoi", labelKey: "preset.bg.scene-hanoi", file: "hanoi", color: "#efb5a1" },
+  { id: "scene-observatory", labelKey: "preset.bg.scene-observatory", file: "observatory", color: "#292b5b" },
+];
 
 // Existing gradients and patterns stay valid for saved custom appearances.
 export const BACKGROUNDS: BackgroundItem[] = [
-  ...SCENIC_BACKGROUNDS.map(({ id, label, file, color }) => ({
-    id, label, category: "illustration" as const, artwork: `/theme-art/${file}.svg`,
+  ...SCENIC_BACKGROUNDS.map(({ id, labelKey, file, color }) => ({
+    id, get label() { return tr(labelKey); }, category: "illustration" as const, artwork: `/theme-art/${file}.svg`,
     style: {
       backgroundColor: color,
       backgroundImage: `url("/theme-art/${file}.svg")`,
@@ -177,7 +179,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   // ==========================================
   {
     id: "glow",
-    label: "Ánh sáng đồng bộ",
+    get label() { return tr("preset.bg.glow"); },
     category: "gradient",
     style: {
       backgroundColor: "#fafafa",
@@ -190,7 +192,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "aurora",
-    label: "Cực quang đa sắc",
+    get label() { return tr("preset.bg.aurora"); },
     category: "gradient",
     style: {
       backgroundColor: "#f8fafc",
@@ -204,7 +206,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "sky",
-    label: "Bầu trời xanh ngắt",
+    get label() { return tr("preset.bg.sky"); },
     category: "gradient",
     style: {
       backgroundColor: "#f8fafc",
@@ -213,7 +215,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "lavender",
-    label: "Oải hương mơ màng",
+    get label() { return tr("preset.bg.lavender"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf5ff",
@@ -225,7 +227,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "peach",
-    label: "Hoàng hôn rực rỡ",
+    get label() { return tr("preset.bg.peach"); },
     category: "gradient",
     style: {
       backgroundColor: "#fffbf5",
@@ -238,7 +240,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "mint",
-    label: "Bạc hà mát lạnh",
+    get label() { return tr("preset.bg.mint"); },
     category: "gradient",
     style: {
       backgroundColor: "#f6fefb",
@@ -250,7 +252,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "twilight",
-    label: "Chiều tím lãng mạn",
+    get label() { return tr("preset.bg.twilight"); },
     category: "gradient",
     style: {
       backgroundColor: "#fdf8ff",
@@ -263,7 +265,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "ocean",
-    label: "Đại dương sâu thẳm",
+    get label() { return tr("preset.bg.ocean"); },
     category: "gradient",
     style: {
       backgroundColor: "#f0fdfa",
@@ -276,7 +278,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "matcha",
-    label: "Trà xanh thanh mát",
+    get label() { return tr("preset.bg.matcha"); },
     category: "gradient",
     style: {
       backgroundColor: "#f6fbf7",
@@ -289,7 +291,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "sakura",
-    label: "Hoa anh đào",
+    get label() { return tr("preset.bg.sakura"); },
     category: "gradient",
     style: {
       backgroundColor: "#fff7f9",
@@ -302,7 +304,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "warm-sand",
-    label: "Quán cà phê ấm áp",
+    get label() { return tr("preset.bg.warm-sand"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf8f5",
@@ -315,7 +317,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "sunset",
-    label: "Hoàng hôn mùa hạ",
+    get label() { return tr("preset.bg.sunset"); },
     category: "gradient",
     style: {
       backgroundColor: "#fff7ed",
@@ -328,7 +330,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "sunrise",
-    label: "Bình minh giảng đường",
+    get label() { return tr("preset.bg.sunrise"); },
     category: "gradient",
     style: {
       backgroundColor: "#fefce8",
@@ -341,7 +343,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "nordic",
-    label: "Bắc Âu tối giản",
+    get label() { return tr("preset.bg.nordic"); },
     category: "gradient",
     style: {
       backgroundColor: "#f8fafc",
@@ -354,7 +356,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "cotton-candy",
-    label: "Kẹo bông ngọt ngào",
+    get label() { return tr("preset.bg.cotton-candy"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf5ff",
@@ -367,7 +369,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "citrus",
-    label: "Cam chanh tươi mát",
+    get label() { return tr("preset.bg.citrus"); },
     category: "gradient",
     style: {
       backgroundColor: "#fefce8",
@@ -380,7 +382,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "nebula",
-    label: "Tinh vân huyền bí",
+    get label() { return tr("preset.bg.nebula"); },
     category: "gradient",
     style: {
       backgroundColor: "#f8fafc",
@@ -393,7 +395,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "cherry-blossom",
-    label: "Vườn hoa Tokyo",
+    get label() { return tr("preset.bg.cherry-blossom"); },
     category: "gradient",
     style: {
       backgroundColor: "#fff1f2",
@@ -406,7 +408,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "espresso",
-    label: "Cà phê sữa đá",
+    get label() { return tr("preset.bg.espresso"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf5ef",
@@ -419,7 +421,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "breeze",
-    label: "Gió thu trong lành",
+    get label() { return tr("preset.bg.breeze"); },
     category: "gradient",
     style: {
       backgroundColor: "#f0fdf4",
@@ -431,7 +433,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "midnight-mist",
-    label: "Sương đêm tĩnh lặng",
+    get label() { return tr("preset.bg.midnight-mist"); },
     category: "gradient",
     style: {
       backgroundColor: "#f8fafc",
@@ -444,7 +446,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "rose-gold",
-    label: "Vàng hồng quý phái",
+    get label() { return tr("preset.bg.rose-gold"); },
     category: "gradient",
     style: {
       backgroundColor: "#fff7ed",
@@ -456,7 +458,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "lavender-dusk",
-    label: "Chiều buông tím",
+    get label() { return tr("preset.bg.lavender-dusk"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf5ff",
@@ -469,7 +471,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "emerald-spring",
-    label: "Mùa xuân biếc",
+    get label() { return tr("preset.bg.emerald-spring"); },
     category: "gradient",
     style: {
       backgroundColor: "#f0fdf4",
@@ -482,7 +484,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "coral-reef",
-    label: "Rạn san hô ấm",
+    get label() { return tr("preset.bg.coral-reef"); },
     category: "gradient",
     style: {
       backgroundColor: "#fff7ed",
@@ -494,7 +496,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "cyberpunk-light",
-    label: "Không gian số",
+    get label() { return tr("preset.bg.cyberpunk-light"); },
     category: "gradient",
     style: {
       backgroundColor: "#faf5ff",
@@ -510,13 +512,13 @@ export const BACKGROUNDS: BackgroundItem[] = [
   // ==========================================
   {
     id: "plain",
-    label: "Trắng tinh khôi",
+    get label() { return tr("preset.bg.plain"); },
     category: "pattern",
     style: { backgroundColor: "#ffffff" },
   },
   {
     id: "dots",
-    label: "Chấm bi kinh điển",
+    get label() { return tr("preset.bg.dots"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -526,7 +528,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "grid",
-    label: "Lưới ô vuông",
+    get label() { return tr("preset.bg.grid"); },
     category: "pattern",
     style: {
       backgroundColor: "#fbfcfd",
@@ -539,7 +541,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "notebook",
-    label: "Vở kẻ ngang học sinh",
+    get label() { return tr("preset.bg.notebook"); },
     category: "pattern",
     style: {
       backgroundColor: "#fffdfa",
@@ -548,7 +550,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "crosshatch",
-    label: "Giấy caro toán học",
+    get label() { return tr("preset.bg.crosshatch"); },
     category: "pattern",
     style: {
       backgroundColor: "#fcfdfe",
@@ -561,7 +563,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "blueprint",
-    label: "Bản vẽ HUST",
+    get label() { return tr("preset.bg.blueprint"); },
     category: "pattern",
     style: {
       backgroundColor: "#f0f6ff",
@@ -576,7 +578,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "isometric",
-    label: "Lưới 3D không gian",
+    get label() { return tr("preset.bg.isometric"); },
     category: "pattern",
     style: {
       backgroundColor: "#fafbfc",
@@ -585,7 +587,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "circuit",
-    label: "Vi mạch số",
+    get label() { return tr("preset.bg.circuit"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -594,7 +596,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "waves",
-    label: "Gợn sóng êm đềm",
+    get label() { return tr("preset.bg.waves"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -603,7 +605,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "graph-paper",
-    label: "Giấy kẻ đồ thị",
+    get label() { return tr("preset.bg.graph-paper"); },
     category: "pattern",
     style: {
       backgroundColor: "#fbfcfd",
@@ -618,7 +620,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "hexagons",
-    label: "Tổ ong liên kết",
+    get label() { return tr("preset.bg.hexagons"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -627,7 +629,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "plus-matrix",
-    label: "Ma trận dấu cộng",
+    get label() { return tr("preset.bg.plus-matrix"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -636,7 +638,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "diagonal-stripes",
-    label: "Sọc chéo năng động",
+    get label() { return tr("preset.bg.diagonal-stripes"); },
     category: "pattern",
     style: {
       backgroundColor: "#fafbfc",
@@ -645,7 +647,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "polka-dense",
-    label: "Chấm bi hạt mịn",
+    get label() { return tr("preset.bg.polka-dense"); },
     category: "pattern",
     style: {
       backgroundColor: "#fbfcfd",
@@ -655,7 +657,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "carbon",
-    label: "Sợi carbon công nghệ",
+    get label() { return tr("preset.bg.carbon"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -664,7 +666,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "terrazzo",
-    label: "Đá mài Terrazzo",
+    get label() { return tr("preset.bg.terrazzo"); },
     category: "pattern",
     style: {
       backgroundColor: "#fbfbfc",
@@ -673,7 +675,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "stars",
-    label: "Bầu trời ngàn sao",
+    get label() { return tr("preset.bg.stars"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -682,7 +684,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "cubes",
-    label: "Khối lập phương 3D",
+    get label() { return tr("preset.bg.cubes"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -691,7 +693,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "music-sheet",
-    label: "Khuông nhạc nghệ thuật",
+    get label() { return tr("preset.bg.music-sheet"); },
     category: "pattern",
     style: {
       backgroundColor: "#fffdfa",
@@ -703,7 +705,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "circuit-dense",
-    label: "Bo mạch vi xử lý",
+    get label() { return tr("preset.bg.circuit-dense"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -712,7 +714,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "topography",
-    label: "Bản đồ đường đồng mức",
+    get label() { return tr("preset.bg.topography"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",
@@ -721,7 +723,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "moroccan",
-    label: "Hoa văn gạch men",
+    get label() { return tr("preset.bg.moroccan"); },
     category: "pattern",
     style: {
       backgroundColor: "#fbfcfd",
@@ -730,7 +732,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "bamboo",
-    label: "Nan tre đan lát",
+    get label() { return tr("preset.bg.bamboo"); },
     category: "pattern",
     style: {
       backgroundColor: "#faf9f6",
@@ -739,7 +741,7 @@ export const BACKGROUNDS: BackgroundItem[] = [
   },
   {
     id: "chevron",
-    label: "Xương cá Chevron",
+    get label() { return tr("preset.bg.chevron"); },
     category: "pattern",
     style: {
       backgroundColor: "#f8fafc",

@@ -16,6 +16,7 @@ import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { courseMatchesFilters, importantMatchesFilters } from "@/lib/boards/board-filters";
 import { buildBoardExportFileName } from "@/lib/exports/filename";
+import { tr } from "@/lib/i18n";
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
 import { cn } from "@/lib/utils";
@@ -177,7 +178,7 @@ export const BoardTimelineView = ({
     const exportNode = ganttExportContentRef.current;
 
     if (!exportNode || !hasScheduledCards) {
-      toast.error("Không có timeline để xuất.");
+      toast.error(tr("timeline.toast.nothingToExport"));
       return;
     }
 
@@ -190,7 +191,7 @@ export const BoardTimelineView = ({
       const height = exportNode.scrollHeight;
 
       if (width * height > 8_000_000) {
-        toast.info("Timeline lớn, ảnh có thể mất vài giây để xuất.");
+        toast.info(tr("timeline.toast.exportLargeInfo"));
       }
 
       const dataUrl = await toPng(exportNode, {
@@ -211,10 +212,10 @@ export const BoardTimelineView = ({
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      toast.success("Đã xuất Timeline PNG.");
+      toast.success(tr("timeline.toast.exportSuccess"));
     } catch (error) {
       console.error("[TIMELINE_EXPORT_PNG_ERROR]", error);
-      toast.error("Không thể xuất Timeline PNG. Vui lòng thử lại.");
+      toast.error(tr("timeline.toast.exportError"));
     } finally {
       setIsExportingPng(false);
     }
@@ -234,7 +235,7 @@ export const BoardTimelineView = ({
       <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-950 shadow-sm">
         <div className="flex shrink-0 flex-col gap-3 border-b border-neutral-200 bg-white px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h1 className="text-base font-semibold text-neutral-950">Tiến độ</h1>
+            <h1 className="text-base font-semibold text-neutral-950">{tr("timeline.title")}</h1>
             <p className="text-xs text-neutral-500">
               {formatTimelineRangeEndpoint(derived.timelineStart)} - {formatTimelineRangeEndpoint(derived.timelineEnd)}
             </p>
@@ -251,7 +252,7 @@ export const BoardTimelineView = ({
               )}
             >
               <CalendarX2 className="h-3.5 w-3.5 shrink-0" />
-              <span>Chưa lên lịch ({derived.stats.unscheduledCards})</span>
+              <span>{tr("timeline.unscheduledButton", { count: derived.stats.unscheduledCards })}</span>
             </button>
             <TimelineToolbar
               zoom={zoom}

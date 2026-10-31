@@ -5,6 +5,7 @@ import { spring, useTempoTransition } from "@animate-ui/react/utils/motion";
 import { CountingNumber } from "@animate-ui/react/primitives/texts/counting-number";
 import { AlertTriangle, CalendarX2, CircleDashed, type LucideIcon } from "lucide-react";
 
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import type { Kpis } from "../_types";
@@ -59,14 +60,14 @@ export const KpiRow = ({ kpis }: { kpis: Kpis }) => {
   const remaining = kpis.totalCards - kpis.completedCards;
 
   return (
-    <section aria-label="Tiến độ công việc" className="grid gap-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
+    <section aria-label={tr("analytics.kpi.sectionAria")} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
       <div className="flex items-center gap-5 rounded-2xl border border-neutral-200/70 bg-white p-5 shadow-xs sm:col-span-3 lg:col-span-1">
         <div
           role="progressbar"
           aria-valuenow={kpis.completionRate}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Tỷ lệ hoàn thành"
+          aria-label={tr("analytics.kpi.completionRateAria")}
           className="relative h-[104px] w-[104px] shrink-0"
         >
           <svg viewBox="0 0 104 104" className="h-full w-full -rotate-90">
@@ -89,40 +90,40 @@ export const KpiRow = ({ kpis }: { kpis: Kpis }) => {
           </span>
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-neutral-500">Tiến độ chung</p>
+          <p className="text-sm text-neutral-500">{tr("analytics.kpi.overallProgress")}</p>
           <p className="mt-1 text-neutral-900">
             <CountingNumber number={kpis.completedCards} className="text-3xl font-semibold tabular-nums" />
             <span className="text-lg text-neutral-400 tabular-nums">/{kpis.totalCards}</span>
-            <span className="ml-2 text-sm text-neutral-500">việc đã xong</span>
+            <span className="ml-2 text-sm text-neutral-500">{tr("analytics.kpi.tasksDoneSuffix")}</span>
           </p>
           <p className="mt-2 text-xs text-neutral-500">
             {kpis.totalCards === 0
-              ? "Chưa có việc nào để theo dõi"
+              ? tr("analytics.kpi.noTasksToTrack")
               : remaining === 0
-                ? "Đã xong hết, làm tốt lắm!"
-                : `Còn ${remaining} việc đang mở`}
+                ? tr("analytics.kpi.allDone")
+                : tr("analytics.kpi.remainingCount", { count: remaining })}
           </p>
         </div>
       </div>
 
       <StatTile
-        label="Đang mở"
+        label={tr("analytics.kpi.openLabel")}
         value={remaining}
-        hint={remaining > 0 ? "Việc chưa hoàn thành" : "Không còn việc mở"}
+        hint={remaining > 0 ? tr("analytics.kpi.openHintActive") : tr("analytics.kpi.openHintZero")}
         tone="info"
         icon={CircleDashed}
       />
       <StatTile
-        label="Quá hạn"
+        label={tr("analytics.kpi.overdueLabel")}
         value={kpis.overdueCards}
-        hint={kpis.overdueCards > 0 ? "Cần xử lý trước" : "Không có việc trễ"}
+        hint={kpis.overdueCards > 0 ? tr("analytics.kpi.overdueHintActive") : tr("analytics.kpi.overdueHintZero")}
         tone="danger"
         icon={AlertTriangle}
       />
       <StatTile
-        label="Chưa có hạn"
+        label={tr("analytics.kpi.noDueLabel")}
         value={kpis.unscheduledCards}
-        hint={kpis.unscheduledCards > 0 ? "Nên đặt deadline" : "Tất cả đã có hạn"}
+        hint={kpis.unscheduledCards > 0 ? tr("analytics.kpi.noDueHintActive") : tr("analytics.kpi.noDueHintZero")}
         tone="warning"
         icon={CalendarX2}
       />

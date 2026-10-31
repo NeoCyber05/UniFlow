@@ -13,6 +13,7 @@ import { ListOptions } from "./list-options";
 import { useBoardState } from "./board-state-context";
 import { ListStatusIcon, listStatusPillClassName } from "./list-status-badge";
 import { getListStatus } from "@/lib/boards/list-status";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface ListHeaderProps {
@@ -199,7 +200,7 @@ export const ListHeader = ({
             id="title"
             name="title"
             disabled={isLoading}
-            placeholder="Nhập tên danh sách…"
+            placeholder={tr("kanban.listHeader.placeholder")}
             defaultValue={data.title}
             rows={1}
             onInput={resizeTitle}
@@ -227,7 +228,7 @@ export const ListHeader = ({
         </div>
       )}
       <div className="flex items-center gap-x-1">
-        <Hint description={`${data.cards.length} thẻ`} side="top" sideOffset={6}>
+        <Hint description={tr("kanban.listHeader.cardCountHint", { count: data.cards.length })} side="top" sideOffset={6}>
           <span className="task-badge task-badge-neutral h-7 min-w-7 cursor-default justify-center">
             {data.cards.length}
           </span>

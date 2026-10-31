@@ -16,6 +16,7 @@ import {
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { Input } from "@/components/ui/input";
 import { useAction } from "@/hooks/use-action";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useCardModal } from "@/hooks/use-card-modal";
 import {
@@ -57,10 +58,8 @@ interface ArchivedItemsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const itemTypeLabels: Record<ArchivedItemType, string> = {
-  lists: "Danh sách",
-  cards: "Thẻ",
-};
+const getItemTypeLabel = (type: ArchivedItemType) =>
+  type === "lists" ? tr("boardShell.archive.lists") : tr("boardShell.archive.cards");
 
 const ArchivedDeleteConfirm = ({
   title,
@@ -85,7 +84,7 @@ const ArchivedDeleteConfirm = ({
         disabled={disabled}
       >
         <Trash2 className="h-3.5 w-3.5" />
-        {isLoading ? "Đang xóa…" : "Xóa"}
+        {isLoading ? tr("boardShell.archive.deleting") : tr("boardShell.archive.delete")}
       </Button>
     </PopoverTrigger>
     <PopoverContent
@@ -107,7 +106,7 @@ const ArchivedDeleteConfirm = ({
             className="h-8 px-3"
             disabled={disabled}
           >
-            Hủy
+            {tr("boardShell.archive.cancel")}
           </Button>
         </PopoverClose>
         <PopoverClose asChild>
@@ -122,7 +121,7 @@ const ArchivedDeleteConfirm = ({
               onConfirm();
             }}
           >
-            Xóa
+            {tr("boardShell.archive.delete")}
           </Button>
         </PopoverClose>
       </div>
@@ -169,7 +168,7 @@ export const ArchivedItemsModal = ({
       const response = await fetch(`/api/boards/${boardId}/archived?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error("Không thể tải mục đã lưu trữ.");
+        throw new Error(tr("boardShell.archive.loadError"));
       }
 
       if (type === "lists") {
@@ -180,7 +179,7 @@ export const ArchivedItemsModal = ({
         setCards(data.items);
       }
     } catch (error) {
-      setFetchError(error instanceof Error ? error.message : "Không thể tải mục đã lưu trữ.");
+      setFetchError(error instanceof Error ? error.message : tr("boardShell.archive.loadError"));
     } finally {
       setIsFetching(false);
     }
@@ -277,7 +276,7 @@ export const ArchivedItemsModal = ({
   };
 
   const renderLoadingText = (action: "restore" | "delete") =>
-    action === "restore" ? "Đang khôi phục…" : "Đang xóa…";
+    action === "restore" ? tr("boardShell.archive.restoring") : tr("boardShell.archive.deleting");
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
@@ -305,10 +304,10 @@ export const ArchivedItemsModal = ({
             onClick={() => onOpenChange(false)}
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Đóng</span>
+            <span className="sr-only">{tr("boardShell.archive.close")}</span>
           </Button>
           <DialogTitle className="flex-1 text-center text-sm font-semibold text-neutral-700">
-            Mục đã lưu trữ
+            {tr("boardShell.archive.title")}
           </DialogTitle>
           <Button
             type="button"
@@ -318,7 +317,7 @@ export const ArchivedItemsModal = ({
             onClick={() => onOpenChange(false)}
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Đóng</span>
+            <span className="sr-only">{tr("boardShell.archive.close")}</span>
           </Button>
         </div>
 
@@ -328,7 +327,7 @@ export const ArchivedItemsModal = ({
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm kiếm"
+              placeholder={tr("boardShell.archive.searchPlaceholder")}
               className="h-9 pl-8"
             />
           </div>
@@ -339,19 +338,19 @@ export const ArchivedItemsModal = ({
             onClick={() => setType(alternateType)}
             disabled={isMutating}
           >
-            Chuyển sang {itemTypeLabels[alternateType].toLowerCase()}
+            {alternateType === "lists" ? tr("boardShell.archive.switchToLists") : tr("boardShell.archive.switchToCards")}
           </Button>
         </div>
 
         <div className="max-h-[60vh] min-h-[260px] overflow-y-auto p-3">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold text-neutral-700">
-              {itemTypeLabels[type]}
+              {getItemTypeLabel(type)}
             </div>
             {isFetching && (
               <div className="flex items-center gap-x-1.5 text-xs text-neutral-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Đang tải
+                {tr("boardShell.archive.loading")}
               </div>
             )}
           </div>
@@ -365,8 +364,8 @@ export const ArchivedItemsModal = ({
           {!fetchError && !isFetching && visibleItems.length === 0 ? (
             <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-neutral-200 bg-neutral-50/70 px-4 text-center text-sm text-neutral-500">
               {type === "lists"
-                ? "Không có danh sách đã lưu trữ."
-                : "Không có thẻ đã lưu trữ."}
+                ? tr("boardShell.archive.emptyLists")
+                : tr("boardShell.archive.emptyCards")}
             </div>
           ) : null}
 
@@ -387,7 +386,7 @@ export const ArchivedItemsModal = ({
                           </div>
                           <div className="mt-1 flex items-center gap-x-1.5 text-xs text-neutral-500">
                             <Archive className="h-3.5 w-3.5" />
-                            Đã lưu trữ
+                            {tr("boardShell.archive.archivedBadge")}
                           </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -400,11 +399,11 @@ export const ArchivedItemsModal = ({
                             onClick={() => onRestoreList(item)}
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
-                            {isPending && isRestoringList ? renderLoadingText("restore") : "Khôi phục"}
+                            {isPending && isRestoringList ? renderLoadingText("restore") : tr("boardShell.archive.restore")}
                           </Button>
                           <ArchivedDeleteConfirm
-                            title="Xóa vĩnh viễn danh sách?"
-                            description="Bạn có chắc chắn muốn xóa vĩnh viễn danh sách này? Toàn bộ thẻ trong danh sách này cũng sẽ bị xóa."
+                            title={tr("boardShell.archive.deleteListTitle")}
+                            description={tr("boardShell.archive.deleteListDesc")}
                             disabled={isMutating}
                             isLoading={isPending && isDeletingList}
                             onConfirm={() => {
@@ -432,14 +431,14 @@ export const ArchivedItemsModal = ({
                             {item.title}
                           </div>
                           <div className="mt-1 break-words text-xs text-neutral-500">
-                            Trong danh sách: {item.listTitle}
+                            {tr("boardShell.archive.inList", { listTitle: item.listTitle })}
                           </div>
                           <div className={cn(
                             "mt-1 flex items-center gap-x-1.5 text-xs",
                             item.listArchivedAt ? "text-amber-600" : "text-neutral-500",
                           )}>
                             <Archive className="h-3.5 w-3.5" />
-                            {item.listArchivedAt ? "Danh sách gốc đang lưu trữ" : "Đã lưu trữ"}
+                            {item.listArchivedAt ? tr("boardShell.archive.sourceListArchived") : tr("boardShell.archive.archivedBadge")}
                           </div>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -452,11 +451,11 @@ export const ArchivedItemsModal = ({
                             onClick={() => onRestoreCard(item)}
                           >
                             <RotateCcw className="h-3.5 w-3.5" />
-                            {isPending && isRestoringCard ? renderLoadingText("restore") : "Khôi phục"}
+                            {isPending && isRestoringCard ? renderLoadingText("restore") : tr("boardShell.archive.restore")}
                           </Button>
                           <ArchivedDeleteConfirm
-                            title="Xóa vĩnh viễn thẻ?"
-                            description="Bạn có chắc chắn muốn xóa vĩnh viễn thẻ này?"
+                            title={tr("boardShell.archive.deleteCardTitle")}
+                            description={tr("boardShell.archive.deleteCardDesc")}
                             disabled={isMutating}
                             isLoading={isPending && isDeletingCard}
                             onConfirm={() => {

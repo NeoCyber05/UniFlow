@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
 import { Clock, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,7 +11,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+import { getChecklistDueDateRangeError } from "./checklist-utils";
 
 interface ChecklistItemDueDateProps {
   dueDate: Date | string | null;
@@ -56,13 +58,6 @@ export const ChecklistItemDueDate = ({
   }, [dueDate]);
 
   const overdue = isChecklistItemOverdue(dueDate, isCompleted);
-  const getRangeError = () => {
-    if (!validMaxDate) {
-      return "Hạn checklist phải trước hoặc bằng hạn chót của thẻ.";
-    }
-
-    return `Hạn checklist phải trước hoặc bằng hạn chót của thẻ (${format(validMaxDate, "dd/MM/yyyy HH:mm")}).`;
-  };
 
   const save = () => {
     if (!value) {
@@ -78,7 +73,7 @@ export const ChecklistItemDueDate = ({
     }
 
     if (validMaxDate && nextDate.getTime() > validMaxDate.getTime()) {
-      toast.error(getRangeError());
+      toast.error(getChecklistDueDateRangeError(validMaxDate));
       return;
     }
 
@@ -86,9 +81,11 @@ export const ChecklistItemDueDate = ({
     setIsOpen(false);
   };
 
+  const triggerLabel = dueDate ? tr("checklist.editDueDate") : tr("checklist.addDueDate");
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <Hint description={dueDate ? "Sửa ngày hết hạn" : "Thêm ngày hết hạn"}>
+      <Hint description={triggerLabel}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -100,12 +97,17 @@ export const ChecklistItemDueDate = ({
               !dueDate && "border-transparent bg-transparent text-neutral-400 opacity-0 hover:bg-neutral-100 group-hover:opacity-100 focus:opacity-100",
               isCompleted && dueDate && "border-emerald-200 bg-emerald-50 text-emerald-700",
             )}
-            aria-label={dueDate ? "Sửa ngày hết hạn" : "Thêm ngày hết hạn"}
+            aria-label={triggerLabel}
           >
             <Clock className="h-3.5 w-3.5 shrink-0" />
             {dueDate && (
               <span className="truncate">
-                {format(new Date(dueDate), "dd/MM HH:mm")}
+                {intlDateFormat({
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(dueDate))}
               </span>
             )}
           </button>
@@ -118,13 +120,13 @@ export const ChecklistItemDueDate = ({
         onEscapeKeyDown={() => setIsOpen(false)}
       >
         <div className="mb-3 flex items-center justify-between border-b border-neutral-100 pb-2">
-          <span className="text-sm font-semibold text-neutral-700">Ngày hết hạn</span>
+          <span className="text-sm font-semibold text-neutral-700">{tr("checklist.dueDateTitle")}</span>
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
             onClick={() => setIsOpen(false)}
-            aria-label="Dong"
+            aria-label={tr("cardModal.close")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -146,7 +148,7 @@ export const ChecklistItemDueDate = ({
               onClick={save}
               className="h-8 rounded-lg bg-violet-600 px-4 text-xs text-white hover:bg-violet-700"
             >
-              Lưu
+              {tr("checklist.save")}
             </Button>
             {dueDate && (
               <Button
@@ -161,7 +163,7 @@ export const ChecklistItemDueDate = ({
                 }}
                 className="h-8 rounded-lg px-3 text-xs text-neutral-500 hover:bg-neutral-100"
               >
-                Xoá
+                {tr("checklist.clearDueDate")}
               </Button>
             )}
           </div>

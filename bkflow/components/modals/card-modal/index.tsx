@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ReducedMotionConfig, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
 
 import { useCardModal } from "@/hooks/use-card-modal";
+import { tr, useLocale } from "@/lib/i18n";
 import { usePathname } from "@/web/shims/next-navigation";
 import { X } from "lucide-react";
 
@@ -13,6 +14,7 @@ import { CardDetailBody } from "./card-detail-body";
 import { runBeforeClose, type BeforeClose } from "./close-guard";
 
 export const CardModal = () => {
+  useLocale((state) => state.locale);
   const storeId = useCardModal((state) => state.id);
   const isOpen = useCardModal((state) => state.isOpen);
   const onClose = useCardModal((state) => state.onClose);
@@ -90,7 +92,7 @@ export const CardModal = () => {
             <motion.div
               key="dialog"
               role="dialog"
-              aria-label="Chi tiết việc"
+              aria-label={tr("cardModal.dialogAria")}
               onKeyDown={(event) => {
                 if (event.key === "Escape" && !event.defaultPrevented) requestClose();
               }}
@@ -100,7 +102,7 @@ export const CardModal = () => {
               className="fixed inset-0 z-40 m-auto flex h-full w-full flex-col overflow-hidden bg-background shadow-2xl md:h-[min(780px,calc(100dvh-4rem))] md:w-[min(940px,calc(100vw-4rem))] md:rounded-2xl md:border md:border-border"
             >
               <div className="flex justify-end px-3 pt-3">
-                <button type="button" onClick={requestClose} aria-label="Đóng" className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
+                <button type="button" onClick={requestClose} aria-label={tr("cardModal.close")} className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700">
                   <X className="h-4 w-4" />
                 </button>
               </div>

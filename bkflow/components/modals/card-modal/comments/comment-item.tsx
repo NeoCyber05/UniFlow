@@ -1,5 +1,5 @@
-import { BoardMemberRole, type BoardMember } from "@/types";
 "use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,8 +8,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { tr } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import type { CardCommentWithReplies } from "@/types";
+import { BoardMemberRole, type BoardMember, type CardCommentWithReplies } from "@/types";
 
 import { CommentEditor } from "./comment-editor";
 import {
@@ -92,16 +93,16 @@ export const CommentItem = ({
           </p>
           {isEdited && (
             <p className="text-xs text-neutral-400">
-              đã chỉnh sửa
+              {tr("comment.edited")}
             </p>
           )}
         </div>
 
         {isEditing ? (
           <CommentEditor
-            placeholder="Chỉnh sửa bình luận..."
+            placeholder={tr("comment.editPlaceholder")}
             initialValue={comment.content}
-            submitLabel="Lưu"
+            submitLabel={tr("comment.save")}
             isLoading={isUpdating}
             onSubmit={(content) => onUpdateComment(comment.id, content)}
             onCancel={() => onSetEditingCommentId(null)}
@@ -134,7 +135,7 @@ export const CommentItem = ({
                 }}
                 className="underline-offset-2 hover:underline"
               >
-                Trả lời
+                {tr("comment.reply")}
               </button>
             </>
           )}
@@ -150,7 +151,7 @@ export const CommentItem = ({
                 }}
                 className="underline-offset-2 hover:underline"
               >
-                Chỉnh sửa
+                {tr("comment.edit")}
               </button>
             </>
           )}
@@ -165,13 +166,13 @@ export const CommentItem = ({
                     disabled={isDeleting}
                     className="underline-offset-2 hover:underline disabled:opacity-50"
                   >
-                    Xóa
+                    {tr("comment.delete")}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-60 p-3 bg-white border border-neutral-200 shadow-xl rounded-xl z-[70]" side="top" sideOffset={6}>
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-neutral-800 leading-normal">
-                      Bạn có chắc chắn muốn xóa bình luận này không? Hành động này không thể hoàn tác.
+                      {tr("comment.deleteConfirm")}
                     </p>
                     <div className="flex items-center gap-x-2">
                       <PopoverClose asChild>
@@ -180,7 +181,7 @@ export const CommentItem = ({
                           onClick={() => onDeleteComment(comment.id)}
                           className="h-7 px-2.5 text-[11px] font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg cursor-pointer"
                         >
-                          Xác nhận xóa
+                          {tr("comment.deleteConfirmButton")}
                         </Button>
                       </PopoverClose>
                       <PopoverClose asChild>
@@ -189,7 +190,7 @@ export const CommentItem = ({
                           size="sm"
                           className="h-7 px-2.5 text-[11px] text-neutral-500 hover:bg-neutral-100 rounded-lg cursor-pointer"
                         >
-                          Hủy
+                          {tr("comment.cancel")}
                         </Button>
                       </PopoverClose>
                     </div>
@@ -202,7 +203,7 @@ export const CommentItem = ({
 
         {canReply && isReplying && (
           <CommentEditor
-            placeholder="Viết phản hồi..."
+            placeholder={tr("comment.replyPlaceholder")}
             initialValue={`${
               getMentionTag(
                 boardMembers.find((member) => member.userId === comment.userId) ?? {
@@ -211,7 +212,7 @@ export const CommentItem = ({
                 },
               )
             } `}
-            submitLabel="Trả lời"
+            submitLabel={tr("comment.reply")}
             isLoading={isCreating}
             onSubmit={(content) => {
               const actualParentId = isReply

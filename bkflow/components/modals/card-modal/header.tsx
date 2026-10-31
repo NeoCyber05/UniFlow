@@ -10,6 +10,7 @@ import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { tr } from "@/lib/i18n";
 import { BlockedCompletionDialog } from "./metadata/blocked-completion-dialog";
 import { cn } from "@/lib/utils";
 
@@ -270,17 +271,17 @@ export const Header = ({
 
   const isPanel = layout === "panel";
   const completion = data.kind === "EVENT" ? (
-    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Clock className="size-4" />Sự kiện</span>
+    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Clock className="size-4" />{tr("cardModal.eventBadge")}</span>
   ) : (
     <button type="button" onClick={onToggleComplete} disabled={!canEdit} aria-pressed={data.isCompleted}
-      aria-label={data.isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu hoàn thành"}
+      aria-label={data.isCompleted ? tr("cardModal.markIncomplete") : tr("cardModal.markComplete")}
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none disabled:opacity-60",
         isPanel ? "min-h-9 px-3 text-xs font-semibold" : "mt-1 size-10 rounded-full",
         data.isCompleted || isPanel ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-border bg-background text-muted-foreground hover:border-primary hover:text-primary",
       )}>
       <Check className={isPanel ? "size-4" : "size-5"} aria-hidden="true" />
-      {isPanel && (data.isCompleted ? "Đã hoàn thành" : "Đánh dấu hoàn thành")}
+      {isPanel && (data.isCompleted ? tr("cardModal.completed") : tr("cardModal.markComplete"))}
     </button>
   );
   return (
@@ -288,14 +289,14 @@ export const Header = ({
       {canEdit && <BlockedCompletionDialog open={blockedCompletionOpen} onOpenChange={setBlockedCompletionOpen} blockers={unresolvedBlockers} isLoading={isLoadingUpdate} onConfirm={onConfirmBlockedCompletion} />}
       {!isPanel && completion}
       <div className="min-w-0 flex-1">
-        {isPanel && <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" />{data.isCompleted ? "Đã hoàn thành" : data.list.title}</p>}
+        {isPanel && <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"><span className="size-1.5 rounded-full bg-primary" />{data.isCompleted ? tr("cardModal.completed") : data.list.title}</p>}
         <form onSubmit={event => { event.preventDefault(); onSubmit(new FormData(event.currentTarget)); }}>
           <textarea ref={titleRef} onBlur={onBlur} onInput={resizeTitle} onChange={event => setTitle(event.target.value)} onKeyDown={onKeyDown}
-            id="title" name="title" value={title} readOnly={!canEdit} rows={1} aria-label="Tên công việc" aria-busy={isLoadingTitle}
+            id="title" name="title" value={title} readOnly={!canEdit} rows={1} aria-label={tr("cardModal.taskTitleAria")} aria-busy={isLoadingTitle}
             className="relative -left-2 min-h-10 w-[calc(100%+0.5rem)] resize-none overflow-hidden break-words rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold leading-tight tracking-tight text-foreground outline-none transition-colors focus-visible:border-border focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring read-only:cursor-default"
           />
         </form>
-        {!isPanel && <p className="mt-1 text-xs text-muted-foreground">trong danh sách <span className="font-medium text-foreground">{data.list.title}</span></p>}
+        {!isPanel && <p className="mt-1 text-xs text-muted-foreground">{tr("cardModal.inListPrefix")}<span className="font-medium text-foreground">{data.list.title}</span></p>}
       </div>
       {isPanel && <div className="flex flex-wrap items-center justify-between gap-2">{completion}{actions}</div>}
     </div>

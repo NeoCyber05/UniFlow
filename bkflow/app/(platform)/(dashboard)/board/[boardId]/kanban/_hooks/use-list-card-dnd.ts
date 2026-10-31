@@ -10,6 +10,7 @@ import {
   boardFiltersAreActive,
   cardMatchesBoardFilters,
 } from "@/lib/boards/board-filters";
+import { tr } from "@/lib/i18n";
 import type { BoardFilterState } from "@/hooks/use-board-filters";
 import type { CardWithAssignees, ListWithCards } from "@/types";
 
@@ -132,7 +133,7 @@ export const useListCardDnd = ({
       .find((item) => item.id === cardId);
 
     if (!card) {
-      toast.error("Không thể xác định thẻ đang kéo.");
+      toast.error(tr("kanban.dnd.cardNotFound"));
       invalidateBoardCalendar();
       return true;
     }

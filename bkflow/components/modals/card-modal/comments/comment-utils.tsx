@@ -1,6 +1,6 @@
 import { BoardMember } from "@/types";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { getDateFnsLocale, tr } from "@/lib/i18n";
 import type { CardCommentWithReplies } from "@/types";
 
 import { getCanonicalMention } from "./mention-utils";
@@ -25,12 +25,12 @@ export const getRelativeTime = (date: Date | string) => {
   const seconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
 
   if (seconds < 60) {
-    return "vừa xong";
+    return tr("comment.justNow");
   }
 
   return formatDistanceToNow(createdAt, {
     addSuffix: true,
-    locale: vi,
+    locale: getDateFnsLocale(),
   });
 };
 

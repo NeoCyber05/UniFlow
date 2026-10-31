@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTasksContext } from "@/hooks/use-my-tasks";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 
 import { ManageWorkspacesDialog } from "./manage-workspaces-dialog";
 import { WorkspaceIcon } from "./workspace-icon";
@@ -32,7 +33,7 @@ export const WorkspaceSwitcher = () => {
       <DropdownMenu>
         <DropdownMenuTrigger className="flex h-10 w-full items-center gap-2 rounded-lg border bg-background px-2 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
           {current && <WorkspaceIcon icon={current.icon} color={current.color} title={current.title} />}
-          <span className="flex-1 truncate text-left">{current?.title ?? tr("workspace.label")}</span>
+          <span className="flex-1 truncate text-left">{formatWorkspaceTitle(current?.title)}</span>
           <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-60">
@@ -40,7 +41,7 @@ export const WorkspaceSwitcher = () => {
           {workspaces.map((workspace) => (
             <DropdownMenuItem key={workspace.id} onSelect={() => open(workspace.id)} className="gap-2">
               <WorkspaceIcon icon={workspace.icon} color={workspace.color} title={workspace.title} />
-              <span className="flex-1 truncate">{workspace.title}</span>
+              <span className="flex-1 truncate">{formatWorkspaceTitle(workspace.title)}</span>
               {workspace.id === context?.currentWorkspaceId && <Check aria-label={tr("workspace.current")} className="size-4 text-violet-600" />}
             </DropdownMenuItem>
           ))}

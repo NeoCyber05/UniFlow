@@ -3,13 +3,12 @@
 import { CheckSquare, Clock, Paperclip, Tag } from "lucide-react";
 
 import { useBoardCourses } from "@/hooks/use-board-courses";
+import type { TaskDatesPatch } from "@/lib/cards/task-dates-form";
+import { tr } from "@/lib/i18n";
 import type { CardWithList } from "@/types";
 import { ChecklistPopover } from "../checklists/checklist-popover";
 import { LabelPopover } from "./label-popover";
 import { AttachmentAddPopover } from "../attachments/attachment-add-popover";
-
-import type { TaskDatesPatch } from "@/lib/cards/task-dates-form";
-
 import { CardDatePopover } from "./card-date-popover";
 
 interface MetadataActionRowProps {
@@ -58,7 +57,7 @@ export const MetadataActionRow = ({
               className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
             >
               <Clock className="h-3.5 w-3.5 text-neutral-500" />
-              Hạn và lịch
+              {tr("cardMeta.datesAndSchedule")}
             </button>
           )}
         />
@@ -77,7 +76,7 @@ export const MetadataActionRow = ({
             className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
           >
             <Tag className="h-3.5 w-3.5 text-neutral-500" />
-            Nhãn
+            {tr("cardMeta.labels")}
           </button>
         </LabelPopover>
       )}
@@ -89,7 +88,7 @@ export const MetadataActionRow = ({
           className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
         >
           <CheckSquare className="h-3.5 w-3.5 text-neutral-500" />
-          Checklist
+          {tr("cardModal.checklistHeading")}
         </button>
       </ChecklistPopover>
 
@@ -100,7 +99,7 @@ export const MetadataActionRow = ({
           className="rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 active:bg-neutral-100 text-neutral-600 px-3 py-1.5 flex items-center gap-x-1.5 text-xs font-semibold shadow-xs cursor-pointer transition-colors h-8"
         >
           <Paperclip className="h-3.5 w-3.5 text-neutral-500" />
-          Đính kèm
+          {tr("cardModal.attachmentsSummary")}
         </button>
       </AttachmentAddPopover>
     </div>

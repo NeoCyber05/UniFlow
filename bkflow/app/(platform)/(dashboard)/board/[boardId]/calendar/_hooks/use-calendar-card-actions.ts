@@ -11,6 +11,7 @@ import { updateCard } from "@/actions/cards/update-card";
 import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
 import { useAction } from "@/hooks/use-action";
 import { runCalendarAction } from "@/lib/calendar/calendar-action";
+import { tr } from "@/lib/i18n";
 import { buildSchedulePatch, type ScheduleIntent } from "@/lib/calendar/schedule-command";
 import { getCardRevision } from "@/components/modals/card-modal/card-cache-utils";
 import type { BoardCalendarCardItem, BoardCalendarResponse } from "@/types";
@@ -197,7 +198,7 @@ export const useCalendarCardActions = ({
       );
 
       if (!patch) {
-        toast.error("Khoảng thời gian không hợp lệ: giờ kết thúc phải sau giờ bắt đầu.");
+        toast.error(tr("calendar.toast.invalidTimeRange"));
         onUpdateComplete();
         return;
       }

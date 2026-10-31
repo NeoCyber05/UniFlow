@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { tr } from "@/lib/i18n";
 import type { BoardCalendarItem } from "@/types";
 
 import { isCalendarCardItem } from "../../_lib/item-utils";
@@ -67,7 +68,7 @@ export const QuickActionsMenu = ({
             }}
             onPointerDown={(event) => event.stopPropagation()}
             onDragStart={(event) => event.preventDefault()}
-            aria-label={`Mở thao tác nhanh cho checklist item ${occurrence.item.title}`}
+            aria-label={tr("calendar.quickActions.checklistAria", { title: occurrence.item.title })}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-neutral-500 opacity-100 transition hover:bg-white/70 hover:text-neutral-900 focus-visible:bg-white/70 focus-visible:text-neutral-900 sm:opacity-0 sm:group-hover/event:opacity-100 sm:group-focus-within/event:opacity-100"
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
@@ -88,7 +89,7 @@ export const QuickActionsMenu = ({
             className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100"
           >
             <ExternalLink className="h-3.5 w-3.5 text-neutral-500" />
-            Mở thẻ
+            {tr("calendar.action.openCard")}
           </button>
         </PopoverContent>
       </Popover>
@@ -106,7 +107,7 @@ export const QuickActionsMenu = ({
           onPointerDown={(event) => event.stopPropagation()}
           onDragStart={(event) => event.preventDefault()}
           disabled={isUpdatingCardDate}
-          aria-label={`Mở thao tác nhanh cho thẻ ${occurrence.item.title}`}
+          aria-label={tr("calendar.quickActions.cardAria", { title: occurrence.item.title })}
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-neutral-500 opacity-100 transition hover:bg-white/70 hover:text-neutral-900 focus-visible:bg-white/70 focus-visible:text-neutral-900 disabled:cursor-wait disabled:opacity-40 sm:opacity-0 sm:group-hover/event:opacity-100 sm:group-focus-within/event:opacity-100"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
@@ -126,7 +127,7 @@ export const QuickActionsMenu = ({
           className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
         >
           <ExternalLink className="h-3.5 w-3.5 text-neutral-500" />
-          Mở thẻ
+          {tr("calendar.action.openCard")}
         </button>
         <button
           type="button"
@@ -139,7 +140,7 @@ export const QuickActionsMenu = ({
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
           )}
-          {occurrence.item.isCompleted ? "Bỏ hoàn thành" : "Đánh dấu hoàn thành"}
+          {occurrence.item.isCompleted ? tr("calendar.action.markIncomplete") : tr("calendar.action.markComplete")}
         </button>
         {isCardItem && canPlanSchedule(occurrence) && (
           <button
@@ -149,7 +150,7 @@ export const QuickActionsMenu = ({
             className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
           >
             <CalendarPlus className="h-3.5 w-3.5 text-sky-600" />
-            Xếp lịch
+            {tr("calendar.action.schedule")}
           </button>
         )}
         {isCardItem && canClearSchedule(occurrence) && (
@@ -160,7 +161,7 @@ export const QuickActionsMenu = ({
             className="flex h-8 w-full items-center gap-x-2 rounded-md px-2 text-left text-xs font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
           >
             <CalendarX2 className="h-3.5 w-3.5 text-violet-600" />
-            Bỏ lịch làm
+            {tr("calendar.action.clearSchedule")}
           </button>
         )}
       </PopoverContent>

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { CardWithList } from "@/types";
 import { Button } from "@/components/ui/button";
+import { tr, useLocale } from "@/lib/i18n";
 
 import { Header } from "./header";
 import { MetadataSection as Metadata } from "./metadata/metadata-section";
@@ -33,7 +34,7 @@ const CardMainContent = ({
   const checklistActions = canEdit ? (
     <div className="flex items-center gap-1">
       <ChecklistPopover cardId={cardData.id} boardId={cardData.list.boardId}>
-        <Button type="button" variant="ghost" size="sm" aria-label="Thêm checklist" className="size-8 p-0"><Plus className="size-4" /></Button>
+        <Button type="button" variant="ghost" size="sm" aria-label={tr("cardModal.addChecklistAria")} className="size-8 p-0"><Plus className="size-4" /></Button>
       </ChecklistPopover>
       <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs"
         onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>
@@ -41,15 +42,15 @@ const CardMainContent = ({
           <path d="M8.3 7.3c1.7-3 5.2-4 7.7-2.5s3.4 4.7 1.6 7.8-5.2 4-7.8 2.5S6.5 10.3 8.3 7.3Zm7.4 9.4c-1.7 3-5.2 4-7.7 2.5s-3.4-4.7-1.6-7.8 5.2-4 7.8-2.5 3.3 4.8 1.5 7.8Z" />
           <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
         </svg>
-        Gợi ý AI
+        {tr("cardModal.aiSuggestShort")}
       </Button>
     </div>
   ) : null;
   return (
     <>
       <Description data={cardData} canEdit={canEdit} beforeCloseRef={beforeCloseRef} compact={panel} />
-      {!panel && canEdit && <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>AI: Gợi ý checklist</Button>}
-      {panel && cardData.checklists.length === 0 && <div className="flex items-center justify-between gap-2 border-t border-border pt-5"><h2 className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="size-4 text-muted-foreground" />Checklist</h2>{checklistActions}</div>}
+      {!panel && canEdit && <Button type="button" variant="outline" onClick={() => useAssistantTask.getState().openChecklist(cardData.id)}>{tr("cardModal.aiSuggestChecklist")}</Button>}
+      {panel && cardData.checklists.length === 0 && <div className="flex items-center justify-between gap-2 border-t border-border pt-5"><h2 className="flex items-center gap-2 text-sm font-semibold"><ListChecks className="size-4 text-muted-foreground" />{tr("cardModal.checklistHeading")}</h2>{checklistActions}</div>}
       {!panel && (cardData.attachments ?? []).length > 0 && (
         <Attachments
           cardId={cardData.id}
@@ -68,17 +69,17 @@ const CardMainContent = ({
         actions={panel ? checklistActions : undefined}
       />
       {panel && <>
-        {cardData.checklists.length === 0 && <p className="text-xs leading-relaxed text-muted-foreground">Chia việc thành các bước nhỏ. Thêm checklist hoặc dùng gợi ý AI để bắt đầu.</p>}
+        {cardData.checklists.length === 0 && <p className="text-xs leading-relaxed text-muted-foreground">{tr("cardModal.checklistEmptyHint")}</p>}
         <details className="group border-t border-border">
           <summary className="flex cursor-pointer list-none items-center gap-2 py-4 text-xs font-medium">
-            <Paperclip className="size-4 text-muted-foreground" />Đính kèm
+            <Paperclip className="size-4 text-muted-foreground" />{tr("cardModal.attachmentsSummary")}
             <span className="text-muted-foreground">{cardData.attachments.length || ""}</span>
             <ChevronDown className="ml-auto size-3.5 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
           </summary>
           <div className="space-y-3 pb-4">
             <Attachments cardId={cardData.id} boardId={cardData.list.boardId} items={cardData.attachments} canEdit={canEdit} />
             {canEdit && <AttachmentAddPopover cardId={cardData.id} boardId={cardData.list.boardId}>
-              <Button type="button" variant="outline" size="sm"><Plus className="size-3.5" />Thêm đính kèm</Button>
+              <Button type="button" variant="outline" size="sm"><Plus className="size-3.5" />{tr("cardModal.addAttachment")}</Button>
             </AttachmentAddPopover>}
           </div>
         </details>
@@ -115,6 +116,7 @@ type CardDetailBodyProps = {
 
 /** Nội dung chi tiết thẻ, dùng chung cho modal (dialog) và panel bên phải. */
 export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef, headerActions }: CardDetailBodyProps) => {
+  useLocale((state) => state.locale);
   const classes = LAYOUT_CLASSES[layout];
 
   const queryClient = useQueryClient();
@@ -147,19 +149,19 @@ export const CardDetailBody = ({ cardId, layout, onClose, beforeCloseRef, header
         <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="text-sm font-medium text-neutral-700">
             {status === 403
-              ? "Bạn không còn quyền truy cập việc này."
+              ? tr("cardModal.errorNoAccess")
               : status === 404
-                ? "Việc không tồn tại hoặc đã bị xóa."
-                : "Không tải được dữ liệu. Kiểm tra kết nối rồi thử lại."}
+                ? tr("cardModal.errorNotFound")
+                : tr("cardModal.errorLoadFailed")}
           </p>
           <div className="flex gap-2">
             {!isGone && (
               <Button type="button" size="sm" disabled={isFetching} onClick={() => void refetch()}>
-                Thử lại
+                {tr("cardModal.retry")}
               </Button>
             )}
             <Button type="button" size="sm" variant="outline" onClick={onClose}>
-              Đóng
+              {tr("cardModal.close")}
             </Button>
           </div>
         </div>

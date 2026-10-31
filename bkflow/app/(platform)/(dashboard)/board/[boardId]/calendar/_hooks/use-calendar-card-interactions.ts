@@ -3,6 +3,7 @@
 import { useCallback, type MouseEvent } from "react";
 
 import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
+import { tr } from "@/lib/i18n";
 
 import { isCalendarCardItem } from "../_lib/item-utils";
 import type { CalendarOccurrence } from "../_types";
@@ -69,8 +70,8 @@ export const useCalendarCardInteractions = ({
     }
 
     setUpdateSuccessToast(occurrence.item.isCompleted
-      ? "Đã bỏ hoàn thành"
-      : "Đã đánh dấu hoàn thành");
+      ? tr("calendar.toast.markedIncomplete")
+      : tr("calendar.toast.markedComplete"));
 
     executeUpdateCard({
       id: occurrence.item.cardId,
@@ -92,7 +93,7 @@ export const useCalendarCardInteractions = ({
       return;
     }
 
-    setUpdateSuccessToast("Đã bỏ lịch làm");
+    setUpdateSuccessToast(tr("calendar.toast.scheduleCleared"));
 
     executeUpdateCard({
       id: occurrence.item.cardId,

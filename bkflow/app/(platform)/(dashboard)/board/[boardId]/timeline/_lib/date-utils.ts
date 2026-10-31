@@ -10,7 +10,8 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { vi } from "date-fns/locale";
+
+import { getDateFnsLocale, getIntlLocale, tr } from "@/lib/i18n";
 
 import type {
   TimelineDateOverride,
@@ -19,10 +20,24 @@ import type {
   TimelineZoom,
 } from "../_types";
 
+export const ZOOM_OPTIONS: readonly TimelineZoom[] = ["day", "week", "month"];
+
+export const getZoomLabel = (zoom: TimelineZoom): string => {
+  if (zoom === "day") return tr("timeline.zoom.day");
+  if (zoom === "week") return tr("timeline.zoom.week");
+  return tr("timeline.zoom.month");
+};
+
 export const zoomLabels: Record<TimelineZoom, string> = {
-  day: "Ngày",
-  week: "Tuần",
-  month: "Tháng",
+  get day() {
+    return tr("timeline.zoom.day");
+  },
+  get week() {
+    return tr("timeline.zoom.week");
+  },
+  get month() {
+    return tr("timeline.zoom.month");
+  },
 };
 
 export const parseTimelineDate = (value: string | null) => {
@@ -57,10 +72,11 @@ export const formatTimelineDate = (value: string | null) => {
   const date = parseTimelineDate(value);
 
   if (!date) {
-    return "Chưa đặt";
+    return tr("timeline.date.unset");
   }
 
-  return format(date, "dd/MM/yyyy", { locale: vi });
+  const pattern = getIntlLocale() === "ja-JP" ? "yyyy/MM/dd" : "dd/MM/yyyy";
+  return format(date, pattern, { locale: getDateFnsLocale() });
 };
 
 export const getTimelineUnits = (
@@ -68,10 +84,14 @@ export const getTimelineUnits = (
   end: Date,
   zoom: TimelineZoom,
 ): TimelineUnit[] => {
+  const dateLocale = getDateFnsLocale();
+  const isJa = getIntlLocale() === "ja-JP";
+  const dayMonthPattern = isJa ? "MM/dd" : "dd/MM";
+
   if (zoom === "day") {
     return eachDayOfInterval({ start, end }).map((date) => ({
       key: format(date, "yyyy-MM-dd"),
-      label: format(date, "dd/MM", { locale: vi }),
+      label: format(date, dayMonthPattern, { locale: dateLocale }),
       start: date,
       end: date,
     }));
@@ -83,15 +103,16 @@ export const getTimelineUnits = (
       { weekStartsOn: 1 },
     ).map((date) => ({
       key: `week:${format(date, "yyyy-MM-dd")}`,
-      label: `Tuần ${format(date, "dd/MM", { locale: vi })}`,
+      label: tr("timeline.unit.week", { date: format(date, dayMonthPattern, { locale: dateLocale }) }),
       start: startOfWeek(date, { weekStartsOn: 1 }),
       end: addDays(startOfWeek(date, { weekStartsOn: 1 }), 6),
     }));
   }
 
+  const monthPattern = isJa ? "yyyy年M月" : "MM/yyyy";
   return eachMonthOfInterval({ start, end }).map((date) => ({
     key: `month:${format(date, "yyyy-MM")}`,
-    label: format(date, "MM/yyyy", { locale: vi }),
+    label: format(date, monthPattern, { locale: dateLocale }),
     start: startOfMonth(date),
     end: addDays(startOfMonth(new Date(date.getFullYear(), date.getMonth() + 1, 1)), -1),
   }));

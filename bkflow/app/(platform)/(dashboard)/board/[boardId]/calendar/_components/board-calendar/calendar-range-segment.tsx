@@ -7,6 +7,7 @@ import { Hint } from "@/components/hint";
 import { useBoardCourse } from "@/hooks/use-board-courses";
 import { getGridColumnSpanStyle } from "@/lib/calendar/calendar-grid-size";
 import { getCourseColor } from "@/lib/courses/course-colors";
+import { tr, useLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import {
@@ -94,6 +95,7 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
   onPlanSchedule,
   onClearSchedule,
 }: CalendarRangeSegmentItemProps) {
+  useLocale((s) => s.locale);
   const course = useBoardCourse(segment.range.item.boardId, segment.range.item.courseId);
   const courseTone = course ? getCourseColor(course.color).calendarTone : null;
   const isHidden = segment.lane >= maxLanes;
@@ -117,6 +119,8 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
   const dueDate = parseCalendarDate(segment.range.item.dueDate);
   const startTimeLabel = (segment.isRangeStart && startDate) ? formatCalendarTime(startDate) : null;
   const endTimeLabel = (segment.isRangeEnd && dueDate) ? formatCalendarTime(dueDate) : null;
+  const changeStartLabel = tr("calendar.range.changeStartDate");
+  const changeDueLabel = tr("calendar.range.changeDueDate");
 
   return (
     <Hint
@@ -145,10 +149,10 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
           )}
         >
           {segment.isRangeStart && (
-            <Hint description="Đổi ngày bắt đầu" side="top">
+            <Hint description={changeStartLabel} side="top">
               <button
                 type="button"
-                aria-label="Đổi ngày bắt đầu"
+                aria-label={changeStartLabel}
                 disabled={isUpdatingCardDate}
                 onClick={(event) => {
                   event.preventDefault();
@@ -170,7 +174,7 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
           <button
             type="button"
             onClick={(event) => onOpenCard(segment.range.item.cardId, event)}
-            aria-label={`Mở thẻ ${segment.range.item.title}`}
+            aria-label={tr("calendar.occurrence.openCardAria", { title: segment.range.item.title })}
             className="flex h-full min-w-0 flex-1 items-center gap-x-1 overflow-hidden text-left"
           >
             {segment.range.item.labels[0] && (
@@ -214,10 +218,10 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
             />
           )}
           {segment.isRangeEnd && (
-            <Hint description="Đổi ngày hết hạn" side="top">
+            <Hint description={changeDueLabel} side="top">
               <button
                 type="button"
-                aria-label="Đổi ngày hết hạn"
+                aria-label={changeDueLabel}
                 disabled={isUpdatingCardDate}
                 onClick={(event) => {
                   event.preventDefault();

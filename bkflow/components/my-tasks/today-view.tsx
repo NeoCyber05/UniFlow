@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/web/shims/next-link";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 import { ArrowRight, BookOpen, CalendarClock, CalendarDays, CheckCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
@@ -38,7 +38,7 @@ const NoteDeadlines = ({ now }: { now: Date }) => {
           <CalendarClock aria-hidden="true" className={`mt-0.5 size-4 shrink-0 ${overdue ? "text-destructive" : "text-violet-600"}`} />
           <span className="min-w-0">
             <span className="block break-words text-sm font-medium">{item.title}</span>
-            <span className={`mt-1 block text-xs ${overdue ? "text-destructive" : "text-muted-foreground"}`}>{overdue ? tr("today.overduePrefix") : ""}{new Date(item.dueAt).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" })} · {item.page.icon ? `${item.page.icon} ` : ""}{item.page.title}</span>
+            <span className={`mt-1 block text-xs ${overdue ? "text-destructive" : "text-muted-foreground"}`}>{overdue ? tr("today.overduePrefix") : ""}{new Date(item.dueAt).toLocaleString(getIntlLocale(), { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" })} · {item.page.icon ? `${item.page.icon} ` : ""}{item.page.title}</span>
           </span>
         </Link>;
       })}

@@ -1,5 +1,5 @@
 import ReactMarkdown from "react-markdown";
-import { tr } from "@/lib/i18n";
+import { getIntlLocale, tr } from "@/lib/i18n";
 import remarkGfm from "remark-gfm";
 import type { NoteBlock } from "@/lib/notes/blocks";
 import { numberedIndex } from "@/lib/notes/block-editing";
@@ -13,7 +13,7 @@ export const NoteReadingView = ({ blocks, linkedTask }: { blocks: NoteBlock[]; l
     if (block.type === "divider") return <hr key={block.id} className="my-5 border-current opacity-30" />;
     if (block.type === "task") return <LinkedTaskBlock key={block.id} block={block} resolved={linkedTask(block.taskId)} />;
     if (block.type === "deadline") {
-      return <p key={block.id} className={block.checked ? "line-through opacity-70" : ""}>⏰ <span className="text-xs opacity-70">{tr("notes.block.deadline")}</span> <strong>{block.text || tr("notes.deadline.untitled")}</strong>{block.dueAt && ` · ${new Date(block.dueAt).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "short" })}`}</p>;
+      return <p key={block.id} className={block.checked ? "line-through opacity-70" : ""}>⏰ <span className="text-xs opacity-70">{tr("notes.block.deadline")}</span> <strong>{block.text || tr("notes.deadline.untitled")}</strong>{block.dueAt && ` · ${new Date(block.dueAt).toLocaleString(getIntlLocale(), { dateStyle: "medium", timeStyle: "short" })}`}</p>;
     }
     if (block.type === "heading") {
       const Tag = `h${block.level}` as "h1" | "h2" | "h3";

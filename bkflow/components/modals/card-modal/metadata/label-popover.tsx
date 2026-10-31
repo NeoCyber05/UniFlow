@@ -14,6 +14,7 @@ import {
 
 import { Label, CardLabel } from "@prisma/client";
 import { useAction } from "@/hooks/use-action";
+import { tr } from "@/lib/i18n";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { createLabel } from "@/actions/labels/create-label";
 import { updateLabel } from "@/actions/labels/update-label";
@@ -236,14 +237,14 @@ export const LabelPopover = ({
         labelId,
         desiredAttached,
         version,
-        "Có lỗi xảy ra khi cập nhật nhãn.",
+        tr("cardMeta.labelUpdateError"),
       );
     } catch {
       finishLabelError(
         labelId,
         desiredAttached,
         version,
-        "Có lỗi xảy ra khi cập nhật nhãn.",
+        tr("cardMeta.labelUpdateError"),
       );
     } finally {
       labelPendingCountRef.current = Math.max(0, labelPendingCountRef.current - 1);
@@ -273,7 +274,11 @@ export const LabelPopover = ({
 
   const { execute: executeCreate, isLoading: isLoadingCreate } = useAction(createLabel, {
     onSuccess: (data) => {
-      toast.success(`Đã tạo và gắn nhãn "${data.title || "không tên"}"`);
+      toast.success(
+        tr("cardMeta.labelCreatedToast", {
+          title: data.title || tr("cardMeta.labelUntitled"),
+        }),
+      );
       const nextLabels = mergeCardLabel(getCurrentLabels(), {
         id: `temp-cl-${new Date().getTime()}`,
         cardId,
@@ -317,7 +322,11 @@ export const LabelPopover = ({
 
   const { execute: executeDelete, isLoading: isLoadingDelete } = useAction(deleteLabel, {
     onSuccess: (data) => {
-      toast.success(`Đã xóa nhãn "${data.title || "không tên"}" khỏi bảng`);
+      toast.success(
+        tr("cardMeta.labelDeletedToast", {
+          title: data.title || tr("cardMeta.labelUntitled"),
+        }),
+      );
       invalidateFullCardQueries();
       router.refresh();
       setScreen("select");
@@ -428,10 +437,11 @@ export const LabelPopover = ({
           <div className="space-y-3">
             {/* Header */}
             <div className="relative pb-2 border-b border-neutral-100 flex items-center justify-between">
-              <span className="text-sm font-semibold text-neutral-700 mx-auto">Nhãn</span>
+              <span className="text-sm font-semibold text-neutral-700 mx-auto">{tr("cardMeta.labels")}</span>
               <PopoverClose asChild>
                 <button 
                   type="button" 
+                  aria-label={tr("cardModal.close")}
                   className="absolute right-0 top-0.5 text-neutral-400 hover:text-neutral-600 rounded-sm cursor-pointer"
                 >
                   <X className="h-4 w-4" />
@@ -444,7 +454,7 @@ export const LabelPopover = ({
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Tìm nhãn..."
+                placeholder={tr("cardMeta.searchLabelsPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-8.5 pl-8 pr-3 py-1.5 bg-neutral-50 hover:bg-neutral-100/50 focus:bg-white border border-neutral-200 hover:border-neutral-300 focus:border-violet-500 rounded-lg text-xs transition outline-hidden"
@@ -454,11 +464,11 @@ export const LabelPopover = ({
             {/* Labels List */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider pl-0.5">
-                Nhãn
+                {tr("cardMeta.labels")}
               </span>
               <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 styled-scrollbar">
                 {filteredLabels.length === 0 ? (
-                  <p className="text-xs text-neutral-400 text-center py-4">Không tìm thấy nhãn</p>
+                  <p className="text-xs text-neutral-400 text-center py-4">{tr("cardMeta.noLabelsFound")}</p>
                 ) : (
                   filteredLabels.map((label) => {
                     const isChecked = activeLabelIds.has(label.id);
@@ -486,7 +496,7 @@ export const LabelPopover = ({
                           disabled={isLoading}
                           onClick={() => handleOpenEdit(label)}
                           className="p-1.5 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-md cursor-pointer shrink-0 transition-colors"
-                          aria-label="Chỉnh sửa nhãn"
+                          aria-label={tr("cardMeta.editLabelAria")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -506,7 +516,7 @@ export const LabelPopover = ({
                 disabled={isLoading}
                 className="w-full h-8.5 rounded-lg border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300 text-xs font-semibold text-neutral-600 cursor-pointer transition-all"
               >
-                Tạo nhãn mới
+                {tr("cardMeta.createNewLabel")}
               </Button>
             </div>
           </div>
@@ -524,10 +534,11 @@ export const LabelPopover = ({
               >
                 <ChevronLeft className="h-4.5 w-4.5" />
               </button>
-              <span className="text-sm font-semibold text-neutral-700 mx-auto">Tạo nhãn mới</span>
+              <span className="text-sm font-semibold text-neutral-700 mx-auto">{tr("cardMeta.createNewLabel")}</span>
               <PopoverClose asChild>
                 <button 
                   type="button" 
+                  aria-label={tr("cardModal.close")}
                   className="absolute right-0 text-neutral-400 hover:text-neutral-600 rounded-sm cursor-pointer"
                 >
                   <X className="h-4 w-4" />
@@ -550,11 +561,11 @@ export const LabelPopover = ({
               {/* Title Input */}
               <div className="flex flex-col gap-y-1">
                 <span className="text-[11px] font-bold text-neutral-500 uppercase pl-0.5">
-                  Tiêu đề
+                  {tr("cardMeta.labelTitleField")}
                 </span>
                 <Input
                   id="title"
-                  placeholder="Nhập tiêu đề nhãn..."
+                  placeholder={tr("cardMeta.labelTitlePlaceholder")}
                   value={titleValue}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitleValue(e.target.value)}
                   disabled={isLoading}
@@ -565,7 +576,7 @@ export const LabelPopover = ({
               {/* Color Grid */}
               <div className="flex flex-col gap-y-1.5">
                 <span className="text-[11px] font-bold text-neutral-500 uppercase pl-0.5">
-                  Chọn một màu
+                  {tr("cardMeta.pickColor")}
                 </span>
                 <div className="grid grid-cols-5 gap-1.5">
                   {LABEL_COLORS.map((color) => {
@@ -594,7 +605,7 @@ export const LabelPopover = ({
                   disabled={isLoading}
                   className="flex-1 h-8.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 text-xs font-semibold cursor-pointer transition-colors"
                 >
-                  Tạo mới
+                  {tr("cardMeta.createButton")}
                 </Button>
               </div>
             </form>
@@ -613,10 +624,11 @@ export const LabelPopover = ({
               >
                 <ChevronLeft className="h-4.5 w-4.5" />
               </button>
-              <span className="text-sm font-semibold text-neutral-700 mx-auto">Chỉnh sửa nhãn</span>
+              <span className="text-sm font-semibold text-neutral-700 mx-auto">{tr("cardMeta.editLabelAria")}</span>
               <PopoverClose asChild>
                 <button 
                   type="button" 
+                  aria-label={tr("cardModal.close")}
                   className="absolute right-0 text-neutral-400 hover:text-neutral-600 rounded-sm cursor-pointer"
                 >
                   <X className="h-4 w-4" />
@@ -639,11 +651,11 @@ export const LabelPopover = ({
               {/* Title Input */}
               <div className="flex flex-col gap-y-1">
                 <span className="text-[11px] font-bold text-neutral-500 uppercase pl-0.5">
-                  Tiêu đề
+                  {tr("cardMeta.labelTitleField")}
                 </span>
                 <Input
                   id="title"
-                  placeholder="Nhập tiêu đề nhãn..."
+                  placeholder={tr("cardMeta.labelTitlePlaceholder")}
                   value={titleValue}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitleValue(e.target.value)}
                   disabled={isLoading}
@@ -654,7 +666,7 @@ export const LabelPopover = ({
               {/* Color Grid */}
               <div className="flex flex-col gap-y-1.5">
                 <span className="text-[11px] font-bold text-neutral-500 uppercase pl-0.5">
-                  Chọn một màu
+                  {tr("cardMeta.pickColor")}
                 </span>
                 <div className="grid grid-cols-5 gap-1.5">
                   {LABEL_COLORS.map((color) => {
@@ -683,7 +695,7 @@ export const LabelPopover = ({
                   disabled={isLoading}
                   className="flex-1 h-8.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 text-xs font-semibold cursor-pointer transition-colors"
                 >
-                  Lưu
+                  {tr("cardMeta.save")}
                 </Button>
                 <Button
                   type="button"
@@ -693,7 +705,7 @@ export const LabelPopover = ({
                   onClick={handleDeleteLabel}
                   className="h-8.5 rounded-lg bg-red-600 text-white hover:bg-red-700 text-xs font-semibold cursor-pointer transition-colors"
                 >
-                  Xóa
+                  {tr("cardMeta.deleteButton")}
                 </Button>
               </div>
             </form>

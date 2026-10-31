@@ -1,4 +1,5 @@
 "use client";
+import { tr } from "@/lib/i18n";
 import { formatDayTitle } from "../_lib/date-utils";
 
 import type { ComponentProps } from "react";
@@ -36,13 +37,13 @@ export const ExpandedDayPanel = ({
           onClick={onClose}
           className="rounded-md px-2 py-1 text-xs font-semibold text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800"
         >
-          Đóng
+          {tr("calendar.common.close")}
         </button>
       </div>
 
       {cards.length > 0 && (
         <div className="mt-3 space-y-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Thẻ công việc</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">{tr("calendar.expanded.taskCards")}</h4>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {cards.map((occurrence) => (
               <ExpandedOccurrence
@@ -57,7 +58,7 @@ export const ExpandedDayPanel = ({
 
       {checklistItems.length > 0 && (
         <div className="mt-4 space-y-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Checklist</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">{tr("calendar.expanded.checklist")}</h4>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {checklistItems.map((occurrence) => (
               <ExpandedOccurrence

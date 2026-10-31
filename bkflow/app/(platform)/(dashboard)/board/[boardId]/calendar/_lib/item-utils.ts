@@ -1,4 +1,4 @@
-
+import { tr } from "@/lib/i18n";
 import type {
   BoardCalendarCardItem,
   BoardCalendarChecklistItem,
@@ -7,7 +7,7 @@ import type {
 
 import {
   formatCalendarDateTime,
-  formatCalendarDate,
+  formatCalendarDayMonth,
   getDayKey,
   formatCalendarTime,
   parseCalendarDate,
@@ -47,28 +47,28 @@ export const getCalendarItemTitle = (item: BoardCalendarItem) => {
   const dueDate = parseCalendarDate(getCalendarItemDueDate(item));
   const parts = [
     item.title,
-    `Danh sách: ${item.listTitle}`,
+    tr("calendar.tooltip.list", { title: item.listTitle }),
   ];
 
   if (item.type === "checklist-item") {
-    parts.splice(1, 0, `Thẻ: ${item.cardTitle}`);
-    parts.splice(2, 0, `Danh sách kiểm tra: ${item.checklistTitle}`);
+    parts.splice(1, 0, tr("calendar.tooltip.card", { title: item.cardTitle }));
+    parts.splice(2, 0, tr("calendar.tooltip.checklist", { title: item.checklistTitle }));
   }
 
   if (startDate) {
-    parts.push(`Bắt đầu: ${formatCalendarDateTime(startDate)}`);
+    parts.push(tr("calendar.tooltip.startsAt", { datetime: formatCalendarDateTime(startDate) }));
   }
 
   if (dueDate) {
-    parts.push(`Kết thúc: ${formatCalendarDateTime(dueDate)}`);
+    parts.push(tr("calendar.tooltip.endsAt", { datetime: formatCalendarDateTime(dueDate) }));
   }
 
   if (item.isCompleted) {
-    parts.push("Trạng thái: Hoàn thành");
+    parts.push(tr("calendar.tooltip.completed"));
   }
 
   if (item.type === "checklist-item" && item.assignee) {
-    parts.push(`Phụ trách: ${item.assignee.userName}`);
+    parts.push(tr("calendar.tooltip.assignee", { name: item.assignee.userName }));
   }
 
   return parts.join("\n");
@@ -136,18 +136,18 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
     return null;
   }
 
-  if (occurrence.item.displayKind === "deadline") return "Hạn nộp";
-  if (occurrence.item.displayKind === "legacy-start") return "Bắt đầu";
+  if (occurrence.item.displayKind === "deadline") return tr("calendar.occurrence.deadline");
+  if (occurrence.item.displayKind === "legacy-start") return tr("calendar.occurrence.start");
   if (occurrence.item.displayKind === "work") {
-    return occurrence.item.scheduledStartAt ? null : "Lịch làm";
+    return occurrence.item.scheduledStartAt ? null : tr("calendar.occurrence.work");
   }
 
   if (occurrence.kind === "start") {
-    return "Bắt đầu";
+    return tr("calendar.occurrence.start");
   }
 
   if (occurrence.kind === "due") {
-    return "Kết thúc";
+    return tr("calendar.occurrence.due");
   }
 
   if (occurrence.kind === "range") {
@@ -155,7 +155,7 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
     const due = parseCalendarDate(occurrence.item.dueDate);
 
     if (start && due) {
-      return `${formatCalendarDate(start).slice(0, 5)} - ${formatCalendarDate(due).slice(0, 5)}`;
+      return `${formatCalendarDayMonth(start)} - ${formatCalendarDayMonth(due)}`;
     }
 
     return null;
@@ -166,18 +166,18 @@ export const getOccurrenceLabel = (occurrence: CalendarOccurrence) => {
   const due = parseCalendarDate(occurrence.item.dueDate);
 
   if (start && !due) {
-    return "Bắt đầu";
+    return tr("calendar.occurrence.start");
   }
 
   if (!start && due) {
-    return "Kết thúc";
+    return tr("calendar.occurrence.due");
   }
 
   if (start && due) {
     return null;
   }
 
-  return "Lịch";
+  return tr("calendar.occurrence.schedule");
 };
 
 export const isOverdue = (item: BoardCalendarItem) => {

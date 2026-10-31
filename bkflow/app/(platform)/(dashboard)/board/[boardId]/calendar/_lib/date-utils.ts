@@ -1,6 +1,6 @@
 import { getCalendarRange, getTodayKey } from "@/lib/calendar/calendar-navigation";
+import { intlDateFormat, tr } from "@/lib/i18n";
 import {
-  DAY_VIEW_LABELS,
   DEFAULT_CREATE_HOUR,
   DEFAULT_CREATE_TIME,
   GMT7_OFFSET_MS,
@@ -8,6 +8,7 @@ import {
   MIN_CREATE_DURATION_MS,
   MINUTES_IN_DAY,
   TIME_INPUT_PATTERN,
+  getDayViewLabels,
 } from "./constants";
 
 const getGridRange = (anchorDate: Date, mode: "month" | "week" | "day") => {
@@ -239,17 +240,28 @@ export const getGmt7DayBoundary = (anchorDate: Date) => {
   return { start, end };
 };
 
+export const getDayKey = (date: Date) => getGmt7DayKey(date);
+export const formatCalendarTime = (date: Date) => formatGmt7Time(date);
+export const formatCalendarDate = (date: Date) =>
+  intlDateFormat({
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+export const formatCalendarDayMonth = (date: Date) =>
+  intlDateFormat({
+    timeZone: "Asia/Ho_Chi_Minh",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 export const formatDayTitle = (date: Date) => {
   const parts = getGmt7Parts(date);
 
-  return `${DAY_VIEW_LABELS[parts.day]}, ${String(parts.date).padStart(2, "0")}/${String(parts.month + 1).padStart(2, "0")}/${parts.year}`;
-};
-
-export const getDayKey = (date: Date) => getGmt7DayKey(date);
-export const formatCalendarTime = (date: Date) => formatGmt7Time(date);
-export const formatCalendarDate = (date: Date) => {
-  const p = getGmt7Parts(date);
-  return `${String(p.date).padStart(2, "0")}/${String(p.month + 1).padStart(2, "0")}/${p.year}`;
+  return tr("calendar.date.dayTitle", {
+    weekday: getDayViewLabels()[parts.day],
+    date: formatCalendarDate(date),
+  });
 };
 export const formatCalendarDateTime = (date: Date) => `${formatCalendarDate(date)} ${formatGmt7Time(date)}`;
 export const isSameCalendarMonth = (left: Date, right: Date) => {
@@ -264,14 +276,10 @@ export const formatGmt7Time = (date: Date) => {
   return `${String(parts.hours).padStart(2, "0")}:${String(parts.minutes).padStart(2, "0")}`;
 };
 
-export const formatGmt7DateTime = (date: Date) => {
-  const parts = getGmt7Parts(date);
-
-  return [
-    `${String(parts.date).padStart(2, "0")}/${String(parts.month + 1).padStart(2, "0")}/${parts.year}`,
-    formatGmt7Time(date),
-  ].join(" ");
-};
+export const formatGmt7DateTime = (date: Date) => [
+  formatCalendarDate(date),
+  formatGmt7Time(date),
+].join(" ");
 
 export const getLocalDay = (date: Date) =>
   getGmt7DayBoundary(date).start;
@@ -315,7 +323,7 @@ export const getReminderError = (dueDate: Date, reminder: string | null) => {
   const offsetMinutes = parseInt(reminder, 10);
 
   if (Number.isNaN(offsetMinutes)) {
-    return "Mốc nhắc nhở không hợp lệ.";
+    return tr("calendar.reminder.invalidOffset");
   }
 
   const triggerTime = dueDate.getTime() - offsetMinutes * 60_000;
@@ -327,8 +335,8 @@ export const getReminderError = (dueDate: Date, reminder: string | null) => {
   const minutesUntilDue = Math.floor((dueDate.getTime() - Date.now()) / 60_000);
 
   if (minutesUntilDue <= 0) {
-    return "Thẻ đã hết hạn. Vui lòng kéo ngày hết hạn sang thời điểm hợp lệ.";
+    return tr("calendar.reminder.cardOverdue");
   }
 
-  return "Thời gian nhắc nhở đã ở trong quá khứ. Hãy kéo ngày hết hạn xa hơn hoặc đổi mốc nhắc nhở.";
+  return tr("calendar.reminder.inPast");
 };

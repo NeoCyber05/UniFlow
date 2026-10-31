@@ -6,8 +6,9 @@ import type { CardWithList } from "@/types";
 import { Hint } from "@/components/hint";
 import { TaskLabels } from "@/components/tasks/task-labels";
 import { getLabelTextColor, safeLabelColor } from "@/lib/cards/task-labels";
-import { getColorName } from "@/lib/utils";
+import { tr } from "@/lib/i18n";
 import { LabelPopover } from "./label-popover";
+import { getLocalizedColorName } from "./metadata-utils";
 
 interface CardLabelSummaryProps {
   cardId: string;
@@ -29,7 +30,7 @@ export const CardLabelSummary = ({
     if (labels.length === 0) return null;
     return (
       <div className="flex flex-col gap-y-1.5">
-        <span className="text-xs font-semibold text-neutral-600 pl-0.5">Nhãn</span>
+        <span className="text-xs font-semibold text-neutral-600 pl-0.5">{tr("cardMeta.labels")}</span>
         <TaskLabels labels={labels.map((cardLabel) => cardLabel.label)} mode="full" />
       </div>
     );
@@ -38,13 +39,16 @@ export const CardLabelSummary = ({
   return (
     <div className="flex flex-col gap-y-1.5">
       <span className="text-xs font-semibold text-neutral-600 pl-0.5">
-        Nhãn
+        {tr("cardMeta.labels")}
       </span>
       <div className="flex flex-wrap items-center gap-1.5">
         {labels.map((cardLabel) => (
           <Hint
             key={cardLabel.id}
-            description={`Màu: ${getColorName(cardLabel.label.color)}, Tiêu đề: ${cardLabel.label.title || "Không"}`}
+            description={tr("cardMeta.labelHint", {
+              color: getLocalizedColorName(cardLabel.label.color),
+              title: cardLabel.label.title || tr("cardMeta.labelNoTitle"),
+            })}
             side="bottom"
           >
             <div className="inline-block">
@@ -76,7 +80,7 @@ export const CardLabelSummary = ({
           <button
             type="button"
             className="rounded-lg bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 flex items-center justify-center h-8 w-8 cursor-pointer transition-colors shadow-xs"
-            aria-label="Quản lý nhãn"
+            aria-label={tr("cardMeta.manageLabelsAria")}
           >
             <Plus className="h-4 w-4 text-neutral-600" />
           </button>

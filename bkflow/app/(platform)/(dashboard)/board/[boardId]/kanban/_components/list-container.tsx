@@ -14,6 +14,7 @@ import { updateCardOrder } from "@/actions/cards/update-card-order";
 import { updateCard } from "@/actions/cards/update-card";
 import { useCardModal } from "@/hooks/use-card-modal";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { tr } from "@/lib/i18n";
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
 import { debugBoardRealtime } from "@/lib/realtime/debug";
@@ -141,7 +142,7 @@ export const ListContainer = ({
       />
         {filtersAreActive && visibleCardCount === 0 && (
           <div className="mb-3 inline-flex self-start rounded-lg bg-white/90 px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm">
-            Không có thẻ nào phù hợp với bộ lọc hiện tại.
+            {tr("kanban.listContainer.noMatchingCards")}
           </div>
         )}
       <DragDropContext

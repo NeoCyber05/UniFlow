@@ -7,6 +7,7 @@ import { BoardCalendarView } from "@/app/(platform)/(dashboard)/board/[boardId]/
 import { ViewSkeleton } from "@/components/view-skeleton";
 import { CalendarErrorState } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_components/calendar-error-state";
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
+import { tr } from "@/lib/i18n";
 
 import { useView } from "../lib/use-view";
 
@@ -31,7 +32,7 @@ export default function BoardCalendarRoute() {
       <div className="h-full p-4">
         <CalendarErrorState />
         <button type="button" className="mt-3 text-sm underline" onClick={() => void refetch()}>
-          Thử lại
+          {tr("route.retry")}
         </button>
       </div>
     );

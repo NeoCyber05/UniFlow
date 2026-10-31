@@ -12,6 +12,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
+import { tr } from "@/lib/i18n";
 import type { RealtimeQueryInvalidation } from "@/lib/realtime/types";
 
 import type {
@@ -156,7 +157,7 @@ export const useTimelineRealtime = ({
     const targetUserId = getRealtimePayloadTargetUserId(payload);
 
     if (targetUserId === currentUserId) {
-      toast.error("Quyền truy cập bảng đã thay đổi.");
+      toast.error(tr("timeline.toast.accessChanged"));
       scheduleTimelineRefresh(payload, { force: true });
       return;
     }
@@ -169,7 +170,7 @@ export const useTimelineRealtime = ({
       return;
     }
 
-    toast.error("Bảng này không còn khả dụng.");
+    toast.error(tr("timeline.toast.boardUnavailable"));
     scheduleTimelineRefresh(payload, { force: true });
   }, [markRealtimeEventProcessed, scheduleTimelineRefresh]);
 

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Globe,
   Loader2,
   Lock,
   Mail,
@@ -17,16 +18,17 @@ import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LOCALES, tr, useLocale } from "@/lib/i18n";
 
 import { getStartPath } from "../lib/local-prefs";
 import { supabase } from "../lib/supabase";
 
 const translateAuthError = (msg: string): string => {
-  if (msg.includes("Invalid login credentials")) return "Email hoặc mật khẩu không chính xác.";
-  if (msg.includes("User already registered")) return "Email này đã được đăng ký. Vui lòng chọn Đăng nhập.";
-  if (msg.includes("Password should be at least")) return "Mật khẩu phải có độ dài ít nhất 6 ký tự.";
-  if (msg.includes("rate limit")) return "Bạn đã thao tác quá nhanh. Vui lòng chờ giây lát rồi thử lại.";
-  if (msg.includes("network")) return "Lỗi kết nối mạng. Vui lòng kiểm tra lại đường truyền.";
+  if (msg.includes("Invalid login credentials")) return tr("auth.error.invalidCredentials");
+  if (msg.includes("User already registered")) return tr("auth.error.alreadyRegistered");
+  if (msg.includes("Password should be at least")) return tr("auth.error.passwordMinLength");
+  if (msg.includes("rate limit")) return tr("auth.error.rateLimit");
+  if (msg.includes("network")) return tr("auth.error.network");
   return msg;
 };
 
@@ -38,6 +40,7 @@ interface AuthFormProps {
 
 export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormProps) => {
   const navigate = useNavigate();
+  const { locale, setLocale } = useLocale();
   const [currentMode, setCurrentMode] = useState<"sign-in" | "sign-up">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,7 +88,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
     if (isSignUp && !data.session) {
       return setMessage({
         type: "success",
-        text: "Đã tạo tài khoản! Vui lòng kiểm tra hòm thư email để xác nhận tài khoản rồi đăng nhập.",
+        text: tr("auth.signUpConfirmEmail"),
       });
     }
 
@@ -104,7 +107,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
         setMessage({ type: "error", text: translateAuthError(error.message) });
       }
     } catch {
-      setMessage({ type: "error", text: "Không thể kết nối đến máy chủ xác thực Google." });
+      setMessage({ type: "error", text: tr("auth.error.googleConnect") });
     } finally {
       setBusy(false);
     }
@@ -119,6 +122,35 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
         compact ? "max-w-sm" : "max-w-md"
       } rounded-2xl border border-border/80 bg-card/90 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/10 dark:shadow-black/40`}
     >
+      {/* Language Switcher */}
+      <div className="-mt-1 mb-3 flex justify-end">
+        <div
+          role="group"
+          aria-label={tr("auth.languageAria")}
+          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-muted/50 p-0.5 text-[11px]"
+        >
+          <Globe aria-hidden="true" className="ml-1.5 mr-0.5 size-3 text-muted-foreground" />
+          {LOCALES.map((item) => {
+            const active = locale === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setLocale(item.id)}
+                className={`cursor-pointer rounded-full px-2 py-0.5 font-medium transition-colors ${
+                  active
+                    ? "bg-card text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Brand Header */}
       <div className="flex flex-col items-center text-center space-y-2 mb-6">
         <div className="flex items-center gap-2 mb-1">
@@ -126,12 +158,10 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
           <span className="text-2xl font-bold tracking-tight text-foreground">uniflow</span>
         </div>
         <h1 className="text-xl font-bold tracking-tight text-foreground">
-          {isSignUp ? "Tạo tài khoản UniFlow" : "Chào mừng bạn trở lại!"}
+          {isSignUp ? tr("auth.headingSignUp") : tr("auth.headingSignIn")}
         </h1>
         <p className="text-xs text-muted-foreground max-w-xs">
-          {isSignUp
-            ? "Lập kế hoạch học kỳ, theo dõi hạn chót và quản lý đồ án thông minh."
-            : "Đăng nhập để tiếp tục đồng bộ công việc và học phần của bạn."}
+          {isSignUp ? tr("auth.subtitleSignUp") : tr("auth.subtitleSignIn")}
         </p>
       </div>
 
@@ -144,7 +174,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
             !isSignUp ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Đăng nhập
+          {tr("auth.tabSignIn")}
           {!isSignUp && (
             <motion.div
               layoutId="auth-tab-pill"
@@ -160,7 +190,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
             isSignUp ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Đăng ký
+          {tr("auth.tabSignUp")}
           {isSignUp && (
             <motion.div
               layoutId="auth-tab-pill"
@@ -196,7 +226,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        Tiếp tục với Google
+        {tr("auth.continueWithGoogle")}
       </Button>
 
       {/* Divider */}
@@ -205,7 +235,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
           <div className="w-full border-t border-border/60" />
         </div>
         <span className="relative bg-card px-3 text-[11px] text-muted-foreground uppercase tracking-wider">
-          hoặc bằng email
+          {tr("auth.orWithEmail")}
         </span>
       </div>
 
@@ -213,7 +243,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-xs font-semibold text-foreground">
-            Địa chỉ Email
+            {tr("auth.emailLabel")}
           </Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
@@ -222,7 +252,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               type="email"
               required
               autoComplete="email"
-              placeholder="ten.sv@sis.hust.edu.vn"
+              placeholder={tr("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-9 h-10 rounded-xl bg-muted/20 border-border/70 focus-visible:ring-violet-500 text-xs sm:text-sm"
@@ -233,7 +263,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password" className="text-xs font-semibold text-foreground">
-              Mật khẩu
+              {tr("auth.passwordLabel")}
             </Label>
           </div>
           <div className="relative">
@@ -244,7 +274,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               required
               minLength={6}
               autoComplete={isSignUp ? "new-password" : "current-password"}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder={tr("auth.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-9 pr-9 h-10 rounded-xl bg-muted/20 border-border/70 focus-visible:ring-violet-500 text-xs sm:text-sm"
@@ -254,7 +284,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
               tabIndex={-1}
-              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-label={showPassword ? tr("auth.hidePasswordAria") : tr("auth.showPasswordAria")}
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -294,12 +324,12 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
           {busy ? (
             <span className="flex items-center gap-2">
               <Loader2 className="size-4 animate-spin" />
-              Đang xử lý…
+              {tr("auth.processing")}
             </span>
           ) : isSignUp ? (
-            "Đăng ký tài khoản"
+            tr("auth.submitSignUp")
           ) : (
-            "Đăng nhập ngay"
+            tr("auth.submitSignIn")
           )}
         </Button>
       </form>
@@ -308,24 +338,24 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       <p className="mt-5 text-center text-xs text-muted-foreground">
         {isSignUp ? (
           <>
-            Đã có tài khoản?{" "}
+            {tr("auth.alreadyHaveAccount")}{" "}
             <button
               type="button"
               onClick={() => handleSwitchMode("sign-in")}
               className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 cursor-pointer"
             >
-              Đăng nhập ngay
+              {tr("auth.switchSignIn")}
             </button>
           </>
         ) : (
           <>
-            Chưa có tài khoản?{" "}
+            {tr("auth.noAccountYet")}{" "}
             <button
               type="button"
               onClick={() => handleSwitchMode("sign-up")}
               className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 cursor-pointer"
             >
-              Đăng ký miễn phí
+              {tr("auth.switchSignUp")}
             </button>
           </>
         )}
@@ -335,7 +365,7 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       <div className="mt-6 pt-4 border-t border-border/40 text-center">
         <p className="text-[11px] text-muted-foreground/80 flex items-center justify-center gap-1.5">
           <Sparkles className="size-3 text-violet-500" />
-          Hệ thống quản lý học tập dành riêng cho sinh viên
+          {tr("auth.footerTagline")}
         </p>
       </div>
     </motion.div>

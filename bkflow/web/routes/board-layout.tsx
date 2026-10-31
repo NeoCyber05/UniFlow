@@ -11,6 +11,8 @@ import { CourseFilterFromUrl } from "@/components/courses/course-filter-from-url
 import { ImportantFilterFromUrl } from "@/components/boards/important-filter-from-url";
 import { BoardNavbar } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-navbar";
 import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-shell";
+import { tr } from "@/lib/i18n";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
 
 import { useTitle } from "../lib/use-title";
 import { prefetchRouteViews } from "../lib/prefetch-route";
@@ -35,10 +37,10 @@ export default function BoardLayoutRoute() {
   useEffect(() => {
     prefetchRouteViews(queryClient, pathname, search);
   }, [pathname, search, queryClient]);
-  useTitle(data?.title ?? "Bảng");
+  useTitle(data?.title ? formatWorkspaceTitle(data.title) : tr("route.titleBoard"));
 
-  if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">Chưa tải được bảng. <button type="button" className="underline" onClick={() => void refetch()}>Thử lại</button></div>;
-  if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label="Đang tải bảng" /></div>;
+  if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">{tr("route.boardLoadError")} <button type="button" className="underline" onClick={() => void refetch()}>{tr("route.retry")}</button></div>;
+  if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label={tr("route.boardLoading")} /></div>;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
 
