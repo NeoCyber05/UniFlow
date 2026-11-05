@@ -1,7 +1,7 @@
 import { getZonedDayStart, getZonedParts, getZonedWeekStart } from "./time";
 
 /** Loại biểu đồ Trợ lý có thể vẽ trong khung chat. */
-export const CHART_KINDS = ["course_workload", "status", "list_distribution", "daily_progress", "deadline_load"] as const;
+export const CHART_KINDS = ["course_workload", "status", "list_distribution", "daily_progress", "deadline_load", "next_deadlines", "week_compare"] as const;
 export type ChartKind = (typeof CHART_KINDS)[number];
 
 /** Lọc thẻ theo hạn chót cho các biểu đồ dạng phân bổ; "all" giữ cả thẻ chưa có hạn. */
@@ -10,6 +10,7 @@ export type ChartPeriod = (typeof CHART_PERIODS)[number];
 
 export const CHART_DAYS = { min: 3, max: 30, defaultPast: 14, defaultAhead: 7 } as const;
 const MAX_BARS = 12;
+const MAX_NEXT_DEADLINES = 6;
 const DAY_MS = 86_400_000;
 
 /** Tên trạng thái khớp ScheduleHealthChart (nó tự dịch theo các tên này). */
@@ -41,6 +42,8 @@ export type ChartRequest = {
   title?: string;
 };
 
+type WeekCounts = { completed: number; created: number };
+
 type ChartBase = { title: string | null; period: ChartPeriod; query: string | null; matchedCards: number };
 
 export type AssistantChart = ChartBase & (
@@ -49,6 +52,8 @@ export type AssistantChart = ChartBase & (
   | { kind: "list_distribution"; items: { id: string; name: string; count: number }[] }
   | { kind: "daily_progress"; days: number; totals: { created: number; completed: number }; points: { date: string; created: number; completed: number }[] }
   | { kind: "deadline_load"; days: number; overdue: number; points: { date: string; open: number; completed: number }[] }
+  | { kind: "next_deadlines"; items: { id: string; title: string; courseName: string | null; daysLeft: number }[] }
+  | { kind: "week_compare"; recent: WeekCounts; previous: WeekCounts }
 );
 
 const normalize = (value: string) =>
@@ -176,5 +181,59 @@ export const buildAssistantChart = (
       }
       return { ...base, kind: "deadline_load", days, overdue, points: [...points.values()] };
     }
+    case "next_deadlines": {
+      const todayStart = getZonedDayStart(now, timeZone).getTime();
+      const open = cards
+        .filter((card): card is ChartCard & { dueDate: Date } => !card.isCompleted && Boolean(card.dueDate))
+        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+      const items = open.slice(0, MAX_NEXT_DEADLINES).map((card) => ({
+        id: card.id,
+        title: card.title,
+        courseName: card.courseName,
+        daysLeft: Math.round((getZonedDayStart(card.dueDate, timeZone).getTime() - todayStart) / DAY_MS),
+      }));
+      return { ...base, kind: "next_deadlines", matchedCards: open.length, items };
+    }
+    case "week_compare": {
+      // Hai cửa sổ 7 ngày liền nhau: so tuần lịch sẽ thiệt cho tuần đang dở.
+      const recentStart = getZonedDayStart(now, timeZone, -6);
+      const previousStart = getZonedDayStart(now, timeZone, -13);
+      const countBetween = (from: Date, to: Date): WeekCounts => ({
+        // Chưa lưu thời điểm hoàn thành: lấy lần cập nhật cuối của thẻ đã xong.
+        completed: cards.filter((card) => card.isCompleted && card.updatedAt >= from && card.updatedAt < to).length,
+        created: cards.filter((card) => card.createdAt >= from && card.createdAt < to).length,
+      });
+      return { ...base, kind: "week_compare", recent: countBetween(recentStart, now), previous: countBetween(previousStart, recentStart) };
+    }
   }
 };
+
+/**
+ * Chia vòng donut (chu vi 100) theo tỉ lệ, chừa khe giữa các cung.
+ * Nhóm có giá trị luôn giữ một cung tối thiểu để không biến mất trên vòng.
+ */
+export const donutArcs = (values: number[], gap = 1.6, minLength = 0.6) => {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const usedGap = values.filter((value) => value > 0).length > 1 ? gap : 0;
+  let cursor = 0;
+  return values.map((value) => {
+    const span = total === 0 ? 0 : (value / total) * 100;
+    const arc = { start: cursor + usedGap / 2, length: value > 0 ? Math.max(span - usedGap, minLength) : 0 };
+    cursor += span;
+    return arc;
+  });
+};
+
+/** Số ngày liên tiếp có việc xong tính tới hôm nay; hôm nay chưa xong việc nào thì chuỗi chưa đứt. */
+export const completionStreak = (points: { completed: number }[]) => {
+  const days = points.at(-1)?.completed === 0 ? points.slice(0, -1) : points;
+  const lastEmpty = days.findLastIndex((point) => point.completed === 0);
+  return days.length - 1 - lastEmpty;
+};
+
+/** Ngày có số việc cao nhất (ngày sớm hơn thắng khi bằng nhau); null nếu mọi ngày đều trống. */
+export const busiestDay = <T extends { date: string }>(points: T[], count: (point: T) => number) =>
+  points.reduce<{ date: string; count: number } | null>((best, point) => {
+    const value = count(point);
+    return value > (best?.count ?? 0) ? { date: point.date, count: value } : best;
+  }, null);

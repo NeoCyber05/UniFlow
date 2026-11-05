@@ -7,7 +7,7 @@ import type { CoursePoint } from "../_types";
 import { BarLegend, BarList } from "./bar-list";
 import { EmptyState } from "./empty-state";
 
-export const CourseWorkloadChart = ({ data, compact }: { data: CoursePoint[]; compact?: boolean }) => {
+export const CourseWorkloadChart = ({ data }: { data: CoursePoint[] }) => {
   const segments = [
     { key: "completed", label: tr("analytics.courseWorkload.segCompleted"), className: "bg-emerald-500" },
     { key: "open", label: tr("analytics.courseWorkload.segOpen"), className: "bg-blue-500" },
@@ -27,7 +27,6 @@ export const CourseWorkloadChart = ({ data, compact }: { data: CoursePoint[]; co
     <div>
       <BarLegend segments={[...segments]} />
       <BarList
-        compact={compact}
         items={courses.map((item) => ({
           key: item.id,
           name: item.id === "personal" && item.name === "Cá nhân" ? tr("analytics.personal") : item.name,

@@ -95,10 +95,12 @@ const buildInstructions = (session: AssistantSession, snapshot: BoardSnapshot, r
   - Môn/danh mục nào ngốn nhiều việc → \`kind: "course_workload"\` (thêm \`period: "this_week"\` khi hỏi "tuần này").
   - Tỉ lệ xong / quá hạn / chưa có hạn → \`"status"\`. Số thẻ theo cột → \`"list_distribution"\`.
   - Tiến độ theo thời gian ("2 tuần qua", "tháng này") → \`"daily_progress"\` với \`days\` (14 cho 2 tuần, 30 cho tháng).
-  - Lịch deadline sắp tới theo ngày → \`"deadline_load"\` với \`days\`.
+  - Lịch deadline sắp tới theo ngày, ngày nào dồn việc → \`"deadline_load"\` với \`days\`.
+  - Việc nào cần làm trước, sắp đến hạn, "còn mấy ngày nữa" → \`"next_deadlines"\`.
+  - So với tuần trước, tuần này có chăm hơn không → \`"week_compare"\`.
   - Hỏi về một chủ đề cụ thể ("đồ án", "Giải tích") → truyền \`query\` để thu hẹp phạm vi.
 - Biểu đồ tự hiện trong chat. Sau khi gọi, viết 2–3 câu nhận xét rút ra từ số liệu (điểm nổi bật nhất, rủi ro như quá hạn hoặc ngày dồn việc, một gợi ý hành động cụ thể); KHÔNG chép lại bảng số. Nếu \`matchedCards\` = 0, nói rõ chưa có dữ liệu phù hợp và gợi ý cách hỏi khác.
-- Với \`daily_progress\`, ngày hoàn thành là ước lượng (theo lần cập nhật cuối của thẻ); chỉ nhắc điều này khi người dùng hỏi chính xác ngày hoàn thành.
+- Với \`daily_progress\` và \`week_compare\`, ngày hoàn thành là ước lượng (theo lần cập nhật cuối của thẻ); chỉ nhắc điều này khi người dùng hỏi chính xác ngày hoàn thành.
 - Mỗi câu hỏi thường chỉ cần 1 biểu đồ; tối đa 2 biểu đồ khi người dùng hỏi so sánh hai góc nhìn.
 
 ### 4. Cập nhật & Luồng công việc (Workflow)

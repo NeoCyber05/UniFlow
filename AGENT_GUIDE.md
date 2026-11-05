@@ -52,6 +52,8 @@ Thao tác với thẻ và checklist qua trợ lý gồm: chuyển cột, đổi 
 - "Vẽ tiến độ đồ án 2 tuần qua."
 - "7 ngày tới ngày nào dồn nhiều deadline nhất?"
 - "Cho tôi xem tỉ lệ việc đã xong, quá hạn và chưa có hạn."
+- "Việc nào sắp đến hạn, tôi nên làm gì trước?"
+- "Tuần này tôi có làm được nhiều hơn tuần trước không?"
 
 **Lịch và báo cáo**
 - AI xếp lịch: khung giờ rảnh 19h–22h, mong muốn "ưu tiên ôn thi, mỗi phiên không quá 90 phút".

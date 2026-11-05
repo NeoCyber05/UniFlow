@@ -19,8 +19,8 @@ export type BarItem = {
 };
 
 // Horizontal bars as plain rows: full names, ~36px per row, scrolls past max height
-// instead of growing the panel (10+ courses stay compact). `compact`: cột tên hẹp hơn cho khung chat.
-export const BarList = ({ items, className, compact }: { items: BarItem[]; className?: string; compact?: boolean }) => {
+// instead of growing the panel (10+ courses stay compact).
+export const BarList = ({ items, className }: { items: BarItem[]; className?: string }) => {
   const barSpring = useTempoTransition(spring.number);
   const totals = items.map((item) => item.segments.reduce((sum, segment) => sum + segment.value, 0));
   const max = Math.max(1, ...totals);
@@ -33,10 +33,7 @@ export const BarList = ({ items, className, compact }: { items: BarItem[]; class
         return (
           <li
             key={item.key}
-            className={cn(
-              "grid items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50",
-              compact ? "grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_1.75rem]" : "grid-cols-[minmax(0,10rem)_minmax(0,1fr)_2rem]",
-            )}
+            className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_2rem] items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-neutral-50"
             title={`${item.name}: ${item.segments.map((segment) => `${segment.label} ${segment.value}`).join(", ")}`}
           >
             <span className="flex min-w-0 items-center gap-2">

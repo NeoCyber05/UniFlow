@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildAssistantChart, type ChartCard } from "./chart-data";
+import { buildAssistantChart, busiestDay, completionStreak, donutArcs, type ChartCard } from "./chart-data";
 
 const TZ = "Asia/Ho_Chi_Minh";
 // Thứ Năm 05/11/2026 10:00 giờ VN
@@ -111,4 +111,70 @@ test("list distribution follows board list order", () => {
   const chart = buildAssistantChart({ kind: "list_distribution" }, { cards, courses, lists }, NOW, TZ);
   if (chart.kind !== "list_distribution") return assert.fail("wrong kind");
   assert.deepEqual(chart.items.map((item) => [item.name, item.count]), [["Cần làm", 1], ["Xong", 2]]);
+});
+
+test("donutArcs chia vòng theo tỉ lệ, chừa khe và bỏ qua nhóm rỗng", () => {
+  const [first, empty, last] = donutArcs([3, 0, 1], 2);
+  assert.deepEqual(first, { start: 1, length: 73 });
+  assert.equal(empty.length, 0);
+  assert.deepEqual(last, { start: 76, length: 23 });
+});
+
+test("donutArcs: một nhóm duy nhất phủ kín vòng, nhóm rất nhỏ vẫn thấy được", () => {
+  assert.deepEqual(donutArcs([0, 5]), [{ start: 0, length: 0 }, { start: 0, length: 100 }]);
+  assert.equal(donutArcs([999, 1])[1].length, 0.6);
+  assert.deepEqual(donutArcs([0, 0]), [{ start: 0, length: 0 }, { start: 0, length: 0 }]);
+});
+
+test("busiestDay lấy ngày cao nhất, ngày sớm hơn thắng khi bằng nhau", () => {
+  const points = [{ date: "a", n: 0 }, { date: "b", n: 2 }, { date: "c", n: 2 }];
+  assert.deepEqual(busiestDay(points, (point) => point.n), { date: "b", count: 2 });
+  assert.equal(busiestDay([{ date: "a", n: 0 }], (point) => point.n), null);
+});
+
+test("completionStreak đếm ngày liên tiếp, hôm nay trống chưa làm đứt chuỗi", () => {
+  const days = (...values: number[]) => values.map((completed) => ({ completed }));
+  assert.equal(completionStreak(days(1, 0, 2, 1, 3)), 3);
+  assert.equal(completionStreak(days(1, 0, 2, 1, 0)), 2);
+  assert.equal(completionStreak(days(1, 2)), 2);
+  assert.equal(completionStreak(days(0, 0)), 0);
+  assert.equal(completionStreak([]), 0);
+});
+
+test("next_deadlines xếp việc gần nhất trước, đếm ngày theo múi giờ, bỏ việc đã xong và chưa có hạn", () => {
+  const cards = [
+    card({ title: "Sau", dueDate: new Date("2026-11-07T10:00:00.000Z") }),
+    card({ title: "Trễ", dueDate: new Date("2026-11-03T10:00:00.000Z"), courseName: "Giải tích" }),
+    card({ title: "Tối nay", dueDate: new Date("2026-11-05T16:00:00.000Z") }), // 23:00 VN
+    card({ title: "Mai", dueDate: new Date("2026-11-05T18:00:00.000Z") }), // 01:00 VN ngày 06/11
+    card({ title: "Đã xong", dueDate: new Date("2026-11-06T10:00:00.000Z"), isCompleted: true }),
+    card({ title: "Chưa có hạn" }),
+  ];
+  const chart = buildAssistantChart({ kind: "next_deadlines" }, { cards, courses, lists }, NOW, TZ);
+  if (chart.kind !== "next_deadlines") return assert.fail();
+  assert.equal(chart.matchedCards, 4);
+  assert.deepEqual(chart.items.map((item) => [item.title, item.daysLeft]), [["Trễ", -2], ["Tối nay", 0], ["Mai", 1], ["Sau", 2]]);
+  assert.equal(chart.items[0].courseName, "Giải tích");
+});
+
+test("next_deadlines chỉ giữ 6 việc nhưng vẫn đếm đủ tổng", () => {
+  const cards = Array.from({ length: 8 }, (_, index) => card({ dueDate: new Date(`2026-11-1${index}T03:00:00.000Z`) }));
+  const chart = buildAssistantChart({ kind: "next_deadlines" }, { cards, courses, lists }, NOW, TZ);
+  if (chart.kind !== "next_deadlines") return assert.fail();
+  assert.equal(chart.items.length, 6);
+  assert.equal(chart.matchedCards, 8);
+});
+
+test("week_compare chia hai cửa sổ 7 ngày liền nhau theo ngày địa phương", () => {
+  const cards = [
+    card({ isCompleted: true, updatedAt: new Date("2026-11-04T03:00:00.000Z"), createdAt: new Date("2026-11-04T03:00:00.000Z") }),
+    card({ isCompleted: true, updatedAt: new Date("2026-10-29T17:30:00.000Z") }), // 00:30 VN 30/10: đầu cửa sổ gần
+    card({ isCompleted: true, updatedAt: new Date("2026-10-29T16:30:00.000Z") }), // 23:30 VN 29/10: cuối cửa sổ trước
+    card({ isCompleted: true, updatedAt: new Date("2026-10-22T03:00:00.000Z") }), // quá xa
+    card({ updatedAt: new Date("2026-11-04T03:00:00.000Z") }), // chưa xong
+  ];
+  const chart = buildAssistantChart({ kind: "week_compare" }, { cards, courses, lists }, NOW, TZ);
+  if (chart.kind !== "week_compare") return assert.fail();
+  assert.deepEqual(chart.recent, { completed: 2, created: 1 });
+  assert.deepEqual(chart.previous, { completed: 1, created: 0 });
 });

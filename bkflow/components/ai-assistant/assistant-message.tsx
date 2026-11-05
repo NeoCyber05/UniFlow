@@ -510,7 +510,7 @@ const RenderPart = ({
     const isMutation = MUTATION_TOOL_NAMES.has(toolName);
 
     if (part.state === "output-available" && isChartOutput(part.output)) {
-      return <AssistantChart chart={part.output.chart} />;
+      return <AssistantChart chart={part.output.chart} onOpenCard={onOpenCard} />;
     }
 
     return (

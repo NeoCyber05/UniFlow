@@ -435,14 +435,15 @@ export const createAssistantTools = (session: AssistantSession) => {
     /**
      * Công cụ: showChart (chỉ đọc)
      * Mục đích: Vẽ biểu đồ ngay trong khung chat từ thẻ của bảng hiện tại. Kết quả là dữ liệu có cấu trúc
-     * (`action: "chart"`) để UI vẽ bằng các component thống kê sẵn có; model dựa vào số liệu để viết nhận xét.
+     * (`action: "chart"`) để UI vẽ trong khung chat; model dựa vào số liệu để viết nhận xét.
      */
     showChart: tool({
       description:
         "Vẽ biểu đồ trong khung chat từ thẻ của bảng hiện tại. Dùng khi người dùng muốn xem/vẽ/so sánh/thống kê trực quan: " +
         "course_workload = khối lượng theo môn (xong/đang mở/quá hạn), status = tỉ lệ trạng thái hạn (vòng tròn), " +
         "list_distribution = số thẻ theo cột, daily_progress = số thẻ tạo mới và hoàn thành mỗi ngày trong N ngày qua, " +
-        "deadline_load = số deadline mỗi ngày trong N ngày tới. Biểu đồ hiển thị tự động, không cần mô tả lại từng số.",
+        "deadline_load = lịch deadline từng ngày trong N ngày tới, next_deadlines = danh sách đếm ngược các việc gần hạn nhất (bấm mở được thẻ), " +
+        "week_compare = số việc xong 7 ngày qua so với 7 ngày trước đó. Biểu đồ hiển thị tự động, không cần mô tả lại từng số.",
       inputSchema: z.object({
         kind: z.enum(CHART_KINDS).describe("Loại biểu đồ"),
         period: z
@@ -529,7 +530,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           ok: true as const,
           action: "chart" as const,
           chart,
-          ...(chart.kind === "daily_progress"
+          ...(chart.kind === "daily_progress" || chart.kind === "week_compare"
             ? { note: "Ngày hoàn thành lấy theo lần cập nhật cuối của thẻ đã xong, nên là ước lượng." }
             : {}),
         };
