@@ -11,7 +11,6 @@ import {
   CalendarDays,
   ListTodo,
   Network,
-  BarChart3,
 } from "lucide-react";
 
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
@@ -26,7 +25,7 @@ import { preloadRouteCode, preloadRouteCodeWhenIdle } from "@/web/lib/prefetch-r
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
 
 const EMPTY_COURSE_IDS: string[] = [];
-const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network, analytics: BarChart3 };
+const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network };
 
 // Ctrl/Cmd/Shift/chuột giữa mở tab mới, trang hiện tại không đổi
 const isPlainClick = (event: MouseEvent) =>
