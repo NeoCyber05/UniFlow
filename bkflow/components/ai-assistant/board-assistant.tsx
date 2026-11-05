@@ -17,6 +17,7 @@ import {
   Minimize2,
   Minus,
   Square,
+  SquareArrowOutUpRight,
   Trash2,
   X,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import { compressImage } from "@/components/capture/image-import-dialog";
 
 import { AiLogo } from "./ai-logo";
 import { AssistantMessage } from "./assistant-message";
+import { runningStepLabel, ThinkingStatus } from "./thinking-status";
 
 /**
  * Danh sách key câu hỏi gợi ý nhanh hiển thị khi cuộc trò chuyện chưa có tin nhắn nào.
@@ -410,8 +412,13 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   };
 
   const lastMessage = messages[messages.length - 1];
+  const stepLabel = runningStepLabel(messages);
   const showThinking =
-    status === "submitted" || (status === "streaming" && lastMessage?.role !== "assistant");
+    status === "submitted" || (status === "streaming" && (lastMessage?.role !== "assistant" || Boolean(stepLabel)));
+  const lastUserText = [...messages].reverse().find((message) => message.role === "user")?.parts
+    .flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n").trim();
+  // Trang Trợ lý cá nhân có nhiều cuộc trò chuyện; chỉ mở được từ ngữ cảnh có bảng.
+  const fullPageHref = boardId && context.kind !== "page" ? `/assistant?board=${encodeURIComponent(boardId)}` : null;
 
   if (!isOpen) {
     return (
@@ -450,23 +457,34 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         onPointerMove={handleDragMove}
         onPointerUp={handleDragEnd}
         onPointerCancel={handleDragEnd}
-        className="flex cursor-grab touch-none select-none items-center gap-2 bg-gradient-to-r from-violet-600 to-sky-500 px-3 py-2.5 text-white active:cursor-grabbing"
+        className="flex cursor-grab touch-none select-none items-center gap-1 border-b bg-background px-3 py-2.5 text-foreground active:cursor-grabbing"
       >
-        <AiLogo className="ring-2 ring-white/30 rounded-[9px]" />
+        <AiLogo className="mr-1 size-7" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">{tr("aiAssistant.panelTitle")}</p>
-          <p className="text-[11px] leading-tight text-white/80">
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
             {contextLabel}{isBusy ? tr("aiAssistant.processingSuffix") : ""}
           </p>
         </div>
-        <GripHorizontal className="size-4 text-white/60" />
+        <GripHorizontal aria-hidden="true" className="size-4 text-muted-foreground/60" />
+        {fullPageHref ? (
+          <button
+            type="button"
+            onClick={() => router.push(fullPageHref)}
+            aria-label={tr("assistant.openFullPage")}
+            title={tr("assistant.openFullPage")}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <SquareArrowOutUpRight className="size-4" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={handleClear}
           disabled={messages.length === 0}
           aria-label={tr("aiAssistant.clearHistoryAria")}
           title={tr("aiAssistant.clearHistoryAria")}
-          className="rounded-md p-1.5 hover:bg-white/20 disabled:opacity-40"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
         >
           <Trash2 className="size-4" />
         </button>
@@ -475,7 +493,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           onClick={() => setIsExpanded((value) => !value)}
           aria-label={isExpanded ? tr("aiAssistant.collapseChatAria") : tr("aiAssistant.expandChatAria")}
           title={isExpanded ? tr("aiAssistant.collapseTitle") : tr("aiAssistant.expandTitle")}
-          className="rounded-md p-1.5 hover:bg-white/20"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           {isExpanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
         </button>
@@ -484,7 +502,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           onClick={() => setIsOpen(false)}
           aria-label={tr("aiAssistant.minimizeAria")}
           title={tr("aiAssistant.minimizeTitle")}
-          className="rounded-md p-1.5 hover:bg-white/20"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <Minus className="size-4" />
         </button>
@@ -507,21 +525,24 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             ) : null}
           </div>
         ) : (
-          messages.map((message) => (
-            <AssistantMessage key={message.id} message={message} boardId={boardId} onOpenCard={handleOpenCard} />
-          ))
+          messages.map((message, index) => {
+            const isLatest = index === messages.length - 1;
+            return (
+              <AssistantMessage
+                key={message.id}
+                message={message}
+                boardId={boardId}
+                onOpenCard={handleOpenCard}
+                onReply={submit}
+                onRetry={isLatest && message.role === "assistant" && lastUserText && !isBusy ? () => submit(lastUserText) : undefined}
+                isLatest={isLatest}
+                isStreaming={isBusy}
+              />
+            );
+          })
         )}
 
-        {showThinking ? (
-          <div className="flex items-center gap-2 pl-9 text-xs text-muted-foreground">
-            <span className="flex gap-1">
-              <span className="size-1.5 animate-bounce rounded-full bg-violet-500 [animation-delay:-0.3s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-violet-500 [animation-delay:-0.15s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-violet-500" />
-            </span>
-            {tr("aiAssistant.thinking")}
-          </div>
-        ) : null}
+        {showThinking ? <ThinkingStatus label={stepLabel} className="pl-8" /> : null}
 
         {error && !isBusy ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -563,7 +584,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
             event.preventDefault();
             submit(input);
           }}
-          className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20"
+          className="flex flex-wrap items-end gap-2 rounded-xl border bg-background px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20"
         >
           {image && (
             <div className="relative basis-full pt-1">
@@ -601,6 +622,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
           />
           <textarea
             ref={textareaRef}
+            data-assistant-composer
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={handleKeyDown}
@@ -630,7 +652,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
               type="submit"
               disabled={(!input.trim() && !image) || !enabled}
               aria-label={tr("aiAssistant.sendAria")}
-              className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-sky-500 text-white disabled:opacity-40"
+              className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40"
             >
               <ArrowUp className="size-4" />
             </button>

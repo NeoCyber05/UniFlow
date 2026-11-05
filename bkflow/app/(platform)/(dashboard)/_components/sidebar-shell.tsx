@@ -1,8 +1,10 @@
 import { Sidebar } from "./sidebar";
 import { tr } from "@/lib/i18n";
 import { useBoardSidebar } from "@/hooks/use-board-sidebar";
+import { cn } from "@/lib/utils";
 
-export const SidebarShell = ({ children }: { children: React.ReactNode }) => {
+/** `fullBleed`: nội dung tự quản lý khoảng đệm và cao đúng một màn hình (trang Trợ lý). */
+export const SidebarShell = ({ children, fullBleed = false }: { children: React.ReactNode; fullBleed?: boolean }) => {
     const isOpen = useBoardSidebar(state => state.isOpen);
     return (
         <div className="workspace-shell min-h-screen w-full pt-14">
@@ -12,7 +14,7 @@ export const SidebarShell = ({ children }: { children: React.ReactNode }) => {
                         <Sidebar />
                     </aside>
                 </div>
-                <main className="min-w-0 flex-1 px-4 py-7 pb-24 sm:px-7 lg:px-10 lg:py-9">
+                <main className={cn("min-w-0 flex-1", fullBleed ? "h-[calc(100dvh-3.5rem)] overflow-hidden" : "px-4 py-7 pb-24 sm:px-7 lg:px-10 lg:py-9")}>
                     {children}
                 </main>
             </div>

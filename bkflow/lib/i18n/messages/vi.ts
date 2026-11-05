@@ -1,3 +1,4 @@
+import { viAssistant } from "./vi-assistant";
 import { viBoard } from "./vi-board";
 import { viCalendar } from "./vi-calendar";
 import { viCard } from "./vi-card";
@@ -11,6 +12,7 @@ export const vi = {
   ...viBoard,
   ...viCalendar,
   ...viCard,
+  ...viAssistant,
 } as const;
 
 export type MessageKey = keyof typeof vi;

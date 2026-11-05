@@ -8,6 +8,7 @@ Trợ lý AI (UniFlow Assistant) giúp tra cứu deadline, tạo và cập nhậ
 
 | Chức năng | Cách dùng |
 |---|---|
+| **Trợ lý cá nhân** | Mục **Trợ lý cá nhân** trên sidebar (hoặc **Ctrl/⌘+J**, hoặc gõ vào **Ctrl/⌘+K** rồi chọn **Hỏi Trợ lý**). Lưu nhiều cuộc trò chuyện (ghim, đổi tên, xoá), màn chào có tóm tắt **Hôm nay của bạn**. Chọn bảng áp dụng ở chip phạm vi; cột phải gom đề xuất **Chờ duyệt** và nhật ký **Đã áp dụng**. Trên cửa sổ nổi của bảng, nút **Mở toàn trang** chuyển sang đây. |
 | **Hỏi đáp trên bảng** | Mở khung **Trợ lý UniFlow** (nút **AI** trên bảng). Hỏi tự nhiên về deadline, tiến độ, thẻ, checklist. |
 | **Việc của tôi** | Hỏi trong khung trợ lý; tổng hợp việc có hạn từ mọi bảng cá nhân và ghi chú. |
 | **Tìm và đọc ghi chú** | Hỏi trong khung trợ lý; tìm trong workspace cá nhân và đọc nội dung trang kèm liên kết nguồn. |
@@ -65,6 +66,7 @@ Thao tác với thẻ và checklist qua trợ lý gồm: chuyển cột, đổi 
 - **Kiểm tra trước khi áp dụng.** AI có thể nhầm ngày, giờ hoặc tên môn, nhất là với ảnh mờ. Với việc quan trọng, nên ghi rõ ngày, ví dụ "30/10/2026".
 - **Xác nhận riêng.** Thay thế nội dung và lưu trữ thẻ luôn yêu cầu xác nhận riêng.
 - **Quyền Chỉ xem.** Chỉ hỏi đáp và tra cứu. Cần quyền chỉnh sửa để áp dụng thay đổi.
+- **Trùng tên.** Khi nhiều thẻ khớp, trợ lý hỏi lại bằng lựa chọn bấm được; chọn rồi bấm **Tiếp tục**, hoặc **Trả lời khác…** để gõ.
 - **Giới hạn.** Mỗi lượt tối đa 12 bước xử lý; kế hoạch dài nên chia nhiều lượt. Khi nhiều thẻ trùng tên, trợ lý sẽ hỏi lại.
 - **AI chỉ xếp việc làm được ngay.** Việc đang chờ việc khác không nằm trong thứ tự AI. Việc mới mở khóa sau khi AI xếp sẽ hiện nhãn **AI chưa xếp** và theo thứ tự tự động cho đến khi bạn xếp lại.
 

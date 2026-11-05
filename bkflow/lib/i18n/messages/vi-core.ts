@@ -179,7 +179,7 @@ export const viCore = {
   "today.quickAddPlaceholder": "Thêm việc… #danh_mục @mai !",
   "today.upcoming": "Sắp đến hạn",
   "today.openCalendar": "Mở lịch ",
-  "today.upcomingEmpty": "Chưa có hạn sắp tới. Bạn có thể thêm hạn khi tạo công việc.",
+  "today.upcomingEmpty": "Thêm hạn khi tạo công việc để thấy chúng ở đây.",
   "insights.noDueToday": "Không có việc đến hạn hôm nay",
   "insights.next": "Tiếp theo:",
   "insights.next7": "7 ngày tới",

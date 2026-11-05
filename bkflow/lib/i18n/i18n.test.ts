@@ -6,6 +6,7 @@ import { formatWorkspaceTitle } from "@/lib/workspaces";
 import { formatDayMonth, getDateFnsLocale, getIntlLocale, intlDateFormat, tr, useLocale } from "./index";
 import { ja } from "./messages/ja";
 import { vi, type MessageKey } from "./messages/vi";
+import { viAssistant } from "./messages/vi-assistant";
 import { viBoard } from "./messages/vi-board";
 import { viCalendar } from "./messages/vi-calendar";
 import { viCard } from "./messages/vi-card";
@@ -22,6 +23,7 @@ test("domain message catalogs have disjoint keys and ja covers 100% of vi keys w
     ["viBoard", viBoard],
     ["viCalendar", viCalendar],
     ["viCard", viCard],
+    ["viAssistant", viAssistant],
   ] as const;
 
   const seen = new Map<string, string>();

@@ -1,4 +1,5 @@
 import type { MessageKey } from "./vi";
+import { jaAssistant } from "./ja-assistant";
 import { jaBoard } from "./ja-board";
 import { jaCalendar } from "./ja-calendar";
 import { jaCard } from "./ja-card";
@@ -12,4 +13,5 @@ export const ja: Record<MessageKey, string> = {
   ...jaBoard,
   ...jaCalendar,
   ...jaCard,
+  ...jaAssistant,
 };

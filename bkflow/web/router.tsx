@@ -87,6 +87,7 @@ export const router = createBrowserRouter([
                 ],
               },
               { path: "my/:view", element: <MyRoute /> },
+              { path: "assistant/:threadId?", element: lazyRoute(() => import("./routes/assistant")) },
               { path: "settings/appearance", element: lazyRoute(() => import("./routes/settings-appearance")) },
               {
                 path: "pages",
