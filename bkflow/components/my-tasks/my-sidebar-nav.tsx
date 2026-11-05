@@ -13,6 +13,7 @@ import {
   Network,
 } from "lucide-react";
 
+import { AiLogo } from "@/components/ai-assistant/ai-logo";
 import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 import { useSettingsModal } from "@/hooks/use-settings-modal";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
@@ -113,11 +114,32 @@ export const MySidebarNav = () => {
   }, [boardId]);
 
   const workspaceBoardHref = context?.currentWorkspaceId ? `/workspace/${context.currentWorkspaceId}` : null;
+  const assistantActive = pendingHref ? pendingHref === "/assistant" : pathname === "/assistant" || pathname.startsWith("/assistant/");
 
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
       <WorkspaceSwitcher />
+
+      <Link
+        href="/assistant"
+        onClick={(event) => {
+          if (isPlainClick(event)) setPending({ from: pathname, href: "/assistant" });
+          useMobileSidebar.getState().onClose();
+        }}
+        aria-current={assistantActive ? "page" : undefined}
+        aria-keyshortcuts="Control+J Meta+J"
+        className={itemClassName(assistantActive)}
+      >
+        {assistantActive && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
+        <AiLogo className="size-5.5 rounded-md" />
+        <span className="min-w-0 flex-1 truncate">{tr("nav.assistant")}</span>
+        <kbd className="hidden shrink-0 rounded border bg-background px-1 font-sans text-[10px] font-medium text-muted-foreground lg:inline">{tr("nav.assistantShortcut")}</kbd>
+      </Link>
+
+      {boardId && navigation.length > 0 && (
+        <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{tr("nav.currentBoard")}</p>
+      )}
 
       {!boardId && workspaceBoardHref && (
         <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={itemClassName(pathname === workspaceBoardHref)}>

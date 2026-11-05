@@ -180,7 +180,7 @@ export const jaCore: Record<CoreMessageKey, string> = {
   "today.quickAddPlaceholder": "タスクを追加… #カテゴリ @mai !",
   "today.upcoming": "まもなく期限",
   "today.openCalendar": "カレンダーを開く ",
-  "today.upcomingEmpty": "直近の期限はありません。タスク作成時に期限を設定できます。",
+  "today.upcomingEmpty": "タスク作成時に締め切りを設定すると、ここに表示されます。",
   "insights.noDueToday": "今日が期限のタスクはありません",
   "insights.next": "次:",
   "insights.next7": "今後7日間",

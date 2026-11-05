@@ -2,6 +2,7 @@
 
 import Link from "@/web/shims/next-link";
 import { tr } from "@/lib/i18n";
+import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
 import { useUser, signOut } from "@/web/lib/auth";
@@ -88,7 +89,23 @@ const UserMenu = () => {
   );
 };
 
+/** Ctrl/⌘+J mở trang Trợ lý cá nhân từ bất kỳ trang nào. */
+const useAssistantShortcut = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "j" && !event.isComposing) {
+        event.preventDefault();
+        navigate("/assistant");
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [navigate]);
+};
+
 export const Navbar = () => {
+    useAssistantShortcut();
     return (
         <nav aria-label={tr("navbar.toolbar")} className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border bg-header/95 backdrop-blur-sm flex items-center justify-between gap-x-3">
             <RealtimeNotificationSync />

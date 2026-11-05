@@ -27,6 +27,18 @@ import { AssigneeStack } from "./assignee-stack";
 const formatVNTime = (iso: string) =>
   intlDateFormat({ timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso));
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Nhãn hạn: "Quá hạn 2 ngày", "Hôm nay 14:00", hoặc ngày; giờ gộp luôn vào nhãn hạn. */
+const dueLabel = (due: Date, now: Date, overdue: boolean, today: boolean, hasTime: boolean) => {
+  if (overdue) {
+    const days = Math.floor((now.getTime() - due.getTime()) / DAY_MS);
+    return days >= 1 ? tr("task.chip.overdueDays", { count: days }) : tr("task.chip.overdueToday");
+  }
+  if (today) return hasTime ? tr("task.chip.todayAt", { time: formatVNTime(due.toISOString()) }) : tr("common.today");
+  return formatVNShortDate(due);
+};
+
 type TaskRowProps = {
   task: MyTask;
   isSelected?: boolean;
@@ -116,61 +128,43 @@ export const TaskRow = memo(function TaskRow({
         >
           {task.title}
         </button>
-        {task.checklist.total > 0 && (
-          <div className="mt-1.5 flex max-w-36 items-center gap-2">
-            <div role="progressbar" aria-label={tr("agenda.checklistProgressAria")} aria-valuemin={0}
-              aria-valuemax={task.checklist.total} aria-valuenow={task.checklist.completed}
-              className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-              <div className="h-full origin-left rounded-full bg-primary transition-transform duration-300 ease-out motion-reduce:transition-none"
-                style={{ transform: `scaleX(${task.checklist.completed / task.checklist.total})` }} />
-            </div>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {Math.round(task.checklist.completed / task.checklist.total * 100)}%
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {due && (
+            <span className={cn("task-chip", isOverdue && "task-chip-danger", isDueToday && "task-chip-warning")}>
+              {isOverdue || isDueToday
+                ? <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", isOverdue ? "bg-rose-500" : "bg-amber-500")} />
+                : <CalendarDays aria-hidden="true" className="h-3 w-3 shrink-0" />}
+              {dueLabel(due, now, isOverdue, isDueToday, Boolean(task.dueDate))}
             </span>
-          </div>
-        )}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-neutral-500">
+          )}
           {task.course && courseColor && (
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 ring-1", courseColor.chip)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", courseColor.dot)} />
+            <span className="task-chip" title={task.course.name}>
+              <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", courseColor.dot)} />
               {getCourseShortLabel(task.course)}
             </span>
           )}
           {showBoardChip && task.boardType === "TEAM_PROJECT" && (
-            <span className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded-full bg-sky-50 px-1.5 py-0.5 text-sky-700 ring-1 ring-sky-200">
-              <Users className="h-3 w-3 shrink-0" />
+            <span className="task-chip">
+              <Users aria-hidden="true" className="h-3 w-3 shrink-0" />
               {task.boardTitle}
             </span>
           )}
           {isEvent && task.scheduledStartAt && task.scheduledEndAt && (
-            <span className="inline-flex items-center gap-1 text-sky-700">
-              <Clock className="h-3 w-3" />
+            <span className="task-chip">
+              <Clock aria-hidden="true" className="h-3 w-3 shrink-0" />
               {formatVNShortDate(new Date(task.scheduledStartAt))} {formatVNTime(task.scheduledStartAt)}–{formatVNTime(task.scheduledEndAt)}
             </span>
           )}
-          {due && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1",
-                (isOverdue || isDueToday) && "rounded-full px-1.5 py-0.5 font-semibold ring-1",
-                isOverdue && "bg-rose-50 text-rose-600 ring-rose-200",
-                isDueToday && "bg-amber-50 text-amber-700 ring-amber-200",
-              )}
-            >
-              <CalendarDays className="h-3 w-3" />
-              {formatVNShortDate(due)}
-            </span>
-          )}
           {task.checklist.total > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <ListChecks className="h-3 w-3" />
+            <span className="task-chip" title={tr("agenda.checklistProgressAria")}>
+              <ListChecks aria-hidden="true" className="h-3 w-3 shrink-0" />
               {task.checklist.completed}/{task.checklist.total}
             </span>
           )}
           <TaskLabels labels={task.labels} mode="compact" />
           {isPinned && (
-            <span className="inline-flex items-center gap-1 text-amber-600">
-              <Sun className="h-3 w-3" />
+            <span className="task-chip">
+              <Sun aria-hidden="true" className="h-3 w-3 shrink-0 text-amber-500" />
               {tr("common.today")}
             </span>
           )}

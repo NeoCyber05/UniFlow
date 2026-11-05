@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { auth } from "@/server/auth";
+import { loadAssistantHome } from "./assistant-home";
 import { loadBoardAnalytics } from "./board-analytics";
 import { loadBoardCalendar } from "./board-calendar";
 import { loadBoardGraph } from "./board-graph";
@@ -19,6 +20,11 @@ export const viewsRoute = new Hono()
   .get("/dashboard", async () => {
     const { userId } = await auth();
     return json(await loadDashboard(userId));
+  })
+  .get("/assistant/home", async (c) => {
+    const { userId } = await auth();
+    if (!userId) return json({ redirect: "/sign-in" });
+    return json(await loadAssistantHome({ timeZone: c.req.query("tz") }, userId));
   })
   .get("/board/:boardId/layout", async (c) => {
     const { userId } = await auth();
