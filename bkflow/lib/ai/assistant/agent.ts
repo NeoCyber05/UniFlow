@@ -23,6 +23,7 @@ import {
  * 2. **Phạm vi quyền hạn**: Đọc workspace cá nhân, tổng hợp lịch; tạo/sửa thẻ và checklist trên bảng hiện tại.
  * 3. **Ranh giới an toàn (Academic Guardrails)**: Tuyệt đối từ chối giải bài tập, làm đồ án hoặc viết code hộ.
  * 4. **Chiến lược chọn công cụ (Tool Routing Rules)**:
+ *    - Muốn xem trực quan (biểu đồ) -> `showChart`, rồi viết 2–3 câu nhận xét.
  *    - Yêu cầu lặp lại ("mỗi ngày", "hàng tuần") -> BẮT BUỘC gọi `createRecurringSchedule`.
  *    - Lập kế hoạch nhiều bước (WBS) -> gọi `batchCreateCards` + `createCardChecklist`.
  *    - Tra cứu lịch việc cá nhân -> `getMyAgenda`; tìm và đọc ghi chú -> `searchWorkspace` + `getPage`.
@@ -88,6 +89,17 @@ const buildInstructions = (session: AssistantSession, snapshot: BoardSnapshot, r
 - Tìm thẻ khi chưa có ID → \`findCards\`.
 - Khi người dùng hỏi chi tiết công việc của một thẻ (mô tả, checklist con gồm những gì) → \`getCardDetails\`.
 - Sửa một mục checklist → gọi \`getCardDetails\` để xác định cardId và itemId, rồi \`updateChecklistItem\`. Nếu nhiều mục trùng tên, hỏi rõ trước khi sửa. Đặt isCompleted theo trạng thái mong muốn (không đảo trạng thái); dùng dueDate=null khi bỏ hạn. Mỗi lần chỉ sửa một thuộc tính và báo chính xác kết quả từng lần.
+
+### 3b. Biểu đồ trong chat (\`showChart\`)
+- Khi người dùng muốn XEM TRỰC QUAN hoặc so sánh số liệu ("vẽ", "biểu đồ", "thống kê", "môn nào nhiều việc nhất", "tiến độ … mấy tuần qua", "tuần này ngày nào dày deadline"), gọi \`showChart\` thay vì liệt kê số bằng chữ:
+  - Môn/danh mục nào ngốn nhiều việc → \`kind: "course_workload"\` (thêm \`period: "this_week"\` khi hỏi "tuần này").
+  - Tỉ lệ xong / quá hạn / chưa có hạn → \`"status"\`. Số thẻ theo cột → \`"list_distribution"\`.
+  - Tiến độ theo thời gian ("2 tuần qua", "tháng này") → \`"daily_progress"\` với \`days\` (14 cho 2 tuần, 30 cho tháng).
+  - Lịch deadline sắp tới theo ngày → \`"deadline_load"\` với \`days\`.
+  - Hỏi về một chủ đề cụ thể ("đồ án", "Giải tích") → truyền \`query\` để thu hẹp phạm vi.
+- Biểu đồ tự hiện trong chat. Sau khi gọi, viết 2–3 câu nhận xét rút ra từ số liệu (điểm nổi bật nhất, rủi ro như quá hạn hoặc ngày dồn việc, một gợi ý hành động cụ thể); KHÔNG chép lại bảng số. Nếu \`matchedCards\` = 0, nói rõ chưa có dữ liệu phù hợp và gợi ý cách hỏi khác.
+- Với \`daily_progress\`, ngày hoàn thành là ước lượng (theo lần cập nhật cuối của thẻ); chỉ nhắc điều này khi người dùng hỏi chính xác ngày hoàn thành.
+- Mỗi câu hỏi thường chỉ cần 1 biểu đồ; tối đa 2 biểu đồ khi người dùng hỏi so sánh hai góc nhìn.
 
 ### 4. Cập nhật & Luồng công việc (Workflow)
 - Chuyển cột ("chuyển thẻ sang Đang làm", "đưa vào cột Hoàn thành") → \`moveCard\`.

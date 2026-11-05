@@ -16,7 +16,8 @@ Trợ lý AI (UniFlow Assistant) giúp tra cứu deadline, tạo và cập nhậ
 | **Tạo nhanh thông minh** | Dán tin nhắn, email hoặc biên bản họp vào hộp thoại. Chọn các bản nháp cần dùng rồi nhấn **Tạo N thẻ**. |
 | **AI xếp lịch** | Trong lịch bảng, chọn **AI xếp lịch**; nhập khoảng thời gian, giờ rảnh và mong muốn; xem trước rồi **Áp dụng**. |
 | **Lộ trình ưu tiên** | Mở tab **Sơ đồ** của bảng, panel **Làm gì trước?** xếp việc theo hạn, chuỗi phụ thuộc và số việc mở khóa, chia theo ngày (mặc định 3 việc mỗi ngày, chỉnh từ 1 đến 10). Chọn **AI theo ý bạn**, nhập yêu cầu (ví dụ "ưu tiên ôn thi") để AI xếp lại. |
-| **Báo cáo AI** | **Analytics** → **Báo cáo AI**; chọn khoảng thời gian để nhận tóm tắt tiến độ. |
+| **Biểu đồ trong chat** | Hỏi trợ lý kiểu "vẽ", "biểu đồ", "môn nào nhiều việc nhất". Trợ lý vẽ biểu đồ ngay trong khung chat (khối lượng theo môn, trạng thái hạn, số thẻ theo cột, tiến độ theo ngày, deadline sắp tới) kèm 2–3 câu nhận xét. |
+| **Báo cáo AI** | Trang **Thống kê** (đang tạm ẩn khỏi sidebar) → **Báo cáo AI**; chọn khoảng thời gian để nhận tóm tắt tiến độ. |
 | **Trợ giúp trong thẻ** | **AI: Gợi ý checklist**, **Cải thiện thẻ bằng AI**, tạo mô tả bằng AI. |
 | **Xử lý đoạn văn** | Bôi đen đoạn văn trong mô tả thẻ hoặc ghi chú, chọn **Giải thích**, **Rút gọn**, **Sửa câu** hoặc **Tạo checklist**. Dùng **Hoàn tác AI gần nhất** nếu chưa ưng. |
 
@@ -45,6 +46,12 @@ Thao tác với thẻ và checklist qua trợ lý gồm: chuyển cột, đổi 
 - Ô **Thêm việc nhanh**: "Nộp báo cáo thực tập trước 17h ngày 28/10, nhắc trước 1 ngày."
 - Ảnh lịch thi, nhập: "chỉ lấy lịch thi, bỏ qua lịch học".
 - Dán biên bản họp: "Tạo thẻ cho từng việc được giao, ghi rõ người phụ trách và hạn."
+
+**Biểu đồ**
+- "Tuần này môn nào đang ngốn nhiều việc nhất?"
+- "Vẽ tiến độ đồ án 2 tuần qua."
+- "7 ngày tới ngày nào dồn nhiều deadline nhất?"
+- "Cho tôi xem tỉ lệ việc đã xong, quá hạn và chưa có hạn."
 
 **Lịch và báo cáo**
 - AI xếp lịch: khung giờ rảnh 19h–22h, mong muốn "ưu tiên ôn thi, mỗi phiên không quá 90 phút".

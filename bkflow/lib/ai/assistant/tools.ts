@@ -16,7 +16,7 @@ import {
 import { validateCardDateRange } from "@/lib/cards/card-date-rules";
 import { syncCardReminder } from "@/lib/notifications/reminder-deliveries";
 import { deleteCardReminderNotifications } from "@/lib/notifications/reminder-notifications";
-import { getTaskDeadlineStatus } from "@/lib/cards/task-deadline";
+import { getTaskDeadlineAt, getTaskDeadlineStatus } from "@/lib/cards/task-deadline";
 import { serializeTaskDates } from "@/lib/cards/task-schedule-storage";
 import { updateCardService } from "@/lib/cards/card-update-service";
 import { announceCapturedCards } from "@/lib/cards/captured-cards-effects";
@@ -38,6 +38,7 @@ import {
 } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
 import { createChecklistItemTool } from "./checklist-tool";
+import { buildAssistantChart, CHART_DAYS, CHART_KINDS, CHART_PERIODS } from "./chart-data";
 import { type AiClarification, type AiProposal, applyToolPolicy } from "./policy";
 import { createWorkspaceTools } from "./workspace-tools";
 import { applyAiTaskEdit } from "./task-edits";
@@ -247,7 +248,7 @@ const normalize = (value: string): string =>
  *
  * @remarks
  * Tập công cụ bao gồm:
- * 1. **Tra cứu & Phân tích**: `getDeadlines`, `getBoardProgress`, `findCards`, `getCardDetails`.
+ * 1. **Tra cứu & Phân tích**: `getDeadlines`, `getBoardProgress`, `showChart`, `findCards`, `getCardDetails`.
  * 2. **Tạo dữ liệu**: `createDeadlineCard`, `createRecurringSchedule`, `batchCreateCards`, `createCardChecklist`.
  * 3. **Cập nhật & Quản lý**: `updateCardDeadline`, `moveCard`, `updateCardDetails`, `archiveCard`.
  *
@@ -427,6 +428,110 @@ export const createAssistantTools = (session: AssistantSession) => {
           completionRate: totalCards > 0 ? `${Math.round((completedCards / totalCards) * 100)}%` : "0%",
           lists: byList,
           courses: Object.entries(byCourse).map(([course, stats]) => ({ course, ...stats })),
+        };
+      },
+    }),
+
+    /**
+     * Công cụ: showChart (chỉ đọc)
+     * Mục đích: Vẽ biểu đồ ngay trong khung chat từ thẻ của bảng hiện tại. Kết quả là dữ liệu có cấu trúc
+     * (`action: "chart"`) để UI vẽ bằng các component thống kê sẵn có; model dựa vào số liệu để viết nhận xét.
+     */
+    showChart: tool({
+      description:
+        "Vẽ biểu đồ trong khung chat từ thẻ của bảng hiện tại. Dùng khi người dùng muốn xem/vẽ/so sánh/thống kê trực quan: " +
+        "course_workload = khối lượng theo môn (xong/đang mở/quá hạn), status = tỉ lệ trạng thái hạn (vòng tròn), " +
+        "list_distribution = số thẻ theo cột, daily_progress = số thẻ tạo mới và hoàn thành mỗi ngày trong N ngày qua, " +
+        "deadline_load = số deadline mỗi ngày trong N ngày tới. Biểu đồ hiển thị tự động, không cần mô tả lại từng số.",
+      inputSchema: z.object({
+        kind: z.enum(CHART_KINDS).describe("Loại biểu đồ"),
+        period: z
+          .enum(CHART_PERIODS)
+          .default("all")
+          .describe("Chỉ cho course_workload/status/list_distribution: lọc theo hạn chót (kèm việc quá hạn chưa xong). 'all' = mọi thẻ"),
+        days: z
+          .number()
+          .int()
+          .min(CHART_DAYS.min)
+          .max(CHART_DAYS.max)
+          .optional()
+          .describe(`Chỉ cho daily_progress (số ngày đã qua, mặc định ${CHART_DAYS.defaultPast}) và deadline_load (số ngày tới, mặc định ${CHART_DAYS.defaultAhead})`),
+        query: z
+          .string()
+          .max(80)
+          .optional()
+          .describe("Từ khoá thu hẹp phạm vi theo tên thẻ, môn, cột hoặc nhãn, ví dụ 'đồ án'. Bỏ trống = cả bảng"),
+        title: z.string().max(80).optional().describe("Tiêu đề ngắn cho biểu đồ, theo ngôn ngữ người dùng"),
+      }),
+      execute: async (input) => {
+        const board = await db.board.findFirst({
+          where: { id: boardId, userId },
+          select: {
+            courses: { select: { id: true, name: true, code: true, color: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+            lists: {
+              where: { archivedAt: null },
+              orderBy: { order: "asc" },
+              select: {
+                id: true,
+                title: true,
+                cards: {
+                  // Buổi học (EVENT) chỉ để xem lịch, không tính là việc.
+                  where: { archivedAt: null, kind: "TASK" },
+                  select: {
+                    id: true,
+                    title: true,
+                    courseId: true,
+                    dueDate: true,
+                    deadlineOn: true,
+                    isCompleted: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    labels: { select: { label: { select: { title: true } } } },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!board) {
+          return { ok: false, error: "Bảng không tồn tại." };
+        }
+
+        const courseName = (course: { name: string; code: string | null }) => (course.code ? `${course.code} · ${course.name}` : course.name);
+        const courseNames = new Map(board.courses.map((course) => [course.id, courseName(course)]));
+        const chart = buildAssistantChart(
+          input,
+          {
+            courses: board.courses.map((course) => ({ id: course.id, name: courseName(course), color: course.color })),
+            lists: board.lists.map((list) => ({ id: list.id, title: list.title })),
+            cards: board.lists.flatMap((list) =>
+              list.cards.map((card) => ({
+                id: card.id,
+                title: card.title,
+                listId: list.id,
+                listTitle: list.title,
+                courseId: card.courseId,
+                courseName: card.courseId ? courseNames.get(card.courseId) ?? null : null,
+                labels: card.labels.map(({ label }) => label.title).filter(Boolean),
+                dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
+                isCompleted: card.isCompleted,
+                createdAt: card.createdAt,
+                updatedAt: card.updatedAt,
+              })),
+            ),
+          },
+          new Date(),
+          timeZone,
+        );
+
+        return {
+          ok: true as const,
+          action: "chart" as const,
+          chart,
+          ...(chart.kind === "daily_progress"
+            ? { note: "Ngày hoàn thành lấy theo lần cập nhật cuối của thẻ đã xong, nên là ước lượng." }
+            : {}),
         };
       },
     }),

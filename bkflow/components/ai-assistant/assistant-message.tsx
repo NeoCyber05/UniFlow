@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "@/web/shims/next-navigation";
 
 import { AiLogo } from "./ai-logo";
+import { AssistantChart, isChartOutput } from "./assistant-chart";
 import { AssistantMarkdown } from "./assistant-markdown";
 import { TaskEditProposal, AiEditUndoButton } from "./task-edit-controls";
 
@@ -45,6 +46,7 @@ const TOOL_LABEL_KEYS: Record<string, { running: CardMessageKey; done: CardMessa
   updateChecklistItem: { running: "aiAssistant.toolRunning.updateChecklistItem", done: "aiAssistant.toolDone.updateChecklistItem" },
   getDeadlines: { running: "aiAssistant.toolRunning.getDeadlines", done: "aiAssistant.toolDone.getDeadlines" },
   getBoardProgress: { running: "aiAssistant.toolRunning.getBoardProgress", done: "aiAssistant.toolDone.getBoardProgress" },
+  showChart: { running: "aiAssistant.toolRunning.showChart", done: "aiAssistant.toolDone.showChart" },
   findCards: { running: "aiAssistant.toolRunning.findCards", done: "aiAssistant.toolDone.findCards" },
   getCardDetails: { running: "aiAssistant.toolRunning.getCardDetails", done: "aiAssistant.toolDone.getCardDetails" },
   createDeadlineCard: { running: "aiAssistant.toolRunning.createDeadlineCard", done: "aiAssistant.toolDone.createDeadlineCard" },
@@ -507,6 +509,10 @@ const RenderPart = ({
     const toolName = part.type.replace(/^tool-/, "");
     const isMutation = MUTATION_TOOL_NAMES.has(toolName);
 
+    if (part.state === "output-available" && isChartOutput(part.output)) {
+      return <AssistantChart chart={part.output.chart} />;
+    }
+
     return (
       <div className="space-y-2">
         <ToolStatus toolName={toolName} state={part.state} proposal={part.state === "output-available" && isProposal(part.output)} />
@@ -542,6 +548,8 @@ export const AssistantMessage = ({
   onOpenCard: (cardId: string) => void;
 }) => {
   const isAssistant = message.role === "assistant";
+  // Biểu đồ cần cả bề ngang khung chat để đọc được nhãn.
+  const hasChart = isAssistant && message.parts.some((part) => "toolCallId" in part && part.state === "output-available" && isChartOutput(part.output));
 
   return (
     <div
@@ -556,7 +564,8 @@ export const AssistantMessage = ({
 
       <div
         className={cn(
-          "max-w-[85%] space-y-2 rounded-2xl px-3.5 py-2.5 text-sm",
+          "space-y-2 rounded-2xl px-3.5 py-2.5 text-sm",
+          hasChart ? "min-w-0 flex-1" : "max-w-[85%]",
           isAssistant
             ? "border bg-card text-card-foreground shadow-sm"
             : "bg-primary text-primary-foreground",

@@ -9,9 +9,11 @@ import { EmptyState } from "./empty-state";
 export const ListDistributionChart = ({
   data,
   hasCards,
+  compact,
 }: {
   data: ChartPoint[];
   hasCards: boolean;
+  compact?: boolean;
 }) => {
   if (!data.some((item) => item.count > 0)) {
     return (
@@ -23,6 +25,7 @@ export const ListDistributionChart = ({
 
   return (
     <BarList
+      compact={compact}
       items={data.map((item, index) => ({
         key: item.id ?? `${item.name}-${index}`,
         name: item.name,

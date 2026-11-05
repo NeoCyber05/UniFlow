@@ -50,6 +50,7 @@ export const READ_TOOLS = new Set([
   "getMyAgenda",
   "getDeadlines",
   "getBoardProgress",
+  "showChart",
   "findCards",
   "getCardDetails",
 ]);

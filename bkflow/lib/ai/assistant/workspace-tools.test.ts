@@ -265,3 +265,26 @@ test("checklist edits reject viewers, archived cards, wrong identities and forei
   });
   assert.equal(item.isCompleted, false);
 });
+
+test("showChart is a read tool scoped to the owner's board and skips class events", async () => {
+  database.board.findFirst = async ({ where, select }: any) => {
+    assert.equal(where.id, "b1");
+    assert.equal(where.userId, "u1");
+    assert.equal(select.lists.select.cards.where.kind, "TASK");
+    return {
+      courses: [{ id: "gt", name: "Giải tích", code: "MI1111", color: "sky" }],
+      lists: [{
+        id: "l1",
+        title: "Todo",
+        cards: [
+          { id: "c1", title: "Bài tập 1", courseId: "gt", dueDate: null, deadlineOn: null, isCompleted: false, createdAt: new Date(), updatedAt: new Date(), labels: [] },
+          { id: "c2", title: "Bài tập 2", courseId: "gt", dueDate: null, deadlineOn: null, isCompleted: true, createdAt: new Date(), updatedAt: new Date(), labels: [] },
+        ],
+      }],
+    };
+  };
+  // Viewer vẫn xem được biểu đồ: công cụ chỉ đọc, không đi qua đề xuất.
+  const result = await execute("showChart", { kind: "course_workload" }, { ...session, role: BoardMemberRole.VIEWER });
+  assert.equal(result.action, "chart");
+  assert.deepEqual(result.chart.items.map((item: any) => [item.name, item.completed, item.open]), [["MI1111 · Giải tích", 1, 1]]);
+});
