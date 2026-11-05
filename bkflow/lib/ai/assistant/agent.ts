@@ -1,10 +1,11 @@
 import { BoardMemberRole } from "@/types";
 import "server-only";
 
-import { type InferAgentUIMessage, isStepCount, ToolLoopAgent } from "ai";
+import { hasToolCall, type InferAgentUIMessage, isStepCount, ToolLoopAgent } from "ai";
 
 import { type BoardSnapshot, buildBoardContext, type AssistantSession } from "./board-data";
 import { ASSISTANT_LIMITS, getAssistantModel } from "./config";
+import { askChoiceTool } from "./choice-tool";
 import { createAssistantTools } from "./tools";
 import {
   buildCalendarReference,
@@ -119,6 +120,11 @@ const buildInstructions = (session: AssistantSession, snapshot: BoardSnapshot, r
 - Khi người dùng muốn gỡ bỏ liên kết: gọi \`deleteCardDependency\`.
 - Sau khi tạo thành công, giải thích rõ thẻ nào phải làm trước và gợi ý người dùng có thể xem đường mũi tên liên kết trên chế độ **Sơ đồ**.
 
+### 6. Hỏi lại bằng lựa chọn (\`askChoice\`)
+- Khi \`findCards\`, \`searchWorkspace\` hoặc công cụ trả \`needsClarification\` cho thấy có từ 2 đối tượng khớp (ví dụ 2 thẻ trùng tên), hoặc cần người dùng chọn giữa vài phương án rõ ràng: gọi \`askChoice\` thay vì liệt kê bằng chữ.
+- Mỗi lựa chọn: \`label\` là tên ngắn, \`detail\` ghi mã môn / hạn / cột để phân biệt, \`reply\` là câu trả lời đầy đủ (ví dụ "Chọn thẻ Bài tập nhóm 2 của IT3011, hạn 06/11").
+- Có thể viết 1 câu dẫn trước khi gọi; sau khi gọi \`askChoice\` thì dừng, không viết thêm.
+
 ${canEdit ? "" : "- Người dùng hiện chỉ có quyền XEM (VIEWER): không thực hiện các công cụ thay đổi dữ liệu; hãy giải thích rằng họ cần quyền chỉnh sửa.\n"}
 ## Quy chuẩn thời gian
 - Thời gian truyền vào công cụ PHẢI là ISO 8601 kèm múi giờ ${offset}, ví dụ ${formatIsoWithOffset(now, session.timeZone)}.
@@ -164,8 +170,9 @@ export const createBoardAssistantAgent = (
   new ToolLoopAgent({
     model: getAssistantModel(),
     instructions: buildInstructions(session, snapshot, requestContext),
-    tools: createAssistantTools(session),
-    stopWhen: isStepCount(ASSISTANT_LIMITS.maxSteps),
+    tools: { ...createAssistantTools(session), askChoice: askChoiceTool },
+    // askChoice chờ người dùng bấm lựa chọn: dừng lượt ngay để không đoán tiếp.
+    stopWhen: [isStepCount(ASSISTANT_LIMITS.maxSteps), hasToolCall("askChoice")],
     temperature: 0.3,
   });
 

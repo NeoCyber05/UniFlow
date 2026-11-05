@@ -8,6 +8,7 @@ import { AssistantContextSchema, resolveAssistantContext } from "@/lib/ai/assist
 import { AiOperationSchema } from "@/lib/ai/assistant/policy";
 import { ASSISTANT_LIMITS, ASSISTANT_MODEL_ID, getAssistantApiKey } from "@/lib/ai/assistant/config";
 import { clearAssistantHistory, loadAssistantHistory, saveAssistantMessages } from "@/lib/ai/assistant/history";
+import { getThread, loadThreadMessages, saveThreadMessages } from "@/lib/ai/assistant/threads";
 import { resolveTimeZone } from "@/lib/ai/assistant/time";
 import { logger } from "@/lib/logger";
 import { requireBoardMemberForUser } from "@/lib/permissions";
@@ -34,12 +35,14 @@ const generateMessageId = createIdGenerator({ prefix: "msg", size: 16 });
  * - `boardId`: bảng hiện tại (client cũ chỉ gửi trường này = ngữ cảnh `{kind:"board"}`).
  * - `context`: ngữ cảnh `AssistantContext` (gợi ý; server tải lại và kiểm quyền).
  * - `operation`: lệnh UI đã xác định; thiếu = hỏi đáp/đề xuất, giá trị lạ bị từ chối.
+ * - `threadId`: cuộc trò chuyện của trang Trợ lý cá nhân; khi có, bảng đích và lịch sử lấy từ thread (bỏ qua `context`).
  * - `timeZone`: Chuỗi múi giờ IANA của client (tùy chọn, ví dụ: "Asia/Ho_Chi_Minh").
  * - `message`: Đối tượng tin nhắn từ người dùng, vai trò bắt buộc là `"user"`,
  *   chứa mảng `parts` có ít nhất 1 phần tử.
  */
 const PostBody = z.object({
   boardId: z.string().min(1).optional(),
+  threadId: z.string().min(1).max(100).optional(),
   context: AssistantContextSchema.optional(),
   operation: AiOperationSchema.optional(),
   timeZone: z.string().optional(),
@@ -175,13 +178,21 @@ export async function POST(request: Request) {
     return jsonError("Yêu cầu không hợp lệ.", 400);
   }
 
-  const { boardId: requestBoardId, context, operation, timeZone, message } = parsed.data;
+  const { boardId: requestBoardId, threadId, context, operation, timeZone, message } = parsed.data;
   const { userId: requester } = await auth();
   if (!requester) {
     return jsonError("Bạn cần đăng nhập.", 401);
   }
 
-  const requested = context ?? (requestBoardId ? { kind: "board" as const, boardId: requestBoardId } : null);
+  // Trang Trợ lý cá nhân: thread quyết định bảng đích; client không đổi được phạm vi qua `context`.
+  const thread = threadId ? await getThread(requester, threadId) : null;
+  if (threadId && !thread) {
+    return jsonError("Không tìm thấy cuộc trò chuyện.", 404);
+  }
+
+  const requested = thread
+    ? { kind: "board" as const, boardId: thread.boardId }
+    : context ?? (requestBoardId ? { kind: "board" as const, boardId: requestBoardId } : null);
   if (!requested) {
     return jsonError("Thiếu ngữ cảnh.", 400);
   }
@@ -191,7 +202,7 @@ export async function POST(request: Request) {
     return jsonError(resolved.error, resolved.status);
   }
 
-  if (requestBoardId && resolved.value.boardId && resolved.value.boardId !== requestBoardId) {
+  if (!thread && requestBoardId && resolved.value.boardId && resolved.value.boardId !== requestBoardId) {
     return jsonError("Ngữ cảnh không thuộc bảng hiện tại.", 400);
   }
 
@@ -262,7 +273,7 @@ export async function POST(request: Request) {
 
   const [snapshot, history] = await Promise.all([
     loadBoardSnapshot(session.boardId),
-    loadAssistantHistory({ boardId: session.boardId, userId }).catch(() => [] as UIMessage[]),
+    (thread ? loadThreadMessages(thread.id) : loadAssistantHistory({ boardId: session.boardId, userId })).catch(() => [] as UIMessage[]),
   ]);
 
   if (!snapshot) {
@@ -286,7 +297,11 @@ export async function POST(request: Request) {
   const scope = { boardId: session.boardId, userId };
 
   return createAgentUIStreamResponse({
-    agent: createBoardAssistantAgent(session, snapshot, resolved.value.prompt),
+    agent: createBoardAssistantAgent(
+      session,
+      snapshot,
+      thread ? { ...resolved.value.prompt, surface: "personal_assistant", note: "Trang Trợ lý cá nhân: bảng hiện tại là bảng đích người dùng chọn cho cuộc trò chuyện; tra cứu xuyên bảng và ghi chú bằng công cụ workspace." } : resolved.value.prompt,
+    ),
     uiMessages,
     originalMessages: uiMessages as BoardAssistantUIMessage[],
     generateMessageId,
@@ -300,10 +315,11 @@ export async function POST(request: Request) {
 
       try {
         // Không lưu base64 ảnh vào lịch sử chat
-        await saveAssistantMessages(scope, newMessages.map((item) => ({
+        const stored = newMessages.map((item) => ({
           ...item,
           parts: item.parts.filter((part) => part.type !== "file"),
-        })));
+        }));
+        await (thread ? saveThreadMessages(thread.id, stored) : saveAssistantMessages(scope, stored));
       } catch (error) {
         logger.error("[AI_ASSISTANT_SAVE_ERROR]", error, { action: "ai-assistant-save", boardId });
       }

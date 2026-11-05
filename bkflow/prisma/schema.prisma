@@ -31,6 +31,7 @@ model Board {
   labels  Label[]
   courses Course[]
   graphPlans BoardGraphPlan[]
+  assistantThreads AssistantThread[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -477,6 +478,37 @@ model BoardAiChat {
 
   @@index([boardId, userId])
   @@index([boardId, userId, createdAt])
+}
+
+/// Cuộc trò chuyện ở trang Trợ lý cá nhân (/assistant): lưu theo người dùng, mỗi người nhiều cuộc.
+model AssistantThread {
+  id        String    @id @default(uuid())
+  userId    String
+  /// Bảng đích cho thao tác ghi; đọc xuyên bảng và ghi chú đi qua công cụ workspace
+  boardId   String
+  board     Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String    @default("")
+  pinnedAt  DateTime?
+  /// Kết quả duyệt đề xuất theo toolCallId: { [toolCallId]: { status: "applied" | "dismissed", at, output? } }
+  decisions Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  AssistantMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([boardId])
+}
+
+model AssistantMessage {
+  id        String          @id
+  threadId  String
+  thread    AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant"
+  content   String          @db.Text
+  parts     Json?
+  createdAt DateTime        @default(now())
+
+  @@index([threadId, createdAt])
 }
 
 model UserPreference {

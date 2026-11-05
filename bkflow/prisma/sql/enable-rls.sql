@@ -22,4 +22,6 @@ alter table if exists "NotePage" enable row level security;
 alter table if exists "AiNoteEdit" enable row level security;
 alter table if exists "AiTaskEdit" enable row level security;
 alter table if exists "BoardAiChat" enable row level security;
+alter table if exists "AssistantThread" enable row level security;
+alter table if exists "AssistantMessage" enable row level security;
 alter table if exists "NoteDeadline" enable row level security;
