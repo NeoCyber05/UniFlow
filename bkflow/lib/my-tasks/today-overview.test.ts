@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { MyTask } from "./types";
-import { buildTodayOverview } from "./today-overview";
+import { buildTodayOverview, groupUpcomingByDay } from "./today-overview";
 
 const now = new Date("2026-10-17T17:05:00Z"); // 00:05 October 18 in Vietnam
 const task = (id: string, patch: Partial<MyTask> = {}): MyTask => ({
@@ -61,5 +61,25 @@ describe("buildTodayOverview", () => {
     assert.equal(result.overdue, 0);
     assert.equal(result.dueToday, 0);
     assert.deepEqual(result.attention, []);
+  });
+});
+
+describe("groupUpcomingByDay", () => {
+  it("groups by Vietnam day with offsets and counts the rest", () => {
+    const upcoming = buildTodayOverview([
+      task("today", { dueDate: "2026-10-18T16:59:59Z" }),
+      task("tomorrow-a", { dueDate: "2026-10-18T17:00:00Z" }),
+      task("tomorrow-b", { deadlineOn: "2026-10-19" }),
+      task("next-week", { dueDate: "2026-10-26T03:00:00Z" }),
+      task("later", { dueDate: "2026-10-30T03:00:00Z" }),
+    ], now).upcoming;
+    const { days, rest } = groupUpcomingByDay(upcoming, now, 4);
+    assert.deepEqual(days.map(d => [d.key, d.offset, d.tasks.map(t => t.id)]), [
+      ["2026-10-18", 0, ["today"]],
+      ["2026-10-19", 1, ["tomorrow-a", "tomorrow-b"]],
+      ["2026-10-26", 8, ["next-week"]],
+    ]);
+    assert.equal(days[1].weekday, 1);
+    assert.equal(rest, 1);
   });
 });
