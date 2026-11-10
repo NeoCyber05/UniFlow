@@ -177,12 +177,12 @@ export const CalendarDayCell = memo(function CalendarDayCell({
         "group/day overflow-hidden border-neutral-200 bg-white p-1.5 transition-colors md:p-2",
         viewMode === "month" && "min-h-[104px] border-r border-b sm:min-h-[132px]",
         viewMode === "month" && index % 7 === 6 && "border-r-0",
-        viewMode === "week" && "min-h-[132px] rounded-lg border md:min-h-[360px]",
+        viewMode === "week" && "min-h-[132px] rounded-lg border md:min-h-[100px]",
         viewMode === "week" && index > 0 && "mt-2 md:mt-0",
         rowHeight && "md:min-h-0",
         viewMode === "month" && index % 7 >= 5 && "bg-neutral-50/50",
         viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "bg-neutral-50/80 text-neutral-400",
-        isCalendarToday(day) && "bg-violet-50/40 ring-1 ring-inset ring-violet-300",
+        isCalendarToday(day) && "bg-neutral-50 ring-1 ring-inset ring-neutral-300",
         (draggingOccurrenceId || draggingUnscheduledCardId || draggingBoardCardId || draggingDayViewBlockId) && "ring-inset ring-violet-100",
         resizingRange && "cursor-ew-resize ring-inset ring-violet-100",
         dragOverDayKey === dayKey && "bg-violet-50 ring-2 ring-inset ring-violet-300",
@@ -199,7 +199,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
             className={cn(
               "flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-semibold text-neutral-600",
               viewMode === "month" && !isSameCalendarMonth(day, currentMonth) && "text-neutral-400",
-              isCalendarToday(day) && "bg-violet-600 text-white",
+              isCalendarToday(day) && "bg-neutral-900 text-white",
             )}
           >
             {viewMode === "week" ? formatCalendarDayMonth(day) : getGmt7Parts(day).date}

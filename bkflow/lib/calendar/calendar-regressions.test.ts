@@ -6,6 +6,20 @@ import type { BoardCalendarCardItem } from "@/types";
 import { calendarItemMatchesBoardFilters, unscheduledCardMatchesBoardFilters } from "@/lib/boards/board-filters";
 import { emptyBoardFilters } from "@/hooks/use-board-filters";
 import { toCalendarDisplayItems } from "./schedule-adapter";
+import { getOccurrenceTone } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_lib/item-utils";
+import { getDayViewBlockTone } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_lib/day-view-layout";
+import type { DayViewBlock } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_types";
+
+test("completed and overdue tasks use consistent subdued colors in every calendar view", () => {
+  const item = { type: "card", id: "c1", cardId: "c1", isCompleted: false, deadlineAt: "2000-01-01T00:00:00Z" } as BoardCalendarCardItem;
+  const tone = getOccurrenceTone({ id: "o1", kind: "single", date: new Date(), item });
+  assert.match(tone, /#855c48/);
+  assert.equal(getDayViewBlockTone({ item } as DayViewBlock), tone);
+  item.isCompleted = true;
+  const completed = getOccurrenceTone({ id: "o1", kind: "single", date: new Date(), item });
+  assert.match(completed, /text-stone-600/);
+  assert.equal(getDayViewBlockTone({ item } as DayViewBlock), completed);
+});
 
 test("month/week cells and day movement use Vietnam dates in every browser timezone", () => {
   const previous = process.env.TZ;

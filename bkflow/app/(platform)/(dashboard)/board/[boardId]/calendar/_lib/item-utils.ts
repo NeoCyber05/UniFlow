@@ -198,11 +198,11 @@ export const getOccurrenceTone = (
   courseTone?: string | null,
 ) => {
   if (occurrence.item.isCompleted) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
+    return "border-stone-200 bg-stone-100 text-stone-600 hover:bg-stone-200";
   }
 
   if (isOverdue(occurrence.item) && occurrence.kind !== "start") {
-    return "border-red-200 bg-red-50 text-red-800 hover:bg-red-100";
+    return "border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] hover:bg-[#f0e1d7]";
   }
 
   if (occurrence.item.type === "checklist-item") {
@@ -217,5 +217,5 @@ export const getOccurrenceTone = (
     return "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100";
   }
 
-  return courseTone ?? "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100";
+  return courseTone ?? "border-[#d5dcef] bg-[#ecf0f9] text-[#465779] hover:bg-[#e2e8f5]";
 };

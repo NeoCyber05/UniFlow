@@ -318,16 +318,16 @@ export const getDayViewBlockTooltip = (block: DayViewBlock) => {
 
 export const getDayViewBlockTone = (block: DayViewBlock, courseTone?: string | null) => {
   if (block.item.isCompleted) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100";
+    return "border-stone-200 bg-stone-100 text-stone-600 hover:bg-stone-200";
   }
 
   if (isOverdue(block.item)) {
-    return "border-red-200 bg-red-50 text-red-900 hover:bg-red-100";
+    return "border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] hover:bg-[#f0e1d7]";
   }
 
   if (block.item.type === "checklist-item") {
     return "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100";
   }
 
-  return courseTone ?? "border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100";
+  return courseTone ?? "border-[#d5dcef] bg-[#ecf0f9] text-[#465779] hover:bg-[#e2e8f5]";
 };

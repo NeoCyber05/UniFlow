@@ -138,7 +138,7 @@ export const QuickActionsMenu = ({
           {occurrence.item.isCompleted ? (
             <Circle className="h-3.5 w-3.5 text-neutral-500" />
           ) : (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-stone-500" />
           )}
           {occurrence.item.isCompleted ? tr("calendar.action.markIncomplete") : tr("calendar.action.markComplete")}
         </button>

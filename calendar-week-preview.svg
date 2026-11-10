@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920"><title>Lịch tuần UniFlow, 9–15 tháng 11</title><g font-family="Inter, Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1500" height="920" rx="0" fill="#f7f7f6" stroke="none"/>
+<rect x="20" y="20" width="1460" height="880" rx="16" fill="white" stroke="#e4e5e7"/>
+<rect x="341" y="20" width="1" height="880" rx="0" fill="#e4e5e7" stroke="none"/>
+<rect x="20" y="89" width="1460" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<rect x="42" y="40" width="30" height="30" rx="8" fill="#202123" stroke="none"/>
+<path d="M50 48v8q0 7 7 7t7-7v-8" fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="82" y="62" font-size="22" fill="#202123" font-weight="650" text-anchor="start">UniFlow</text>
+<text x="180" y="61" font-size="16" fill="#696c72" font-weight="400" text-anchor="start">/   Lịch</text>
+<rect x="365" y="37" width="87" height="36" rx="8" fill="white" stroke="#e4e5e7"/>
+<text x="380" y="60" font-size="15" fill="#202123" font-weight="400" text-anchor="start">Hôm nay</text>
+<path d="M480 49l-5 5 5 5 M510 49l5 5-5 5" fill="none" stroke="#202123" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="550" y="62" font-size="22" fill="#202123" font-weight="600" text-anchor="start">9 – 15 tháng 11, 2026</text>
+<rect x="971" y="37" width="190" height="36" rx="9" fill="#f3f3f4" stroke="none"/>
+<rect x="1036" y="40" width="59" height="30" rx="7" fill="white" stroke="#e4e5e7"/>
+<text x="1003" y="60" font-size="14" fill="#696c72" font-weight="400" text-anchor="middle">Ngày</text>
+<text x="1065" y="60" font-size="14" fill="#202123" font-weight="600" text-anchor="middle">Tuần</text>
+<text x="1127" y="60" font-size="14" fill="#696c72" font-weight="400" text-anchor="middle">Tháng</text>
+<rect x="1178" y="37" width="143" height="36" rx="8" fill="white" stroke="#e4e5e7"/>
+<text x="1190" y="60" font-size="15" fill="#202123" font-weight="400" text-anchor="start">✧   Xếp lịch AI</text>
+<rect x="1333" y="37" width="124" height="36" rx="8" fill="#202123" stroke="none"/>
+<text x="1353" y="60" font-size="15" fill="white" font-weight="600" text-anchor="start">+   Tạo thẻ</text>
+<text x="43" y="134" font-size="18" fill="#202123" font-weight="600" text-anchor="start">Tháng 11, 2026</text>
+<path d="M278 122l-5 5 5 5 M303 122l5 5-5 5" fill="none" stroke="#696c72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="59" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T2</text>
+<text x="99" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T3</text>
+<text x="139" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T4</text>
+<text x="179" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T5</text>
+<text x="219" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T6</text>
+<text x="259" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">T7</text>
+<text x="299" y="172" font-size="12" fill="#696c72" font-weight="600" text-anchor="middle">CN</text>
+<rect x="41" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="59" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">26</text>
+<rect x="81" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="99" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">27</text>
+<rect x="121" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="139" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">28</text>
+<rect x="161" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="179" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">29</text>
+<rect x="201" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="219" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">30</text>
+<rect x="241" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="259" y="205" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">31</text>
+<rect x="281" y="184" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="299" y="205" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">1</text>
+<rect x="41" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="59" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">2</text>
+<rect x="81" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="99" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">3</text>
+<rect x="121" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="139" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">4</text>
+<rect x="161" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="179" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">5</text>
+<rect x="201" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="219" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">6</text>
+<rect x="241" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="259" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">7</text>
+<rect x="281" y="221" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="299" y="242" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">8</text>
+<rect x="41" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="59" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">9</text>
+<circle cx="59" cy="285" r="1.6" fill="#696c72"/>
+<rect x="81" y="258" width="36" height="33" rx="7" fill="#202123" stroke="none"/>
+<text x="99" y="279" font-size="14" fill="white" font-weight="500" text-anchor="middle">10</text>
+<circle cx="99" cy="285" r="1.6" fill="white"/>
+<rect x="121" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="139" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">11</text>
+<circle cx="139" cy="285" r="1.6" fill="#696c72"/>
+<rect x="161" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="179" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">12</text>
+<circle cx="179" cy="285" r="1.6" fill="#696c72"/>
+<rect x="201" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="219" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">13</text>
+<circle cx="219" cy="285" r="1.6" fill="#696c72"/>
+<rect x="241" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="259" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">14</text>
+<circle cx="259" cy="285" r="1.6" fill="#696c72"/>
+<rect x="281" y="258" width="36" height="33" rx="7" fill="#ededf0" stroke="none"/>
+<text x="299" y="279" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">15</text>
+<rect x="41" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="59" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">16</text>
+<rect x="81" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="99" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">17</text>
+<rect x="121" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="139" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">18</text>
+<rect x="161" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="179" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">19</text>
+<rect x="201" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="219" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">20</text>
+<rect x="241" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="259" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">21</text>
+<rect x="281" y="295" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="299" y="316" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">22</text>
+<rect x="41" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="59" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">23</text>
+<rect x="81" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="99" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">24</text>
+<rect x="121" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="139" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">25</text>
+<rect x="161" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="179" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">26</text>
+<rect x="201" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="219" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">27</text>
+<rect x="241" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="259" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">28</text>
+<rect x="281" y="332" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="299" y="353" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">29</text>
+<rect x="41" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="59" y="390" font-size="14" fill="#202123" font-weight="500" text-anchor="middle">30</text>
+<rect x="81" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="99" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">1</text>
+<rect x="121" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="139" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">2</text>
+<rect x="161" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="179" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">3</text>
+<rect x="201" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="219" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">4</text>
+<rect x="241" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="259" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">5</text>
+<rect x="281" y="369" width="36" height="33" rx="7" fill="#f8f8f8" stroke="none"/>
+<text x="299" y="390" font-size="14" fill="#98999d" font-weight="500" text-anchor="middle">6</text>
+<rect x="41" y="428" width="277" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="43" y="468" font-size="19" fill="#202123" font-weight="600" text-anchor="start">Thứ Ba, 10 tháng 11</text>
+<text x="43" y="492" font-size="14" fill="#696c72" font-weight="400" text-anchor="start">3 việc trong ngày</text>
+<rect x="41" y="511" width="277" height="73" rx="10" fill="white" stroke="#e4e5e7"/>
+<circle cx="57" cy="534" r="3" fill="#43a88a"/>
+<text x="69" y="539" font-size="16" fill="#202123" font-weight="600" text-anchor="start">Họp nhóm đồ án</text>
+<text x="69" y="565" font-size="13" fill="#696c72" font-weight="400" text-anchor="start">09:00 – 10:00</text>
+<text x="169" y="565" font-size="13" fill="#286754" font-weight="400" text-anchor="start">·   Đồ án</text>
+<rect x="41" y="595" width="277" height="73" rx="10" fill="white" stroke="#e4e5e7"/>
+<circle cx="57" cy="618" r="3" fill="#5687da"/>
+<text x="69" y="623" font-size="16" fill="#202123" font-weight="600" text-anchor="start">Ôn xác suất</text>
+<text x="69" y="649" font-size="13" fill="#696c72" font-weight="400" text-anchor="start">11:00 – 12:30</text>
+<text x="169" y="649" font-size="13" fill="#355790" font-weight="400" text-anchor="start">·   Học tập</text>
+<rect x="41" y="679" width="277" height="73" rx="10" fill="white" stroke="#e4e5e7"/>
+<circle cx="57" cy="702" r="3" fill="#9771d0"/>
+<text x="69" y="707" font-size="16" fill="#202123" font-weight="600" text-anchor="start">Viết báo cáo</text>
+<text x="69" y="733" font-size="13" fill="#696c72" font-weight="400" text-anchor="start">14:00 – 15:30</text>
+<text x="169" y="733" font-size="13" fill="#634a89" font-weight="400" text-anchor="start">·   Nghiên cứu</text>
+<rect x="41" y="784" width="277" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="43" y="832" font-size="16" fill="#202123" font-weight="600" text-anchor="start">Chưa xếp lịch</text>
+<rect x="163" y="813" width="25" height="24" rx="7" fill="#f1f1f2" stroke="none"/>
+<text x="176" y="830" font-size="13" fill="#696c72" font-weight="500" text-anchor="middle">3</text>
+<path d="M300 819l5 5-5 5" fill="none" stroke="#696c72" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="421" y="90" width="151" height="804" rx="0" fill="white" stroke="none"/>
+<rect x="421" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="435" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Hai</text>
+<text x="435" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">9</text>
+<rect x="572" y="90" width="151" height="804" rx="0" fill="white" stroke="none"/>
+<rect x="572" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="586" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Ba</text>
+<rect x="582" y="124" width="33" height="30" rx="8" fill="#202123" stroke="none"/>
+<text x="586" y="147" font-size="22" fill="white" font-weight="600" text-anchor="start">10</text>
+<rect x="723" y="90" width="151" height="804" rx="0" fill="white" stroke="none"/>
+<rect x="723" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="737" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Tư</text>
+<text x="737" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">11</text>
+<rect x="874" y="90" width="151" height="804" rx="0" fill="white" stroke="none"/>
+<rect x="874" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="888" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Năm</text>
+<text x="888" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">12</text>
+<rect x="1025" y="90" width="151" height="804" rx="0" fill="white" stroke="none"/>
+<rect x="1025" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="1039" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Sáu</text>
+<text x="1039" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">13</text>
+<rect x="1176" y="90" width="151" height="804" rx="0" fill="#fafafa" stroke="none"/>
+<rect x="1176" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="1190" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Thứ Bảy</text>
+<text x="1190" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">14</text>
+<rect x="1327" y="90" width="151" height="804" rx="0" fill="#fafafa" stroke="none"/>
+<rect x="1327" y="90" width="1" height="804" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="1341" y="116" font-size="13" fill="#696c72" font-weight="500" text-anchor="start">Chủ nhật</text>
+<text x="1341" y="147" font-size="22" fill="#202123" font-weight="600" text-anchor="start">15</text>
+<rect x="342" y="165" width="1136" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="352" y="195" font-size="13" fill="#696c72" font-weight="400" text-anchor="start">Cả ngày</text>
+<rect x="728" y="175" width="443" height="32" rx="6" fill="#f0e9ff" stroke="#d7c6f5"/>
+<circle cx="743" cy="191" r="3" fill="#9771d0"/>
+<text x="753" y="196" font-size="14" fill="#634a89" font-weight="550" text-anchor="start">Tuần nghiên cứu tài liệu</text>
+<rect x="421" y="227" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="232" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">08:00</text>
+<rect x="421" y="294" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="299" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">09:00</text>
+<rect x="421" y="361" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="366" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">10:00</text>
+<rect x="421" y="428" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="433" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">11:00</text>
+<rect x="421" y="495" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="500" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">12:00</text>
+<rect x="421" y="562" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="567" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">13:00</text>
+<rect x="421" y="629" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="634" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">14:00</text>
+<rect x="421" y="696" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="701" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">15:00</text>
+<rect x="421" y="763" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="768" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">16:00</text>
+<rect x="421" y="830" width="1057" height="1" rx="0" fill="#e4e5e7" stroke="none"/>
+<text x="405" y="835" font-size="13" fill="#696c72" font-weight="400" text-anchor="end">17:00</text>
+<rect x="426" y="262.5" width="141" height="96.5" rx="7" fill="#e7efff" stroke="#c2d5fb"/>
+<text x="436" y="282.5" font-size="12" fill="#355790" font-weight="400" text-anchor="start">08:30 – 10:00</text>
+<text x="436" y="305.5" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Đọc giáo trình</text>
+<rect x="426" y="564" width="141" height="130" rx="7" fill="#f0e9ff" stroke="#d7c6f5"/>
+<text x="436" y="584" font-size="12" fill="#634a89" font-weight="400" text-anchor="start">13:00 – 15:00</text>
+<text x="436" y="607" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Phác thảo đề tài</text>
+<rect x="577" y="296" width="141" height="63" rx="7" fill="#e0f4ef" stroke="#b6ded3"/>
+<text x="587" y="316" font-size="12" fill="#286754" font-weight="400" text-anchor="start">09:00 – 10:00</text>
+<text x="587" y="339" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Họp nhóm đồ án</text>
+<rect x="577" y="430" width="141" height="96.5" rx="7" fill="#e7efff" stroke="#c2d5fb"/>
+<text x="587" y="450" font-size="12" fill="#355790" font-weight="400" text-anchor="start">11:00 – 12:30</text>
+<text x="587" y="473" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Ôn xác suất</text>
+<rect x="577" y="631" width="141" height="96.5" rx="7" fill="#f0e9ff" stroke="#d7c6f5"/>
+<text x="587" y="651" font-size="12" fill="#634a89" font-weight="400" text-anchor="start">14:00 – 15:30</text>
+<text x="587" y="674" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Viết báo cáo</text>
+<rect x="728" y="229" width="141" height="130" rx="7" fill="#e7efff" stroke="#c2d5fb"/>
+<text x="738" y="249" font-size="12" fill="#355790" font-weight="400" text-anchor="start">08:00 – 10:00</text>
+<text x="738" y="272" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Thực hành SQL</text>
+<rect x="728" y="597.5" width="141" height="63" rx="7" fill="#e0f4ef" stroke="#b6ded3"/>
+<text x="738" y="617.5" font-size="12" fill="#286754" font-weight="400" text-anchor="start">13:30 – 14:30</text>
+<text x="738" y="640.5" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Review giao diện</text>
+<rect x="879" y="363" width="141" height="96.5" rx="7" fill="#f0e9ff" stroke="#d7c6f5"/>
+<text x="889" y="383" font-size="12" fill="#634a89" font-weight="400" text-anchor="start">10:00 – 11:30</text>
+<text x="889" y="406" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Phỏng vấn</text>
+<rect x="879" y="698" width="141" height="63" rx="7" fill="#e0f4ef" stroke="#b6ded3"/>
+<text x="889" y="718" font-size="12" fill="#286754" font-weight="400" text-anchor="start">15:00 – 16:00</text>
+<text x="889" y="741" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Sửa bản demo</text>
+<rect x="1030" y="296" width="141" height="63" rx="7" fill="#e0f4ef" stroke="#b6ded3"/>
+<text x="1040" y="316" font-size="12" fill="#286754" font-weight="400" text-anchor="start">09:00 – 10:00</text>
+<text x="1040" y="339" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Gặp giảng viên</text>
+<rect x="1030" y="564" width="141" height="130" rx="7" fill="#fff0df" stroke="#f1d3ae"/>
+<text x="1040" y="584" font-size="12" fill="#855926" font-weight="400" text-anchor="start">13:00 – 15:00</text>
+<text x="1040" y="607" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Nộp đề cương</text>
+<rect x="1181" y="396.5" width="141" height="96.5" rx="7" fill="#e7efff" stroke="#c2d5fb"/>
+<text x="1191" y="416.5" font-size="12" fill="#355790" font-weight="400" text-anchor="start">10:30 – 12:00</text>
+<text x="1191" y="439.5" font-size="14" fill="#202123" font-weight="600" text-anchor="start">Tổng ôn</text>
+</g></svg>

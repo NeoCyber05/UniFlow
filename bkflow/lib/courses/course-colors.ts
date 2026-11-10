@@ -50,7 +50,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-emerald-500",
     chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     timelineTone: "border-emerald-300 bg-emerald-100 text-emerald-900",
-    calendarTone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+    calendarTone: "border-[#d4ddd4] bg-[#eef2ed] text-[#586b58] hover:bg-[#e2e9df]",
     hex: "#10b981",
   },
   amber: {
@@ -66,7 +66,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-rose-500",
     chip: "bg-rose-50 text-rose-700 ring-rose-200",
     timelineTone: "border-rose-300 bg-rose-100 text-rose-900",
-    calendarTone: "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
+    calendarTone: "border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] hover:bg-[#f0e1d7]",
     hex: "#f43f5e",
   },
   indigo: {
