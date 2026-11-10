@@ -34,7 +34,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-violet-500",
     chip: "bg-violet-50 text-violet-700 ring-violet-200",
     timelineTone: "border-violet-300 bg-violet-100 text-violet-900",
-    calendarTone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
+    calendarTone: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:border-violet-300 dark:bg-violet-50 dark:text-violet-800 dark:hover:bg-violet-100",
     hex: "#8b5cf6",
   },
   sky: {
@@ -42,7 +42,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-sky-500",
     chip: "bg-sky-50 text-sky-700 ring-sky-200",
     timelineTone: "border-sky-300 bg-sky-100 text-sky-900",
-    calendarTone: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100",
+    calendarTone: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900",
     hex: "#0ea5e9",
   },
   emerald: {
@@ -50,7 +50,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-emerald-500",
     chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     timelineTone: "border-emerald-300 bg-emerald-100 text-emerald-900",
-    calendarTone: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+    calendarTone: "border-[#d4ddd4] bg-[#eef2ed] text-[#586b58] hover:bg-[#e2e9df] dark:border-[#536553] dark:bg-[#263226] dark:text-[#cfdfcb] dark:hover:bg-[#344234]",
     hex: "#10b981",
   },
   amber: {
@@ -58,7 +58,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-amber-500",
     chip: "bg-amber-50 text-amber-700 ring-amber-200",
     timelineTone: "border-amber-300 bg-amber-100 text-amber-900",
-    calendarTone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100",
+    calendarTone: "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900",
     hex: "#f59e0b",
   },
   rose: {
@@ -66,7 +66,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-rose-500",
     chip: "bg-rose-50 text-rose-700 ring-rose-200",
     timelineTone: "border-rose-300 bg-rose-100 text-rose-900",
-    calendarTone: "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
+    calendarTone: "border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] hover:bg-[#f0e1d7] dark:border-[#715240] dark:bg-[#35291f] dark:text-[#e4c5b2] dark:hover:bg-[#49372a]",
     hex: "#f43f5e",
   },
   indigo: {
@@ -74,7 +74,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-indigo-500",
     chip: "bg-indigo-50 text-indigo-700 ring-indigo-200",
     timelineTone: "border-indigo-300 bg-indigo-100 text-indigo-900",
-    calendarTone: "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100",
+    calendarTone: "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 dark:hover:bg-indigo-900",
     hex: "#6366f1",
   },
   teal: {
@@ -82,7 +82,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-teal-500",
     chip: "bg-teal-50 text-teal-700 ring-teal-200",
     timelineTone: "border-teal-300 bg-teal-100 text-teal-900",
-    calendarTone: "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100",
+    calendarTone: "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-200 dark:hover:bg-teal-900",
     hex: "#14b8a6",
   },
   orange: {
@@ -90,7 +90,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-orange-500",
     chip: "bg-orange-50 text-orange-700 ring-orange-200",
     timelineTone: "border-orange-300 bg-orange-100 text-orange-900",
-    calendarTone: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
+    calendarTone: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200 dark:hover:bg-orange-900",
     hex: "#f97316",
   },
   fuchsia: {
@@ -98,7 +98,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-fuchsia-500",
     chip: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200",
     timelineTone: "border-fuchsia-300 bg-fuchsia-100 text-fuchsia-900",
-    calendarTone: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:bg-fuchsia-100",
+    calendarTone: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 hover:bg-fuchsia-100 dark:border-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-200 dark:hover:bg-fuchsia-900",
     hex: "#d946ef",
   },
   lime: {
@@ -106,7 +106,7 @@ export const COURSE_COLORS: Record<CourseColorKey, CourseColorStyle> = {
     stripe: "border-l-lime-500",
     chip: "bg-lime-50 text-lime-700 ring-lime-200",
     timelineTone: "border-lime-300 bg-lime-100 text-lime-900",
-    calendarTone: "border-lime-200 bg-lime-50 text-lime-800 hover:bg-lime-100",
+    calendarTone: "border-lime-200 bg-lime-50 text-lime-800 hover:bg-lime-100 dark:border-lime-800 dark:bg-lime-950 dark:text-lime-200 dark:hover:bg-lime-900",
     hex: "#84cc16",
   },
 };

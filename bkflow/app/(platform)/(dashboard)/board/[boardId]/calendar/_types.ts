@@ -1,9 +1,10 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { BoardCardCalendarDragPayload } from "@/lib/calendar/calendar-dnd";
 import type { BoardCalendarCardItem, BoardCalendarItem, BoardCalendarResponse } from "@/types";
 
 export interface BoardCalendarViewProps {
+  toolbarActions?: ReactNode;
   boardId: string;
   lists: BoardCalendarList[];
   currentUserId: string;

@@ -35,7 +35,7 @@ const isPlainClick = (event: MouseEvent) =>
 const itemClassName = (isActive: boolean) =>
   cn(
     "relative isolate flex h-11 w-full items-center gap-x-3 rounded-lg px-3 text-base text-sidebar-foreground transition-[background-color,transform] duration-150 hover:bg-sidebar-accent active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-    isActive && "font-semibold text-violet-700 dark:text-violet-300",
+    isActive && "font-semibold text-slate-700 dark:text-slate-200",
   );
 
 // Trượt giữa các mục khi đổi trang (cùng kiểu với tab Cài đặt); lastHostRef riêng theo instance để sidebar desktop và sheet mobile không trượt qua nhau.
@@ -64,7 +64,7 @@ const ActiveIndicator = ({ lastHostRef }: { lastHostRef: RefObject<HTMLElement |
     <span
       ref={ref}
       aria-hidden="true"
-      className="absolute inset-0 -z-10 rounded-lg bg-violet-500/15 shadow-[inset_3px_0_0_var(--color-violet-500)]"
+      className="absolute inset-0 -z-10 rounded-lg bg-slate-500/10 shadow-[inset_2px_0_0_var(--color-slate-500)]"
     />
   );
 };
@@ -76,7 +76,7 @@ const Count = ({ value }: { value: number | undefined }) =>
     </span>
   ) : null;
 
-export const MySidebarNav = () => {
+export const MySidebarNav = ({ compact = false }: { compact?: boolean }) => {
   const pathname = usePathname();
   const boardRoute = useMatch("/board/:boardId/*");
   const queryClient = useQueryClient();
@@ -119,7 +119,7 @@ export const MySidebarNav = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
-      <WorkspaceSwitcher />
+      {!compact && <WorkspaceSwitcher />}
 
       <Link
         href="/assistant"
@@ -127,22 +127,23 @@ export const MySidebarNav = () => {
           if (isPlainClick(event)) setPending({ from: pathname, href: "/assistant" });
           useMobileSidebar.getState().onClose();
         }}
+        title={compact ? tr("nav.assistant") : undefined}
         aria-current={assistantActive ? "page" : undefined}
         aria-keyshortcuts="Control+J Meta+J"
-        className={itemClassName(assistantActive)}
+        className={cn(compact && "justify-center px-0 [&>svg]:shrink-0", itemClassName(assistantActive))}
       >
         {assistantActive && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
         <AiLogo className="size-5.5 rounded-md" />
-        <span className="min-w-0 flex-1 truncate">{tr("nav.assistant")}</span>
-        <kbd className="hidden shrink-0 rounded border bg-background px-1 font-sans text-[10px] font-medium text-muted-foreground lg:inline">{tr("nav.assistantShortcut")}</kbd>
+        <span className={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>{tr("nav.assistant")}</span>
+        <kbd className={cn("hidden shrink-0 rounded border bg-background px-1 font-sans text-xs font-medium text-muted-foreground", !compact && "lg:inline")}>{tr("nav.assistantShortcut")}</kbd>
       </Link>
 
-      {boardId && navigation.length > 0 && (
+      {!compact && boardId && navigation.length > 0 && (
         <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{tr("nav.currentBoard")}</p>
       )}
 
-      {!boardId && workspaceBoardHref && (
-        <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={itemClassName(pathname === workspaceBoardHref)}>
+      {!compact && !boardId && workspaceBoardHref && (
+        <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={cn(compact && "justify-center px-0 [&>svg]:shrink-0", itemClassName(pathname === workspaceBoardHref))}>
           <ListTodo className="h-5.5 w-5.5" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
@@ -158,11 +159,11 @@ export const MySidebarNav = () => {
           if (isPlainClick(event)) setPending({ from: pathname, href: item.href });
           if (item.id === "tasks" || item.id === "calendar") clearBoardFilters();
           useMobileSidebar.getState().onClose();
-        }} aria-current={active ? "page" : undefined} className={itemClassName(active)}>
+        }} title={compact ? item.label : undefined} aria-current={active ? "page" : undefined} className={cn(compact && "justify-center px-0 [&>svg]:shrink-0", itemClassName(active))}>
           {active && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
           <Icon aria-hidden="true" className="h-5.5 w-5.5" />
-          {item.label}
-          {item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
+          <span className={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>{item.label}</span>
+          {!compact && item.id === "tasks" && isCurrentBoard && <Count value={counts?.today} />}
         </Link>;
       })}
       </div>
@@ -174,11 +175,11 @@ export const MySidebarNav = () => {
             useMobileSidebar.getState().onClose();
             settingsModal.onOpen();
           }}
-          className={itemClassName(settingsModal.isOpen)}
+          className={cn(compact && "justify-center px-0 [&>svg]:shrink-0", itemClassName(settingsModal.isOpen))}
         >
           {settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
           <Settings aria-hidden="true" className="h-5.5 w-5.5" />
-          {tr("common.settings")}
+          <span className={compact ? "sr-only" : undefined}>{tr("common.settings")}</span>
         </button>
       </div>
     </div>

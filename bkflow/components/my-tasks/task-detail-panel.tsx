@@ -158,7 +158,7 @@ export const TaskDetailPanel = ({ taskId, onClose, desktopClassName }: TaskDetai
         }}
         className={cn(
           "sticky top-20 h-[calc(100vh-6rem)] max-w-[calc(100vw-2rem)] shrink-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm",
-          expanded ? "w-[min(740px,calc(100vw-20rem))]" : "w-[480px]",
+          expanded ? "w-[min(740px,calc(100vw-20rem))]" : "w-[420px]",
           desktopClassName,
         )}
       >

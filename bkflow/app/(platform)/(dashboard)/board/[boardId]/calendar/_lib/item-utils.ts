@@ -198,24 +198,24 @@ export const getOccurrenceTone = (
   courseTone?: string | null,
 ) => {
   if (occurrence.item.isCompleted) {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
+    return "border-stone-200 bg-stone-100 text-stone-600 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700";
   }
 
   if (isOverdue(occurrence.item) && occurrence.kind !== "start") {
-    return "border-red-200 bg-red-50 text-red-800 hover:bg-red-100";
+    return "border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] hover:bg-[#f0e1d7] dark:border-[#715240] dark:bg-[#35291f] dark:text-[#e4c5b2] dark:hover:bg-[#49372a]";
   }
 
   if (occurrence.item.type === "checklist-item") {
-    return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100";
+    return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900";
   }
 
   if (occurrence.item.displayKind === "deadline") {
-    return "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100";
+    return "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200 dark:hover:bg-orange-900";
   }
 
   if (occurrence.kind === "start") {
-    return "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100";
+    return "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-200 dark:hover:bg-sky-900";
   }
 
-  return courseTone ?? "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100";
+  return courseTone ?? "border-[#d5dcef] bg-[#ecf0f9] text-[#465779] hover:bg-[#e2e8f5] dark:border-[#465779] dark:bg-[#263144] dark:text-[#d0ddf2] dark:hover:bg-[#34415a]";
 };

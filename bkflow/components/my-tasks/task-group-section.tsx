@@ -19,13 +19,13 @@ import { TaskRow } from "./task-row";
 
 /** Màu nhấn theo độ gấp của nhóm; nhóm theo cột (key = listId) dùng màu trung tính */
 export const GROUP_TONES: Record<string, { bar: string; text: string; chip: string }> = {
-  overdue: { bar: "bg-rose-500", text: "text-rose-600", chip: "bg-rose-50 text-rose-700 ring-rose-200" },
-  today: { bar: "bg-amber-500", text: "text-amber-600", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
-  tomorrow: { bar: "bg-violet-500", text: "text-violet-700", chip: "bg-violet-50 text-violet-700 ring-violet-200" },
+  overdue: { bar: "bg-[#b78b73]", text: "text-[#855c48] dark:text-[#dab69f]", chip: "bg-[#f7eee8] text-[#855c48] ring-[#e5cfc3]" },
+  today: { bar: "bg-amber-500", text: "text-amber-700 dark:text-amber-300", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
+  tomorrow: { bar: "bg-slate-400", text: "text-slate-600 dark:text-slate-300", chip: "bg-slate-50 text-slate-700 ring-slate-200" },
   week: { bar: "bg-neutral-500", text: "text-neutral-600", chip: "bg-white text-neutral-700 ring-neutral-200" },
   later: { bar: "bg-neutral-400", text: "text-neutral-500", chip: "bg-white text-neutral-600 ring-neutral-200" },
   nodue: { bar: "bg-neutral-300", text: "text-neutral-500", chip: "bg-white text-neutral-600 ring-neutral-200" },
-  done: { bar: "bg-emerald-500", text: "text-emerald-700", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  done: { bar: "bg-slate-400", text: "text-neutral-500", chip: "bg-neutral-100 text-neutral-600 ring-neutral-200" },
 };
 const DEFAULT_TONE = { bar: "bg-neutral-400", text: "text-neutral-600", chip: "bg-white text-neutral-600 ring-neutral-200" };
 export const getGroupTone = (key: string) => GROUP_TONES[key] ?? DEFAULT_TONE;
@@ -89,10 +89,10 @@ export const TaskGroupSection = ({
           type="button"
           onClick={toggle}
           aria-expanded={isOpen}
-          className="group/head flex w-full items-center gap-2 rounded-md py-1 text-left"
+          className="group/head flex w-full items-center gap-2 rounded-md py-2 text-left focus-visible:outline-2 focus-visible:outline-ring"
         >
           <span className={cn("h-3.5 w-[3px] shrink-0 rounded-full", tone.bar)} />
-          <span className={cn("text-xs font-bold uppercase tracking-wider", tone.text)}>{getAgendaGroupLabel(group.key) ?? group.label}</span>
+          <span className={cn("text-sm font-semibold", tone.text)}>{getAgendaGroupLabel(group.key) ?? group.label}</span>
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-600 tabular-nums">
             {group.tasks.length}
           </span>

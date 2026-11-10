@@ -130,7 +130,7 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
 }: CalendarWeekRowProps) {
   const segments = rangeSegmentsByWeek[weekIndex] ?? [];
   const maxLanes = mode === "month" ? MONTH_RANGE_LANES : WEEK_RANGE_LANES;
-  const rowHeight = grid.rowHeights[weekIndex];
+  const rowHeight = mode === "month" ? grid.rowHeights[weekIndex] : undefined;
 
   return (
     <div
@@ -140,7 +140,7 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
         "relative grid bg-white",
         mode === "month" && "[grid-template-columns:var(--cal-cols,repeat(7,minmax(0,1fr)))]",
         mode === "month" && weekIndex === weekRowsLength - 1 && "rounded-b-lg",
-        mode === "week" && "grid-cols-1 gap-2 bg-transparent md:[grid-template-columns:var(--cal-cols,repeat(7,minmax(0,1fr)))]",
+        mode === "week" && "[grid-template-columns:var(--cal-cols,repeat(7,minmax(0,1fr)))] bg-transparent",
         rowHeight && "md:min-h-[var(--cal-row-h)]",
       )}
     >
@@ -220,7 +220,7 @@ export const CalendarWeekRow = memo(function CalendarWeekRow({
         onSetExpandedDayKey={onSetExpandedDayKey}
       />
       {mode === "week" && <ColumnResizeHandles grid={grid} />}
-      <RowResizeHandle grid={grid} weekIndex={weekIndex} />
+      {mode === "month" && <RowResizeHandle grid={grid} weekIndex={weekIndex} />}
     </div>
   );
 });

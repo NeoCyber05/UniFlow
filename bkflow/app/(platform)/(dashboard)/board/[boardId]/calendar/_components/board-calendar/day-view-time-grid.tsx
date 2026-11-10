@@ -375,7 +375,7 @@ const DayOverflowItem = ({
       <span className={cn(
         "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
         isChecklistItem ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700",
-        block.item.isCompleted && "bg-emerald-100 text-emerald-700",
+        block.item.isCompleted && "bg-stone-200 text-stone-600",
       )}>
         {block.item.isCompleted ? (
           <CheckCircle2 className="h-3.5 w-3.5" />

@@ -5,16 +5,18 @@ import { BoardSidebar } from "./board-sidebar";
 interface BoardShellProps {
   children: React.ReactNode;
   boardNavbar: React.ReactNode;
+  compactSidebar?: boolean;
 }
 
 export const BoardShell = ({
   children,
   boardNavbar,
+  compactSidebar = false,
 }: BoardShellProps) => {
   return (
     <div className="flex-1 flex overflow-hidden relative pt-14 h-screen">
       {/* Sidebar điều hướng cá nhân & hội nhóm */}
-      <BoardSidebar />
+      <BoardSidebar compact={compactSidebar} />
 
       {/* Không gian làm việc chính của Bảng */}
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">

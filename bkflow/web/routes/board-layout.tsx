@@ -30,6 +30,7 @@ export default function BoardLayoutRoute() {
   const [switchedView, setSwitchedView] = useState(false);
   if (!switchedView && pathname !== firstPathname) setSwitchedView(true);
   // Trang Việc cần làm không có thanh bảng; bộ lọc được đặt ngay trong trang
+  const isCalendarRoute = pathname.endsWith("/calendar");
   const isListRoute = pathname.endsWith("/list");
   // Lịch / Sơ đồ / Thống kê dùng thanh lọc sáng, không nền tối
   const navTone = ["/calendar", "/graph", "/analytics"].some((tab) => pathname.endsWith(tab)) ? "light" : "dark";
@@ -43,6 +44,24 @@ export default function BoardLayoutRoute() {
   if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label={tr("route.boardLoading")} /></div>;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
+  if (data.isWorkspaceBoard && pathname === `/board/${boardId}`) {
+    return <Navigate to={`/board/${boardId}/list${search}`} replace />;
+  }
+
+  const boardNavbar = (
+          <BoardNavbar
+            data={data.board}
+            currentUserId={data.currentUserId}
+            workspace={data.board.workspace}
+            tone={navTone}
+            courseFilter={
+              data.isWorkspaceBoard ? (
+                <CourseFilterBar boardId={boardId} canEdit={data.canEdit} tone={navTone} />
+              ) : undefined
+            }
+          />
+
+  );
 
   return (
     <div
@@ -64,23 +83,12 @@ export default function BoardLayoutRoute() {
       {!data.isWorkspaceBoard && <div className="absolute inset-0 bg-black/10 pointer-events-none" />}
 
       <BoardShell
-        boardNavbar={isListRoute ? null : (
-          <BoardNavbar
-            data={data.board}
-            currentUserId={data.currentUserId}
-            workspace={data.board.workspace}
-            tone={navTone}
-            courseFilter={
-              data.isWorkspaceBoard ? (
-                <CourseFilterBar boardId={boardId} canEdit={data.canEdit} tone={navTone} />
-              ) : undefined
-            }
-          />
-        )}
+        compactSidebar={isCalendarRoute}
+        boardNavbar={isListRoute || isCalendarRoute ? null : boardNavbar}
       >
         {/* Fades in on a tab or board switch, not on the board's first paint: its skeleton is already up there. */}
         <div key={pathname} className={switchedView ? "h-full view-enter" : "h-full"}>
-          <Outlet />
+          <Outlet context={{ calendarActions: isCalendarRoute ? boardNavbar : undefined }} />
         </div>
       </BoardShell>
 

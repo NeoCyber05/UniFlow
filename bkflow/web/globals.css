@@ -21,23 +21,23 @@
     @apply border-indigo-600 bg-indigo-600 text-white dark:border-indigo-300 dark:bg-indigo-300 dark:text-indigo-950;
   }
   .task-badge-success {
-    @apply border-emerald-700 bg-emerald-700 text-white dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950;
+    @apply border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300;
   }
   .task-badge-warning {
     @apply border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200;
   }
   .task-badge-danger {
-    @apply border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200;
+    @apply border-[#e5cfc3] bg-[#f7eee8] text-[#855c48] dark:border-[#715240] dark:bg-[#35291f] dark:text-[#dab69f];
   }
   .task-badge-review {
-    @apply border-purple-200 bg-purple-100 text-purple-800 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200;
+    @apply border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200;
   }
   /* Nhãn nhỏ trên dòng công việc: một hình cho mọi loại; màu chỉ dành cho trạng thái hạn. */
   .task-chip {
-    @apply inline-flex h-[18px] max-w-[12rem] items-center gap-1 truncate rounded-[5px] bg-muted px-1.5 text-[11px] font-medium leading-none text-foreground/75 tabular-nums;
+    @apply inline-flex min-h-5 max-w-[12rem] items-center gap-1 truncate rounded-[5px] bg-muted px-1.5 text-xs font-medium leading-none text-foreground/75 tabular-nums;
   }
   .task-chip-danger {
-    @apply bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300;
+    @apply bg-[#f7eee8] text-[#855c48] dark:bg-[#35291f] dark:text-[#dab69f];
   }
   .task-chip-warning {
     @apply bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300;

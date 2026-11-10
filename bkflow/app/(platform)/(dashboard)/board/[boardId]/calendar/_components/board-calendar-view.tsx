@@ -58,6 +58,8 @@ import { CalendarErrorState } from "./calendar-error-state";
 import { CalendarLoadingState } from "./calendar-loading-state";
 import { CalendarMonthView } from "./calendar-month-view";
 import { CalendarToolbar } from "./calendar-toolbar";
+import { CalendarSidebar } from "./calendar-sidebar";
+import { CalendarWeekTimeline } from "./calendar-week-timeline";
 import { CalendarWeekView } from "./calendar-week-view";
 import { ExpandedDayPanel } from "./expanded-day-panel";
 import { useCalendarResize } from "../_hooks/use-calendar-resize";
@@ -66,6 +68,7 @@ import { useCalendarGridSize } from "../_hooks/use-calendar-grid-size";
 import { ColumnResizeHandles } from "./board-calendar/grid-resize-handles";
 
 export const BoardCalendarView = ({
+  toolbarActions,
   boardId,
   lists,
   currentUserId,
@@ -559,8 +562,9 @@ export const BoardCalendarView = ({
       onAccessRevoked={handleAccessRevokedRealtime}
     />
     <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
-    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/20 bg-white/95 shadow-xl backdrop-blur">
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white font-sans text-neutral-900">
       <CalendarToolbar
+        actions={toolbarActions}
         titleLabel={titleLabel}
         rangeLabel={rangeLabel}
         scheduledItemsCount={scheduledItemsCount}
@@ -575,9 +579,12 @@ export const BoardCalendarView = ({
         onChangeViewMode={changeViewMode}
         onPrevious={goToPrevious}
         onToday={goToToday}
+        isToday={getGmt7DayKey(anchorDate) === getTodayKey(currentTime)}
         onNext={goToNext}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 md:p-4" style={grid.gridStyle}>
+      <div className="flex min-h-0 flex-1">
+      <CalendarSidebar anchorDate={anchorDate} today={getTodayKey(currentTime)} occurrencesByDay={Object.fromEntries(days.map((day) => { const key = getGmt7DayKey(day); return [key, [...(occurrencesByDay[key] ?? []), ...(rangeOccurrencesByDay[key] ?? [])]]; }))} onSelect={setAnchorDate} onOpen={openCalendarCardDirect} />
+      <div className="min-w-0 flex-1 overflow-y-auto p-3 md:p-4" style={grid.gridStyle}>
         {viewMode === "month" && (
           <div className="relative grid [grid-template-columns:var(--cal-cols)] rounded-t-xl border border-b-0 border-neutral-200 bg-neutral-50/80">
             {getWeekDays().map((day, dayIndex) => (
@@ -624,11 +631,15 @@ export const BoardCalendarView = ({
                 rowProps={calendarWeekRowProps}
               />
             ) : viewMode === "week" ? (
+              <>
               <CalendarWeekView
+                items={items}
                 days={days}
                 weekRows={weekRows}
                 rowProps={calendarWeekRowProps}
               />
+              <CalendarWeekTimeline interactions={calendarWeekRowProps} days={days} items={items} onOpen={openCalendarCardDirect} />
+              </>
             ) : (
               <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <CalendarDayTimeline
@@ -683,6 +694,7 @@ export const BoardCalendarView = ({
         </motion.div>
         </AnimatePresence>
         </ReducedMotionConfig>
+      </div>
       </div>
     </section>
     {taskId && <TaskDetailPanel taskId={taskId} onClose={closeTask} desktopClassName="top-0 h-full" />}

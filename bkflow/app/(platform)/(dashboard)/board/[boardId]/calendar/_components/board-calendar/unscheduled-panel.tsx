@@ -109,7 +109,7 @@ const UnscheduledCard = ({
         </p>
       </div>
       {card.isCompleted && (
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
       )}
     </div>
 

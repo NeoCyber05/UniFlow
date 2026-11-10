@@ -8,7 +8,7 @@ import {
   transition,
   useTempoTransition,
 } from "@animate-ui/react/utils/motion";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import {
   CalendarClock,
   CalendarDays,
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { ViewMode } from "../_types";
 
 type CalendarToolbarProps = {
+  actions?: ReactNode;
   titleLabel: string;
   rangeLabel: string;
   scheduledItemsCount: number;
@@ -39,6 +40,7 @@ type CalendarToolbarProps = {
   onChangeViewMode: (mode: ViewMode) => void;
   onPrevious: () => void;
   onToday: () => void;
+  isToday: boolean;
   onNext: () => void;
 };
 
@@ -72,6 +74,7 @@ const StatChip = ({
 );
 
 export const CalendarToolbar = ({
+  actions,
   titleLabel,
   rangeLabel,
   scheduledItemsCount,
@@ -86,6 +89,7 @@ export const CalendarToolbar = ({
   onChangeViewMode,
   onPrevious,
   onToday,
+  isToday,
   onNext,
 }: CalendarToolbarProps) => {
   const slide = useTempoTransition(spring.selection);
@@ -110,7 +114,8 @@ export const CalendarToolbar = ({
           <button
             type="button"
             onClick={onToday}
-            className={cn(controlClassName, "border border-neutral-200 bg-white px-3.5 text-sm font-medium text-neutral-800 shadow-xs hover:bg-neutral-50")}
+            disabled={isToday}
+            className={cn(controlClassName, "border border-neutral-200 bg-white px-3.5 text-sm font-medium text-neutral-800 shadow-xs hover:bg-neutral-50 disabled:cursor-default disabled:opacity-40")}
           >
             {tr("calendar.toolbar.today")}
           </button>
@@ -149,13 +154,13 @@ export const CalendarToolbar = ({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <ul aria-label={tr("calendar.toolbar.statsAria")} className="hidden items-center gap-1.5 md:flex">
-            <StatChip dotClassName="bg-violet-500" count={scheduledItemsCount} label={tr("calendar.toolbar.statScheduled")} />
+          <ul aria-label={tr("calendar.toolbar.statsAria")} className="hidden items-center gap-1.5 2xl:flex">
+            <StatChip dotClassName="bg-slate-400" count={scheduledItemsCount} label={tr("calendar.toolbar.statScheduled")} />
             {completedItemsCount > 0 && (
-              <StatChip dotClassName="bg-emerald-500" count={completedItemsCount} label={tr("calendar.toolbar.statCompleted")} />
+              <StatChip dotClassName="bg-stone-400" count={completedItemsCount} label={tr("calendar.toolbar.statCompleted")} />
             )}
             {overdueItemsCount > 0 && (
-              <StatChip dotClassName="bg-rose-500" count={overdueItemsCount} label={tr("calendar.toolbar.statOverdue")} tone="text-rose-700" />
+              <StatChip dotClassName="bg-[#b78b73]" count={overdueItemsCount} label={tr("calendar.toolbar.statOverdue")} tone="text-[#855c48] dark:text-[#e4c5b2]" />
             )}
           </ul>
 
@@ -190,7 +195,7 @@ export const CalendarToolbar = ({
                   )}
                   <Icon
                     aria-hidden
-                    className={cn("relative z-10 h-4 w-4 transition-colors duration-200", isActive ? "text-violet-600" : "text-neutral-400")}
+                    className={cn("relative z-10 h-4 w-4 transition-colors duration-200", isActive ? "text-neutral-800" : "text-neutral-400")}
                   />
                   <span className="relative z-10">{tr(labelKey)}</span>
                 </button>
@@ -207,7 +212,7 @@ export const CalendarToolbar = ({
               "gap-2 border px-3 text-sm font-medium shadow-xs",
               isUnscheduledCollapsed
                 ? "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900"
-                : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100",
+                : "border-neutral-300 bg-neutral-100 text-neutral-900 hover:bg-neutral-200",
             )}
           >
             <CalendarX2 aria-hidden className="h-4 w-4 shrink-0" />
@@ -215,13 +220,14 @@ export const CalendarToolbar = ({
             <span
               className={cn(
                 "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
-                isUnscheduledCollapsed ? "bg-neutral-100 text-neutral-600" : "bg-violet-600 text-white",
+                isUnscheduledCollapsed ? "bg-neutral-100 text-neutral-600" : "bg-neutral-800 text-white",
               )}
             >
               {filteredUnscheduledCount}
             </span>
           </button>
         </div>
+        {actions && <div className="ml-auto [&>div>div]:h-auto [&>div>div]:px-0">{actions}</div>}
       </div>
     </ReducedMotionConfig>
   );
