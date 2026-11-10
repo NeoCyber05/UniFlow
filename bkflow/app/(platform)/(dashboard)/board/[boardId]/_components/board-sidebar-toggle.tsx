@@ -1,5 +1,6 @@
 "use client";
 
+import { useMatch } from "react-router";
 import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,17 +17,20 @@ export const BoardSidebarToggle = ({
   className,
 }: BoardSidebarToggleProps = {}) => {
   const isMounted = useIsMounted();
+  const isCalendar = !!useMatch("/board/:boardId/calendar");
+  const calendarExpanded = useBoardSidebar((state) => state.calendarExpanded);
+  const toggleCalendar = useBoardSidebar((state) => state.toggleCalendar);
   const isOpen = useBoardSidebar((state) => state.isOpen);
   const toggle = useBoardSidebar((state) => state.toggle);
 
-  const effectiveIsOpen = isMounted ? isOpen : true;
+  const effectiveIsOpen = isCalendar ? calendarExpanded : isMounted ? isOpen : true;
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon"
-      onClick={toggle}
+      onClick={isCalendar ? toggleCalendar : toggle}
       className={cn(
         "hidden md:flex h-8 w-8 text-foreground hover:bg-muted rounded-lg",
         effectiveIsOpen && "bg-muted text-foreground",

@@ -25,7 +25,7 @@ export function CalendarSidebar({ anchorDate, today, occurrencesByDay, onSelect,
   const shiftMonth = (step: number) => onSelect(new Date(Date.UTC(parts.year, parts.month + step, 1, 5)));
 
   return (
-    <aside className="hidden w-[280px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-5 xl:block">
+    <aside className="hidden w-[240px] shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-5 xl:block">
       <div className="mb-5 flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold capitalize text-neutral-900">{monthTitle}</h2>
         <div className="flex">
@@ -34,7 +34,7 @@ export function CalendarSidebar({ anchorDate, today, occurrencesByDay, onSelect,
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {getWeekDays().map((day) => <span key={day} className="pb-2 text-center text-[10px] font-medium text-neutral-500">{day}</span>)}
+        {getWeekDays().map((day) => <span key={day} className="pb-2 text-center text-xs font-medium text-neutral-500">{day}</span>)}
         {getMonthGridRange(anchorDate).days.map((day) => {
           const key = getGmt7DayKey(day);
           const active = key === selected;
@@ -50,7 +50,7 @@ export function CalendarSidebar({ anchorDate, today, occurrencesByDay, onSelect,
         <div className="space-y-2">
           {rows.map((row) => <button type="button" key={row.id} onClick={() => onOpen(row.item.cardId)} className={cn("block w-full rounded-lg border p-3 text-left focus-visible:ring-2 focus-visible:ring-neutral-500", getOccurrenceTone(row))}>
             <span className={cn("block text-sm font-medium", row.item.isCompleted && "line-through")}>{row.item.title}</span>
-            <span className="mt-1 block text-xs opacity-75">{row.item.type === "card" && row.item.scheduledOn ? tr("calendar.occurrence.work") : formatGmt7Time(row.date)}</span>
+            <span className="mt-1 block text-xs opacity-75">{row.item.type === "card" && row.item.displayKind === "deadline" ? tr("calendar.occurrence.deadline") : tr("calendar.occurrence.work")} · {row.item.type === "card" && row.item.scheduledOn ? tr("calendar.occurrence.schedule") : formatGmt7Time(row.date)}</span>
           </button>)}
           {rows.length === 0 && <p className="text-xs leading-5 text-neutral-500">{tr("calendar.empty.day")}</p>}
         </div>

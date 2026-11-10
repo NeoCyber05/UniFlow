@@ -26,7 +26,6 @@ const WEEKDAY_LABEL_KEYS = [
   "agenda.weekday.5",
   "agenda.weekday.6",
 ] as const;
-const RING_RADIUS = 30;
 
 type TodoInsightsProps = {
   boardId: string;
@@ -103,57 +102,27 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
   return (
     <ReducedMotionConfig>
       <aside className="flex flex-col gap-3">
-        {/* Tiến độ hôm nay: đã xong / (đã xong + quá hạn + hôm nay) */}
-        <section className="rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4">
-          <div className="flex items-center gap-4">
-            <div className="relative h-[76px] w-[76px] shrink-0">
-              <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-                <circle cx="38" cy="38" r={RING_RADIUS} fill="none" strokeWidth="8" className="stroke-neutral-200" />
-                <motion.circle
-                  cx="38"
-                  cy="38"
-                  r={RING_RADIUS}
-                  fill="none"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  className="stroke-violet-600"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: ratio, opacity: ratio === 0 ? 0 : 1 }}
-                  transition={progressSpring}
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums text-neutral-900">
-                {Math.round(ratio * 100)}%
-              </span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-neutral-900">{tr("common.today")}</h3>
-              <p className="text-xs text-neutral-500">
-                {stats.total === 0
-                  ? tr("insights.noDueToday")
-                  : tr("insights.doneCount", { done: stats.doneToday, total: stats.total })}
-              </p>
-              {stats.next && (
-                <p className="mt-2 line-clamp-2 text-xs text-neutral-600">
-                  <span className="font-semibold text-neutral-800">{tr("insights.next")}</span> {stats.next.title}
-                  {nextDue && (
-                    <span className="text-neutral-500">
-                      {" "}· {nextDue.toLocaleTimeString(getIntlLocale(), { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })}
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
+        <section className="border-b border-border pb-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-foreground">{tr("common.today")}</h3>
+            <span className="text-xs tabular-nums text-muted-foreground">{tr("insights.doneCount", { done: stats.doneToday, total: stats.total })}</span>
           </div>
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <motion.div className="h-full rounded-full bg-slate-500" initial={{ width: 0 }} animate={{ width: `${ratio * 100}%` }} transition={progressSpring} />
+          </div>
+          {stats.next && <button type="button" onClick={() => onOpen(stats.next!.id)} className="mt-4 w-full rounded-lg bg-slate-50 p-3 text-left text-sm hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800">
+            <span className="mb-1 block text-xs text-muted-foreground">{tr("insights.next")}{nextDue && ` · ${nextDue.toLocaleTimeString(getIntlLocale(), { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })}`}</span>
+            <span className="font-medium">{stats.next.title}</span>
+          </button>}
         </section>
 
         {/* 7 ngày tới */}
-        <section className="rounded-2xl border border-white/40 glass-row p-4">
+        <section className="border-b border-border py-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-neutral-900">{tr("insights.next7")}</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{tr("insights.next7")}</h3>
             <Link
               href={`/board/${boardId}/calendar`}
-              className="flex items-center gap-1 text-xs font-semibold text-violet-700 transition-colors duration-200 hover:text-violet-900"
+              className="flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:text-foreground"
             >
               {tr("insights.openCalendar")} <ArrowRight className="h-3 w-3" />
             </Link>
@@ -170,17 +139,17 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
                   title={day.count > 0 ? tr("insights.dueCount", { count: day.count }) : tr("insights.noTasks")}
                   className={cn(
                     "flex flex-col items-center gap-0.5 rounded-xl py-2 transition-colors duration-200 cursor-pointer",
-                    index === 0 ? "bg-violet-600 text-white" : "bg-neutral-50 text-neutral-800 hover:bg-violet-50",
-                    selected && "ring-2 ring-violet-500 ring-offset-1",
+                    index === 0 ? "bg-neutral-900 text-white" : "bg-neutral-50 text-neutral-800 hover:bg-neutral-100",
+                    selected && "ring-2 ring-slate-500 ring-offset-1",
                   )}
                 >
-                  <span className={cn("text-[10px] font-semibold", index === 0 ? "text-violet-100" : "text-neutral-500")}>
+                  <span className={cn("text-[10px] font-semibold", index === 0 ? "text-neutral-100" : "text-neutral-500")}>
                     {day.weekday}
                   </span>
-                  <span className="text-sm font-bold tabular-nums">{day.date}</span>
+                  <span className="text-sm font-semibold tabular-nums">{day.date}</span>
                   <span className="flex h-1.5 items-center gap-0.5">
                     {Array.from({ length: Math.min(day.count, 3) }, (_, dot) => (
-                      <span key={dot} className={cn("h-1 w-1 rounded-full", index === 0 ? "bg-white" : "bg-violet-500")} />
+                      <span key={dot} className={cn("h-1 w-1 rounded-full", index === 0 ? "bg-white" : "bg-slate-500")} />
                     ))}
                   </span>
                 </button>
@@ -191,15 +160,15 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
 
         {/* Việc của ngày đang chọn */}
         {selectedDayKey && (
-          <section className="rounded-2xl border border-white/40 glass-row p-4">
+          <section className="border-b border-border py-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-neutral-900">
+              <h3 className="text-sm font-semibold text-neutral-900">
                 {tr("agenda.tasksOnDay", { day: selectedDayKey.slice(8), month: selectedDayKey.slice(5, 7) })}
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedDayKey(null)}
-                className="text-xs font-semibold text-violet-700 transition-colors duration-200 hover:text-violet-900"
+                className="text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:text-foreground"
               >
                 {tr("common.close")}
               </button>
@@ -218,8 +187,8 @@ export const TodoInsights = ({ boardId, groups, onOpen }: TodoInsightsProps) => 
 
         {/* Theo môn học: bấm để lọc nhanh */}
         {stats.courses.length > 0 && (
-          <section className="rounded-2xl border border-white/40 glass-row p-4">
-            <h3 className="mb-2 text-sm font-bold text-neutral-900">{tr("insights.byCourse")}</h3>
+          <section className="border-b border-border py-4">
+            <h3 className="mb-2 text-sm font-semibold text-neutral-900">{tr("insights.byCourse")}</h3>
             <div className="flex flex-col">
               {stats.courses.map((course) => (
                 <button

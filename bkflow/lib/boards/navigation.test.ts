@@ -7,6 +7,7 @@ test("rows and columns share one task navigation entry", () => {
     const items = getBoardNavigation("b1", pathname);
     assert.deepEqual(items.map(item => item.label), ["Việc cần làm", "Lịch", "Sơ đồ"]);
     assert.deepEqual(items.filter(item => item.active).map(item => item.id), ["tasks"]);
+    assert.equal(items.find(item => item.id === "tasks")?.href, "/board/b1/list");
   }
 });
 

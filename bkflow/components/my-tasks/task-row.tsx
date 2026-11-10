@@ -75,7 +75,7 @@ export const TaskRow = memo(function TaskRow({
         if (!(event.target as HTMLElement).closest("button,a,input,[role=dialog]")) onOpen(task.id);
       }}
       className={cn(
-        "group flex cursor-pointer items-center gap-3 rounded-xl border glass-row px-3 py-2.5 transition hover:border-violet-200 hover:shadow-sm",
+        "group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-slate-300 hover:bg-muted/30",
         isSelected ? "border-violet-300 ring-2 ring-violet-100" : "border-neutral-200",
       )}
     >
@@ -97,10 +97,10 @@ export const TaskRow = memo(function TaskRow({
         className={cn(
           "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200",
           task.isCompleted
-            ? "border-emerald-500 bg-emerald-500 text-white"
+            ? "border-slate-500 bg-slate-500 text-white"
             : isOverdue
-              ? "border-rose-300 hover:border-rose-500 hover:bg-rose-50"
-              : "border-neutral-300 hover:border-violet-500 hover:bg-violet-50",
+              ? "border-[#c9a58e] hover:border-[#855c48] hover:bg-[#f7eee8]"
+              : "border-neutral-300 hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800",
         )}
       >
         <AnimatePresence initial={false}>
@@ -132,7 +132,7 @@ export const TaskRow = memo(function TaskRow({
           {due && (
             <span className={cn("task-chip", isOverdue && "task-chip-danger", isDueToday && "task-chip-warning")}>
               {isOverdue || isDueToday
-                ? <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", isOverdue ? "bg-rose-500" : "bg-amber-500")} />
+                ? <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", isOverdue ? "bg-[#b78b73]" : "bg-amber-500")} />
                 : <CalendarDays aria-hidden="true" className="h-3 w-3 shrink-0" />}
               {dueLabel(due, now, isOverdue, isDueToday, Boolean(task.dueDate))}
             </span>

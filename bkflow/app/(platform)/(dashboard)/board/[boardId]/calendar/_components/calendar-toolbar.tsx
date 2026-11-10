@@ -8,7 +8,7 @@ import {
   transition,
   useTempoTransition,
 } from "@animate-ui/react/utils/motion";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import {
   CalendarClock,
   CalendarDays,
@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { ViewMode } from "../_types";
 
 type CalendarToolbarProps = {
+  actions?: ReactNode;
   titleLabel: string;
   rangeLabel: string;
   scheduledItemsCount: number;
@@ -73,6 +74,7 @@ const StatChip = ({
 );
 
 export const CalendarToolbar = ({
+  actions,
   titleLabel,
   rangeLabel,
   scheduledItemsCount,
@@ -152,13 +154,13 @@ export const CalendarToolbar = ({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-3">
-          <ul aria-label={tr("calendar.toolbar.statsAria")} className="hidden items-center gap-1.5 md:flex">
+          <ul aria-label={tr("calendar.toolbar.statsAria")} className="hidden items-center gap-1.5 2xl:flex">
             <StatChip dotClassName="bg-slate-400" count={scheduledItemsCount} label={tr("calendar.toolbar.statScheduled")} />
             {completedItemsCount > 0 && (
               <StatChip dotClassName="bg-stone-400" count={completedItemsCount} label={tr("calendar.toolbar.statCompleted")} />
             )}
             {overdueItemsCount > 0 && (
-              <StatChip dotClassName="bg-[#b78b73]" count={overdueItemsCount} label={tr("calendar.toolbar.statOverdue")} tone="text-[#855c48]" />
+              <StatChip dotClassName="bg-[#b78b73]" count={overdueItemsCount} label={tr("calendar.toolbar.statOverdue")} tone="text-[#855c48] dark:text-[#e4c5b2]" />
             )}
           </ul>
 
@@ -225,6 +227,7 @@ export const CalendarToolbar = ({
             </span>
           </button>
         </div>
+        {actions && <div className="ml-auto [&>div>div]:h-auto [&>div>div]:px-0">{actions}</div>}
       </div>
     </ReducedMotionConfig>
   );

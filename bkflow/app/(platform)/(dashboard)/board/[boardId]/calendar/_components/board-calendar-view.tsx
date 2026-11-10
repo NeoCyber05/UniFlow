@@ -68,6 +68,7 @@ import { useCalendarGridSize } from "../_hooks/use-calendar-grid-size";
 import { ColumnResizeHandles } from "./board-calendar/grid-resize-handles";
 
 export const BoardCalendarView = ({
+  toolbarActions,
   boardId,
   lists,
   currentUserId,
@@ -563,6 +564,7 @@ export const BoardCalendarView = ({
     <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
     <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white font-sans text-neutral-900">
       <CalendarToolbar
+        actions={toolbarActions}
         titleLabel={titleLabel}
         rangeLabel={rangeLabel}
         scheduledItemsCount={scheduledItemsCount}

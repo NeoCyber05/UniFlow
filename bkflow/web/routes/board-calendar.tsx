@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Navigate, useParams, useSearchParams } from "react-router";
+import { useEffect, type ReactNode } from "react";
+import { Navigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import type { loadBoardCalendar } from "@/server/views/board-calendar";
@@ -14,6 +14,7 @@ import { useView } from "../lib/use-view";
 type View = Awaited<ReturnType<typeof loadBoardCalendar>>;
 
 export default function BoardCalendarRoute() {
+  const { calendarActions } = useOutletContext<{ calendarActions?: ReactNode }>() ?? {};
   const { boardId = "" } = useParams<{ boardId: string }>();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -43,6 +44,7 @@ export default function BoardCalendarRoute() {
   return (
     <div className="h-full p-4">
       <BoardCalendarView
+        toolbarActions={calendarActions}
         boardId={data.boardId}
         lists={data.lists}
         currentUserId={data.currentUserId}

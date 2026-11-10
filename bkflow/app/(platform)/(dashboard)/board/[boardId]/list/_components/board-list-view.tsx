@@ -4,7 +4,7 @@ import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Label, List } from "@prisma/client";
-import { AlertCircle, ListTodo, Plus } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
 import { useLocalStorage } from "usehooks-ts";
 
 import { BoardFilters } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-filters";
@@ -161,19 +161,17 @@ export const BoardListView = ({
   };
 
   return (
-    <div className="flex h-full items-start gap-4 overflow-hidden p-4">
-      <div className="h-full min-w-0 flex-1 overflow-y-auto p-5 styled-scrollbar md:p-6">
+    <div className="personal-workspace flex h-full items-start overflow-hidden bg-background">
+      <div className="h-full min-w-0 flex-1 overflow-y-auto px-4 py-6 styled-scrollbar sm:px-6 lg:px-8">
         <div
           className={cn(
             "mx-auto",
-            showInsights ? "max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-8" : "max-w-3xl",
+            showInsights ? "max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-x-8 xl:gap-y-0" : "max-w-3xl",
           )}
         >
-        <div className="min-w-0 space-y-5">
-          <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <header className="col-span-full mb-6 flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-neutral-900">
-                <ListTodo className="h-6 w-6 text-violet-600" />
+              <h1 className="flex items-center gap-2 text-[28px] font-semibold tracking-tight text-foreground">
                 {tr("boardList.title")}
               </h1>
               <p className="mt-1 text-sm text-neutral-500">
@@ -183,7 +181,7 @@ export const BoardListView = ({
                     {" · "}
                     {tr("boardList.pendingCount", { count: pendingCount })}
                     {overdueCount > 0 && (
-                      <span className="font-semibold text-rose-600">
+                      <span className="font-medium text-[#855c48] dark:text-[#dab69f]">
                         {tr("boardList.overdueCount", { count: overdueCount })}
                       </span>
                     )}
@@ -201,6 +199,7 @@ export const BoardListView = ({
             </div>
           </header>
 
+        <div className="min-w-0 space-y-5">
           {error && (
             <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-700">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -223,9 +222,9 @@ export const BoardListView = ({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex w-full items-center gap-2 rounded-xl border border-white/40 glass-row px-3.5 py-3 text-left text-sm text-neutral-600 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-700"
+              className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-4 py-3.5 text-left text-sm text-muted-foreground transition-colors hover:border-slate-400 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <Plus className="h-4 w-4 text-violet-600" aria-hidden="true" />
+              <Plus className="h-4 w-4 text-slate-600" aria-hidden="true" />
               {tr("boardList.addTaskButton")}
             </button>
           ))}
@@ -234,11 +233,11 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
             <>
               {!hasAnyAgendaTask ? (
-                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
+                <p className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyAgenda")}
                 </p>
               ) : !hasVisibleAgendaTask ? (
-                <div className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
+                <div className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyFiltered")}{" "}
                   <button
                     type="button"
@@ -265,7 +264,7 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 2: THEO CỘT KANBAN --- */
             <>
               {(listData?.groups ?? []).length === 0 && (
-                <p className="rounded-2xl glass-row py-10 text-center text-sm text-neutral-600">
+                <p className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyBoardLists")}
                 </p>
               )}
@@ -286,7 +285,7 @@ export const BoardListView = ({
           )}
         </div>
         {showInsights && (
-          <div className="sticky top-0 hidden xl:block">
+          <div className="sticky top-0 hidden border-l border-border pl-6 xl:block">
             <TodoInsights boardId={boardId} groups={agendaGroups} onOpen={openTask} />
           </div>
         )}

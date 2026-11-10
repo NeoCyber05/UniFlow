@@ -138,7 +138,7 @@ export const CalendarOccurrenceItem = memo(function CalendarOccurrenceItem({
             <CheckCircle2 className="h-3 w-3 shrink-0 opacity-80" />
           )}
           {timeLabel && (
-            <span className="shrink-0 rounded bg-white/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
+            <span className="shrink-0 rounded bg-black/5 dark:bg-black/15 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
               {timeLabel}
             </span>
           )}

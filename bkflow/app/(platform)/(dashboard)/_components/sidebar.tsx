@@ -6,10 +6,12 @@ import { useUser } from "@/web/lib/auth";
 
 interface SidebarProps {
   storageKey?: string;
+  compact?: boolean;
 }
 
 export const Sidebar = ({
   storageKey: _storageKey = "t-sidebar-state",
+  compact = false,
 }: SidebarProps) => {
   const { isLoaded } = useUser();
 
@@ -23,5 +25,5 @@ export const Sidebar = ({
     );
   }
 
-  return <MySidebarNav />;
+  return <MySidebarNav compact={compact} />;
 };

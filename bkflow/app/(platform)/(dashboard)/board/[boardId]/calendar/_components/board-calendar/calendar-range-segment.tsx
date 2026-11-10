@@ -187,7 +187,7 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
               <span className="shrink-0 text-[10px] font-semibold opacity-70">↤</span>
             )}
             {startTimeLabel && (
-              <span className="shrink-0 rounded bg-white/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
+              <span className="shrink-0 rounded bg-black/5 dark:bg-black/15 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
                 {startTimeLabel}
               </span>
             )}
@@ -196,7 +196,7 @@ export const CalendarRangeSegmentItem = memo(function CalendarRangeSegmentItem({
             )}
             <span className="truncate">{segment.range.item.title}</span>
             {endTimeLabel && (
-              <span className="ml-auto shrink-0 rounded bg-white/70 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
+              <span className="ml-auto shrink-0 rounded bg-black/5 dark:bg-black/15 px-1 py-0.5 text-[10px] font-semibold tabular-nums opacity-90">
                 {endTimeLabel}
               </span>
             )}
