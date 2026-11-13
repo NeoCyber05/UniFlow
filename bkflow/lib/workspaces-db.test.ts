@@ -26,7 +26,7 @@ test("creates exactly one default workspace, only when the user has none", async
 
   assert.equal(rows.length, 1);
   assert.equal(first.length, 1);
-  assert.equal(first[0].title, "Workspace của tôi");
+  assert.equal(first[0].title, "Cá nhân");
   assert.equal(first[0].isCurrent, true);
   assert.equal(second.length, 1);
 });

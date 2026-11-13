@@ -16,7 +16,7 @@ export const BoardSidebar = ({ compact = false }: { compact?: boolean }) => {
 
   if (compact && !expanded) {
     return (
-      <aside aria-label={tr("boardShell.sidebar.navLabel")} className="hidden h-full w-16 shrink-0 flex-col border-r border-border bg-sidebar py-3 md:flex">
+      <aside aria-label={tr("boardShell.sidebar.navLabel")} className="hidden h-full w-16 shrink-0 flex-col border-r border-border glass-surface py-3 md:flex">
         <div className="min-h-0 flex-1 overflow-y-auto px-2"><Sidebar compact /></div>
       </aside>
     );
@@ -34,7 +34,7 @@ export const BoardSidebar = ({ compact = false }: { compact?: boolean }) => {
     >
       <div
         className={cn(
-          "w-60 flex flex-col h-full overflow-hidden border-r border-border bg-sidebar transition-transform duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          "w-60 flex flex-col h-full overflow-hidden border-r border-border glass-surface transition-transform duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
           !compact && !effectiveIsOpen && "-translate-x-full"
         )}
       >

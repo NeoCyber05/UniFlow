@@ -35,22 +35,22 @@ export const ThemeGallery = ({ appearance, onSelect, saveStatus }: ThemeGalleryP
       </div>
     </header>
 
-    <div aria-hidden="true" className="overflow-hidden rounded-2xl border border-border shadow-sm">
-      <div className="flex h-9 items-center gap-2 border-b border-border bg-header px-3">
+    <div aria-hidden="true" className="relative isolate overflow-hidden rounded-2xl border border-border shadow-sm">
+      <div className="workspace-wallpaper absolute inset-0 -z-10" style={BACKGROUNDS.find(item => item.id === appearance.background)?.style} />
+      <div className="glass-surface flex h-9 items-center gap-2 border-b border-border px-3">
         <span className="size-4 rounded bg-primary" />
         <span className="text-[10px] font-semibold text-foreground">UniFlow</span>
         <span className="mx-auto h-3 w-1/3 rounded bg-card/80" />
         <span className="size-4 rounded-full bg-primary/20" />
       </div>
       <div className="flex h-32 sm:h-40">
-        <div className="w-24 shrink-0 space-y-2 border-r border-sidebar-border bg-sidebar p-3 sm:w-32">
+        <div className="glass-surface w-24 shrink-0 space-y-2 border-r border-sidebar-border p-3 sm:w-32">
           <div className="h-5 rounded bg-sidebar-accent px-1.5 text-[9px] leading-5 text-sidebar-accent-foreground">{tr("theme.preview.todo")}</div>
           <div className="px-1.5 text-[9px] text-sidebar-foreground">{tr("theme.preview.calendar")}</div>
           <div className="px-1.5 text-[9px] text-sidebar-foreground">{tr("theme.preview.notes")}</div>
         </div>
         <div className="relative flex min-w-0 flex-1 items-center p-4 sm:p-6">
-          <div className="workspace-wallpaper absolute inset-0" style={BACKGROUNDS.find(item => item.id === appearance.background)?.style} />
-          <div className="relative w-full max-w-64 rounded-xl border border-border bg-card/95 p-3 shadow-sm">
+          <div className="glass-row relative w-full max-w-64 rounded-xl border border-border p-3 shadow-sm">
             <div className="text-[11px] font-semibold text-card-foreground">{tr("theme.preview.heading")}</div>
             <div className="mb-3 mt-2 h-1.5 w-2/3 rounded bg-muted" />
             <span className="inline-block rounded-md bg-primary px-2 py-1 text-[9px] font-medium text-primary-foreground">{tr("theme.preview.cta")}</span>

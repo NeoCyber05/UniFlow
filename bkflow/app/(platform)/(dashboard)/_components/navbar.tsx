@@ -107,7 +107,7 @@ const useAssistantShortcut = () => {
 export const Navbar = () => {
     useAssistantShortcut();
     return (
-        <nav aria-label={tr("navbar.toolbar")} className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border bg-header/95 backdrop-blur-sm flex items-center justify-between gap-x-3">
+        <nav aria-label={tr("navbar.toolbar")} className="fixed z-50 top-0 px-4 md:px-6 w-full h-14 border-b border-border glass-surface flex items-center justify-between gap-x-3">
             <RealtimeNotificationSync />
             <NotificationToasts />
 

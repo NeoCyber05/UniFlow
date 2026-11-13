@@ -12,7 +12,6 @@ import { ImportantFilterFromUrl } from "@/components/boards/important-filter-fro
 import { BoardNavbar } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-navbar";
 import { BoardShell } from "@/app/(platform)/(dashboard)/board/[boardId]/_components/board-shell";
 import { tr } from "@/lib/i18n";
-import { formatWorkspaceTitle } from "@/lib/workspaces";
 
 import { useTitle } from "../lib/use-title";
 import { prefetchRouteViews } from "../lib/prefetch-route";
@@ -38,7 +37,7 @@ export default function BoardLayoutRoute() {
   useEffect(() => {
     prefetchRouteViews(queryClient, pathname, search);
   }, [pathname, search, queryClient]);
-  useTitle(data?.title ? formatWorkspaceTitle(data.title) : tr("route.titleBoard"));
+  useTitle(data?.isWorkspaceBoard ? tr("route.titlePersonalSpace") : data?.title || tr("route.titleBoard"));
 
   if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">{tr("route.boardLoadError")} <button type="button" className="underline" onClick={() => void refetch()}>{tr("route.retry")}</button></div>;
   if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label={tr("route.boardLoading")} /></div>;

@@ -10,7 +10,7 @@ import type { MyTasksContext } from "./types";
 
 export const getMyTasksContext = async (userId: string): Promise<MyTasksContext> => {
   if (!userId) {
-    return { workspaces: [], currentWorkspaceId: null, board: null, courses: [] };
+    return { board: null, courses: [] };
   }
 
   const workspaces = await getOrCreateWorkspaces(userId);
@@ -46,8 +46,6 @@ export const getMyTasksContext = async (userId: string): Promise<MyTasksContext>
     : null;
 
   return {
-    workspaces: workspaces.map(({ id, title, icon, color, order, isCurrent }) => ({ id, title, icon, color, order, isCurrent })),
-    currentWorkspaceId: currentWorkspace?.id ?? null,
     board,
     courses,
   };

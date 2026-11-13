@@ -161,7 +161,7 @@ export const BoardListView = ({
   };
 
   return (
-    <div className="personal-workspace flex h-full items-start overflow-hidden bg-background">
+    <div className="personal-workspace flex h-full items-start overflow-hidden">
       <div className="h-full min-w-0 flex-1 overflow-y-auto px-4 py-6 styled-scrollbar sm:px-6 lg:px-8">
         <div
           className={cn(
@@ -169,7 +169,7 @@ export const BoardListView = ({
             showInsights ? "max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-x-8 xl:gap-y-0" : "max-w-3xl",
           )}
         >
-          <header className="col-span-full mb-6 flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+          <header className="glass-surface col-span-full mb-6 flex flex-col gap-4 rounded-xl border border-border px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="flex items-center gap-2 text-[28px] font-semibold tracking-tight text-foreground">
                 {tr("boardList.title")}
@@ -181,7 +181,7 @@ export const BoardListView = ({
                     {" · "}
                     {tr("boardList.pendingCount", { count: pendingCount })}
                     {overdueCount > 0 && (
-                      <span className="font-medium text-[#855c48] dark:text-[#dab69f]">
+                      <span className="rounded bg-[#f7eee8] px-1.5 font-medium text-[#855c48] dark:bg-[#35291f] dark:text-[#dab69f]">
                         {tr("boardList.overdueCount", { count: overdueCount })}
                       </span>
                     )}
@@ -222,7 +222,7 @@ export const BoardListView = ({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-4 py-3.5 text-left text-sm text-muted-foreground transition-colors hover:border-slate-400 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              className="glass-row flex w-full items-center gap-2 rounded-lg border border-border px-4 py-3.5 text-left text-sm text-muted-foreground transition-colors hover:border-slate-400 hover:bg-card/95 focus-visible:outline-2 focus-visible:outline-ring"
             >
               <Plus className="h-4 w-4 text-slate-600" aria-hidden="true" />
               {tr("boardList.addTaskButton")}
@@ -233,11 +233,11 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 1: THEO THỜI HẠN / HÔM NAY / VIỆC NHÓM --- */
             <>
               {!hasAnyAgendaTask ? (
-                <p className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
+                <p className="glass-row rounded-lg border border-border py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyAgenda")}
                 </p>
               ) : !hasVisibleAgendaTask ? (
-                <div className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
+                <div className="glass-row rounded-lg border border-border py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyFiltered")}{" "}
                   <button
                     type="button"
@@ -264,7 +264,7 @@ export const BoardListView = ({
             /* --- CHẾ ĐỘ 2: THEO CỘT KANBAN --- */
             <>
               {(listData?.groups ?? []).length === 0 && (
-                <p className="rounded-lg border border-border bg-card py-10 text-center text-sm text-neutral-600">
+                <p className="glass-row rounded-lg border border-border py-10 text-center text-sm text-neutral-600">
                   {tr("boardList.emptyBoardLists")}
                 </p>
               )}
@@ -285,7 +285,7 @@ export const BoardListView = ({
           )}
         </div>
         {showInsights && (
-          <div className="sticky top-0 hidden border-l border-border pl-6 xl:block">
+          <div className="glass-surface sticky top-0 hidden rounded-xl border border-border p-5 xl:block">
             <TodoInsights boardId={boardId} groups={agendaGroups} onOpen={openTask} />
           </div>
         )}

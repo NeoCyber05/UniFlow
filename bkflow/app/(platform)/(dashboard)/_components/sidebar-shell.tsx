@@ -9,7 +9,7 @@ export const SidebarShell = ({ children, fullBleed = false }: { children: React.
     return (
         <div className="workspace-shell min-h-screen w-full pt-14">
             <div className="flex">
-                <div hidden={!isOpen} className={isOpen ? "hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block" : "hidden"}>
+                <div hidden={!isOpen} className={isOpen ? "hidden w-60 shrink-0 border-r border-sidebar-border glass-surface text-sidebar-foreground md:block" : "hidden"}>
                     <aside aria-label={tr("sidebar.navLabel")} className="sticky top-14 max-h-[calc(100dvh-3.5rem)] min-h-[calc(100vh-3.5rem)] overflow-y-auto px-2 py-3">
                         <Sidebar />
                     </aside>

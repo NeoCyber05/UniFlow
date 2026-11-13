@@ -2,13 +2,12 @@
 
 import { useId } from "react";
 import { tr } from "@/lib/i18n";
-import { Check, ChevronDown, Monitor, Moon, SlidersHorizontal, Sun } from "lucide-react";
+import { Check, Monitor, Moon, SlidersHorizontal, Sun } from "lucide-react";
 
-import { ACCENTS } from "@/constants/appearance";
 import { useAppearance } from "@/components/providers/appearance-provider";
-import { PageStyleControls } from "@/components/notes/page-style-controls";
 import { useColorMode } from "@/hooks/use-color-mode";
 import { cn } from "@/lib/utils";
+import { MAX_GLASS_TRANSPARENCY } from "@/web/lib/local-prefs";
 import { StartScreenSetting } from "./start-screen-setting";
 import { ThemeGallery } from "./theme-gallery";
 
@@ -16,6 +15,7 @@ export const AppearancePanel = () => {
   const appearance = useAppearance();
   const { mode, setMode } = useColorMode();
   const modeName = useId();
+  const glassId = useId();
 
   return <div className="space-y-7">
     <ThemeGallery appearance={appearance} onSelect={appearance.selectPreset} saveStatus={appearance.saveStatus} />
@@ -41,31 +41,23 @@ export const AppearancePanel = () => {
       </div>
     </fieldset>
 
-    <details className="group rounded-2xl border border-border bg-card">
-      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2.5 px-4 text-sm font-medium text-foreground focus-visible:rounded-2xl focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-        <SlidersHorizontal aria-hidden="true" className="size-4 text-muted-foreground" />
-        {tr("appearance.custom.title")}
-        <span className="ml-auto text-xs font-normal text-muted-foreground">{tr("appearance.custom.optional")}</span>
-        <ChevronDown aria-hidden="true" className="size-4 text-muted-foreground group-open:rotate-180" />
-      </summary>
-      <div className="space-y-5 border-t border-border px-4 pb-5 pt-4">
-        <fieldset>
-          <legend className="mb-3 text-xs font-medium text-foreground">{tr("appearance.accent.legend")}</legend>
-          <div className="grid grid-cols-7 gap-1 sm:grid-cols-14">
-            {ACCENTS.map(accent => <button key={accent.id} type="button" aria-label={accent.label} title={accent.label} aria-pressed={appearance.accent === accent.id} onClick={() => appearance.setAccent(accent.id)} className="flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-lg outline-offset-2 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-              <span className="flex size-7 items-center justify-center rounded-full ring-1 ring-black/10" style={{ backgroundColor: accent.swatch }}>
-                {appearance.accent === accent.id && <Check aria-hidden="true" className="size-4 rounded-full bg-black/65 p-0.5 text-white" />}
-              </span>
-            </button>)}
-          </div>
-        </fieldset>
-        <div className="border-t border-border pt-4">
-          <p className="mb-1 text-xs font-medium text-foreground">{tr("appearance.pageStyle.title")}</p>
-          <p className="mb-3 text-xs text-muted-foreground">{tr("appearance.pageStyle.desc")}</p>
-          <PageStyleControls value={appearance.pageStyle} onChange={appearance.setPageStyle} />
-        </div>
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-4">
+        <label htmlFor={glassId} className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+          <SlidersHorizontal aria-hidden="true" className="size-4 text-muted-foreground" />
+          {tr("appearance.glass.title")}
+        </label>
+        <output htmlFor={glassId} className="text-sm font-medium tabular-nums text-foreground">{appearance.glassTransparency}%</output>
       </div>
-    </details>
+      <p id={`${glassId}-hint`} className="mt-2 text-xs text-muted-foreground">{tr("appearance.glass.desc")}</p>
+      <input id={glassId} type="range" min={0} max={MAX_GLASS_TRANSPARENCY} step={1}
+        value={appearance.glassTransparency} onChange={event => appearance.setGlassTransparency(event.currentTarget.valueAsNumber)}
+        aria-describedby={`${glassId}-hint`}
+        className="mt-3 h-6 w-full cursor-pointer accent-primary focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{tr("appearance.glass.solid")}</span><span>{tr("appearance.glass.clear")}</span>
+      </div>
+    </section>
     <StartScreenSetting />
   </div>;
 };

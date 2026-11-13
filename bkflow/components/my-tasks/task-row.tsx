@@ -75,7 +75,7 @@ export const TaskRow = memo(function TaskRow({
         if (!(event.target as HTMLElement).closest("button,a,input,[role=dialog]")) onOpen(task.id);
       }}
       className={cn(
-        "group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-slate-300 hover:bg-muted/30",
+        "glass-row group flex cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-3 transition-colors hover:border-slate-300 hover:bg-card/95",
         isSelected ? "border-violet-300 ring-2 ring-violet-100" : "border-neutral-200",
       )}
     >
@@ -99,7 +99,7 @@ export const TaskRow = memo(function TaskRow({
           task.isCompleted
             ? "border-slate-500 bg-slate-500 text-white"
             : isOverdue
-              ? "border-[#c9a58e] hover:border-[#855c48] hover:bg-[#f7eee8]"
+              ? "border-[#73503b] hover:border-[#855c48] hover:bg-[#f7eee8] dark:border-[#c9a58e]"
               : "border-neutral-300 hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800",
         )}
       >

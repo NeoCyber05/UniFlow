@@ -3,9 +3,10 @@ import { z } from "zod";
 import { COURSE_COLOR_KEYS } from "@/lib/courses/course-colors";
 import { tr } from "@/lib/i18n";
 
-export const DEFAULT_WORKSPACE_TITLE = "Workspace của tôi";
+export const DEFAULT_WORKSPACE_TITLE = "Cá nhân";
 
 export const DEFAULT_WORKSPACE_TITLES = new Set([
+  "Cá nhân",
   "Workspace của tôi",
   "Không gian của tôi",
   "マイワークスペース",
@@ -14,10 +15,10 @@ export const DEFAULT_WORKSPACE_TITLES = new Set([
 
 /** Format tên workspace hiển thị trên UI: workspace mặc định tự động dịch theo ngôn ngữ hiện tại. */
 export const formatWorkspaceTitle = (title?: string | null): string => {
-  if (!title) return tr("workspace.label");
+  if (!title) return tr("common.personal");
   const trimmed = title.trim();
   if (DEFAULT_WORKSPACE_TITLES.has(trimmed)) {
-    return tr("workspace.defaultTitle");
+    return tr("common.personal");
   }
   return title;
 };
@@ -63,8 +64,7 @@ export const WorkspaceIconInput = z.string().trim().min(1).max(40).nullable()
 
 export const WorkspaceColorInput = z.enum(COURSE_COLOR_KEYS);
 
-/** Workspace mặc định để mở: cái được đánh dấu hiện tại, không có thì cái đầu tiên theo order. */
+/** One personal space; legacy workspace selection no longer changes the task list. */
 export const pickCurrentWorkspace = <T extends { isCurrent: boolean; order: number }>(workspaces: T[]): T | null =>
-  workspaces.find((workspace) => workspace.isCurrent)
-  ?? [...workspaces].sort((a, b) => a.order - b.order)[0]
+  [...workspaces].sort((a, b) => a.order - b.order)[0]
   ?? null;

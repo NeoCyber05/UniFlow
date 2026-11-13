@@ -6,7 +6,7 @@ import { MY_TASKS_CONTEXT_KEY, type MyTasksContext } from "@/lib/my-tasks/types"
 import { tr } from "@/lib/i18n";
 
 import type { loadMy } from "@/server/views/my";
-import { NoWorkspaceState } from "@/components/my-tasks/no-workspace-state";
+import { PersonalBoardError } from "@/components/my-tasks/personal-board-error";
 import { MyTasksView } from "@/components/my-tasks/my-tasks-view";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
 import { ViewSkeleton } from "@/components/view-skeleton";
@@ -36,7 +36,7 @@ const render = (data: View | undefined) => {
   if (!data) return <ViewSkeleton variant="rows" className="p-0" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;
-  if (!data.context) return <NoWorkspaceState />;
+  if (!data.context) return <PersonalBoardError />;
 
   return (
     <MyTasksView

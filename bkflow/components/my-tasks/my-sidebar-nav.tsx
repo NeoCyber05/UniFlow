@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import { AiLogo } from "@/components/ai-assistant/ai-logo";
-import { WorkspaceSwitcher } from "@/components/workspaces/workspace-switcher";
 import { useSettingsModal } from "@/hooks/use-settings-modal";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
@@ -113,13 +112,11 @@ export const MySidebarNav = ({ compact = false }: { compact?: boolean }) => {
     return preloadRouteCodeWhenIdle(getBoardNavigation(boardId, "").map((item) => item.href));
   }, [boardId]);
 
-  const workspaceBoardHref = context?.currentWorkspaceId ? `/workspace/${context.currentWorkspaceId}` : null;
   const assistantActive = pendingHref ? pendingHref === "/assistant" : pathname === "/assistant" || pathname.startsWith("/assistant/");
 
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
-      {!compact && <WorkspaceSwitcher />}
 
       <Link
         href="/assistant"
@@ -142,12 +139,11 @@ export const MySidebarNav = ({ compact = false }: { compact?: boolean }) => {
         <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{tr("nav.currentBoard")}</p>
       )}
 
-      {!compact && !boardId && workspaceBoardHref && (
-        <Link href={workspaceBoardHref} aria-current={pathname === workspaceBoardHref ? "page" : undefined} className={cn(compact && "justify-center px-0 [&>svg]:shrink-0", itemClassName(pathname === workspaceBoardHref))}>
+      {!compact && !boardId && (
+        <Link href="/my/today" className={itemClassName(false)}>
           <ListTodo className="h-5.5 w-5.5" />
           {tr("tasks.title")}
           <Count value={counts?.today} />
-          {pathname === workspaceBoardHref && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
         </Link>
       )}
       {navigation.map(item => {
