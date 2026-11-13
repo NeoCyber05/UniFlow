@@ -5,7 +5,7 @@ import { getOrCreateWorkspaceBoard } from "@/lib/workspace-board";
 import { pickCurrentWorkspace } from "@/lib/workspaces";
 import { getOrCreateWorkspaces } from "@/lib/workspaces-db";
 
-export const NO_CURRENT_WORKSPACE_ERROR = "Chưa có workspace hiện tại. Hãy tạo workspace trước.";
+export const NO_CURRENT_WORKSPACE_ERROR = "Không thể mở danh sách công việc cá nhân. Vui lòng thử lại.";
 
 /** Id bảng của workspace hiện tại; tạo bảng nếu chưa có. */
 export const resolveCurrentWorkspaceBoardId = async (

@@ -15,6 +15,24 @@ const write = (key: string, value: string) => {
   }
 };
 
+export const DEFAULT_GLASS_TRANSPARENCY = 56;
+export const MAX_GLASS_TRANSPARENCY = 70;
+const GLASS_KEY = "uniflow-glass-transparency";
+const normalizeGlassTransparency = (value: number) => Number.isFinite(value)
+  ? Math.max(0, Math.min(MAX_GLASS_TRANSPARENCY, Math.round(value)))
+  : DEFAULT_GLASS_TRANSPARENCY;
+
+export const getGlassTransparency = () => {
+  const value = read(GLASS_KEY);
+  return value === null || value.trim() === "" ? DEFAULT_GLASS_TRANSPARENCY : normalizeGlassTransparency(Number(value));
+};
+
+export const setGlassTransparency = (value: number) => {
+  const next = normalizeGlassTransparency(value);
+  write(GLASS_KEY, String(next));
+  return next;
+};
+
 export const START_PATHS = ["/my/today", "/my/calendar", "/my/upcoming", "/pages"] as const;
 export type StartPath = (typeof START_PATHS)[number];
 

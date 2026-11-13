@@ -89,10 +89,10 @@ export const TaskGroupSection = ({
           type="button"
           onClick={toggle}
           aria-expanded={isOpen}
-          className="group/head flex w-full items-center gap-2 rounded-md py-2 text-left focus-visible:outline-2 focus-visible:outline-ring"
+          className="glass-row group/head flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-ring"
         >
           <span className={cn("h-3.5 w-[3px] shrink-0 rounded-full", tone.bar)} />
-          <span className={cn("text-sm font-semibold", tone.text)}>{getAgendaGroupLabel(group.key) ?? group.label}</span>
+          <span className={cn("rounded bg-card/80 px-1.5 text-sm font-semibold", tone.text)}>{getAgendaGroupLabel(group.key) ?? group.label}</span>
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-neutral-100 px-1.5 text-[10px] font-bold text-neutral-600 tabular-nums">
             {group.tasks.length}
           </span>

@@ -57,7 +57,7 @@ test("tr and locale formatters switch between vi and ja cleanly", () => {
     assert.equal(tr("settings.title"), "Cài đặt");
     assert.equal(getIntlLocale(), "vi-VN");
     assert.equal(getDateFnsLocale().code, "vi");
-    assert.equal(formatWorkspaceTitle("Workspace của tôi"), "Workspace của tôi");
+    assert.equal(formatWorkspaceTitle("Workspace của tôi"), tr("common.personal"));
     assert.equal(formatWorkspaceTitle("Custom"), "Custom");
     assert.equal(formatDayMonth(new Date("2026-10-05T20:00:00Z"), "Asia/Ho_Chi_Minh"), "06/10");
 
@@ -67,7 +67,7 @@ test("tr and locale formatters switch between vi and ja cleanly", () => {
     assert.notEqual(tr("settings.title"), "Cài đặt");
     assert.equal(getIntlLocale(), "ja-JP");
     assert.equal(getDateFnsLocale().code, "ja");
-    assert.equal(formatWorkspaceTitle("Workspace của tôi"), "マイワークスペース");
+    assert.equal(formatWorkspaceTitle("Workspace của tôi"), tr("common.personal"));
     assert.equal(formatWorkspaceTitle("Custom"), "Custom");
     assert.match(
       intlDateFormat({ year: "numeric", month: "long", timeZone: "UTC" }).format(new Date("2026-10-15T00:00:00Z")),

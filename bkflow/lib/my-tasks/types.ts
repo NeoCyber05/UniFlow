@@ -47,19 +47,8 @@ export type MyTaskCounts = {
   byCourse: Record<string, number>;
 };
 
-export type SerializedWorkspace = {
-  id: string;
-  title: string;
-  icon: string | null;
-  color: string;
-  order: number;
-  isCurrent: boolean;
-};
-
 export type MyTasksContext = {
-  workspaces: SerializedWorkspace[];
-  currentWorkspaceId: string | null;
-  /** Bảng của workspace hiện tại (tạo lười nếu chưa có) */
+  /** One personal board, created on first use. */
   board: {
     id: string;
     lists: { id: string; title: string }[];

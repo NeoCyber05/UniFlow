@@ -155,7 +155,7 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
 
   return <Dialog open={open} onOpenChange={changeOpen}>
     <DialogTrigger asChild><Button variant="outline" aria-label={tr("search.title")} className="w-full max-w-md justify-start gap-2 text-muted-foreground">
-      <Search aria-hidden="true" className="size-4 shrink-0" /><span className="hidden sm:inline">{tr("search.placeholder")}</span><span className="sm:hidden">{tr("search.quick")}</span><kbd className="ml-auto hidden text-xs md:inline">Ctrl/⌘ K</kbd>
+      <Search aria-hidden="true" className="size-4 shrink-0" /><span className="hidden sm:inline">{tr("search.placeholder")}</span><span className="sm:hidden">{tr("search.quick")}</span>
     </Button></DialogTrigger>
     <DialogContent showCloseButton={false} className="max-h-[85dvh] w-[calc(100%-2rem)] gap-0 overflow-hidden p-0 sm:max-w-xl">
       <DialogTitle className="sr-only">{tr("search.title")}</DialogTitle>

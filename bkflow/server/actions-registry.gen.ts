@@ -65,11 +65,6 @@ import { deleteArchivedList as a62 } from "@/actions/lists/delete-archived-list"
 import { restoreList as a63 } from "@/actions/lists/restore-list";
 import { updateListOrder as a64 } from "@/actions/lists/update-list-order";
 import { updateList as a65 } from "@/actions/lists/update-list";
-import { createWorkspace as a66 } from "@/actions/workspaces/create-workspace";
-import { deleteWorkspace as a67 } from "@/actions/workspaces/delete-workspace";
-import { reorderWorkspaces as a68 } from "@/actions/workspaces/reorder-workspaces";
-import { setCurrentWorkspace as a69 } from "@/actions/workspaces/set-current-workspace";
-import { updateWorkspace as a70 } from "@/actions/workspaces/update-workspace";
 
 export const actionRegistry: Record<string, (input: unknown) => Promise<unknown>> = {
   "ai/analyze-capture-image": a0 as (input: unknown) => Promise<unknown>,
@@ -138,9 +133,4 @@ export const actionRegistry: Record<string, (input: unknown) => Promise<unknown>
   "lists/restore-list": a63 as (input: unknown) => Promise<unknown>,
   "lists/update-list-order": a64 as (input: unknown) => Promise<unknown>,
   "lists/update-list": a65 as (input: unknown) => Promise<unknown>,
-  "workspaces/create-workspace": a66 as (input: unknown) => Promise<unknown>,
-  "workspaces/delete-workspace": a67 as (input: unknown) => Promise<unknown>,
-  "workspaces/reorder-workspaces": a68 as (input: unknown) => Promise<unknown>,
-  "workspaces/set-current-workspace": a69 as (input: unknown) => Promise<unknown>,
-  "workspaces/update-workspace": a70 as (input: unknown) => Promise<unknown>,
 };

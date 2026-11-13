@@ -7,6 +7,7 @@ import { updateAppearance } from "@/actions/appearance/update-appearance";
 import { readPageStyle, type PageStyle } from "@/lib/notes/page-style";
 import { createAppearanceQueue, ALL_THEME_PRESETS, type ThemePresetId, type AppearanceSaveStatus } from "@/lib/appearance-presets";
 import { useAuth } from "@/web/lib/auth";
+import { getGlassTransparency, setGlassTransparency as saveGlassTransparency } from "@/web/lib/local-prefs";
 import {
   type AccentId,
   type Appearance,
@@ -16,6 +17,8 @@ import {
 
 type AppearanceContextValue = Appearance & {
   pageStyle: PageStyle;
+  glassTransparency: number;
+  setGlassTransparency: (value: number) => void;
   setAccent: (accent: AccentId) => void;
   setBackground: (background: BackgroundId) => void;
   setPageStyle: (pageStyle: PageStyle) => void;
@@ -47,6 +50,16 @@ export const AppearanceProvider = (props: AppearanceProviderProps) => {
 
 const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderProps) => {
   const [appearance, setAppearance] = useState<Appearance>(initialAppearance);
+  const [glassTransparency, setGlassTransparencyState] = useState(getGlassTransparency);
+  const setGlassTransparency = useCallback((value: number) => {
+    setGlassTransparencyState(saveGlassTransparency(value));
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--glass-transparency", `${glassTransparency}%`);
+    return () => { root.style.removeProperty("--glass-transparency"); };
+  }, [glassTransparency]);
   const { userId } = useAuth();
   const ownerRef = useRef(userId);
   const [saveStatus, setSaveStatus] = useState<AppearanceSaveStatus>("idle");
@@ -92,7 +105,7 @@ const AppearanceSession = ({ initialAppearance, children }: AppearanceProviderPr
   }, []);
 
   return (
-    <AppearanceContext.Provider value={{ ...appearance, pageStyle: readPageStyle(appearance.pageStyle), setAccent, setBackground, setPageStyle, selectPreset, saveStatus }}>
+    <AppearanceContext.Provider value={{ ...appearance, pageStyle: readPageStyle(appearance.pageStyle), glassTransparency, setGlassTransparency, setAccent, setBackground, setPageStyle, selectPreset, saveStatus }}>
       <div className="relative isolate h-full">
         <div
           aria-hidden

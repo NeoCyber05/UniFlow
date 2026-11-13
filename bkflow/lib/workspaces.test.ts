@@ -3,8 +3,8 @@ import { test } from "node:test";
 
 import { WorkspaceIconInput, parseWorkspaceIcon, pickCurrentWorkspace } from "./workspaces";
 
-test("pickCurrentWorkspace prefers isCurrent, then lowest order, else null", () => {
-  assert.equal(pickCurrentWorkspace([{ id: "a", isCurrent: false, order: 0 }, { id: "b", isCurrent: true, order: 1 }])?.id, "b");
+test("personal space stays on the first board regardless of old workspace selection", () => {
+  assert.equal(pickCurrentWorkspace([{ id: "a", isCurrent: false, order: 0 }, { id: "b", isCurrent: true, order: 1 }])?.id, "a");
   assert.equal(pickCurrentWorkspace([{ id: "a", isCurrent: false, order: 2 }, { id: "b", isCurrent: false, order: 1 }])?.id, "b");
   assert.equal(pickCurrentWorkspace([]), null);
 });
