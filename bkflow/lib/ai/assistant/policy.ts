@@ -42,7 +42,7 @@ export const getApplyPolicy = (operation: AiOperation): ApplyPolicy => APPLY_POL
 export const getConfirmation = (operation: AiOperation): "explicit" | null =>
   operation === "replace_content" ? "explicit" : null;
 
-/** Công cụ chỉ đọc: được chạy trực tiếp ở mọi request. */
+/** Công cụ chạy trực tiếp ở mọi request: chỉ đọc, hoặc chỉ tạo lời nhắc của chính người dùng (scheduleReminder). */
 export const READ_TOOLS = new Set([
   "getCurrentTime",
   "searchWorkspace",
@@ -53,6 +53,10 @@ export const READ_TOOLS = new Set([
   "showChart",
   "findCards",
   "getCardDetails",
+  "listRecentEmails",
+  "readEmail",
+  "searchSlackMessages",
+  "scheduleReminder",
 ]);
 
 type ToolInput = Record<string, unknown>;

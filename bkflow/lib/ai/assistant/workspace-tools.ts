@@ -15,7 +15,7 @@ import type { AssistantSession } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
 import { formatZonedDateTime, getCurrentTimeInfo, getZonedDayStart, getZonedWeekStart } from "./time";
 
-export const createWorkspaceTools = ({ userId, timeZone }: AssistantSession) => ({
+export const createWorkspaceTools = ({ userId, timeZone }: Pick<AssistantSession, "userId" | "timeZone">) => ({
   getCurrentTime: tool({
     description: "Lấy thời điểm hiện tại theo múi giờ người dùng: hôm nay là ngày nào, thứ mấy, và lịch 14 ngày tới. Gọi trước khi đổi \"hôm nay\", \"mai\", \"thứ Sáu\", \"tuần sau\", \"cuối tuần\" thành ngày cụ thể.",
     inputSchema: z.object({}),

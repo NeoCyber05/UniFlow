@@ -316,6 +316,7 @@ enum NOTIFICATION_TYPE {
   COMMENT_REPLY
   COMMENT_MENTION
   CARD_REMINDER
+  AGENT_BRIEF
 }
 
 model Notification {
@@ -519,6 +520,27 @@ model UserPreference {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Việc Trợ lý tự chạy theo lịch. weekdays rỗng = lời nhắc một lần (chạy ở nextRunAt rồi tự tắt).
+model AgentRoutine {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  prompt      String    @db.Text
+  /// Phút tính từ 00:00 theo timeZone (07:30 = 450); không dùng cho lời nhắc một lần
+  minuteOfDay Int
+  /// 0 = Chủ Nhật ... 6 = Thứ Bảy
+  weekdays    Int[]     @default([])
+  timeZone    String    @default("Asia/Ho_Chi_Minh")
+  enabled     Boolean   @default(true)
+  nextRunAt   DateTime?
+  lastRunAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([enabled, nextRunAt])
+  @@index([userId])
 }
 
 model NotePage {

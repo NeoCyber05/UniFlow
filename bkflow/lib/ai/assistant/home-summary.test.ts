@@ -9,8 +9,6 @@ test("summarizeAssistantHome splits remaining-today and overdue, earliest first"
   const summary = summarizeAssistantHome({
     now,
     endOfToday,
-    doneThisWeek: 8,
-    doneLastWeek: 5,
     openCards: [
       { id: "a", title: "Nộp slide CSDL", boardId: "b", dueDate: "2026-11-05T07:00:00.000Z", deadlineOn: null },
       { id: "b", title: "Quiz", boardId: "b", dueDate: "2026-11-05T05:00:00.000Z", deadlineOn: null },
@@ -24,5 +22,5 @@ test("summarizeAssistantHome splits remaining-today and overdue, earliest first"
   assert.equal(summary.dueToday.first?.id, "b");
   assert.equal(summary.overdue.count, 2);
   assert.equal(summary.overdue.first?.id, "d");
-  assert.deepEqual(summary.done, { thisWeek: 8, lastWeek: 5 });
+  assert.equal("done" in summary, false);
 });

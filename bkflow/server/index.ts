@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/node";
 import { serve } from "@hono/node-server";
 
+import { startRoutineTicker } from "@/lib/routines/run";
+
 import { createApp } from "./app";
 import { mountSpa } from "./spa";
 
@@ -19,4 +21,5 @@ const port = Number(process.env.PORT ?? 4000);
 createApp().then((app) => {
   if (process.env.NODE_ENV === "production") mountSpa(app, "web/dist");
   serve({ fetch: app.fetch, port }, () => console.log(`api listening on :${port}`));
+  startRoutineTicker();
 });

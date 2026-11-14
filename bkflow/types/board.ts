@@ -1,7 +1,7 @@
-import type { Card, CardLabel, Label, List, Prisma } from "@prisma/client";
+import type { Card, CardLabel, Label, List } from "@prisma/client";
 
 export type CardWithAssignees = Card & {
-  assignees: any[];
+  assignees: CardAssignee[];
   labels: (CardLabel & {
     label: Label;
   })[];

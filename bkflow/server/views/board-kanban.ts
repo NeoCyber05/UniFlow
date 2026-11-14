@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { measureDev } from "@/lib/perf";
 import { requireBoardMemberForUser } from "@/lib/permissions";
-import type { CardWithAssignees, ListWithCards } from "@/types";
+import type { BoardMember, CardWithAssignees, ListWithCards } from "@/types";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/page.tsx.
 export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: string) => {
@@ -152,7 +152,7 @@ export const loadBoardKanban = async ({ boardId }: { boardId: string }, userId: 
   return {
     boardId,
     lists,
-    boardMembers: [] as any[],
+    boardMembers: [] as BoardMember[],
     currentUserId: userId,
     currentMemberRole: "ADMIN" as const,
   } as const;

@@ -280,8 +280,11 @@ export const buildZonedDate = (
 ): Date => {
   const utcGuess = Date.UTC(year, month - 1, day, hour, minute);
   const offset = getTimeZoneOffsetMs(new Date(utcGuess), timeZone);
-
-  return new Date(utcGuess - offset);
+  const first = new Date(utcGuess - offset);
+  const actualOffset = getTimeZoneOffsetMs(first, timeZone);
+  const corrected = new Date(utcGuess - actualOffset);
+  // Giờ không tồn tại khi đổi DST: giữ cách dịch tiến qua khoảng trống.
+  return getTimeZoneOffsetMs(corrected, timeZone) === actualOffset ? corrected : first;
 };
 
 /**

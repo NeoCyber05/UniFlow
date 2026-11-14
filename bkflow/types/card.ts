@@ -8,9 +8,10 @@ import type {
   List,
   Prisma,
 } from "@prisma/client";
+import type { BoardMember, CardAssignee } from "./board";
 
 export type ChecklistItemWithAssignee = ChecklistItem & {
-  assignee?: any | null;
+  assignee?: BoardMember | null;
 };
 
 export type CardDependencyWithBlockerCard = Prisma.CardDependencyGetPayload<{
@@ -42,7 +43,7 @@ export type CardDependencyWithBlockedCard = Prisma.CardDependencyGetPayload<{
 export type CardWithList = Card & {
   list: List;
   attachments: CardAttachment[];
-  assignees: any[];
+  assignees: CardAssignee[];
   labels: (CardLabel & {
     label: Label;
   })[];
@@ -51,7 +52,7 @@ export type CardWithList = Card & {
   })[];
   blockedByDependencies: CardDependencyWithBlockerCard[];
   blockingDependencies: CardDependencyWithBlockedCard[];
-  boardMembers: any[];
+  boardMembers: BoardMember[];
   currentMemberRole?: string;
   boardLabels: Label[];
   boardChecklists: (Pick<Checklist, "id" | "title"> & {

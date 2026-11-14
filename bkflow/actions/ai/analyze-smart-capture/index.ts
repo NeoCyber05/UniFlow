@@ -1,5 +1,5 @@
-import { BoardMemberRole } from "@/types";
 "use server";
+import { BoardMemberRole } from "@/types";
 import { auth } from "@/server/auth";
 
 import { z } from "zod";

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { getCurrentTimeInfo } from "./time";
+import { buildZonedDate, getCurrentTimeInfo } from "./time";
 
 test("current time info resolves today, weekday and the next days in the user's zone", () => {
   // 2026-10-19 17:30 UTC = Tuesday 2026-10-20 00:30 in Vietnam: "today" must follow the user's zone, not UTC.
@@ -20,4 +20,9 @@ test("other zones get their own calendar day", () => {
   const info = getCurrentTimeInfo(new Date("2026-10-19T17:30:00Z"), "America/New_York");
   assert.equal(info.today, "2026-10-19");
   assert.equal(info.weekday, "Thứ Hai");
+});
+
+test("DST gaps shift forward and repeated hours keep the first occurrence", () => {
+  assert.equal(buildZonedDate(2027, 3, 14, 2, 30, "America/New_York").toISOString(), "2027-03-14T07:30:00.000Z");
+  assert.equal(buildZonedDate(2027, 11, 7, 1, 30, "America/New_York").toISOString(), "2027-11-07T05:30:00.000Z");
 });

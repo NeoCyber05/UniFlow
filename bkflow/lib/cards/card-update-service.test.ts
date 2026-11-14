@@ -253,8 +253,8 @@ test("contract requires expectedUpdatedAt for metadata but not description-only"
 
 test("changing the deadline is not blocked by an old legacy start date", async () => {
   const ctx = setup();
-  ctx.state.card.startDate = new Date("2026-11-30T00:00:00.000Z") as any;
-  const { result } = await run({ dueDate: new Date("2026-10-25T00:00:00.000Z"), expectedUpdatedAt: T0.toISOString() }, ctx);
+  ctx.state.card.startDate = new Date("2099-11-30T00:00:00.000Z") as any;
+  const { result } = await run({ dueDate: new Date("2099-10-25T00:00:00.000Z"), expectedUpdatedAt: T0.toISOString() }, ctx);
   assert.equal(result.error ?? null, null);
 });
 
