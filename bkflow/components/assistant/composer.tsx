@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUp, ImagePlus, Square, X } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { compressImage } from "@/components/capture/image-import-dialog";
@@ -19,7 +19,6 @@ export const Composer = ({
   busy = false,
   disabled = false,
   placeholder,
-  footer,
   autoFocus = false,
   size = "default",
 }: {
@@ -30,8 +29,6 @@ export const Composer = ({
   busy?: boolean;
   disabled?: boolean;
   placeholder?: string;
-  /** Các nút phụ ở hàng dưới (chọn phạm vi…). */
-  footer?: ReactNode;
   autoFocus?: boolean;
   size?: "default" | "large";
 }) => {
@@ -48,7 +45,7 @@ export const Composer = ({
   return (
     <form
       onSubmit={(event) => { event.preventDefault(); send(); }}
-      className="rounded-2xl border bg-background shadow-xs transition focus-within:border-violet-400 focus-within:ring-3 focus-within:ring-violet-400/15"
+      className="glass-surface rounded-2xl border shadow-xs transition focus-within:border-violet-400 focus-within:ring-3 focus-within:ring-violet-400/15"
     >
       {image ? (
         <div className="relative inline-block px-3 pt-3">
@@ -87,7 +84,6 @@ export const Composer = ({
         )}
       />
       <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2 pt-1">
-        {footer}
         <button
           type="button"
           onClick={() => fileRef.current?.click()}

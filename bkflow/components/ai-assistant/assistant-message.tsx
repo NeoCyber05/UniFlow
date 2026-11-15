@@ -170,7 +170,7 @@ export const ProposalPreview = ({ proposal }: { proposal: AiProposal }) => {
 };
 
 /** Đề xuất trong luồng chat. Bấm "Đồng ý" mới ghi dữ liệu; trên trang Trợ lý, trạng thái đồng bộ với cột "Chờ duyệt". */
-const ProposalCard = ({ proposal, toolCallId, boardId, onOpenCard }: { proposal: AiProposal; toolCallId: string; boardId?: string; onOpenCard: (cardId: string) => void }) => {
+const ProposalCard = ({ proposal, toolCallId, boardId, destinationLabel, onOpenCard }: { proposal: AiProposal; toolCallId: string; boardId?: string; destinationLabel?: string; onOpenCard: (cardId: string) => void }) => {
   const { decision, apply, dismiss, busy, error, canApply } = useProposalActions({ proposal, toolCallId, boardId });
   const [open, setOpen] = useState(Boolean(proposal.edit));
   const { heading, name, icon } = describeProposal(proposal);
@@ -190,7 +190,7 @@ const ProposalCard = ({ proposal, toolCallId, boardId, onOpenCard }: { proposal:
       icon={icon}
       tone={proposal.confirmation === "explicit" ? "warning" : "default"}
       title={name ? `${heading} · ${name}` : heading}
-      subtitle={tr("assistant.proposal.pendingHint")}
+      subtitle={destinationLabel ? `${tr("assistant.destination", { board: destinationLabel })} · ${tr("assistant.proposal.pendingHint")}` : tr("assistant.proposal.pendingHint")}
       actions={<>
         <Button type="button" size="sm" disabled={busy || !canApply} onClick={() => void apply()}>
           {busy ? tr("aiAssistant.applying") : tr("aiAssistant.agree")}
@@ -302,9 +302,10 @@ export const ActionCard = ({ output, onOpenCard }: { output: AssistantMutationOu
 };
 
 /** Phần kết quả của một tool part (biểu đồ, câu hỏi lựa chọn, đề xuất hoặc kết quả ghi); bước tra cứu chỉ nằm trong dòng các bước. */
-const ToolResult = ({ part, boardId, onOpenCard, onReply, answered }: {
+const ToolResult = ({ part, boardId, destinationLabel, onOpenCard, onReply, answered }: {
   part: ToolPart;
   boardId?: string;
+  destinationLabel?: string;
   onOpenCard: (cardId: string) => void;
   onReply?: (text: string) => void;
   answered: boolean;
@@ -315,7 +316,7 @@ const ToolResult = ({ part, boardId, onOpenCard, onReply, answered }: {
   if (isChoiceOutput(part.output)) return <ChoiceQuestion output={part.output} answered={answered} onReply={onReply} />;
   if (!MUTATION_TOOL_NAMES.has(toolName)) return null;
   const output = part.output as AssistantMutationOutput;
-  if (isProposal(output)) return <ProposalCard proposal={output} toolCallId={part.toolCallId} boardId={boardId} onOpenCard={onOpenCard} />;
+  if (isProposal(output)) return <ProposalCard proposal={output} toolCallId={part.toolCallId} boardId={boardId} destinationLabel={destinationLabel} onOpenCard={onOpenCard} />;
   // Hỏi lại (needsClarification) đã nằm trong câu trả lời bằng chữ.
   if (!output.ok && "needsClarification" in output) return null;
   return <ActionCard output={output} onOpenCard={onOpenCard} />;
@@ -331,6 +332,7 @@ const messageText = (message: BoardAssistantUIMessage) =>
 export const AssistantMessage = ({
   message,
   boardId,
+  destinationLabel,
   onOpenCard,
   onReply,
   onRetry,
@@ -339,6 +341,8 @@ export const AssistantMessage = ({
 }: {
   message: BoardAssistantUIMessage;
   boardId?: string;
+  /** Tên bảng đích (chỉ trang Trợ lý cá nhân truyền): hiện "Thêm vào: …" trên đề xuất. */
+  destinationLabel?: string;
   onOpenCard: (cardId: string) => void;
   /** Gửi một câu trả lời (từ câu hỏi lựa chọn). */
   onReply?: (text: string) => void;
@@ -350,7 +354,7 @@ export const AssistantMessage = ({
   if (message.role !== "assistant") {
     const text = messageText(message);
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end" data-ai-message-role="user">
         <div className="max-w-[85%] space-y-2 rounded-2xl bg-muted px-3.5 py-2 text-sm text-foreground">
           {message.parts.map((part, index) =>
             part.type === "file" && part.mediaType.startsWith("image/")
@@ -373,13 +377,13 @@ export const AssistantMessage = ({
   const working = isStreaming && isLatest;
 
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2.5" data-ai-message-role="assistant">
       <AiLogo className="mt-0.5 size-6 select-none" />
       <div className="min-w-0 flex-1 space-y-3">
         {traceParts.length > 0 ? <TraceGroup parts={traceParts} working={working} /> : null}
         {text ? <AssistantMarkdown text={text} /> : null}
         {toolParts.map((part) => (
-          <ToolResult key={part.toolCallId} part={part} boardId={boardId} onOpenCard={onOpenCard} onReply={onReply} answered={!isLatest} />
+          <ToolResult key={part.toolCallId} part={part} boardId={boardId} destinationLabel={destinationLabel} onOpenCard={onOpenCard} onReply={onReply} answered={!isLatest} />
         ))}
         {!working && (text || toolParts.length > 0) ? <MessageActions messageId={message.id} text={text} onRetry={onRetry} /> : null}
       </div>

@@ -1,4 +1,5 @@
 import { Board, Label, List } from "@prisma/client";
+import type { BoardMember } from "@/types";
 
 import { BoardFilters } from "./board-filters";
 import { BoardImportantToggle } from "./board-important-toggle";
@@ -7,7 +8,7 @@ type BoardWorkspace = { id: string; title: string; icon: string | null; color: s
 
 interface BoardNavbarProps {
   data: Board & { labels: Label[]; lists: List[] };
-  organizationMembers?: any[];
+  organizationMembers?: BoardMember[];
   currentUserId: string;
   currentMemberRole?: string;
   workspace?: BoardWorkspace | null;

@@ -42,7 +42,7 @@ export const ResultCard = ({
   actions?: ReactNode;
   className?: string;
 }) => (
-  <div className={cn("rounded-xl border bg-card text-card-foreground", tone === "danger" && "border-destructive/30", className)}>
+  <div data-ai-result-card className={cn("rounded-xl border bg-card text-card-foreground", tone === "danger" && "border-destructive/30", className)}>
     <div className="flex items-start gap-3 p-3">
       <IconTile icon={icon} tone={tone} />
       <div className="min-w-0 flex-1 space-y-0.5">

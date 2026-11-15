@@ -56,7 +56,7 @@ const cloneBoardState = (data: ListWithCards[]) => {
       ...card,
       assignees: card.assignees.map((assignee) => ({
         ...assignee,
-        boardMember: { ...assignee.boardMember },
+        boardMember: assignee.boardMember && { ...assignee.boardMember },
       })),
       labels: card.labels.map((cardLabel) => ({
         ...cardLabel,

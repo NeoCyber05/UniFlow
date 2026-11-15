@@ -132,7 +132,6 @@ export const MySidebarNav = ({ compact = false }: { compact?: boolean }) => {
         {assistantActive && !settingsModal.isOpen && <ActiveIndicator lastHostRef={indicatorHostRef} />}
         <AiLogo className="size-5.5 rounded-md" />
         <span className={compact ? "sr-only" : "min-w-0 flex-1 truncate"}>{tr("nav.assistant")}</span>
-        <kbd className={cn("hidden shrink-0 rounded border bg-background px-1 font-sans text-xs font-medium text-muted-foreground", !compact && "lg:inline")}>{tr("nav.assistantShortcut")}</kbd>
       </Link>
 
       {!compact && boardId && navigation.length > 0 && (

@@ -10,6 +10,8 @@ export const AssistantMarkdown = memo(({ text, className }: { text: string; clas
   <div className={cn("space-y-2 text-sm leading-relaxed break-words", className)}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      // Replies may echo untrusted email/Slack text; rendering an image would fetch (and leak data via) its URL.
+      disallowedElements={["img"]}
       components={{
         p: ({ children }) => <p className="whitespace-pre-wrap">{children}</p>,
         ul: ({ children }) => <ul className="list-disc space-y-1 pl-5">{children}</ul>,
