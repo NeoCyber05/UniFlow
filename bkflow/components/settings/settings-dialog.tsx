@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   AlarmClock,
   Bell,
+  BellRing,
   Download,
   Info,
   Keyboard,
@@ -13,6 +14,7 @@ import {
   Palette,
   Play,
   PlugZap,
+  Bot,
   Settings,
   Volume2,
   VolumeX,
@@ -33,6 +35,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppearancePanel } from "./appearance-panel";
 import { NotificationChannels } from "./notification-channels";
+import { ConnectedApps } from "./connected-apps";
+import { AgentRoutines } from "./agent-routines";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { useSettingsModal, type SettingsTab } from "@/hooks/use-settings-modal";
 import { useUser } from "@/web/lib/auth";
@@ -63,6 +67,7 @@ const LEAD_OPTIONS: { value: string; labelKey: MessageKey }[] = [
 const TABS: { id: SettingsTab; labelKey: MessageKey; icon: typeof Palette }[] = [
   { id: "appearance", labelKey: "settings.tab.appearance", icon: Palette },
   { id: "notifications", labelKey: "settings.tab.notifications", icon: Bell },
+  { id: "connections", labelKey: "settings.tab.connections", icon: PlugZap },
   { id: "shortcuts", labelKey: "settings.tab.shortcuts", icon: Keyboard },
   { id: "language", labelKey: "settings.tab.language", icon: Languages },
   { id: "account", labelKey: "settings.tab.account", icon: User },
@@ -303,6 +308,18 @@ export const SettingsDialog = () => {
                   <NotificationChannels />
                 </div>
 
+                {/* Scheduled assistant runs */}
+                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <BellRing className="size-4 text-primary" aria-hidden="true" />
+                      {tr("routines.title")}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tr("routines.desc")}</p>
+                  </div>
+                  <AgentRoutines />
+                </div>
+
                 {/* Default reminder lead */}
                 <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
                   <div>
@@ -370,6 +387,29 @@ export const SettingsDialog = () => {
                       {soundEnabled ? tr("settings.common.on") : tr("settings.common.off")}
                     </Button>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "connections" && (
+              <motion.div
+                key="connections"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {/* Apps the assistant can read */}
+                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Bot className="size-4 text-primary" aria-hidden="true" />
+                      {tr("apps.title")}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{tr("apps.desc")}</p>
+                  </div>
+                  <ConnectedApps />
                 </div>
               </motion.div>
             )}

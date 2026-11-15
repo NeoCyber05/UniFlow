@@ -762,9 +762,27 @@
     background-color: color-mix(in oklab, var(--card) min(100%, calc(112% - var(--glass-transparency, 56%))), transparent);
   }
 
+  /* Personal assistant: only the reading surfaces get glass, the page around them stays transparent. */
+  .assistant-workspace [data-ai-message-role="assistant"] > :last-child {
+    --muted-foreground: color-mix(in oklab, var(--foreground) 88%, var(--card));
+    background-color: color-mix(in oklab, var(--card) min(100%, calc(108% - var(--glass-transparency, 56%))), transparent);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .assistant-workspace [data-ai-message-role="user"] > div {
+    background-color: color-mix(in oklab, var(--muted) 92%, transparent);
+  }
+
+  .assistant-workspace [data-ai-result-card] {
+    background-color: color-mix(in oklab, var(--card) 90%, transparent);
+  }
+
   /* Keep text readable when the browser cannot soften the wallpaper. */
   @supports not (backdrop-filter: blur(1px)) {
-    .glass-surface, .dark .glass-surface, .glass-row {
+    .glass-surface, .dark .glass-surface, .glass-row,
+    .assistant-workspace [data-ai-message-role="assistant"] > :last-child {
       background-color: var(--card);
     }
   }

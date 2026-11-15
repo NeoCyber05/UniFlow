@@ -1,5 +1,5 @@
-import { BoardMember } from "@/types";
 "use client";
+import { BoardMember } from "@/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { DragStart, DropResult } from "@hello-pangea/dnd";

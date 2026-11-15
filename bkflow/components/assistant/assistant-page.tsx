@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
-import { ArrowDown, Inbox, Menu } from "lucide-react";
+import { ArrowDown, History, Inbox, MessageSquarePlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -11,18 +11,20 @@ import { toast } from "sonner";
 import { AssistantMessage } from "@/components/ai-assistant/assistant-message";
 import { ProposalDecisionsProvider } from "@/components/ai-assistant/proposal-decisions";
 import { runningStepLabel, ThinkingStatus } from "@/components/ai-assistant/thinking-status";
+import { Hint } from "@/components/hint";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useCardModal } from "@/hooks/use-card-modal";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
 import { collectProposals, type ThreadDecisions, type ThreadDecisionStatus } from "@/lib/ai/assistant/threads-shared";
 import { tr, useLocale } from "@/lib/i18n";
+import { formatWorkspaceTitle } from "@/lib/workspaces";
+import Link from "@/web/shims/next-link";
 import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 
 import {
   createThread,
   fetchThread,
   fetchThreads,
-  patchThread,
   postDecision,
   threadKey,
   THREADS_KEY,
@@ -48,18 +50,39 @@ const toUserMessage = ({ text, image }: ComposerSubmit) => ({
   ...(image ? { files: [{ type: "file" as const, mediaType: "image/jpeg", url: image }] } : {}),
 });
 
+/** Sheet mở bằng nút nằm ngoài Dialog.Root: tự trả focus về nút đó khi đóng (nếu nút còn trên trang). */
+const useReturnFocus = () => {
+  const ref = useRef<HTMLElement | null>(null);
+  const remember = useCallback(() => { ref.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }, []);
+  const onCloseAutoFocus = useCallback((event: Event) => {
+    // Nút đã ẩn (ví dụ Chờ duyệt về 0): đưa focus về ô nhập thay vì body.
+    const target = ref.current?.isConnected ? ref.current : document.querySelector<HTMLElement>("[data-assistant-composer]");
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  }, []);
+  return useMemo(() => ({ remember, onCloseAutoFocus }), [remember, onCloseAutoFocus]);
+};
+
 const ConversationHeader = ({ title, onOpenThreads, children }: { title: string; onOpenThreads: () => void; children?: React.ReactNode }) => (
-  <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-5">
+  <header className="glass-row mt-2 flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 sm:mt-4 sm:px-5">
     <button type="button" onClick={onOpenThreads} aria-label={tr("assistant.threads.open")}
-      className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden">
-      <Menu className="size-4" />
+      className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+      <History aria-hidden="true" className="size-4" />
+      <span className="hidden sm:inline">{tr("assistant.history.open")}</span>
     </button>
     <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h1>
     {children}
+    <Hint description={tr("assistant.threads.newChat")}>
+      <Link href="/assistant" aria-label={tr("assistant.threads.newChat")}
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+        <MessageSquarePlus aria-hidden="true" className="size-4" />
+      </Link>
+    </Hint>
   </header>
 );
 
-/** Một cuộc trò chuyện đã có: khung chat ở giữa, cột Ngữ cảnh / Chờ duyệt / Đã áp dụng bên phải. */
+/** Một cuộc trò chuyện đã có: khung chat ở giữa; Chờ duyệt / Đã áp dụng mở trong Sheet theo nhu cầu. */
 const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThreads }: {
   threadId: string;
   data: ThreadPayload;
@@ -70,10 +93,14 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
 }) => {
   const queryClient = useQueryClient();
   const openCardModal = useCardModal((state) => state.onOpen);
-  const [boardId, setBoardId] = useState(data.thread.boardId);
+  // Đích của thread cố định từ lúc tạo: không retarget đề xuất cũ sang bảng khác.
+  const boardId = data.thread.boardId;
+  const destinationBoard = boards.find((board) => board.id === boardId);
+  const destinationLabel = destinationBoard ? formatWorkspaceTitle(destinationBoard.title) : undefined;
   const [decisions, setDecisions] = useState<ThreadDecisions>(data.thread.decisions);
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  const panelFocus = useReturnFocus();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const transport = useMemo(() => new DefaultChatTransport<BoardAssistantUIMessage>({
@@ -120,15 +147,6 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
   }, [threadId]);
   const decisionApi = useMemo(() => ({ decisions, record }), [decisions, record]);
 
-  const changeBoard = (next: string) => {
-    if (next === boardId) return;
-    const previous = boardId;
-    setBoardId(next);
-    void patchThread(threadId, { boardId: next })
-      .then(() => queryClient.invalidateQueries({ queryKey: THREADS_KEY }))
-      .catch(() => { setBoardId(previous); toast.error(tr("assistant.threads.saveError")); });
-  };
-
   const proposals = useMemo(() => collectProposals(messages, decisions), [messages, decisions]);
   const pendingCount = proposals.filter((entry) => !entry.decision).length;
   const { atBottom, scrollToBottom } = useStickToBottom(scrollRef, [messages, status]);
@@ -140,19 +158,19 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
   const threads = queryClient.getQueryData<ThreadsPayload>(THREADS_KEY);
   const title = threads?.threads.find((thread) => thread.id === threadId)?.title || data.thread.title || tr("assistant.threads.untitled");
 
-  const panel = <ContextPanel boards={boards} boardId={boardId} onBoardChange={changeBoard} proposals={proposals} onOpenCard={openCardModal} />;
+  const panel = <ContextPanel destinationLabel={destinationLabel} boardId={boardId} proposals={proposals} onOpenCard={openCardModal} />;
 
   return (
     <ProposalDecisionsProvider value={decisionApi}>
       <section className="flex min-w-0 flex-1 flex-col" aria-label={title}>
         <ConversationHeader title={title} onOpenThreads={onOpenThreads}>
-          <ScopeSelect boards={boards} value={boardId} onChange={changeBoard} className="hidden sm:inline-flex xl:hidden" />
-          <button type="button" onClick={() => setPanelOpen(true)}
-            className="relative inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground xl:hidden">
-            <Inbox className="size-4" />
-            <span className="hidden sm:inline">{tr("assistant.panel.pending")}</span>
-            {pendingCount > 0 ? <span className="rounded-full bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">{pendingCount}</span> : null}
-          </button>
+          {pendingCount > 0 ? (
+            <button type="button" onClick={() => { panelFocus.remember(); setPanelOpen(true); }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/12 px-3 text-xs font-semibold text-primary hover:bg-primary/20">
+              <Inbox aria-hidden="true" className="size-3.5" />
+              {tr("assistant.panel.pendingCount", { count: pendingCount })}
+            </button>
+          ) : null}
         </ConversationHeader>
 
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
@@ -167,6 +185,7 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
                   <AssistantMessage
                     message={message}
                     boardId={boardId}
+                    destinationLabel={destinationLabel}
                     onOpenCard={openCardModal}
                     onReply={(text) => send({ text, image: null })}
                     onRetry={isLatest && message.role === "assistant" && lastUserText && !busy ? () => send({ text: lastUserText, image: null }) : undefined}
@@ -190,15 +209,14 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
           ) : null}
           <Composer value={input} onChange={setInput} onSubmit={send} onStop={() => void stop()} busy={busy} disabled={!enabled}
             placeholder={enabled ? tr("assistant.composer.followUp") : tr("aiAssistant.disabledPlaceholder")} />
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">{tr("assistant.composer.disclaimer")}</p>
+          <p className="mt-2 text-center"><span className="glass-row inline-block rounded-full px-2.5 py-0.5 text-[11px] text-muted-foreground">{tr("assistant.composer.reviewNote")}</span></p>
         </div>
       </section>
 
-      <aside aria-label={tr("assistant.panel.label")} className="hidden w-80 shrink-0 border-l bg-sidebar/50 xl:block">{panel}</aside>
       <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
-        <SheetContent side="right" className="w-[min(22rem,100vw)] p-0 xl:hidden">
+        <SheetContent side="right" className="w-[min(22rem,100vw)] p-0" onCloseAutoFocus={panelFocus.onCloseAutoFocus}>
           <SheetTitle className="sr-only">{tr("assistant.panel.label")}</SheetTitle>
-          <SheetDescription className="sr-only">{tr("assistant.scope.help")}</SheetDescription>
+          <SheetDescription className="sr-only">{tr("assistant.panel.label")}</SheetDescription>
           {panel}
         </SheetContent>
       </Sheet>
@@ -236,6 +254,8 @@ export const AssistantPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [threadsOpen, setThreadsOpen] = useState(false);
+  const threadsFocus = useReturnFocus();
+  const openThreads = useCallback(() => { threadsFocus.remember(); setThreadsOpen(true); }, [threadsFocus]);
   const [creating, setCreating] = useState(false);
   const pending = useRef<PendingFirst | null>(null);
   const { data, isLoading } = useQuery({ queryKey: THREADS_KEY, queryFn: fetchThreads, staleTime: 30_000 });
@@ -253,7 +273,8 @@ export const AssistantPage = () => {
   }, []);
 
   const start = useCallback(async (value: ComposerSubmit) => {
-    if (creating || (!value.text && !value.image)) return;
+    // Chưa có bảng đích: không tạo thread rồi chờ 403; màn chào đã hướng dẫn tạo danh sách việc.
+    if (creating || !selectedBoard || (!value.text && !value.image)) return;
     setCreating(true);
     try {
       const { thread } = await createThread(selectedBoard);
@@ -289,10 +310,9 @@ export const AssistantPage = () => {
   );
 
   return (
-    <div className="flex h-full min-h-0">
-      <aside aria-label={tr("assistant.threads.title")} className="hidden w-64 shrink-0 border-r bg-sidebar/50 md:block">{list}</aside>
+    <div className="assistant-workspace flex h-full min-h-0 sm:px-6 lg:px-10">
       <Sheet open={threadsOpen} onOpenChange={setThreadsOpen}>
-        <SheetContent side="left" className="w-[min(18rem,85vw)] p-0 md:hidden">
+        <SheetContent side="left" className="w-[min(18rem,85vw)] p-0" onCloseAutoFocus={threadsFocus.onCloseAutoFocus}>
           <SheetTitle className="sr-only">{tr("assistant.threads.title")}</SheetTitle>
           <SheetDescription className="sr-only">{tr("assistant.threads.title")}</SheetDescription>
           {list}
@@ -301,16 +321,21 @@ export const AssistantPage = () => {
 
       <div className="flex min-w-0 flex-1">
         {threadId ? (
-          <ThreadLoader key={threadId} threadId={threadId} boards={boards} enabled={enabled} takePending={takePending} onOpenThreads={() => setThreadsOpen(true)} onMissing={goHome} />
+          <ThreadLoader key={threadId} threadId={threadId} boards={boards} enabled={enabled} takePending={takePending} onOpenThreads={openThreads} onMissing={goHome} />
         ) : (
           <section className="flex min-w-0 flex-1 flex-col">
-            <ConversationHeader title={tr("assistant.thread.new")} onOpenThreads={() => setThreadsOpen(true)} />
+            <ConversationHeader title={tr("assistant.thread.new")} onOpenThreads={openThreads}>
+              {boards.length > 1 ? (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {tr("assistant.destination.label")}
+                  <ScopeSelect boards={boards} value={selectedBoard} onChange={setBoardId} disabled={creating} />
+                </span>
+              ) : null}
+            </ConversationHeader>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <AssistantHome
-                boards={boards}
-                boardId={selectedBoard}
-                onBoardChange={setBoardId}
                 enabled={enabled}
+                noDestination={Boolean(data) && !selectedBoard}
                 busy={creating}
                 onSubmit={(value) => void start(value)}
                 initialInput={question ?? ""}

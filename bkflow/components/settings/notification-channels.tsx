@@ -32,7 +32,7 @@ const APPS: { id: ChannelId; name: string; descKey: ExtraMessageKey; color: stri
   },
 ];
 
-const AppLogo = ({ id, name, color }: { id: ChannelId; name: string; color: string }) => {
+export const AppLogo = ({ id, name, color }: { id: string; name: string; color: string }) => {
   const [failed, setFailed] = useState(false);
   return (
     <span

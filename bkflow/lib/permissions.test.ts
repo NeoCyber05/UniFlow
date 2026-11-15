@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { PrismaClient } from "@prisma/client";
 
 import {
   BOARD_MEMBER_REQUIRED_ERROR,
@@ -18,7 +19,7 @@ test("returns ownership membership when board belongs to user", async () => {
     },
   };
 
-  const result = await checkBoardOwnership("b1", "u1", fakeDb as any);
+  const result = await checkBoardOwnership("b1", "u1", fakeDb as unknown as PrismaClient);
   assert.equal(result.error, null);
   assert.equal(result.membership?.board.id, "b1");
   assert.equal(result.membership?.board.userId, "u1");
@@ -32,7 +33,7 @@ test("returns error when board belongs to someone else or does not exist", async
     },
   };
 
-  const result = await checkBoardOwnership("b1", "u2", fakeDb as any);
+  const result = await checkBoardOwnership("b1", "u2", fakeDb as unknown as PrismaClient);
   assert.equal(result.error, BOARD_MEMBER_REQUIRED_ERROR);
   assert.equal(result.membership, null);
 });

@@ -288,3 +288,20 @@ test("showChart is a read tool scoped to the owner's board and skips class event
   assert.equal(result.action, "chart");
   assert.deepEqual(result.chart.items.map((item: any) => [item.name, item.completed, item.open]), [["MI1111 · Giải tích", 1, 1]]);
 });
+
+test("công cụ đọc Gmail/Slack được đăng ký qua policy và chạy thẳng (không thành đề xuất)", async () => {
+  const savedKey = process.env.COMPOSIO_API_KEY;
+  delete process.env.COMPOSIO_API_KEY;
+  try {
+    const tools = createAssistantTools(session) as unknown as Record<string, { execute: (input: unknown, options: unknown) => Promise<{ ok: boolean; error?: string; action?: string }> }>;
+    for (const name of ["listRecentEmails", "readEmail", "searchSlackMessages"]) assert.ok(tools[name], name);
+
+    // Không có COMPOSIO_API_KEY: công cụ tự trả lỗi thân thiện thay vì ném lỗi hay trả "proposal".
+    const result = await tools.listRecentEmails.execute({ query: "newer_than:1d", limit: 5 }, { toolCallId: "t1", messages: [] });
+    assert.equal(result.ok, false);
+    assert.equal(result.action, undefined);
+    assert.match(result.error ?? "", /Gmail/);
+  } finally {
+    if (savedKey !== undefined) process.env.COMPOSIO_API_KEY = savedKey;
+  }
+});

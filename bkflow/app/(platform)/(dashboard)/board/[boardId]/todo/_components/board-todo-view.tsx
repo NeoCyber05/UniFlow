@@ -1,5 +1,5 @@
-import { BoardMember } from "@/types";
 "use client";
+import { BoardMember } from "@/types";
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";

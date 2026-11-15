@@ -41,6 +41,8 @@ import { createChecklistItemTool } from "./checklist-tool";
 import { buildAssistantChart, CHART_DAYS, CHART_KINDS, CHART_PERIODS } from "./chart-data";
 import { type AiClarification, type AiProposal, applyToolPolicy } from "./policy";
 import { createWorkspaceTools } from "./workspace-tools";
+import { createAppTools } from "./app-tools";
+import { createReminderTool } from "@/lib/routines/reminder-tool";
 import { applyAiTaskEdit } from "./task-edits";
 import {
   formatZonedDateTime,
@@ -286,7 +288,9 @@ export const createAssistantTools = (session: AssistantSession) => {
 
   return applyToolPolicy({
     ...createWorkspaceTools(session),
+    ...createAppTools(userId),
     updateChecklistItem: createChecklistItemTool(session),
+    scheduleReminder: createReminderTool(session),
     /**
      * Công cụ: getDeadlines
      * Mục đích: Tra cứu danh sách thẻ/deadline theo các khoảng thời gian tương đối

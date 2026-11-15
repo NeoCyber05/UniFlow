@@ -13,8 +13,6 @@ import type { AssistantMutationOutput } from "@/lib/ai/assistant/tools";
 import { intlDateFormat, tr } from "@/lib/i18n";
 import { useState } from "react";
 
-import type { AssistantBoard } from "./api";
-import { ScopeSelect } from "./scope-select";
 
 const scrollToMessage = (messageId: string) =>
   document.getElementById(`assistant-msg-${messageId}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -72,13 +70,13 @@ const appliedSummary = (entry: ProposalEntry) => {
 };
 
 /**
- * Cột phải của trang Trợ lý: phạm vi (bảng đích), đề xuất chờ duyệt có đếm số,
+ * Sheet "Chờ duyệt" của trang Trợ lý: bảng đích (chỉ đọc), đề xuất chờ duyệt có đếm số,
  * và nhật ký thay đổi đã áp dụng trong cuộc trò chuyện (Hoàn tác khi hỗ trợ, còn lại Mở thẻ).
  */
-export const ContextPanel = ({ boards, boardId, onBoardChange, proposals, onOpenCard }: {
-  boards: AssistantBoard[];
+export const ContextPanel = ({ destinationLabel, boardId, proposals, onOpenCard }: {
+  /** Bảng đích của thread (chỉ đọc); đổi bảng thì tạo cuộc trò chuyện mới. */
+  destinationLabel?: string;
   boardId: string;
-  onBoardChange: (boardId: string) => void;
   proposals: ProposalEntry[];
   onOpenCard: (cardId: string) => void;
 }) => {
@@ -90,8 +88,8 @@ export const ContextPanel = ({ boards, boardId, onBoardChange, proposals, onOpen
     <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       <section aria-labelledby="assistant-scope" className="space-y-2 border-b p-4">
         <h2 id="assistant-scope" className="text-sm font-semibold">{tr("assistant.panel.scope")}</h2>
-        <ScopeSelect boards={boards} value={boardId} onChange={onBoardChange} />
-        <p className="text-xs text-muted-foreground">{tr("assistant.scope.help")}</p>
+        <p className="text-sm">{tr("assistant.destination", { board: destinationLabel ?? tr("assistant.scope.pick") })}</p>
+        <p className="text-xs text-muted-foreground">{tr("assistant.destination.help")}</p>
       </section>
 
       <section aria-labelledby="assistant-pending" className="space-y-2 border-b p-4">

@@ -256,7 +256,7 @@ export const NotificationsPopover = () => {
                               {reminderDisplay?.title ?? formatted.title}
                             </p>
                             {!isReminder ? (
-                              <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-neutral-600">
+                              <p className={cn("mt-0.5 text-xs leading-5 text-neutral-600", notification.type === "AGENT_BRIEF" ? "whitespace-pre-wrap break-words" : "line-clamp-2")}>
                                 {formatted.message}
                               </p>
                             ) : (

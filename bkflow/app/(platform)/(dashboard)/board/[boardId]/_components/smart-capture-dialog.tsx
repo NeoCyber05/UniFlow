@@ -1,5 +1,5 @@
-import { BoardMember } from "@/types";
 "use client";
+import { BoardMember } from "@/types";
 import { useMemo, useState } from "react";
 import { AlignLeft, Bot, Calendar, CheckSquare, FileText, GraduationCap, LayoutGrid, Loader2, Plus, Sparkles, Tag, Trash2, Type, User, X } from "lucide-react";
 import { useRouter } from "@/web/shims/next-navigation";

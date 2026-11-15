@@ -23,5 +23,9 @@ export const TOOL_LABEL_KEYS: Record<string, { running: MessageKey; done: Messag
   deleteCardDependency: { running: "assistant.tool.deleteCardDependency.running", done: "assistant.tool.deleteCardDependency.done" },
   getCurrentTime: { running: "assistant.tool.getCurrentTime.running", done: "assistant.tool.getCurrentTime.done" },
   askChoice: { running: "assistant.tool.askChoice.running", done: "assistant.tool.askChoice.done" },
+  listRecentEmails: { running: "assistant.tool.listRecentEmails.running", done: "assistant.tool.listRecentEmails.done" },
+  readEmail: { running: "assistant.tool.readEmail.running", done: "assistant.tool.readEmail.done" },
+  searchSlackMessages: { running: "assistant.tool.searchSlackMessages.running", done: "assistant.tool.searchSlackMessages.done" },
+  scheduleReminder: { running: "assistant.tool.scheduleReminder.running", done: "assistant.tool.scheduleReminder.done" },
 };
 
