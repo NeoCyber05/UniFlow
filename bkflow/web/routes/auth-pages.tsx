@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   AlertCircle,
+  ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -22,6 +23,8 @@ import { LOCALES, tr, useLocale } from "@/lib/i18n";
 
 import { getStartPath } from "../lib/local-prefs";
 import { supabase } from "../lib/supabase";
+
+import { AuthShowcase } from "./auth-showcase";
 
 const translateAuthError = (msg: string): string => {
   if (msg.includes("Invalid login credentials")) return tr("auth.error.invalidCredentials");
@@ -113,99 +116,72 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
     }
   };
 
-  const cardContent = (
-    <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className={`relative z-10 w-full ${
-        compact ? "max-w-sm" : "max-w-md"
-      } rounded-2xl border border-border/80 bg-card/90 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/10 dark:shadow-black/40`}
+  const languageSwitch = (
+    <div
+      role="group"
+      aria-label={tr("auth.languageAria")}
+      className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-muted/50 p-0.5 text-xs"
     >
-      {/* Language Switcher */}
-      <div className="-mt-1 mb-3 flex justify-end">
-        <div
-          role="group"
-          aria-label={tr("auth.languageAria")}
-          className="inline-flex items-center gap-0.5 rounded-full border border-border/70 bg-muted/50 p-0.5 text-[11px]"
-        >
-          <Globe aria-hidden="true" className="ml-1.5 mr-0.5 size-3 text-muted-foreground" />
-          {LOCALES.map((item) => {
-            const active = locale === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setLocale(item.id)}
-                className={`cursor-pointer rounded-full px-2 py-0.5 font-medium transition-colors ${
-                  active
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <Globe aria-hidden="true" className="ml-1.5 mr-0.5 size-3 text-muted-foreground" />
+      {LOCALES.map((item) => {
+        const active = locale === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-pressed={active}
+            onClick={() => setLocale(item.id)}
+            className={`cursor-pointer rounded-full px-2.5 py-1 font-medium transition-colors ${
+              active ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 
-      {/* Brand Header */}
-      <div className="flex flex-col items-center text-center space-y-2 mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <img src="/logo.svg" alt="" aria-hidden="true" className="size-9" />
-          <span className="text-2xl font-bold tracking-tight text-foreground">uniflow</span>
-        </div>
-        <h1 className="text-xl font-bold tracking-tight text-foreground">
-          {isSignUp ? tr("auth.headingSignUp") : tr("auth.headingSignIn")}
-        </h1>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          {isSignUp ? tr("auth.subtitleSignUp") : tr("auth.subtitleSignIn")}
-        </p>
-      </div>
+  const fieldClass = compact
+    ? "h-10 rounded-xl bg-muted/20 border-border/70 text-xs sm:text-sm"
+    : "h-11 rounded-xl bg-muted/30 border-border/80 text-sm";
 
+  // Shared by the compact card and the full page.
+  const formBody = (
+    <>
       {/* Mode Switcher Tabs */}
-      <div className="grid grid-cols-2 rounded-xl bg-muted/60 p-1 mb-5 text-xs font-semibold">
-        <button
-          type="button"
-          onClick={() => handleSwitchMode("sign-in")}
-          className={`relative flex items-center justify-center py-2 rounded-lg transition-colors cursor-pointer ${
-            !isSignUp ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {tr("auth.tabSignIn")}
-          {!isSignUp && (
-            <motion.div
-              layoutId="auth-tab-pill"
-              className="absolute inset-0 rounded-lg bg-card shadow-xs -z-10"
-              transition={{ type: "spring", bounce: 0.15, duration: 0.3 }}
-            />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSwitchMode("sign-up")}
-          className={`relative flex items-center justify-center py-2 rounded-lg transition-colors cursor-pointer ${
-            isSignUp ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {tr("auth.tabSignUp")}
-          {isSignUp && (
-            <motion.div
-              layoutId="auth-tab-pill"
-              className="absolute inset-0 rounded-lg bg-card shadow-xs -z-10"
-              transition={{ type: "spring", bounce: 0.15, duration: 0.3 }}
-            />
-          )}
-        </button>
+      <div className={`grid grid-cols-2 rounded-xl bg-muted/60 p-1 text-xs font-semibold ${compact ? "mb-5" : "mb-5 mt-7 text-[13px]"}`}>
+        {(["sign-in", "sign-up"] as const).map((tab) => {
+          const active = currentMode === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => handleSwitchMode(tab)}
+              className={`relative flex cursor-pointer items-center justify-center rounded-lg py-2 transition-colors ${
+                active ? "font-bold text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab === "sign-in" ? tr("auth.tabSignIn") : tr("auth.tabSignUp")}
+              {active && (
+                <motion.div
+                  layoutId="auth-tab-pill"
+                  className="absolute inset-0 -z-10 rounded-lg bg-card shadow-xs"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.3 }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Google OAuth Button */}
       <Button
         type="button"
         variant="outline"
-        className="w-full h-10 flex items-center justify-center gap-2.5 rounded-xl border-border/80 font-medium text-xs sm:text-sm hover:bg-muted/60 transition-all hover:border-foreground/20"
+        className={`flex w-full items-center justify-center gap-2.5 rounded-xl border-border/80 font-medium transition-all hover:border-foreground/20 hover:bg-muted/60 ${
+          compact ? "h-10 text-xs sm:text-sm" : "h-11 text-sm"
+        }`}
         onClick={google}
       >
         <svg className="size-4 shrink-0" viewBox="0 0 24 24">
@@ -230,23 +206,20 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
       </Button>
 
       {/* Divider */}
-      <div className="relative my-5 flex items-center justify-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border/60" />
-        </div>
-        <span className="relative bg-card px-3 text-[11px] text-muted-foreground uppercase tracking-wider">
-          {tr("auth.orWithEmail")}
-        </span>
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border/70" />
+        {tr("auth.orWithEmail")}
+        <span className="h-px flex-1 bg-border/70" />
       </div>
 
       {/* Main Email/Password Form */}
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-xs font-semibold text-foreground">
+          <Label htmlFor="email" className="text-xs font-semibold text-foreground sm:text-[13px]">
             {tr("auth.emailLabel")}
           </Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="email"
               type="email"
@@ -255,19 +228,17 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               placeholder={tr("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-9 h-10 rounded-xl bg-muted/20 border-border/70 focus-visible:ring-violet-500 text-xs sm:text-sm"
+              className={`pl-9 focus-visible:ring-violet-500 ${fieldClass}`}
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-xs font-semibold text-foreground">
-              {tr("auth.passwordLabel")}
-            </Label>
-          </div>
+          <Label htmlFor="password" className="text-xs font-semibold text-foreground sm:text-[13px]">
+            {tr("auth.passwordLabel")}
+          </Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -277,12 +248,12 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               placeholder={tr("auth.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-9 pr-9 h-10 rounded-xl bg-muted/20 border-border/70 focus-visible:ring-violet-500 text-xs sm:text-sm"
+              className={`pl-9 pr-9 focus-visible:ring-violet-500 ${fieldClass}`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground transition-colors hover:text-foreground"
               tabIndex={-1}
               aria-label={showPassword ? tr("auth.hidePasswordAria") : tr("auth.showPasswordAria")}
             >
@@ -299,16 +270,16 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               animate={{ opacity: 1, height: "auto", y: 0 }}
               exit={{ opacity: 0, height: 0, y: -4 }}
               role="alert"
-              className={`rounded-xl p-3 text-xs flex items-start gap-2.5 ${
+              className={`flex items-start gap-2.5 rounded-xl p-3 text-xs ${
                 message.type === "error"
-                  ? "bg-destructive/10 text-destructive border border-destructive/20"
-                  : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                  ? "border border-destructive/20 bg-destructive/10 text-destructive"
+                  : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
               }`}
             >
               {message.type === "error" ? (
-                <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
               ) : (
-                <CheckCircle2 className="size-4 shrink-0 mt-0.5" />
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
               )}
               <span className="leading-relaxed">{message.text}</span>
             </motion.div>
@@ -318,7 +289,9 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-violet-600/20 transition-all hover:shadow-lg hover:shadow-violet-600/30 active:scale-[0.99]"
+          className={`group w-full rounded-xl bg-violet-600 font-semibold text-white shadow-md shadow-violet-600/25 transition-all hover:bg-violet-700 hover:shadow-lg hover:shadow-violet-600/30 active:scale-[0.99] ${
+            compact ? "h-10 text-xs sm:text-sm" : "h-11 text-sm"
+          }`}
           disabled={busy}
         >
           {busy ? (
@@ -326,78 +299,93 @@ export const AuthForm = ({ mode: initialMode, next, compact = false }: AuthFormP
               <Loader2 className="size-4 animate-spin" />
               {tr("auth.processing")}
             </span>
-          ) : isSignUp ? (
-            tr("auth.submitSignUp")
           ) : (
-            tr("auth.submitSignIn")
+            <span className="flex items-center gap-2">
+              {isSignUp ? tr("auth.submitSignUp") : tr("auth.submitSignIn")}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
           )}
         </Button>
       </form>
 
       {/* Switch Helper */}
-      <p className="mt-5 text-center text-xs text-muted-foreground">
-        {isSignUp ? (
-          <>
-            {tr("auth.alreadyHaveAccount")}{" "}
-            <button
-              type="button"
-              onClick={() => handleSwitchMode("sign-in")}
-              className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 cursor-pointer"
-            >
-              {tr("auth.switchSignIn")}
-            </button>
-          </>
-        ) : (
-          <>
-            {tr("auth.noAccountYet")}{" "}
-            <button
-              type="button"
-              onClick={() => handleSwitchMode("sign-up")}
-              className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80 cursor-pointer"
-            >
-              {tr("auth.switchSignUp")}
-            </button>
-          </>
-        )}
+      <p className={`text-center text-muted-foreground ${compact ? "mt-5 text-xs" : "mt-6 text-[13px]"}`}>
+        {isSignUp ? tr("auth.alreadyHaveAccount") : tr("auth.noAccountYet")}{" "}
+        <button
+          type="button"
+          onClick={() => handleSwitchMode(isSignUp ? "sign-in" : "sign-up")}
+          className="cursor-pointer font-semibold text-primary underline-offset-4 hover:underline"
+        >
+          {isSignUp ? tr("auth.switchSignIn") : tr("auth.switchSignUp")}
+        </button>
       </p>
-
-      {/* Campus footer info */}
-      <div className="mt-6 pt-4 border-t border-border/40 text-center">
-        <p className="text-[11px] text-muted-foreground/80 flex items-center justify-center gap-1.5">
-          <Sparkles className="size-3 text-violet-500" />
-          {tr("auth.footerTagline")}
-        </p>
-      </div>
-    </motion.div>
+    </>
   );
 
   if (compact) {
-    return cardContent;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-border/80 bg-card/90 p-6 shadow-2xl shadow-black/10 backdrop-blur-xl sm:p-8 dark:shadow-black/40"
+      >
+        <div className="-mt-1 mb-3 flex justify-end">{languageSwitch}</div>
+        <div className="mb-6 flex flex-col items-center space-y-2 text-center">
+          <div className="mb-1 flex items-center gap-2">
+            <img src="/logo.svg" alt="" aria-hidden="true" className="size-9" />
+            <span className="text-2xl font-bold tracking-tight text-foreground">UniFlow</span>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            {isSignUp ? tr("auth.headingSignUp") : tr("auth.headingSignIn")}
+          </h1>
+          <p className="max-w-xs text-xs text-muted-foreground">
+            {isSignUp ? tr("auth.subtitleSignUp") : tr("auth.subtitleSignIn")}
+          </p>
+        </div>
+        {formBody}
+        <div className="mt-6 border-t border-border/40 pt-4 text-center">
+          <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/80">
+            <Sparkles className="size-3 text-violet-500" />
+            {tr("auth.footerTagline")}
+          </p>
+        </div>
+      </motion.div>
+    );
   }
 
   return (
-    <div className="relative min-h-screen min-h-dvh w-full flex items-center justify-center p-4 sm:p-6 md:p-8 bg-background overflow-hidden">
-      {/* Ambient Animated Gradient Orbs */}
-      <motion.div
-        animate={{ scale: [1, 1.1, 1], opacity: [0.35, 0.5, 0.35] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute -top-32 -left-32 size-96 rounded-full bg-violet-500/20 blur-3xl"
-      />
-      <motion.div
-        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.45, 0.3] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="pointer-events-none absolute -bottom-32 -right-32 size-96 rounded-full bg-indigo-500/20 blur-3xl"
-      />
-      <motion.div
-        animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.35, 0.2] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-96 rounded-full bg-pink-500/10 blur-3xl"
-      />
+    <div className="grid min-h-dvh w-full bg-background lg:grid-cols-[58fr_42fr]">
+      <AuthShowcase className="hidden lg:flex" />
 
-      {/* Subtle Pattern Grid */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] opacity-30" />
+      <main className="auth-wash relative flex min-h-dvh flex-col px-6 py-6 sm:px-10">
+        <div className="flex items-center justify-between lg:justify-end">
+          <div className="flex items-center gap-2 lg:hidden">
+            <img src="/logo.svg" alt="" aria-hidden="true" className="size-8" />
+            <span className="text-lg font-bold tracking-tight text-foreground">UniFlow</span>
+          </div>
+          {languageSwitch}
+        </div>
 
-      {cardContent}
+        <div className="flex flex-1 items-center justify-center py-10">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-[380px]"
+          >
+            <h1 className="text-[28px] font-bold tracking-tight text-foreground">
+              {isSignUp ? tr("auth.headingSignUp") : tr("auth.headingSignIn")}
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {isSignUp ? tr("auth.subtitleSignUp") : tr("auth.subtitleSignIn")}
+            </p>
+            {formBody}
+          </motion.div>
+        </div>
+
+        <p className="text-center text-xs text-muted-foreground/80">{tr("auth.footerTagline")}</p>
+      </main>
     </div>
   );
 };

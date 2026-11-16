@@ -97,8 +97,8 @@ export const BACKGROUND_IDS = [
 ] as const;
 export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 
-export const DEFAULT_ACCENT: AccentId = "blue";
-export const DEFAULT_BACKGROUND: BackgroundId = "glow";
+export const DEFAULT_ACCENT: AccentId = "indigo";
+export const DEFAULT_BACKGROUND: BackgroundId = "scene-observatory";
 
 export type Appearance = {
   accent: AccentId;
