@@ -45,7 +45,7 @@ import { compressImage } from "@/components/capture/image-import-dialog";
 
 import { AiLogo } from "./ai-logo";
 import { AssistantMessage } from "./assistant-message";
-import { runningStepLabel, ThinkingStatus } from "./thinking-status";
+import { ThinkingPanel } from "./thinking-panel";
 
 /**
  * Danh sách key câu hỏi gợi ý nhanh hiển thị khi cuộc trò chuyện chưa có tin nhắn nào.
@@ -158,6 +158,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Ảnh đính kèm (data URL đã nén), gửi cùng câu hỏi
   const [image, setImage] = useState<string | null>(null);
+  const [sentAt, setSentAt] = useState<number>();
   const attachImage = (file: File) => {
     void compressImage(file).then(setImage).catch(() => toast.error(tr("aiAssistant.imageReadError")));
   };
@@ -333,6 +334,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
         if (!value) return;
         void onEditPage(value).then(ok => { if (ok) setInput(current => current === value ? "" : current); });
       } else {
+        setSentAt(Date.now());
         void sendMessage({
           text: value,
           ...(image ? { files: [{ type: "file" as const, mediaType: "image/jpeg", url: image }] } : {}),
@@ -412,9 +414,7 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
   };
 
   const lastMessage = messages[messages.length - 1];
-  const stepLabel = runningStepLabel(messages);
-  const showThinking =
-    status === "submitted" || (status === "streaming" && (lastMessage?.role !== "assistant" || Boolean(stepLabel)));
+  const showThinking = isBusy && lastMessage?.role !== "assistant";
   const lastUserText = [...messages].reverse().find((message) => message.role === "user")?.parts
     .flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n").trim();
   // Trang Trợ lý cá nhân có nhiều cuộc trò chuyện; chỉ mở được từ ngữ cảnh có bảng.
@@ -537,12 +537,13 @@ const AssistantPanel = ({ boardId, context, contextLabel, onEditPage }: { boardI
                 onRetry={isLatest && message.role === "assistant" && lastUserText && !isBusy ? () => submit(lastUserText) : undefined}
                 isLatest={isLatest}
                 isStreaming={isBusy}
+                startedAt={isLatest ? sentAt : undefined}
               />
             );
           })
         )}
 
-        {showThinking ? <ThinkingStatus label={stepLabel} className="pl-8" /> : null}
+        {showThinking ? <ThinkingPanel steps={[]} active startedAt={sentAt} className="pl-8" /> : null}
 
         {error && !isBusy ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">

@@ -32,6 +32,8 @@ const readResult = (userId: string, app: string, slug: string, args: Record<stri
   return { result: raw.slice(0, 12000), truncated: raw.length > 12000 };
 });
 
+const gmailHref = (threadId: string) => `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
+
 /** Công cụ CHỈ ĐỌC trên app người dùng đã kết nối. Kết quả là dữ liệu không tin cậy, không phải chỉ dẫn. */
 export const createAppTools = (userId: string) => ({
   listRecentEmails: tool({
@@ -44,7 +46,7 @@ export const createAppTools = (userId: string) => ({
       const data = await callAppTool(userId, APP_READ_TOOLS.gmailList, {
         user_id: "me", query, max_results: limit, include_payload: false, verbose: false,
       });
-      return { emails: emailsFromData(data).slice(0, limit).map((email) => ({ ...email, at: new Date(email.at).toISOString() })) };
+      return { emails: emailsFromData(data).slice(0, limit).map((email) => ({ ...email, at: new Date(email.at).toISOString(), href: gmailHref(email.threadId) })) };
     }),
   }),
 
@@ -53,7 +55,7 @@ export const createAppTools = (userId: string) => ({
     inputSchema: z.object({ id: z.string().trim().min(1).max(200) }),
     execute: ({ id }) => read("Gmail", async () => {
       const email = emailFromData(await callAppTool(userId, APP_READ_TOOLS.gmailMessage, { user_id: "me", message_id: id, format: "full" }));
-      return { email: { ...email, at: new Date(email.at).toISOString(), body: email.body.slice(0, BODY_MAX), truncated: email.body.length > BODY_MAX } };
+      return { email: { ...email, at: new Date(email.at).toISOString(), href: gmailHref(email.threadId), body: email.body.slice(0, BODY_MAX), truncated: email.body.length > BODY_MAX } };
     }),
   }),
 

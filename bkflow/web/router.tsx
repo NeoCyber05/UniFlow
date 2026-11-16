@@ -58,6 +58,8 @@ export const router = createBrowserRouter([
       { path: "/capture", element: lazyRoute(() => import("./routes/capture")) },
       { path: "/capture/welcome", element: lazyRoute(() => import("./routes/capture-welcome")) },
       { path: "/privacy", element: lazyRoute(() => import("./routes/privacy")) },
+      // Chỉ khi dev: phát lại câu trả lời AI giả để xem giao diện / chuyển động.
+      ...(import.meta.env.DEV ? [{ path: "/dev/ai-demo", element: lazyRoute(() => import("./routes/ai-demo")) }] : []),
       {
         element: <RedirectIfSignedIn />,
         children: [

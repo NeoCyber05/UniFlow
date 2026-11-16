@@ -294,6 +294,7 @@ export async function POST(request: Request) {
     ],
   };
   const uiMessages = [...history, userMessage];
+  const startedAt = Date.now();
   const scope = { boardId: session.boardId, userId };
 
   return createAgentUIStreamResponse({
@@ -315,9 +316,11 @@ export async function POST(request: Request) {
 
       try {
         // Không lưu base64 ảnh vào lịch sử chat
+        // "Đã làm trong …" của bảng các bước: lưu thời gian kèm câu trả lời (data part, model không đọc).
+        const timing = { type: "data-timing" as const, data: { ms: Date.now() - startedAt } };
         const stored = newMessages.map((item) => ({
           ...item,
-          parts: item.parts.filter((part) => part.type !== "file"),
+          parts: [...item.parts.filter((part) => part.type !== "file"), ...(item.role === "assistant" ? [timing] : [])],
         }));
         await (thread ? saveThreadMessages(thread.id, stored) : saveAssistantMessages(scope, stored));
       } catch (error) {

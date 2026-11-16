@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 import { AssistantMessage } from "@/components/ai-assistant/assistant-message";
 import { ProposalDecisionsProvider } from "@/components/ai-assistant/proposal-decisions";
-import { runningStepLabel, ThinkingStatus } from "@/components/ai-assistant/thinking-status";
+import { ThinkingPanel } from "@/components/ai-assistant/thinking-panel";
 import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -101,6 +101,8 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
   const [decisions, setDecisions] = useState<ThreadDecisions>(data.thread.decisions);
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  // Lúc gửi câu hỏi gần nhất: đồng hồ "Đang suy nghĩ" của câu trả lời chạy từ đây.
+  const [sentAt, setSentAt] = useState<number>();
   const panelFocus = useReturnFocus();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +129,7 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
     if (!value.text && !value.image) return;
     clearError();
     setInput("");
+    setSentAt(Date.now());
     void sendMessage(toUserMessage(value));
   }, [clearError, sendMessage]);
 
@@ -152,9 +155,8 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
   const proposals = useMemo(() => collectProposals(messages, decisions), [messages, decisions]);
   const pendingCount = proposals.filter((entry) => !entry.decision).length;
   const { atBottom, scrollToBottom } = useStickToBottom(scrollRef, [messages, status]);
-  const stepLabel = runningStepLabel(messages);
   const last = messages[messages.length - 1];
-  const showThinking = status === "submitted" || (status === "streaming" && (last?.role !== "assistant" || Boolean(stepLabel)));
+  const showThinking = busy && last?.role !== "assistant";
   const lastUserText = [...messages].reverse().find((message) => message.role === "user")?.parts
     .flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n").trim();
   const threads = queryClient.getQueryData<ThreadsPayload>(THREADS_KEY);
@@ -193,11 +195,12 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
                     onRetry={isLatest && message.role === "assistant" && lastUserText && !busy ? () => send({ text: lastUserText, image: null }) : undefined}
                     isLatest={isLatest}
                     isStreaming={busy}
+                    startedAt={isLatest ? sentAt : undefined}
                   />
                 </div>
               );
             })}
-            {showThinking ? <ThinkingStatus label={stepLabel} className="pl-8" /> : null}
+            {showThinking ? <ThinkingPanel steps={[]} active startedAt={sentAt} className="pl-8" /> : null}
             {error && !busy ? <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error.message || tr("aiAssistant.genericError")}</p> : null}
           </div>
         </div>

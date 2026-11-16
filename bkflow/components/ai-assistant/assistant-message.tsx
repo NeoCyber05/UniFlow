@@ -5,6 +5,7 @@ import {
   Archive,
   ArrowRight,
   CalendarClock,
+  CornerDownRight,
   CalendarPlus,
   CheckCircle2,
   ExternalLink,
@@ -17,10 +18,11 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
+import { answerDurationMs, collectSources, sourcesFromTool, splitFollowUps } from "@/lib/ai/assistant/chat-ui";
 import { isChoiceOutput } from "@/lib/ai/assistant/choice-tool";
 import type { AiOperation, AiProposal } from "@/lib/ai/assistant/policy";
 import type { AssistantMutationOutput } from "@/lib/ai/assistant/tools";
@@ -28,15 +30,16 @@ import { intlDateFormat, tr } from "@/lib/i18n";
 import type { CardMessageKey } from "@/lib/i18n/messages/vi-card";
 import { formatEditValues } from "@/web/lib/assistant-context";
 
+import { AiAnswer } from "./ai-answer";
 import { AiLogo } from "./ai-logo";
 import { AssistantChart, isChartOutput } from "./assistant-chart";
-import { AssistantMarkdown } from "./assistant-markdown";
 import { ChoiceQuestion } from "./choice-question";
+import { MentionText } from "./mention-chip";
 import { MessageActions } from "./message-actions";
 import { useProposalActions } from "./proposal-decisions";
 import { CardLink, ResultCard } from "./result-card";
 import { AiEditUndoButton } from "./task-edit-controls";
-import { TraceGroup, type TracePart } from "./trace-group";
+import { ThinkingPanel, type TracePart } from "./thinking-panel";
 
 export { TOOL_LABEL_KEYS } from "./tool-labels";
 
@@ -338,6 +341,7 @@ export const AssistantMessage = ({
   onRetry,
   isLatest = false,
   isStreaming = false,
+  startedAt,
 }: {
   message: BoardAssistantUIMessage;
   boardId?: string;
@@ -350,7 +354,11 @@ export const AssistantMessage = ({
   onRetry?: () => void;
   isLatest?: boolean;
   isStreaming?: boolean;
+  /** Lúc gửi câu hỏi của câu trả lời đang chạy (đồng hồ của bảng các bước). */
+  startedAt?: number;
 }) => {
+  const sources = useMemo(() => collectSources(message.parts.filter((part): part is ToolPart => "toolCallId" in part)), [message.parts]);
+
   if (message.role !== "assistant") {
     const text = messageText(message);
     return (
@@ -360,32 +368,52 @@ export const AssistantMessage = ({
             part.type === "file" && part.mediaType.startsWith("image/")
               ? <img key={index} src={part.url} alt={tr("aiAssistant.attachedImageAlt")} className="max-h-40 rounded-lg border object-contain" />
               : null)}
-          {text ? <p className="whitespace-pre-wrap break-words">{text}</p> : null}
+          {text ? <p className="whitespace-pre-wrap break-words"><MentionText text={text} /></p> : null}
         </div>
       </div>
     );
   }
 
   const toolParts = message.parts.filter((part): part is ToolPart => "toolCallId" in part);
-  const text = messageText(message);
-  const traceParts: TracePart[] = toolParts.map((part) => ({
-    id: part.toolCallId,
-    tool: part.type.replace(/^tool-/, ""),
-    state: part.state,
-    proposal: part.state === "output-available" && isProposal(part.output),
-  }));
   const working = isStreaming && isLatest;
+  const { body: text, followUps } = splitFollowUps(messageText(message), working);
+  const traceParts: TracePart[] = toolParts.map((part) => {
+    const tool = part.type.replace(/^tool-/, "");
+    const done = part.state === "output-available";
+    return { id: part.toolCallId, tool, state: part.state, proposal: done && isProposal(part.output), sources: done ? sourcesFromTool(tool, part.output, part.toolCallId) : [] };
+  });
+  // "Đang nghĩ" tới khi bắt đầu viết câu trả lời (hoặc lúc lại gọi công cụ sau đó).
+  const thinking = working && (!text || traceParts.some((part) => part.state === "input-streaming" || part.state === "input-available"));
+  const durationMs = answerDurationMs(message.parts);
 
   return (
     <div className="flex gap-2.5" data-ai-message-role="assistant">
       <AiLogo className="mt-0.5 size-6 select-none" />
       <div className="min-w-0 flex-1 space-y-3">
-        {traceParts.length > 0 ? <TraceGroup parts={traceParts} working={working} /> : null}
-        {text ? <AssistantMarkdown text={text} /> : null}
+        {traceParts.length > 0 || working || durationMs !== undefined
+          ? <ThinkingPanel steps={traceParts} active={thinking} startedAt={working ? startedAt : undefined} durationMs={durationMs} />
+          : null}
+        {text || sources.length > 0 ? <AiAnswer text={text} sources={sources} streaming={working} reading={thinking} /> : null}
         {toolParts.map((part) => (
           <ToolResult key={part.toolCallId} part={part} boardId={boardId} destinationLabel={destinationLabel} onOpenCard={onOpenCard} onReply={onReply} answered={!isLatest} />
         ))}
         {!working && (text || toolParts.length > 0) ? <MessageActions messageId={message.id} text={text} onRetry={onRetry} /> : null}
+        {!working && isLatest && onReply && followUps.length > 0 ? (
+          <section aria-label={tr("assistant.followUps")} className="max-w-[640px]">
+            <p className="mb-1.5 text-xs font-medium text-muted-foreground">{tr("assistant.followUps")}</p>
+            <ul className="divide-y rounded-xl border">
+              {followUps.map((question, index) => (
+                <li key={question} className="ai-fade-up" style={{ animationDelay: `${index * 70}ms` }}>
+                  <button type="button" onClick={() => onReply(question)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring">
+                    <CornerDownRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1">{question}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
     </div>
   );
