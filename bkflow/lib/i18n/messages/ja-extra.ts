@@ -193,7 +193,6 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   "apps.filterLabel": "アプリを絞り込む",
   "apps.filterAll": "すべて",
   "apps.filterConnected": "連携済み",
-  "apps.unsupported": "タスク取得は未対応",
   "apps.statusUnknown": "状態不明",
   "apps.showMore": "もっと見る",
   "apps.noResults": "該当するアプリがありません。",

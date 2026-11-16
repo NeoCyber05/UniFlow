@@ -132,13 +132,13 @@ test("filterCatalog tìm không phân biệt hoa thường, lọc đã kết n�
     { slug: "notion", name: "Notion" }, { slug: "slack", name: "Slack" }, { slug: "gmail", name: "Gmail" }, { slug: "asana", name: "Asana" },
   ]);
   const isConnected = (slug: string) => slug === "gmail";
-  assert.deepEqual(filterCatalog(items, { query: "", filter: "all", isConnected }).map((x) => x.slug), ["gmail", "notion", "slack", "asana"]);
+  assert.deepEqual(filterCatalog(items, { query: "", filter: "all", isConnected }).map((x) => x.slug), ["gmail", "notion", "slack"]);
   assert.deepEqual(filterCatalog(items, { query: "NOTION", filter: "all", isConnected }).map((x) => x.slug), ["notion"]);
   assert.deepEqual(filterCatalog(items, { query: "", filter: "connected", isConnected }).map((x) => x.slug), ["gmail"]);
   assert.deepEqual(filterCatalog(items, { query: "zzz", filter: "all", isConnected }), []);
 });
 
-test("settings catalog only shows communication, social and work apps", async () => {
+test("settings catalog only shows apps the assistant can read tasks from", async () => {
   const { filterCatalog } = await import("./catalog-shared");
   const items = normalizeCatalogItems([
     ...["gmail", "slack", "microsoft_teams", "discord", "telegram", "facebook", "linkedin", "notion", "jira", "outlook"],
@@ -146,6 +146,6 @@ test("settings catalog only shows communication, social and work apps", async ()
   ].map((slug) => ({ slug, name: slug })));
   const visible = filterCatalog(items, { query: "", filter: "all", isConnected: () => false });
   assert.deepEqual(visible.map((item) => item.slug).sort(),
-    ["discord", "facebook", "gmail", "jira", "linkedin", "microsoft_teams", "notion", "outlook", "slack", "telegram"]);
+    ["gmail", "jira", "microsoft_teams", "notion", "outlook", "slack"]);
   assert.deepEqual(filterCatalog(items, { query: "stripe", filter: "all", isConnected: () => true }), []);
 });

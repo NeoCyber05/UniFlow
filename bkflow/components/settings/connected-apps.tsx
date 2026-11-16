@@ -132,9 +132,6 @@ export const ConnectedApps = () => {
   };
 
   const action = (item: ConnectorCatalogItem) => {
-    if (!item.taskReadSupported) {
-      return <span className="shrink-0 text-[11px] text-muted-foreground">{tr("apps.unsupported")}</span>;
-    }
     if (busy === item.slug || inventory.isPending) {
       return <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-label={tr("channels.loadingAria")} />;
     }

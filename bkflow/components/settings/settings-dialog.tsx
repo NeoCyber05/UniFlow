@@ -7,10 +7,7 @@ import {
   BellRing,
   Download,
   Info,
-  Keyboard,
   Laptop,
-  Languages,
-  Check,
   Palette,
   Play,
   PlugZap,
@@ -19,7 +16,6 @@ import {
   Volume2,
   VolumeX,
   User,
-  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -40,7 +36,7 @@ import { AgentRoutines } from "./agent-routines";
 import { useAppearance } from "@/components/providers/appearance-provider";
 import { useSettingsModal, type SettingsTab } from "@/hooks/use-settings-modal";
 import { useUser } from "@/web/lib/auth";
-import { LOCALES, tr, useLocale } from "@/lib/i18n";
+import { tr } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n/messages/vi";
 import {
   getDesktopReminderState,
@@ -68,8 +64,6 @@ const TABS: { id: SettingsTab; labelKey: MessageKey; icon: typeof Palette }[] = 
   { id: "appearance", labelKey: "settings.tab.appearance", icon: Palette },
   { id: "notifications", labelKey: "settings.tab.notifications", icon: Bell },
   { id: "connections", labelKey: "settings.tab.connections", icon: PlugZap },
-  { id: "shortcuts", labelKey: "settings.tab.shortcuts", icon: Keyboard },
-  { id: "language", labelKey: "settings.tab.language", icon: Languages },
   { id: "account", labelKey: "settings.tab.account", icon: User },
 ];
 
@@ -77,13 +71,12 @@ export const SettingsDialog = () => {
   const { isOpen, activeTab, onClose, setTab } = useSettingsModal();
   const appearance = useAppearance();
   const { user } = useUser();
-  const { locale, setLocale } = useLocale();
 
   // Desktop notification state
   const [reminderState, setReminderState] = useState<DesktopReminderState | null>(null);
   const [busyReminder, setBusyReminder] = useState(false);
 
-  // Tùy chọn theo thiết bị; nơi đọc: notification-toasts (âm thanh), card-date-popover (nhắc mặc định), start-screen-setting (màn hình khởi động).
+  // Tùy chọn theo thiết bị; nơi đọc: notification-toasts (âm thanh), card-date-popover (nhắc mặc định), guards.tsx (màn hình khởi động đã lưu trước đây).
   const [soundEnabled, setSoundEnabled] = useState(isSoundEnabled);
   const [reminderAdvance, setReminderAdvance] = useState(getDefaultReminder);
 
@@ -410,103 +403,6 @@ export const SettingsDialog = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">{tr("apps.desc")}</p>
                   </div>
                   <ConnectedApps />
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === "shortcuts" && (
-              <motion.div
-                key="shortcuts"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
-                {/* Keyboard Shortcuts Table */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Keyboard className="size-4 text-primary" />
-                    {tr("settings.shortcuts.title")}
-                  </h4>
-                  <div className="divide-y divide-border/50 text-xs">
-                    {[
-                      { key: "⌘ / Ctrl + K", desc: tr("settings.shortcuts.search") },
-                      { key: "⌘ / Ctrl + B", desc: tr("settings.shortcuts.sidebar") },
-                      { key: "T", desc: tr("settings.shortcuts.today") },
-                      { key: "L", desc: tr("settings.shortcuts.calendar") },
-                      { key: "N", desc: tr("settings.shortcuts.newTask") },
-                      { key: "Esc", desc: tr("settings.shortcuts.close") },
-                    ].map((sc) => (
-                      <div key={sc.key} className="py-2.5 flex items-center justify-between">
-                        <span className="text-muted-foreground">{sc.desc}</span>
-                        <kbd className="rounded-md border border-border/80 bg-muted px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground shadow-2xs">
-                          {sc.key}
-                        </kbd>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick Capture Extension Guide */}
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="size-4 text-amber-500" />
-                    <h4 className="text-sm font-semibold text-foreground">
-                      {tr("settings.capture.title")}
-                    </h4>
-                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
-                      Chrome Extension
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {tr("settings.capture.p1")} <strong>Microsoft Teams</strong>, <strong>BK E-learning</strong>, {tr("settings.capture.or")} <strong>Messenger</strong>{tr("settings.capture.p2")}
-                  </p>
-                  <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-                    💡 {tr("settings.capture.folder1")} <code className="font-mono text-primary">extensions/uniflow-capture</code> {tr("settings.capture.folder2")}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === "language" && (
-              <motion.div
-                key="language"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Languages className="size-4 text-primary" />
-                      {tr("settings.language.title")}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {tr("settings.language.description")}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {LOCALES.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setLocale(item.id);
-                          toast.success(tr("settings.language.saved"));
-                        }}
-                        className={`flex items-center justify-between rounded-xl border p-3 text-sm font-medium transition-all cursor-pointer ${
-                          locale === item.id
-                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary"
-                            : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                        }`}
-                      >
-                        {item.label}
-                        {locale === item.id && <Check className="size-4" />}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </motion.div>
             )}

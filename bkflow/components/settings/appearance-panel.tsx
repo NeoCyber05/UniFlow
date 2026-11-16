@@ -8,7 +8,7 @@ import { useAppearance } from "@/components/providers/appearance-provider";
 import { useColorMode } from "@/hooks/use-color-mode";
 import { cn } from "@/lib/utils";
 import { MAX_GLASS_TRANSPARENCY } from "@/web/lib/local-prefs";
-import { StartScreenSetting } from "./start-screen-setting";
+import { LanguageSetting } from "./language-setting";
 import { ThemeGallery } from "./theme-gallery";
 
 export const AppearancePanel = () => {
@@ -58,6 +58,6 @@ export const AppearancePanel = () => {
         <span>{tr("appearance.glass.solid")}</span><span>{tr("appearance.glass.clear")}</span>
       </div>
     </section>
-    <StartScreenSetting />
+    <LanguageSetting />
   </div>;
 };

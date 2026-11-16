@@ -45,10 +45,12 @@ export const Composer = ({
 }) => {
   const [image, setImage] = useState<string | null>(null);
   const [apps, setApps] = useState<MentionApp[]>([]);
-  const [menu, setMenu] = useState<{ query: string; start: number } | null>(null);
+  // below: mở menu xuống dưới khi phía dưới ô nhập còn nhiều chỗ hơn (màn chào), ngược lại mở lên trên.
+  const [menu, setMenu] = useState<{ query: string; start: number; below: boolean } | null>(null);
   const [highlight, setHighlight] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const listId = useId();
   const connected = useConnectedApps().data?.apps;
   const options = menu ? matchMentionApps(menu.query).filter((app) => !apps.some((tagged) => tagged.slug === app.slug)) : [];
@@ -68,6 +70,10 @@ export const Composer = ({
     textRef.current?.focus();
     textRef.current?.setSelectionRange(position, position);
   });
+  const roomBelow = () => {
+    const rect = formRef.current?.getBoundingClientRect();
+    return rect ? window.innerHeight - rect.bottom > rect.top : false;
+  };
   const addApp = (app: MentionApp) => setApps((current) => (current.some((item) => item.slug === app.slug) ? current : [...current, app]));
   const pick = (app: MentionApp) => {
     if (!menu) return;
@@ -90,7 +96,7 @@ export const Composer = ({
     }
     onChange(text);
     const match = MENTION_QUERY.exec(text.slice(0, caret));
-    setMenu(match ? { query: match[2], start: caret - match[2].length - 1 } : null);
+    setMenu(match ? { query: match[2], start: caret - match[2].length - 1, below: menu?.below ?? roomBelow() } : null);
     setHighlight(0);
   };
   const openMenu = () => {
@@ -98,20 +104,21 @@ export const Composer = ({
     const before = value.slice(0, caret);
     const insert = before && !/\s$/.test(before) ? " @" : "@";
     onChange(before + insert + value.slice(caret));
-    setMenu({ query: "", start: caret + insert.length - 1 });
+    setMenu({ query: "", start: caret + insert.length - 1, below: roomBelow() });
     setHighlight(0);
     placeCaret(caret + insert.length);
   };
 
   return (
     <form
+      ref={formRef}
       onSubmit={(event) => { event.preventDefault(); send(); }}
       className="glass-surface relative rounded-2xl border shadow-xs transition focus-within:border-violet-400 focus-within:ring-3 focus-within:ring-violet-400/15"
     >
       {menuOpen ? (
-        <div className="absolute bottom-full left-2 z-20 mb-2 w-64 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg">
+        <div className={cn("absolute left-2 z-30 w-64 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg", menu?.below ? "top-full mt-2" : "bottom-full mb-2")}>
           <p className="px-2 pb-1 pt-1.5 text-[11px] font-medium text-muted-foreground">{tr("assistant.mention.list")}</p>
-          <ul id={listId} role="listbox" aria-label={tr("assistant.mention.list")}>
+          <ul id={listId} role="listbox" aria-label={tr("assistant.mention.list")} className="max-h-[min(15rem,35vh)] overflow-y-auto">
             {options.map((app, index) => (
               <li key={app.slug} id={`${listId}-${index}`} role="option" aria-selected={index === highlight}
                 // Giữ focus ở ô nhập khi bấm chọn.
@@ -162,7 +169,9 @@ export const Composer = ({
           onKeyDown={(event) => {
             if (menuOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
               event.preventDefault();
-              setHighlight((current) => (current + (event.key === "ArrowDown" ? 1 : options.length - 1)) % options.length);
+              const next = (highlight + (event.key === "ArrowDown" ? 1 : options.length - 1)) % options.length;
+              setHighlight(next);
+              document.getElementById(`${listId}-${next}`)?.scrollIntoView({ block: "nearest" });
               return;
             }
             if (menuOpen && (event.key === "Enter" || event.key === "Tab") && !event.nativeEvent.isComposing) {

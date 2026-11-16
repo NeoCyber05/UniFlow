@@ -191,7 +191,6 @@ export const viExtra = {
   "apps.filterLabel": "Lọc ứng dụng",
   "apps.filterAll": "Tất cả",
   "apps.filterConnected": "Đã kết nối",
-  "apps.unsupported": "Chưa hỗ trợ lấy việc",
   "apps.statusUnknown": "Chưa rõ trạng thái",
   "apps.showMore": "Xem thêm",
   "apps.noResults": "Không tìm thấy ứng dụng phù hợp.",
