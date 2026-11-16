@@ -121,7 +121,7 @@ const ThreadItem = ({ thread, active, now, onNavigate, onDeleted }: { thread: Th
 };
 
 /** Cột trái của trang Trợ lý: cuộc trò chuyện mới, tìm, và danh sách chia theo Đã ghim / Hôm nay / 7 ngày qua / Cũ hơn. */
-export const ThreadList = ({ threads, activeId, loading, onNavigate, onDeleted }: { threads: ThreadSummary[]; activeId?: string; loading: boolean; onNavigate?: () => void; onDeleted: (id: string) => void }) => {
+export const ThreadList = ({ threads, activeId, loading, error, onRetry, onNavigate, onDeleted }: { threads: ThreadSummary[]; activeId?: string; loading: boolean; error?: boolean; onRetry?: () => void; onNavigate?: () => void; onDeleted: (id: string) => void }) => {
   const [query, setQuery] = useState("");
   const now = useMemo(() => new Date(), []);
   const filtered = useMemo(() => {
@@ -152,18 +152,24 @@ export const ThreadList = ({ threads, activeId, loading, onNavigate, onDeleted }
         </label>
       </div>
       <nav aria-label={tr("assistant.threads.title")} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 pb-4">
+        {error && (
+          <div role="alert" className="space-y-2 px-2.5 py-3 text-sm text-muted-foreground">
+            <p>{tr("assistant.threads.loadError")}</p>
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>{tr("common.retry")}</Button>
+          </div>
+        )}
         {loading ? (
           <div className="space-y-2 px-1" aria-hidden="true">
             {[0, 1, 2, 3].map((index) => <div key={index} className="h-10 animate-pulse rounded-lg bg-muted" />)}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 ? (!error && (
           <EmptyState
             size="sm"
             icon={MessageSquareText}
             title={query ? tr("assistant.threads.noMatch") : tr("assistant.threads.emptyTitle")}
             description={query ? undefined : tr("assistant.threads.emptyBody")}
           />
-        ) : THREAD_GROUP_ORDER.map((key) => groups[key].length > 0 ? (
+        )) : THREAD_GROUP_ORDER.map((key) => groups[key].length > 0 ? (
           <section key={key} aria-label={tr(GROUP_LABELS[key])}>
             <h3 className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{tr(GROUP_LABELS[key])}</h3>
             <div className="space-y-0.5">

@@ -15,12 +15,17 @@ const SLUG = /^[a-z0-9_-]{1,80}$/;
 const FALLBACK: ConnectorCatalogItem[] = [
   ["gmail", "Gmail", "Đọc email để tìm việc cần làm."],
   ["slack", "Slack", "Tìm tin nhắn có việc được giao."],
+  ["google_classroom", "Google Classroom", "Lớp học và bài tập cần nộp."],
+  ["outlook", "Outlook", "Email và việc cần xử lý."],
   ["googlecalendar", "Google Calendar", "Lịch và sự kiện."],
   ["googledrive", "Google Drive", "Tệp và thư mục."],
   ["notion", "Notion", "Trang và cơ sở dữ liệu."],
   ["github", "GitHub", "Issue và pull request."],
   ["linear", "Linear", "Issue và dự án."],
   ["jira", "Jira", "Issue và sprint."],
+  ["microsoft_teams", "Microsoft Teams", "Tin nhắn và việc được giao."],
+  ["trello", "Trello", "Bảng và thẻ công việc."],
+  ["googletasks", "Google Tasks", "Danh sách việc và ngày hạn."],
 ].map(([slug, name, description]) => ({ slug, name, description, logoUrl: null, taskReadSupported: isConnectorApp(slug) }));
 
 const record = (value: unknown): Record<string, unknown> | undefined =>

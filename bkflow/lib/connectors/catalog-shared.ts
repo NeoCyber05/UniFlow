@@ -17,6 +17,16 @@ export type ConnectorCatalog = {
 
 export type CatalogFilter = "all" | "connected";
 
+// Chỉ hiện ứng dụng giao tiếp, mạng xã hội và công việc trong Cài đặt Trợ lý.
+const ASSISTANT_APPS = new Set([
+  "gmail", "outlook", "outlookcalendar", "googlecalendar", "google_classroom", "googletasks", "googledrive", "googledocs", "googlesheets",
+  "slack", "microsoft_teams", "microsoftteams", "teams", "discord", "discordbot", "telegram", "whatsapp",
+  "facebook", "facebook_page", "linkedin", "twitter", "reddit", "youtube", "tiktok",
+  "notion", "github", "gitlab", "linear", "jira", "asana", "trello", "clickup", "monday",
+  "microsoft_onedrive", "onedrive", "share_point", "sharepoint", "dropbox", "box", "zoom", "googlemeet",
+  "todoist", "microsofttodo", "confluence", "airtable",
+]);
+
 /** Lọc theo tên/slug (không phân biệt hoa thường) rồi sắp: đã kết nối → có hỗ trợ → tên. */
 export const filterCatalog = (
   items: ConnectorCatalogItem[],
@@ -24,6 +34,7 @@ export const filterCatalog = (
 ): ConnectorCatalogItem[] => {
   const needle = query.trim().toLowerCase();
   return items
+    .filter((item) => ASSISTANT_APPS.has(item.slug))
     .filter((item) => !needle || item.name.toLowerCase().includes(needle) || item.slug.includes(needle))
     .filter((item) => filter === "all" || isConnected(item.slug))
     .sort((a, b) =>

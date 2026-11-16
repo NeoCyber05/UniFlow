@@ -1,4 +1,4 @@
-// Kết nối ứng dụng ngoài (Gmail, Slack) cho Trợ lý AI qua Composio Tool Router.
+// Kết nối ứng dụng ngoài cho Trợ lý AI qua Composio Tool Router.
 // Chuyển thể từ OpenMausBot (Apache-2.0, github.com/milind-soni/OpenMausBot):
 // server/composio.ts, composio-session.ts, connected-reads.ts, connector-tools-list.ts.
 // Khác bản gốc: mỗi người dùng UniFlow là một Composio user riêng, chỉ một tài khoản mỗi app, chỉ công cụ đọc.
@@ -6,7 +6,7 @@ import "server-only";
 
 import { z } from "zod";
 
-export const CONNECTOR_APPS = ["gmail", "slack"] as const;
+export const CONNECTOR_APPS = ["gmail", "slack", "google_classroom", "outlook", "googlecalendar", "notion", "microsoft_teams", "jira", "trello", "googletasks"] as const;
 export type ConnectorApp = (typeof CONNECTOR_APPS)[number];
 
 export const isConnectorApp = (value: unknown): value is ConnectorApp =>
@@ -17,6 +17,20 @@ export const APP_READ_TOOLS = {
   gmailList: "GMAIL_FETCH_EMAILS",
   gmailMessage: "GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID",
   slackSearch: "SLACK_SEARCH_MESSAGES",
+  classroomCourses: "GOOGLE_CLASSROOM_COURSES_LIST",
+  classroomCoursework: "GOOGLE_CLASSROOM_COURSE_WORK_LIST",
+  outlookList: "OUTLOOK_LIST_MESSAGES",
+  outlookMessage: "OUTLOOK_GET_MESSAGE",
+  calendarEvents: "GOOGLECALENDAR_EVENTS_LIST",
+  calendarBusy: "GOOGLECALENDAR_FREE_BUSY_QUERY",
+  notionSearch: "NOTION_SEARCH_NOTION_PAGE",
+  notionBlocks: "NOTION_FETCH_BLOCK_CONTENTS",
+  teamsSearch: "MICROSOFT_TEAMS_SEARCH_MESSAGES",
+  jiraSearch: "JIRA_SEARCH_ISSUES",
+  trelloBoards: "TRELLO_GET_MEMBERS_BOARDS_BY_ID_MEMBER",
+  trelloCards: "TRELLO_GET_BOARDS_CARDS_BY_ID_BOARD",
+  taskLists: "GOOGLETASKS_LIST_TASK_LISTS",
+  tasksList: "GOOGLETASKS_LIST_TASKS",
 } as const;
 const ALLOWED_TOOLS = new Set<string>(Object.values(APP_READ_TOOLS));
 

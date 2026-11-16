@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 
 import { loadConnectorCatalog, normalizeCatalogItems } from "./catalog";
+import { CONNECTOR_APPS } from "./composio";
 
 afterEach(() => {
   mock.restoreAll();
@@ -21,7 +22,7 @@ test("normalizeCatalogItems dedupe slug, suy capability từ allowlist đọc", 
     { slug: "notion", name: "Notion" },
     { slug: "gmail", name: "Duplicate" },
   ]);
-  assert.deepEqual(cards.map((x) => [x.slug, x.taskReadSupported]), [["gmail", true], ["notion", false]]);
+  assert.deepEqual(cards.map((x) => [x.slug, x.taskReadSupported]), [["gmail", true], ["notion", true]]);
   assert.equal(cards[0].description, "Read mail");
 });
 
@@ -53,7 +54,8 @@ test("loadConnectorCatalog nối cursor hai trang, dedupe → complete", async (
       : page([{ slug: "gmail", name: "Gmail" }, { slug: "slack", name: "Slack" }], "b");
   });
   const catalog = await loadConnectorCatalog();
-  assert.deepEqual(catalog.items.map((x) => x.slug), ["gmail", "slack", "notion"]);
+  assert.deepEqual(catalog.items.slice(0, 3).map((x) => x.slug), ["gmail", "slack", "notion"]);
+  assert.deepEqual(catalog.items.filter((x) => x.taskReadSupported).map((x) => x.slug).sort(), [...CONNECTOR_APPS].sort());
   assert.equal(catalog.complete, true);
   assert.equal(catalog.source, "composio");
   assert.equal(urls.length, 2);
@@ -64,7 +66,7 @@ test("cursor lặp → giữ item đã nhận, partial", async () => {
   freshKey();
   mock.method(globalThis, "fetch", async () => page([{ slug: "gmail", name: "Gmail" }, { slug: "slack", name: "Slack" }], "same"));
   const catalog = await loadConnectorCatalog();
-  assert.deepEqual(catalog.items.map((x) => x.slug), ["gmail", "slack"]);
+  assert.deepEqual(catalog.items.map((x) => x.slug).sort(), [...CONNECTOR_APPS].sort());
   assert.equal(catalog.complete, false);
 });
 
@@ -92,7 +94,7 @@ test("partial chỉ có Notion vẫn bổ sung Gmail/Slack", async () => {
   assert.equal(catalog.items.find((x) => x.slug === "gmail")?.taskReadSupported, true);
 });
 
-test("không có key → fallback 8 app, chỉ Gmail/Slack supported, không gọi mạng", async () => {
+test("không có key → fallback giữ mọi app có adapter, không gọi mạng", async () => {
   const fetchMock = mock.method(globalThis, "fetch", async () => { throw new Error("must not fetch"); });
   const catalog = await loadConnectorCatalog();
   assert.equal(fetchMock.mock.callCount(), 0);
@@ -100,9 +102,9 @@ test("không có key → fallback 8 app, chỉ Gmail/Slack supported, không g�
   assert.equal(catalog.complete, false);
   assert.deepEqual(
     catalog.items.map((x) => x.slug).sort(),
-    ["github", "gmail", "googlecalendar", "googledrive", "jira", "linear", "notion", "slack"],
+    ["github", "gmail", "google_classroom", "googlecalendar", "googledrive", "googletasks", "jira", "linear", "microsoft_teams", "notion", "outlook", "slack", "trello"],
   );
-  assert.deepEqual(catalog.items.filter((x) => x.taskReadSupported).map((x) => x.slug).sort(), ["gmail", "slack"]);
+  assert.deepEqual(catalog.items.filter((x) => x.taskReadSupported).map((x) => x.slug).sort(), [...CONNECTOR_APPS].sort());
 });
 
 test("API lỗi trang đầu → fallback", async () => {
@@ -110,7 +112,7 @@ test("API lỗi trang đầu → fallback", async () => {
   mock.method(globalThis, "fetch", async () => new Response("down", { status: 503 }));
   const catalog = await loadConnectorCatalog();
   assert.equal(catalog.source, "fallback");
-  assert.equal(catalog.items.length, 8);
+  assert.equal(catalog.items.length, 13);
 });
 
 test("kết quả complete được cache theo key", async () => {
@@ -130,8 +132,20 @@ test("filterCatalog tìm không phân biệt hoa thường, lọc đã kết n�
     { slug: "notion", name: "Notion" }, { slug: "slack", name: "Slack" }, { slug: "gmail", name: "Gmail" }, { slug: "asana", name: "Asana" },
   ]);
   const isConnected = (slug: string) => slug === "gmail";
-  assert.deepEqual(filterCatalog(items, { query: "", filter: "all", isConnected }).map((x) => x.slug), ["gmail", "slack", "asana", "notion"]);
+  assert.deepEqual(filterCatalog(items, { query: "", filter: "all", isConnected }).map((x) => x.slug), ["gmail", "notion", "slack", "asana"]);
   assert.deepEqual(filterCatalog(items, { query: "NOTION", filter: "all", isConnected }).map((x) => x.slug), ["notion"]);
   assert.deepEqual(filterCatalog(items, { query: "", filter: "connected", isConnected }).map((x) => x.slug), ["gmail"]);
   assert.deepEqual(filterCatalog(items, { query: "zzz", filter: "all", isConnected }), []);
+});
+
+test("settings catalog only shows communication, social and work apps", async () => {
+  const { filterCatalog } = await import("./catalog-shared");
+  const items = normalizeCatalogItems([
+    ...["gmail", "slack", "microsoft_teams", "discord", "telegram", "facebook", "linkedin", "notion", "jira", "outlook"],
+    "stripe", "weather", "random_tool", "openai", "instagram",
+  ].map((slug) => ({ slug, name: slug })));
+  const visible = filterCatalog(items, { query: "", filter: "all", isConnected: () => false });
+  assert.deepEqual(visible.map((item) => item.slug).sort(),
+    ["discord", "facebook", "gmail", "jira", "linkedin", "microsoft_teams", "notion", "outlook", "slack", "telegram"]);
+  assert.deepEqual(filterCatalog(items, { query: "stripe", filter: "all", isConnected: () => true }), []);
 });

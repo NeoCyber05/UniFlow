@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 
-import { authorizeApp, callAppTool, emailsFromData, parseMcpResponse, toolData, trustedComposioUrl } from "./composio";
+import { authorizeApp, callAppTool, connectedApps, CONNECTOR_APPS, isConnectorApp, emailsFromData, parseMcpResponse, toolData, trustedComposioUrl } from "./composio";
 
 afterEach(() => {
   mock.restoreAll();
@@ -144,4 +144,29 @@ test("authorizeApp từ chối link ngoài composio.dev", async () => {
 
 test("thiếu COMPOSIO_API_KEY thì báo chưa cấu hình", async () => {
   await assert.rejects(authorizeApp("user-c", "gmail"), /chưa cấu hình/);
+});
+
+test("selected productivity apps support OAuth and inventory; Instagram/Discord remain disabled", async () => {
+  const apps = ["gmail", "slack", "google_classroom", "outlook", "googlecalendar", "notion", "microsoft_teams", "jira", "trello", "googletasks"];
+  assert.deepEqual([...CONNECTOR_APPS].sort(), [...apps].sort());
+  assert.equal(isConnectorApp("instagram"), false);
+  assert.equal(isConnectorApp("discord"), false);
+  process.env.COMPOSIO_API_KEY = "test";
+  const linked: string[] = [];
+  mock.method(globalThis, "fetch", async (url: string | URL | Request, init?: RequestInit) => {
+    const path = String(url);
+    if (path.endsWith("/tool_router/session")) return Response.json({ session_id: "expanded", mcp: { url: "https://mcp.composio.dev/expanded" } });
+    if (path.endsWith("/link")) {
+      linked.push(JSON.parse(String(init?.body)).toolkit);
+      return Response.json({ redirect_url: "https://connect.composio.dev/link/test" });
+    }
+    assert.deepEqual(new URL(path).searchParams.get("toolkits")?.split(",").sort(), [...apps].sort());
+    return Response.json({ items: apps.map((slug) => ({ slug, connected_account: { id: slug, status: slug === "outlook" ? "EXPIRED" : "ACTIVE" } })) });
+  });
+  for (const app of CONNECTOR_APPS) await authorizeApp("expanded-user", app);
+  assert.deepEqual(linked, [...CONNECTOR_APPS]);
+  const inventory = await connectedApps("expanded-user");
+  assert.deepEqual(Object.keys(inventory).sort(), [...apps].sort());
+  assert.equal(inventory.outlook, false);
+  assert.equal(inventory.notion, true);
 });

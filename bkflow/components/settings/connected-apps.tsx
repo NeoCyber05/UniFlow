@@ -22,13 +22,22 @@ const PAGE = 24;
 const SUPPORTED: Record<string, { name: string; descKey: ExtraMessageKey; color: string }> = {
   gmail: { name: "Gmail", descKey: "apps.gmail.desc", color: "#EA4335" },
   slack: { name: "Slack", descKey: "apps.slack.desc", color: "#4A154B" },
+  google_classroom: { name: "Google Classroom", descKey: "apps.classroom.desc", color: "#0F9D58" },
+  outlook: { name: "Outlook", descKey: "apps.outlook.desc", color: "#0078D4" },
+  googlecalendar: { name: "Google Calendar", descKey: "apps.calendar.desc", color: "#4285F4" },
+  notion: { name: "Notion", descKey: "apps.notion.desc", color: "#191919" },
+  microsoft_teams: { name: "Microsoft Teams", descKey: "apps.teams.desc", color: "#6264A7" },
+  jira: { name: "Jira", descKey: "apps.jira.desc", color: "#0052CC" },
+  trello: { name: "Trello", descKey: "apps.trello.desc", color: "#0079BF" },
+  googletasks: { name: "Google Tasks", descKey: "apps.tasks.desc", color: "#4285F4" },
 };
 
 const send = (method: "POST" | "DELETE", app: string) =>
   fetch("/api/connectors", { method, headers: { "content-type": "application/json" }, body: JSON.stringify({ app }) });
 
 const Logo = ({ item }: { item: ConnectorCatalogItem }) => {
-  const local = SUPPORTED[item.slug] ? `/${item.slug}.svg` : null;
+  const local = ({ gmail: "/gmail.svg", slack: "/slack.svg", microsoftteams: "/teams.svg", teams: "/teams.svg", discord: "/discord.svg", discordbot: "/discord.svg", telegram: "/telegram.svg" } as Record<string, string>)[item.slug]
+    ?? (SUPPORTED[item.slug] ? `/connector-logos/${item.slug}.svg` : null);
   const [failed, setFailed] = useState(false);
   const src = local ?? item.logoUrl;
   return (

@@ -12,6 +12,7 @@ import { AssistantMessage } from "@/components/ai-assistant/assistant-message";
 import { ProposalDecisionsProvider } from "@/components/ai-assistant/proposal-decisions";
 import { runningStepLabel, ThinkingStatus } from "@/components/ai-assistant/thinking-status";
 import { Hint } from "@/components/hint";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useCardModal } from "@/hooks/use-card-modal";
 import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
@@ -114,7 +115,8 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
     messages: data.messages,
     transport,
     onError: (chatError) => toast.error(chatError.message || tr("aiAssistant.chatError")),
-    onFinish: () => {
+    onFinish: ({ messages: savedMessages }) => {
+      queryClient.setQueryData<ThreadPayload>(threadKey(threadId), (current) => current && { ...current, messages: savedMessages });
       void queryClient.invalidateQueries({ queryKey: THREADS_KEY });
       void queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
     },
@@ -225,7 +227,7 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
 };
 
 const ThreadLoader = (props: { threadId: string; boards: AssistantBoard[]; enabled: boolean; takePending: (threadId: string) => PendingFirst | null; onOpenThreads: () => void; onMissing: () => void }) => {
-  const { data, error } = useQuery({ queryKey: threadKey(props.threadId), queryFn: () => fetchThread(props.threadId), staleTime: Infinity, gcTime: 0, retry: 1 });
+  const { data, error, refetch } = useQuery({ queryKey: threadKey(props.threadId), queryFn: () => fetchThread(props.threadId), staleTime: Infinity, gcTime: 0, retry: 1 });
   const { onMissing } = props;
   useEffect(() => {
     if ((error as { status?: number } | null)?.status === 404) onMissing();
@@ -235,10 +237,15 @@ const ThreadLoader = (props: { threadId: string; boards: AssistantBoard[]; enabl
   return (
     <section className="flex min-w-0 flex-1 flex-col">
       <ConversationHeader title={error ? tr("assistant.thread.loadError") : tr("common.loading")} onOpenThreads={props.onOpenThreads} />
-      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6" aria-hidden="true">
+      {error ? (
+        <div role="alert" className="mx-auto space-y-3 px-4 py-6 text-center text-sm text-muted-foreground">
+          <p>{tr("assistant.thread.loadError")}</p>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>{tr("common.retry")}</Button>
+        </div>
+      ) : <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6" aria-hidden="true">
         <div className="ml-auto h-10 w-2/3 animate-pulse rounded-2xl bg-muted" />
         <div className="h-24 w-full animate-pulse rounded-xl bg-muted/70" />
-      </div>
+      </div>}
     </section>
   );
 };
@@ -255,10 +262,14 @@ export const AssistantPage = () => {
   const queryClient = useQueryClient();
   const [threadsOpen, setThreadsOpen] = useState(false);
   const threadsFocus = useReturnFocus();
-  const openThreads = useCallback(() => { threadsFocus.remember(); setThreadsOpen(true); }, [threadsFocus]);
+  const openThreads = useCallback(() => {
+    threadsFocus.remember();
+    setThreadsOpen(true);
+    void queryClient.invalidateQueries({ queryKey: THREADS_KEY });
+  }, [queryClient, threadsFocus]);
   const [creating, setCreating] = useState(false);
   const pending = useRef<PendingFirst | null>(null);
-  const { data, isLoading } = useQuery({ queryKey: THREADS_KEY, queryFn: fetchThreads, staleTime: 30_000 });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: THREADS_KEY, queryFn: fetchThreads, staleTime: 30_000 });
 
   const boards = useMemo(() => data?.boards ?? [], [data?.boards]);
   const requestedBoard = searchParams.get("board");
@@ -304,6 +315,8 @@ export const AssistantPage = () => {
       threads={data?.threads ?? []}
       activeId={threadId}
       loading={isLoading}
+      error={isError}
+      onRetry={() => void refetch()}
       onNavigate={() => setThreadsOpen(false)}
       onDeleted={(id) => { if (id === threadId) goHome(); }}
     />

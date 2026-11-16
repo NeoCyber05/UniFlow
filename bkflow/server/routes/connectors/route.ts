@@ -13,7 +13,7 @@ const readApp = async (req: Request) => {
   return isConnectorApp(app) ? app : null;
 };
 
-/** Trạng thái kết nối Gmail/Slack của người dùng hiện tại. */
+/** Trạng thái các ứng dụng có công cụ đọc của người dùng hiện tại. */
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
