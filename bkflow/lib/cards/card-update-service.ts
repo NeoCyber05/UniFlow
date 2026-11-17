@@ -371,7 +371,8 @@ export const updateCardService = async (
       await effects.deleteCardReminderNotifications(card.id);
     }
 
-    await effects.triggerCardUpdated({
+    // Không chờ Pusher: người lưu nhận phản hồi ngay; triggerCardUpdated tự bắt lỗi.
+    void effects.triggerCardUpdated({
       boardId,
       cardId: card.id,
       actorUserId: userId,

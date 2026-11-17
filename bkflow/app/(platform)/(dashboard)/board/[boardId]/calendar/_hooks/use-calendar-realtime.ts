@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { tr } from "@/lib/i18n";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
+import type { BoardCalendarResponse } from "@/types";
 
 import type {
   BoardCalendarAccessPayload,
@@ -32,6 +34,7 @@ export const useCalendarRealtime = ({
   cardModal,
   invalidateBoardCalendar,
 }: UseCalendarRealtimeOptions) => {
+  const queryClient = useQueryClient();
   const processedRealtimeEventIdsRef = useRef<Set<string>>(new Set());
   const realtimeChannelName = realtimeChannels.board(boardId);
   const realtimeEnabled = isRealtimeClientConfigured();
@@ -58,8 +61,22 @@ export const useCalendarRealtime = ({
       return;
     }
 
+    // Echo của chính thao tác vừa lưu ở tab này: cache đã ở đúng revision, khỏi tải lại lần nữa.
+    if (
+      payload.actorUserId === currentUserId &&
+      payload.cardId &&
+      payload.updatedAt &&
+      queryClient
+        .getQueriesData<BoardCalendarResponse>({ queryKey: ["board-calendar", boardId] })
+        .some(([, response]) => response?.items.some((item) =>
+          item.type === "card" && item.cardId === payload.cardId && item.updatedAt === payload.updatedAt
+        ))
+    ) {
+      return;
+    }
+
     invalidateBoardCalendar();
-  }, [invalidateBoardCalendar, processRealtimeEvent]);
+  }, [boardId, currentUserId, invalidateBoardCalendar, processRealtimeEvent, queryClient]);
 
   const handleCalendarRealtimeWithRefresh = useCallback((payload: BoardCalendarRealtimePayload) => {
     if (!processRealtimeEvent(payload, { skipOwnEcho: false })) {
