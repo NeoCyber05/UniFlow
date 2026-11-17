@@ -11,6 +11,7 @@ import { updateCard } from "@/actions/cards/update-card";
 import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
 import { useAction } from "@/hooks/use-action";
 import { runCalendarAction } from "@/lib/calendar/calendar-action";
+import { applyCardPatchToCalendar } from "@/lib/calendar/optimistic-card-patch";
 import { tr } from "@/lib/i18n";
 import { buildSchedulePatch, type ScheduleIntent } from "@/lib/calendar/schedule-command";
 import { getCardRevision } from "@/components/modals/card-modal/card-cache-utils";
@@ -79,12 +80,7 @@ export const useCalendarCardActions = ({
     void queryClient.cancelQueries({ queryKey });
     queryClient.setQueriesData<BoardCalendarResponse>(
       { queryKey },
-      (current) => current && {
-        ...current,
-        items: current.items.map((item) =>
-          item.type === "card" && item.cardId === input.id ? { ...item, ...patch } : item
-        ),
-      },
+      (current) => current && applyCardPatchToCalendar(current, input.id, patch),
     );
   }, [query.data?.boardId, queryClient]);
 
@@ -109,9 +105,8 @@ export const useCalendarCardActions = ({
           ),
         },
       );
+      // useAction gọi invalidateAfterWrite ngay sau onSuccess, đã gồm lịch, Công việc và thẻ này.
       setExpandedDayKey(null);
-      invalidateBoardCalendar();
-      queryClient.invalidateQueries({ queryKey: ["card", data.id] });
     },
     onError: (error) => {
       updateSuccessToastRef.current = null;

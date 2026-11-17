@@ -54,6 +54,9 @@ export type BoardCalendarRealtimePayload = {
   eventId: string;
   boardId: string;
   actorUserId: string;
+  /** Chỉ có ở sự kiện cập nhật thẻ. */
+  cardId?: string;
+  updatedAt?: string;
 };
 
 export type BoardCalendarAccessPayload = BoardCalendarRealtimePayload & {
