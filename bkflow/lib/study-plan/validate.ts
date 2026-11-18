@@ -4,7 +4,7 @@ import { IMAGE_IMPORT_TIME_ZONE, type ImageTaskItem } from "@/lib/capture/image-
 export const STUDY_PLAN_MAX_SESSIONS = 40;
 
 // shortcut: chỉ bắt các cụm phổ biến có dấu; sót cách nói khác thì nâng lên cờ từ AI quick-analysis
-const STUDY_PLAN_PATTERN = /ôn thi|lịch ôn|kế hoạch ôn|ôn tập/i;
+const STUDY_PLAN_PATTERN = /(?:lên|lập|tạo)\s+(?:lịch|kế hoạch)\s+(?:để\s+)?ôn|ôn (?:thi|tập)\s+giúp (?:mình|tôi)/i;
 
 /** Chữ gõ trong ô Thêm việc là yêu cầu lên kế hoạch ôn (không phải 1 việc). */
 export const isStudyPlanRequest = (text: string) => STUDY_PLAN_PATTERN.test(text);

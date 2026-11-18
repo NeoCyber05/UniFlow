@@ -72,6 +72,28 @@ describe("capture draft", () => {
 describe("capture reducer", () => {
   const start = (text: string) => run(createCaptureState(createCaptureDraft({ draftId: D1 })), { type: "text", rawText: text });
 
+  test("image suggestions give way to the course in replacement text", () => {
+    const state = run(start("Nộp bài"),
+      { type: "text", rawText: "Nộp bài A", fields: { title: "Nộp bài A", courseId: "course-from-image" } },
+      { type: "text", rawText: "Nộp bài B #IT3011", fields: { title: "Nộp bài B", courseId: "course-from-text" } });
+    const plan = planCaptureSubmit(state);
+    if (plan.kind !== "submit") assert.fail(plan.kind);
+    const input = toQuickAddInput(plan.snapshot, ID_A, {});
+    assert.equal(input.title, "Nộp bài B");
+    assert.equal(input.courseId, "course-from-text");
+  });
+
+  test("removing an image clears its suggestions even when the title stays the same", () => {
+    const imageDraft = run(start("Nộp bài A"),
+      { type: "field", key: "isImportant", value: true },
+      { type: "infer", analysis: ai(1, { title: "Nộp bài A", courseId: "course-from-image", deadline: { dueDate: null, deadlineOn: "2030-01-10" } }) });
+    const detached = run(imageDraft, { type: "text", rawText: "Nộp bài A", refresh: true, fields: { title: "Nộp bài A" } });
+    assert.equal(detached.draft.textRevision, 2);
+    assert.equal(detached.draft.fields.courseId.value, null);
+    assert.equal(detached.draft.fields.deadline.value, null);
+    assert.equal(detached.draft.fields.isImportant.value, true);
+  });
+
   test("two requests finishing out of order: only the latest merges", () => {
     let state = start("Học bài");
     state = run(state, { type: "analysis/start", draftId: D1, textRevision: 1 }, { type: "text", rawText: "Học bài A" },
@@ -156,6 +178,25 @@ describe("capture reducer", () => {
     state = run(state, { type: "field", key: "title", value: "Nộp bài B" });
     const retry = planCaptureSubmit(state);
     assert.deepEqual(retry, { kind: "submit", creationId: ID_A, snapshot: plan.snapshot, retry: true });
+  });
+
+  test("retry sends the original note and retains newer edits after success", () => {
+    let state = run(start("Nộp bài A"),
+      { type: "field", key: "title", value: "Nộp bài A" },
+      { type: "note", note: "Mô tả ban đầu" });
+    const first = planCaptureSubmit(state);
+    if (first.kind !== "submit") assert.fail(first.kind);
+    state = run(state,
+      { type: "submit/start", creationId: ID_A, snapshot: first.snapshot },
+      { type: "submit/failure", creationId: ID_A, error: "Mất mạng", kind: "uncertain" },
+      { type: "note", note: "Mô tả mới" });
+
+    const retry = planCaptureSubmit(state);
+    if (retry.kind !== "submit" || !retry.creationId) assert.fail("Expected retry");
+    assert.equal(toQuickAddInput(retry.snapshot, retry.creationId, {}).description, "Mô tả ban đầu");
+    state = run(state, { type: "submit/success", creationId: ID_A, nextDraftId: "d-next" });
+    assert.equal(state.draft.note, "Mô tả mới");
+    assert.equal(state.draft.rawText, "Nộp bài A");
   });
 
   test("definite failure reuses id only for unchanged content", () => {

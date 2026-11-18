@@ -200,7 +200,7 @@ const ThreadView = ({ threadId, data, boards, enabled, takePending, onOpenThread
                 </div>
               );
             })}
-            {showThinking ? <ThinkingPanel steps={[]} active startedAt={sentAt} className="pl-8" /> : null}
+            {showThinking ? <ThinkingPanel steps={[]} active startedAt={sentAt} className="ml-8 w-fit max-w-[calc(100%-2rem)] rounded-lg bg-card px-2 py-1" /> : null}
             {error && !busy ? <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error.message || tr("aiAssistant.genericError")}</p> : null}
           </div>
         </div>

@@ -763,9 +763,13 @@
   }
 
   /* Personal assistant: only the reading surfaces get glass, the page around them stays transparent. */
+  .dark .assistant-workspace {
+    --assistant-reply-min-opacity: 0%;
+  }
+
   .assistant-workspace [data-ai-message-role="assistant"] > :last-child {
     --muted-foreground: color-mix(in oklab, var(--foreground) 88%, var(--card));
-    background-color: color-mix(in oklab, var(--card) min(100%, calc(108% - var(--glass-transparency, 56%))), transparent);
+    background-color: color-mix(in oklab, var(--card) clamp(var(--assistant-reply-min-opacity, 84%), calc(108% - var(--glass-transparency, 56%)), 100%), transparent);
     backdrop-filter: blur(12px);
     border-radius: 1rem;
     padding: 0.75rem 1rem;

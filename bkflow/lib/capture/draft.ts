@@ -30,6 +30,7 @@ export type CaptureDraft = {
   draftId: string;
   textRevision: number;
   rawText: string;
+  note: string;
   source: CaptureSource | null;
   fields: CaptureDraftFields;
   issues: CaptureIssue[];
@@ -65,6 +66,7 @@ export const createCaptureDraft = ({
   draftId,
   textRevision: 0,
   rawText,
+  note: "",
   source,
   fields: emptyDraftFields(),
   issues: [],
@@ -72,8 +74,8 @@ export const createCaptureDraft = ({
 });
 
 /** Mỗi lần sửa văn bản tăng revision; suy luận cũ bị bỏ, lựa chọn của người dùng giữ nguyên. */
-export const setCaptureText = (draft: CaptureDraft, rawText: string): CaptureDraft => {
-  if (rawText === draft.rawText) return draft;
+export const setCaptureText = (draft: CaptureDraft, rawText: string, refresh = false): CaptureDraft => {
+  if (!refresh && rawText === draft.rawText) return draft;
   const fields = { ...draft.fields };
   for (const key of FIELD_KEYS) {
     if (fields[key].origin === "inferred") {
@@ -143,8 +145,8 @@ export const confirmCaptureDates = (draft: CaptureDraft): CaptureDraft => ({
 export const getCaptureValues = (draft: CaptureDraft): CaptureFields =>
   Object.fromEntries(FIELD_KEYS.map((key) => [key, draft.fields[key].value])) as CaptureFields;
 
-export const getCaptureDescription = (draft: Pick<CaptureDraft, "source">) =>
-  draft.source ? buildCaptureSourceDescription(draft.source) : "";
+export const getCaptureDescription = ({ source, note }: Pick<CaptureDraft, "source" | "note">) =>
+  [source ? buildCaptureSourceDescription(source) : "", note.trim()].filter(Boolean).join("\n\n");
 
 /** Lý do chưa được lưu (null = lưu được). Không phụ thuộc AI: thiếu AI vẫn thêm tay được. */
 export const getCaptureSubmitBlocker = (draft: CaptureDraft): string | null => {
@@ -208,7 +210,8 @@ export type CaptureState = {
 };
 
 export type CaptureEvent =
-  | { type: "text"; rawText: string }
+  | { type: "text"; rawText: string; fields?: Partial<CaptureFields>; refresh?: boolean }
+  | { type: "note"; note: string }
   | { [K in keyof CaptureFields]: { type: "field"; key: K; value: CaptureFields[K] } }[keyof CaptureFields]
   | { type: "reset-field"; key: keyof CaptureFields }
   | { type: "confirm-dates" }
@@ -238,8 +241,18 @@ export const isAnalyzingCurrent = (state: CaptureState) =>
 
 export const captureReducer = (state: CaptureState, event: CaptureEvent): CaptureState => {
   switch (event.type) {
-    case "text":
-      return { ...state, draft: setCaptureText(state.draft, event.rawText), analysisError: null, confirmingSubmit: false };
+    case "text": {
+      const draft = setCaptureText(state.draft, event.rawText, event.refresh);
+      const { draftId, textRevision } = draft;
+      return {
+        ...state,
+        draft: event.fields ? mergeCaptureAnalysis(draft, { draftId, textRevision, fields: event.fields }) : draft,
+        analysisError: null,
+        confirmingSubmit: false,
+      };
+    }
+    case "note":
+      return { ...state, draft: { ...state.draft, note: event.note } };
     case "field":
       return { ...state, draft: setCaptureField(state.draft, event.key, event.value as never) };
     case "reset-field":

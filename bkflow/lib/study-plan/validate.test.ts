@@ -46,7 +46,7 @@ describe("isStudyPlanRequest", () => {
     }
   });
   it("không khớp việc thường", () => {
-    for (const text of ["Nộp báo cáo lab 2 thứ 6", "thi IT2110 ngày 15/1", "họp nhóm tối nay"]) {
+    for (const text of ["Nộp báo cáo lab 2 thứ 6", "thi IT2110 ngày 15/1", "họp nhóm tối nay", "Ôn tập IT3011 chương 3", "Ôn thi Giải tích vào thứ Sáu", "Gửi lịch ôn tập cho nhóm"]) {
       assert.equal(isStudyPlanRequest(text), false, text);
     }
   });

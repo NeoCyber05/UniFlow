@@ -121,7 +121,7 @@ export const ThinkingPanel = ({ steps, active, startedAt, durationMs, className 
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex max-w-full items-center gap-2 rounded-md py-0.5 pr-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        className="inline-flex max-w-full items-center gap-2 rounded-md py-0.5 pr-1 text-foreground hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
       >
         {active ? (
           <span aria-hidden="true" className="ai-node-pulse size-2 shrink-0 rounded-full bg-violet-500" />
@@ -130,7 +130,7 @@ export const ThinkingPanel = ({ steps, active, startedAt, durationMs, className 
         ) : (
           <span aria-hidden="true" className="flex size-3.5 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white"><Check className="size-2.5" strokeWidth={3} /></span>
         )}
-        <span className={cn("truncate font-medium tabular-nums", active && "ai-shimmer")}>{label}</span>
+        <span className="truncate font-semibold tabular-nums">{label}</span>
         <ChevronDown aria-hidden="true" className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
       </button>
       <ol id={listId} aria-live="polite" aria-relevant="additions" hidden={!open} className="mt-2 pl-0.5">
@@ -147,7 +147,7 @@ export const ThinkingPanel = ({ steps, active, startedAt, durationMs, className 
               ) : (
                 <span aria-hidden="true" className="absolute left-[3px] top-[5px] size-2 rounded-full bg-violet-300 dark:bg-violet-400/60" />
               )}
-              <span className={cn("block break-words", isRunning ? "ai-shimmer font-medium" : "text-muted-foreground")}>
+              <span className={cn("block break-words", isRunning ? "font-medium text-foreground" : "text-muted-foreground")}>
                 {traceStepLabel(step)}{isFailed(step.state) ? ` · ${tr("assistant.trace.stepFailed")}` : ""}
               </span>
               {step.sources && step.sources.length > 0 ? <StepSources sources={step.sources} /> : null}

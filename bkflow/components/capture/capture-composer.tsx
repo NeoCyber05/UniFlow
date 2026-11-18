@@ -159,13 +159,13 @@ export const CaptureComposer = ({
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
+  const lastRequest = useRef<{ input: Parameters<typeof quickAddCard>[0]; imageScan: number | null } | null>(null);
   const aiUnavailable = useRef(false);
   const detailsId = useId();
   const [state, dispatch] = useReducer(captureReducer, undefined, () =>
     initialState({ source: initialSource, courses, members }));
   const [detailsOpen, setDetailsOpen] = useState(Boolean(initialSource));
   const [notice, setNotice] = useState<string | null>(null);
-  const [note, setNote] = useState("");
   // Ảnh đính kèm: AI đọc ngay khi gắn, đọc lại khi sửa chữ (ảnh + chữ đang gõ)
   const [attachedImage, setAttachedImage] = useState<Blob | null>(null);
   const scanSeq = useRef(0);
@@ -183,9 +183,10 @@ export const CaptureComposer = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { draft, submission } = state;
-  const { draftId, textRevision, rawText, source } = draft;
+  const { draftId, textRevision, rawText, note, source } = draft;
   const values = Object.fromEntries(Object.entries(draft.fields).map(([key, field]) => [key, field.value])) as CaptureFields;
   const isSaving = submission?.status === "saving";
+  const retrying = submission?.status === "uncertain";
   const analyzing = isAnalyzingCurrent(state);
   const aiEnabled = ai && Boolean(boardId) && !disabled;
 
@@ -195,11 +196,10 @@ export const CaptureComposer = ({
   );
 
   // Cú pháp #môn @ngày ! là suy luận tức thì cho revision mới; lựa chọn tay luôn thắng.
-  const onTextChange = (next: string) => {
-    if (next === rawText) return;
+  const onTextChange = (next: string, { refresh = false, fields }: { refresh?: boolean; fields?: Partial<CaptureFields> } = {}) => {
+    if (!refresh && next === rawText) return;
     setNotice(null);
-    dispatch({ type: "text", rawText: next });
-    dispatch({ type: "infer", analysis: { draftId, textRevision: textRevision + 1, fields: parserFields(next, courses, members) } });
+    dispatch({ type: "text", rawText: next, refresh, fields: { ...parserFields(next, courses, members), ...fields } });
   };
 
   const studyPlan = !attachedImage && isStudyPlanRequest(rawText);
@@ -234,10 +234,11 @@ export const CaptureComposer = ({
 
   const setField = <K extends keyof CaptureFields>(key: K, value: CaptureFields[K]) =>
     dispatch({ type: "field", key, value } as never);
+  const setNote = (value: string) => dispatch({ type: "note", note: value });
 
   const submit = async (withCurrentInfo = false) => {
     if (disabled || submitting.current) return;
-    if (attachedImage) {
+    if (attachedImage && !retrying) {
       if (readingImage) return;
       if (pendingImport.current) {
         setImageImport(pendingImport.current);
@@ -248,7 +249,7 @@ export const CaptureComposer = ({
         return;
       }
     }
-    if (studyPlan) {
+    if (studyPlan && !retrying) {
       if (readingImage) return;
       setReadingImage(true);
       try {
@@ -278,21 +279,23 @@ export const CaptureComposer = ({
     dispatch({ type: "submit/start", creationId, snapshot: plan.snapshot });
 
     try {
-      const input = toQuickAddInput(plan.snapshot, creationId, { boardId, listId, defaults });
-      const result = await quickAddCard({
-        ...input,
-        description: [plan.snapshot.description, note.trim()].filter(Boolean).join("\n\n") || undefined,
-        assigneeUserIds: Array.from(new Set([...(defaults?.assigneeUserIds ?? []), ...assigneeUserIds])),
-      });
+      const request = plan.retry && lastRequest.current ? lastRequest.current : {
+        input: {
+          ...toQuickAddInput(plan.snapshot, creationId, { boardId, listId, defaults }),
+          assigneeUserIds: Array.from(new Set([...(defaults?.assigneeUserIds ?? []), ...assigneeUserIds])),
+        },
+        imageScan: attachedImage ? scanSeq.current : null,
+      };
+      lastRequest.current = request;
+      const result = await quickAddCard(request.input);
 
       if (result.data) {
         dispatch({ type: "submit/success", creationId, nextDraftId: newId() });
-        setNote("");
-        attachImage(null);
+        if (request.imageScan === scanSeq.current) attachImage(null);
         if (plan.retry) toast.success(tr("quickAdd.savedPreviousRetry"));
         await queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
         // Môn danh mục/tự đặt vừa thành Course thật → nạp lại danh sách môn
-        if (isCourseRef(input.courseId)) void queryClient.invalidateQueries({ queryKey: ["courses"] });
+        if (isCourseRef(request.input.courseId)) void queryClient.invalidateQueries({ queryKey: ["courses"] });
         onCreated?.(result.data);
         return;
       }
@@ -320,9 +323,12 @@ export const CaptureComposer = ({
   const imagePrompt = [rawText.trim(), note.trim()].filter(Boolean).join("\n");
 
   const attachImage = (image: Blob | null) => {
+    scanSeq.current += 1;
     scannedImage.current = null;
     filledPrompt.current = null;
     pendingImport.current = null;
+    setReadingImage(false);
+    setImageImport(null);
     setAttachedImage(image);
   };
 
@@ -351,10 +357,11 @@ export const CaptureComposer = ({
         const { deadline } = imageItemToCaptureFields(item);
         const nextNote = item.description ?? note;
         filledPrompt.current = [item.title.trim(), nextNote.trim()].filter(Boolean).join("\n");
-        onTextChange(item.title);
-        if (deadline) setField("deadline", deadline);
         const courseId = courseIdForCode(item.courseCode);
-        if (courseId) setField("courseId", courseId);
+        onTextChange(item.title, {
+          refresh: true,
+          fields: { ...(deadline ? { deadline } : {}), ...(courseId ? { courseId } : {}) },
+        });
         setNote(nextNote);
         inputRef.current?.focus();
       } else {
@@ -454,7 +461,10 @@ export const CaptureComposer = ({
             ) : (
               <button
                 type="button"
-                onClick={() => attachImage(null)}
+                onClick={() => {
+                  attachImage(null);
+                  onTextChange(rawText, { refresh: true });
+                }}
                 aria-label={tr("quickAdd.removeImageAria")}
                 className="absolute -right-1.5 -top-1.5 rounded-full bg-neutral-800 p-0.5 text-white shadow hover:bg-rose-600"
               >
@@ -467,8 +477,8 @@ export const CaptureComposer = ({
     </>
   );
   const inputPlaceholder = attachedImage ? tr("quickAdd.imagePromptPlaceholder") : placeholder;
-  const canSubmit = Boolean(rawText.trim() || attachedImage);
-  const busy = isSaving || readingImage;
+  const canSubmit = retrying || Boolean(rawText.trim() || attachedImage);
+  const busy = isSaving || (readingImage && !retrying);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
@@ -555,7 +565,7 @@ export const CaptureComposer = ({
               <Star className="h-3.5 w-3.5" aria-hidden="true" />
               {tr("quickAdd.field.important")}
             </button>
-            {hasDeadline && (
+            {(hasDeadline || values.reminder) && (
               <PickerChip icon={Bell} label={values.reminder && values.reminder !== "none" ? reminderLabel(values.reminder) : tr("quickAdd.field.reminder")} active={Boolean(values.reminder && values.reminder !== "none")} onClear={() => setField("reminder", null)}>
                 <select value={values.reminder ?? "none"} onChange={(event) => setField("reminder", event.target.value === "none" ? null : event.target.value)} className={inputClass} aria-label={tr("quickAdd.reminderAria")}>
                   {reminderOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -613,7 +623,7 @@ export const CaptureComposer = ({
             className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-50"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {submission?.status === "uncertain" && !attachedImage ? tr("quickAdd.retry") : tr("quickAdd.addTaskButton")}
+            {retrying ? tr("quickAdd.retry") : tr("quickAdd.addTaskButton")}
           </button>
         </div>
       </div>
@@ -676,7 +686,7 @@ export const CaptureComposer = ({
               disabled={busy}
               className="shrink-0 rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-60"
             >
-              {submission?.status === "uncertain" && !attachedImage ? tr("quickAdd.retry") : tr("quickAdd.addShort")}
+              {retrying ? tr("quickAdd.retry") : tr("quickAdd.addShort")}
             </button>
           </>
         )}
@@ -703,7 +713,7 @@ export const CaptureComposer = ({
             {values.deadline && (
               <Chip icon={CalendarDays} label={tr("quickAdd.deadlineChip", { deadline: formatDeadlinePreview(values.deadline) })} onClear={() => setField("deadline", null)} />
             )}
-            {values.deadline && values.reminder && values.reminder !== "none" && (
+            {values.reminder && values.reminder !== "none" && (
               <Chip icon={Bell} label={reminderLabel(values.reminder)} onClear={() => setField("reminder", null)} />
             )}
             {values.isImportant && <Chip icon={Star} label={tr("quickAdd.importantChip")} onClear={() => setField("isImportant", false)} />}

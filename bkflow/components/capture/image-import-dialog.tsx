@@ -92,24 +92,28 @@ export const ImageImportDialog = ({
 
   const submit = async () => {
     setStatus("saving");
-    // key/checked thừa: zod ở server tự bỏ field lạ
-    const saved = await importImageItems(type === "timetable"
-      ? { boardId, week1Start, sessions: chosenSessions }
-      : { boardId, items: chosenItems });
+    try {
+      // key/checked thừa: zod ở server tự bỏ field lạ
+      const saved = await importImageItems(type === "timetable"
+        ? { boardId, week1Start, sessions: chosenSessions }
+        : { boardId, items: chosenItems });
+      if (!saved.data) {
+        const fieldError = saved.fieldErrors ? Object.values(saved.fieldErrors).flat().find(Boolean) : undefined;
+        toast.error(saved.error ?? (fieldError as string | undefined) ?? tr("import.createFail"));
+        return;
+      }
 
-    if (!saved.data) {
-      const fieldError = saved.fieldErrors ? Object.values(saved.fieldErrors).flat().find(Boolean) : undefined;
-      toast.error(saved.error ?? (fieldError as string | undefined) ?? tr("import.createFail"));
+      const { created, total: all } = saved.data;
+      toast.success(created === all ? tr("import.createdAll", { count: created }) : tr("import.createdSome", { created, existing: all - created }));
+      // Nhập hàng loạt chạm nhiều view (list, lịch, môn): làm mới toàn bộ
+      void queryClient.invalidateQueries();
+      onImported?.();
+      onClose();
+    } catch {
+      toast.error(tr("import.createFail"));
+    } finally {
       setStatus("review");
-      return;
     }
-
-    const { created, total: all } = saved.data;
-    toast.success(created === all ? tr("import.createdAll", { count: created }) : tr("import.createdSome", { created, existing: all - created }));
-    // Nhập hàng loạt chạm nhiều view (list, lịch, môn): làm mới toàn bộ
-    await queryClient.invalidateQueries();
-    onImported?.();
-    onClose();
   };
 
   return (

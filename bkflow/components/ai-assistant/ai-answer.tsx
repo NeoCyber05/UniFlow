@@ -175,7 +175,7 @@ const SourceRow = ({ reading }: { reading: boolean }) => {
   const count = sources.length;
   return (
     <section aria-label={tr("assistant.sources.count", { count })} className="@container">
-      <p className={cn("mb-2 text-xs font-medium text-muted-foreground", reading && "ai-shimmer")}>
+      <p className="mb-2 text-xs font-medium text-foreground">
         {tr(reading ? "assistant.sources.reading" : "assistant.sources.count", { count })}
       </p>
       <div className="flex gap-2">

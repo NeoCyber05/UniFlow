@@ -42,32 +42,23 @@ const COMPONENTS: Components = {
   td: ({ children }) => <td className="border px-2 py-1">{children}</td>,
 };
 
-type HastNode = { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: HastNode[] };
-const NO_SPLIT = new Set(["code", "pre"]);
+type HastNode = { type: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };
 const BLOCKS = new Set(["p", "li", "h1", "h2", "h3", "h4", "h5", "h6", "td", "th"]);
 
-/** Lúc stream: tách chữ thành từng từ (mỗi từ mới hiện dần từ nhòe) và đặt chấm nhấp nháy cuối khối cuối. */
+/** Đặt dấu nhấp nháy ở cuối nội dung đang stream. */
 const rehypeStreaming = () => (tree: HastNode) => {
   let lastBlock: HastNode | undefined;
   const walk = (node: HastNode) => {
-    if (!node.children || (node.tagName && NO_SPLIT.has(node.tagName))) return;
+    if (!node.children) return;
     if (node.tagName && BLOCKS.has(node.tagName)) lastBlock = node;
-    node.children = node.children.flatMap((child): HastNode[] => {
-      if (child.type !== "text") {
-        walk(child);
-        return [child];
-      }
-      return (child.value ?? "").split(/(\s+)/).filter(Boolean).map((token) => /^\s+$/.test(token)
-        ? { type: "text", value: token }
-        : { type: "element", tagName: "span", properties: { className: ["ai-word"] }, children: [{ type: "text", value: token }] });
-    });
+    node.children.forEach(walk);
   };
   walk(tree);
   (lastBlock ?? tree).children?.push({ type: "element", tagName: "span", properties: { className: ["ai-caret"], ariaHidden: "true" }, children: [] });
 };
 
 export const AssistantMarkdown = memo(({ text, className, streaming = false }: { text: string; className?: string; streaming?: boolean }) => (
-  <div className={cn("space-y-2 text-sm leading-relaxed break-words", className)}>
+  <div className={cn("space-y-2 text-sm leading-relaxed break-words text-foreground", className)}>
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={streaming ? [rehypeStreaming] : []}
