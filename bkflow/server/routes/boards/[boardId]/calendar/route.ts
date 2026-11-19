@@ -52,6 +52,103 @@ const getEffectiveStartTime = (item: BoardCalendarItem) => {
   return effectiveDate ? new Date(effectiveDate).getTime() : 0;
 };
 
+const getUnscheduledCards = async (boardId: string, userId: string): Promise<BoardCalendarUnscheduledCard[]> => {
+  const cards = await db.card.findMany({
+    where: {
+      archivedAt: null,
+      // Khay chưa xếp = chưa có lịch làm (hạn nộp không tính).
+      scheduledOn: null,
+      scheduledStartAt: null,
+      list: {
+        archivedAt: null,
+        board: {
+          id: boardId,
+          userId,
+        },
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      order: true,
+      isCompleted: true,
+      updatedAt: true,
+      dueDate: true,
+      deadlineOn: true,
+      listId: true,
+      courseId: true,
+      userStates: {
+        where: {
+          userId,
+        },
+        select: {
+          isImportant: true,
+        },
+      },
+      list: {
+        select: {
+          title: true,
+          order: true,
+        },
+      },
+      labels: {
+        select: {
+          label: {
+            select: {
+              id: true,
+              title: true,
+              color: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+      _count: {
+        select: {
+          comments: true,
+        },
+      },
+    },
+    orderBy: [
+      {
+        list: {
+          order: "asc",
+        },
+      },
+      {
+        order: "asc",
+      },
+    ],
+  });
+
+  return cards.map((card) => ({
+    type: "unscheduled-card",
+    dueDate: card.dueDate?.toISOString() ?? null,
+    deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null,
+    id: `unscheduled-card:${card.id}`,
+    cardId: card.id,
+    boardId,
+    listId: card.listId,
+    listTitle: card.list.title,
+    courseId: card.courseId,
+    isImportant: card.userStates[0]?.isImportant ?? false,
+    title: card.title,
+    updatedAt: card.updatedAt.toISOString(),
+    isCompleted: card.isCompleted,
+    labels: card.labels.map(({ label }) => ({
+      id: label.id,
+      title: label.title,
+      color: label.color,
+    })),
+    assignees: [],
+    commentCount: card._count.comments,
+    order: card.order,
+    listOrder: card.list.order,
+  }));
+};
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ boardId: string }> },
@@ -64,14 +161,15 @@ export async function GET(
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const fromResult = parseRequiredDateParam(
-      new URL(request.url).searchParams,
-      "from",
-    );
-    const toResult = parseRequiredDateParam(
-      new URL(request.url).searchParams,
-      "to",
-    );
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get("unscheduledOnly") === "true") {
+      const permission = await requireBoardMember({ boardId, userId });
+      if (permission.error) return new Response(permission.error, { status: 403 });
+      return Response.json(await getUnscheduledCards(boardId, userId));
+    }
+
+    const fromResult = parseRequiredDateParam(searchParams, "from");
+    const toResult = parseRequiredDateParam(searchParams, "to");
 
     if (fromResult.error) {
       return Response.json({ error: fromResult.error }, { status: 400 });
@@ -83,8 +181,7 @@ export async function GET(
 
     const from = fromResult.date;
     const to = toResult.date;
-    const includeUnscheduled =
-      new URL(request.url).searchParams.get("includeUnscheduled") === "true";
+    const includeUnscheduled = searchParams.get("includeUnscheduled") === "true";
 
     if (!from || !to) {
       return Response.json(
@@ -286,77 +383,7 @@ export async function GET(
           },
         },
       }),
-      includeUnscheduled
-        ? db.card.findMany({
-            where: {
-              archivedAt: null,
-              // Khay chưa xếp = chưa có lịch làm (hạn nộp không tính).
-              scheduledOn: null,
-              scheduledStartAt: null,
-              list: {
-                archivedAt: null,
-                board: {
-                  id: boardId,
-                  userId,
-                },
-              },
-            },
-            select: {
-              id: true,
-              title: true,
-              order: true,
-              isCompleted: true,
-              updatedAt: true,
-              dueDate: true,
-              deadlineOn: true,
-              listId: true,
-              courseId: true,
-              userStates: {
-                where: {
-                  userId,
-                },
-                select: {
-                  isImportant: true,
-                },
-              },
-              list: {
-                select: {
-                  title: true,
-                  order: true,
-                },
-              },
-              labels: {
-                select: {
-                  label: {
-                    select: {
-                      id: true,
-                      title: true,
-                      color: true,
-                    },
-                  },
-                },
-                orderBy: {
-                  createdAt: "asc",
-                },
-              },
-              _count: {
-                select: {
-                  comments: true,
-                },
-              },
-            },
-            orderBy: [
-              {
-                list: {
-                  order: "asc",
-                },
-              },
-              {
-                order: "asc",
-              },
-            ],
-          })
-        : Promise.resolve([]),
+      includeUnscheduled ? getUnscheduledCards(boardId, userId) : Promise.resolve([]),
     ]);
 
     if (permission.error) {
@@ -453,38 +480,12 @@ export async function GET(
       })
       .map(({ item }) => item);
 
-    const mappedUnscheduledCards: BoardCalendarUnscheduledCard[] = unscheduledCards
-      .map((card) => ({
-        type: "unscheduled-card" as const,
-        dueDate: card.dueDate?.toISOString() ?? null,
-        deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null,
-        id: `unscheduled-card:${card.id}`,
-        cardId: card.id,
-        boardId,
-        listId: card.listId,
-        listTitle: card.list.title,
-        courseId: card.courseId,
-        isImportant: card.userStates[0]?.isImportant ?? false,
-        title: card.title,
-        updatedAt: card.updatedAt.toISOString(),
-        isCompleted: card.isCompleted,
-        labels: card.labels.map(({ label }) => ({
-          id: label.id,
-          title: label.title,
-          color: label.color,
-        })),
-        assignees: [],
-        commentCount: card._count.comments,
-        order: card.order,
-        listOrder: card.list.order,
-      }));
-
     const response: BoardCalendarResponse = {
       boardId,
       from: from.toISOString(),
       to: to.toISOString(),
       items,
-      unscheduledCards: mappedUnscheduledCards,
+      unscheduledCards,
     };
 
     return Response.json(response);

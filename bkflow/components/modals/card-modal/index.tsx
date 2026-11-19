@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ReducedMotionConfig, spring, transition, useTempoTransition } from "@animate-ui/react/utils/motion";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useCardModal } from "@/hooks/use-card-modal";
 import { tr, useLocale } from "@/lib/i18n";
@@ -10,20 +11,26 @@ import { usePathname } from "@/web/shims/next-navigation";
 import { X } from "lucide-react";
 
 import { CardRealtimeSync } from "./card-realtime-sync";
-import { CardDetailBody } from "./card-detail-body";
+import { getCardQueryOptions } from "./card-cache-utils";
 import { runBeforeClose, type BeforeClose } from "./close-guard";
+import { CardDetailFallback, LazyCardDetailBody } from "./lazy-card-detail-body";
 
 export const CardModal = () => {
   useLocale((state) => state.locale);
   const storeId = useCardModal((state) => state.id);
   const isOpen = useCardModal((state) => state.isOpen);
   const onClose = useCardModal((state) => state.onClose);
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const guardRef = useRef<BeforeClose | null>(null);
   // The card actually on screen; it only follows the store once unsaved edits are dealt with.
   const [shownId, setShownId] = useState<string | undefined>(undefined);
   const id = shownId ?? storeId;
+
+  useEffect(() => {
+    if (isOpen && id) void queryClient.prefetchQuery(getCardQueryOptions(id));
+  }, [id, isOpen, queryClient]);
 
   useEffect(() => {
     if (previousPathname.current !== pathname) {
@@ -106,7 +113,11 @@ export const CardModal = () => {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              {id ? <CardDetailBody key={id} cardId={id} layout="dialog" onClose={onClose} beforeCloseRef={guardRef} /> : null}
+              {id && (
+                <Suspense fallback={<CardDetailFallback />}>
+                  <LazyCardDetailBody key={id} cardId={id} layout="dialog" onClose={onClose} beforeCloseRef={guardRef} />
+                </Suspense>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

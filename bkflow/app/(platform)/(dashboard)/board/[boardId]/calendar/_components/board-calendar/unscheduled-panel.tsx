@@ -41,6 +41,7 @@ type UnscheduledPanelProps = {
   isLoading: boolean;
   isError: boolean;
   isSuccess: boolean;
+  onRetry: () => void;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
   draggingUnscheduledCardId: string | null;
@@ -189,6 +190,7 @@ export const UnscheduledPanel = ({
   isLoading,
   isError,
   isSuccess,
+  onRetry,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
   draggingUnscheduledCardId,
@@ -221,9 +223,11 @@ export const UnscheduledPanel = ({
             <h2 className="truncate text-sm font-semibold text-neutral-900">
               {tr("calendar.unscheduled.title")}
             </h2>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
-              {countLabel}
-            </span>
+            {isSuccess && (
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
+                {countLabel}
+              </span>
+            )}
           </div>
         </div>
         <Hint description={isCollapsed ? tr("calendar.unscheduled.expandHint") : tr("calendar.unscheduled.collapseHint")} side="top">
@@ -280,6 +284,9 @@ export const UnscheduledPanel = ({
                 <p className="text-xs font-semibold">
                   {tr("calendar.unscheduled.loadError")}
                 </p>
+                <button type="button" onClick={onRetry} className="ml-2 text-xs font-semibold underline">
+                  {tr("route.retry")}
+                </button>
               </div>
             )}
 

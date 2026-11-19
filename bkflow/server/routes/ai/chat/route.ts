@@ -272,7 +272,7 @@ export async function POST(request: Request) {
   };
 
   const [snapshot, history] = await Promise.all([
-    loadBoardSnapshot(session.boardId),
+    loadBoardSnapshot(session.boardId, session.userId),
     (thread ? loadThreadMessages(thread.id) : loadAssistantHistory({ boardId: session.boardId, userId })).catch(() => [] as UIMessage[]),
   ]);
 

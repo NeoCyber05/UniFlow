@@ -32,7 +32,7 @@ type CalendarToolbarProps = {
   completedItemsCount: number;
   overdueItemsCount: number;
   isUnscheduledCollapsed: boolean;
-  filteredUnscheduledCount: number;
+  filteredUnscheduledCount: number | undefined;
   viewMode: ViewMode;
   previousLabel: string;
   nextLabel: string;
@@ -217,14 +217,16 @@ export const CalendarToolbar = ({
           >
             <CalendarX2 aria-hidden className="h-4 w-4 shrink-0" />
             {tr("calendar.toolbar.unscheduled")}
-            <span
-              className={cn(
-                "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
-                isUnscheduledCollapsed ? "bg-neutral-100 text-neutral-600" : "bg-neutral-800 text-white",
-              )}
-            >
-              {filteredUnscheduledCount}
-            </span>
+            {filteredUnscheduledCount !== undefined && (
+              <span
+                className={cn(
+                  "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
+                  isUnscheduledCollapsed ? "bg-neutral-100 text-neutral-600" : "bg-neutral-800 text-white",
+                )}
+              >
+                {filteredUnscheduledCount}
+              </span>
+            )}
           </button>
         </div>
         {actions && <div className="ml-auto [&>div>div]:h-auto [&>div>div]:px-0">{actions}</div>}

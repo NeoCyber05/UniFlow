@@ -55,11 +55,6 @@ export type CardWithList = Card & {
   boardMembers: BoardMember[];
   currentMemberRole?: string;
   boardLabels: Label[];
-  boardChecklists: (Pick<Checklist, "id" | "title"> & {
-    card: {
-      title: string;
-    };
-  })[];
   _count?: {
     comments: number;
     attachments: number;

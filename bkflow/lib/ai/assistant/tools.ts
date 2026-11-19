@@ -33,7 +33,10 @@ import type { CardUpdatedField } from "@/lib/realtime/types";
 import {
   type AssistantCard,
   type AssistantSession,
-  loadBoardSnapshot,
+  compareCardDeadlines,
+  loadBoardCards,
+  loadBoardLists,
+  loadCardDetails,
   serializeCard,
 } from "./board-data";
 import { ASSISTANT_LIMITS } from "./config";
@@ -180,20 +183,6 @@ const filterByRange = (
 };
 
 /**
- * Sắp xếp danh sách thẻ theo thứ tự hạn chót tăng dần (thẻ có hạn sớm nhất xếp trước;
- * thẻ không có hạn chót được đưa xuống cuối cùng).
- *
- * @param cards - Mảng thẻ cần sắp xếp.
- * @returns Bản sao mảng thẻ đã được sắp xếp ổn định theo hạn chót.
- */
-const sortByDueDate = (cards: AssistantCard[]): AssistantCard[] =>
-  [...cards].sort((a, b) => {
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return a.dueDate.getTime() - b.dueDate.getTime();
-  });
-
-/**
  * Chuyển đổi dữ liệu thẻ từ Prisma thành đối tượng `AssistantActionCard` an toàn
  * với các trường ngày giờ đã được chuyển sang múi giờ người dùng.
  *
@@ -321,7 +310,7 @@ export const createAssistantTools = (session: AssistantSession) => {
         courseId: z.string().optional().describe("Lọc theo ID môn học nếu có"),
       }),
       execute: async ({ range, scope, includeCompleted, courseId }) => {
-        const snapshot = await loadBoardSnapshot(boardId);
+        const snapshot = await loadBoardCards(boardId, userId, { incompleteOnly: !includeCompleted || range === "overdue" });
 
         if (!snapshot) {
           return { ok: false, error: "Bảng không tồn tại." };
@@ -330,23 +319,21 @@ export const createAssistantTools = (session: AssistantSession) => {
         const now = new Date();
         let list = snapshot.cards;
 
-        if (!includeCompleted) {
-          list = list.filter((card) => !card.isCompleted);
-        }
-
         if (scope === "mine") {
           list = list.filter((card) => card.assignees.some((a) => a.userId === userId));
         }
 
         if (courseId) {
-          list = list.filter((card) => card.course && card.course.includes(courseId));
+          const hasCourseId = snapshot.board.courses.some((course) => course.id === courseId);
+          list = hasCourseId
+            ? list.filter((card) => card.courseId === courseId)
+            : list.filter((card) => card.course?.includes(courseId));
         }
 
-        const filtered = sortByDueDate(filterByRange(list, range, now, timeZone));
+        const filtered = filterByRange(list, range, now, timeZone).sort(compareCardDeadlines);
         const total = filtered.length;
-        const serialized = filtered
-          .slice(0, ASSISTANT_LIMITS.toolResultCards)
-          .map((card) => serializeCard(card, timeZone, now));
+        const cards = await loadCardDetails(boardId, userId, filtered.slice(0, ASSISTANT_LIMITS.toolResultCards), true);
+        const serialized = cards.map((card) => serializeCard(card, timeZone, now));
 
         return {
           ok: true,
@@ -379,7 +366,7 @@ export const createAssistantTools = (session: AssistantSession) => {
         "Thống kê tổng quan tiến độ của bảng: tổng số thẻ, đã hoàn thành, quá hạn, đến hạn trong 7 ngày tới, phân bổ theo cột và môn học.",
       inputSchema: z.object({}),
       execute: async () => {
-        const snapshot = await loadBoardSnapshot(boardId);
+        const snapshot = await loadBoardCards(boardId, userId);
 
         if (!snapshot) {
           return { ok: false, error: "Bảng không tồn tại." };
@@ -396,19 +383,14 @@ export const createAssistantTools = (session: AssistantSession) => {
           (c) => c.dueDate && !c.isCompleted && c.dueDate >= next7DaysStart && c.dueDate <= next7DaysEnd,
         ).length;
 
-        const byList = snapshot.lists.map((list) => {
-          const listCards = cards.filter((c) => c.listId === list.id);
-
-          return {
-            title: list.title,
-            total: listCards.length,
-            completed: listCards.filter((c) => c.isCompleted).length,
-          };
-        });
-
+        const listCounts = new Map(snapshot.lists.map((list) => [list.id, { title: list.title, total: 0, completed: 0 }]));
         const byCourse: Record<string, { total: number; completed: number }> = {};
 
         cards.forEach((c) => {
+          const list = listCounts.get(c.listId)!;
+          list.total += 1;
+          if (c.isCompleted) list.completed += 1;
+
           const key = c.course ?? "Khác";
 
           if (!byCourse[key]) {
@@ -430,7 +412,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           overdueCards,
           dueSoonCards,
           completionRate: totalCards > 0 ? `${Math.round((completedCards / totalCards) * 100)}%` : "0%",
-          lists: byList,
+          lists: [...listCounts.values()],
           courses: Object.entries(byCourse).map(([course, stats]) => ({ course, ...stats })),
         };
       },
@@ -563,7 +545,7 @@ export const createAssistantTools = (session: AssistantSession) => {
         query: z.string().min(1).describe("Từ khóa tìm kiếm (tiếng Việt có/không dấu)"),
       }),
       execute: async ({ query }) => {
-        const snapshot = await loadBoardSnapshot(boardId);
+        const snapshot = await loadBoardCards(boardId, userId, { searchLabels: true });
 
         if (!snapshot) {
           return { ok: false, error: "Bảng không tồn tại." };
@@ -579,13 +561,11 @@ export const createAssistantTools = (session: AssistantSession) => {
         });
 
         const now = new Date();
-
+        const details = await loadCardDetails(boardId, userId, matches.slice(0, ASSISTANT_LIMITS.toolResultCards));
         return {
           ok: true,
           total: matches.length,
-          cards: matches
-            .slice(0, ASSISTANT_LIMITS.toolResultCards)
-            .map((card) => serializeCard(card, timeZone, now)),
+          cards: details.map((card) => serializeCard(card, timeZone, now)),
         };
       },
     }),
@@ -727,21 +707,21 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: permissionError };
         }
 
-        const snapshot = await loadBoardSnapshot(boardId);
+        const lists = await loadBoardLists(boardId, userId);
 
-        if (!snapshot || snapshot.lists.length === 0) {
+        if (lists.length === 0) {
           return { ok: false, error: "Bảng chưa có cột nào để tạo thẻ." };
         }
 
-        let targetList = snapshot.lists[0];
+        let targetList = lists[0];
 
         if (listId) {
-          const found = snapshot.lists.find((l) => l.id === listId);
+          const found = lists.find((l) => l.id === listId);
 
           if (found) targetList = found;
         } else if (listTitle) {
           const needle = normalize(listTitle);
-          const found = snapshot.lists.find((l) => normalize(l.title).includes(needle));
+          const found = lists.find((l) => normalize(l.title).includes(needle));
 
           if (found) targetList = found;
         }
@@ -1036,7 +1016,6 @@ export const createAssistantTools = (session: AssistantSession) => {
         listId,
         listTitle,
         courseId,
-        assignee,
         description,
       }): Promise<AssistantMutationOutput> => {
         const permissionError = await ensureEditor();
@@ -1045,21 +1024,21 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: permissionError };
         }
 
-        const snapshot = await loadBoardSnapshot(boardId);
+        const lists = await loadBoardLists(boardId, userId);
 
-        if (!snapshot || snapshot.lists.length === 0) {
+        if (lists.length === 0) {
           return { ok: false, error: "Bảng chưa có cột nào để tạo thẻ." };
         }
 
-        let targetList = snapshot.lists[0];
+        let targetList = lists[0];
 
         if (listId) {
-          const found = snapshot.lists.find((l) => l.id === listId);
+          const found = lists.find((l) => l.id === listId);
 
           if (found) targetList = found;
         } else if (listTitle) {
           const needle = normalize(listTitle);
-          const found = snapshot.lists.find((l) => normalize(l.title).includes(needle));
+          const found = lists.find((l) => normalize(l.title).includes(needle));
 
           if (found) targetList = found;
         }
@@ -1108,14 +1087,6 @@ export const createAssistantTools = (session: AssistantSession) => {
 
         let currentOrder = lastCard ? lastCard.order + 1 : 1;
         const createdActionCards: AssistantActionCard[] = [];
-        const assignedNames: string[] = [];
-
-        const me = snapshot.members.find((m) => m.id === session.boardMemberId);
-
-        if (assignee === "me" && me) {
-          assignedNames.push(me.userName);
-        }
-
         for (const targetDate of targetDates) {
           const dayName = getWeekdayName(targetDate, timeZone);
           const cardTitle = `${title.trim()} (${dayName})`;
@@ -1144,7 +1115,7 @@ export const createAssistantTools = (session: AssistantSession) => {
           createdActionCards.push(
             toActionCard(
               card,
-              { boardId, list: card.list.title, assignees: assignedNames },
+              { boardId, list: card.list.title, assignees: [] },
               timeZone,
             ),
           );
@@ -1208,21 +1179,20 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: permissionError };
         }
 
-        const snapshot = await loadBoardSnapshot(boardId);
+        const lists = await loadBoardLists(boardId, userId);
 
-        if (!snapshot || snapshot.lists.length === 0) {
+        if (lists.length === 0) {
           return { ok: false, error: "Bảng chưa có cột nào để tạo thẻ." };
         }
 
         const createdActionCards: AssistantActionCard[] = [];
-        const me = snapshot.members.find((m) => m.id === session.boardMemberId);
 
         for (const cardItem of cards) {
-          let targetList = snapshot.lists[0];
+          let targetList = lists[0];
 
           if (cardItem.listTitle) {
             const needle = normalize(cardItem.listTitle);
-            const found = snapshot.lists.find((l) => normalize(l.title).includes(needle));
+            const found = lists.find((l) => normalize(l.title).includes(needle));
 
             if (found) targetList = found;
           }
@@ -1411,9 +1381,9 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: permissionError };
         }
 
-        const snapshot = await loadBoardSnapshot(boardId);
+        const lists = await loadBoardLists(boardId, userId);
 
-        if (!snapshot || snapshot.lists.length === 0) {
+        if (lists.length === 0) {
           return { ok: false, error: "Bảng không tồn tại." };
         }
 
@@ -1428,13 +1398,13 @@ export const createAssistantTools = (session: AssistantSession) => {
           return { ok: false, error: `Không tìm thấy thẻ có ID "${cardId}".` };
         }
 
-        let targetList: (typeof snapshot.lists)[number] | undefined;
+        let targetList: (typeof lists)[number] | undefined;
 
         if (destinationListId) {
-          targetList = snapshot.lists.find((l) => l.id === destinationListId);
+          targetList = lists.find((l) => l.id === destinationListId);
         } else if (destinationListTitle) {
           const needle = normalize(destinationListTitle);
-          targetList = snapshot.lists.find((l) => normalize(l.title).includes(needle));
+          targetList = lists.find((l) => normalize(l.title).includes(needle));
         }
 
         if (!targetList) {

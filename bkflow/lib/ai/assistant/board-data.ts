@@ -1,5 +1,6 @@
 import { getTaskDeadlineAt } from "@/lib/cards/task-deadline";
 import { BoardMemberRole } from "@/types";
+import type { Prisma } from "@prisma/client";
 import "server-only";
 
 import { db } from "@/lib/db";
@@ -45,6 +46,7 @@ export type AssistantCard = {
   listTitle: string;
   /** Tên môn học hoặc mã học phần kèm tên môn (null nếu là thẻ cá nhân) */
   course: string | null;
+  courseId: string | null;
   /** Ngày giờ bắt đầu thực hiện (nếu có) */
   startDate: Date | null;
   /** Hạn chót hoàn thành công việc (nếu có) */
@@ -55,29 +57,33 @@ export type AssistantCard = {
   assignees: { boardMemberId: string; userId: string; name: string }[];
   /** Danh sách nhãn nhãn dán (labels) được gắn vào thẻ */
   labels: string[];
-  /** Thống kê tiến độ công việc con: số việc đã xong và tổng số việc con */
-  checklist: { done: number; total: number };
 };
 
-/**
- * Tải toàn bộ ảnh chụp (snapshot) dữ liệu của một bảng làm việc từ cơ sở dữ liệu
- * nhằm cung cấp ngữ cảnh đầy đủ cho Trợ lý AI Agent.
- *
- * @remarks
- * Hàm thực hiện truy vấn quan hệ sâu qua Prisma:
- * - Thông tin bảng: tiêu đề, loại bảng (`boardType`), workspace (`workspace`).
- * - Danh mục môn học (`courses`): mã môn, tên môn, số tín chỉ.
- * - Danh sách thành viên bảng (`members`): tên, quyền hạn (`role`).
- * - Danh sách cột (`lists`) và các thẻ (`cards`) còn hiệu lực (chưa bị xóa/lưu trữ).
- * - Tiến độ checklist con của từng thẻ.
- *
- * @param boardId - Định danh bảng làm việc cần tải dữ liệu (UUID).
- * @returns Đối tượng ảnh chụp bảng gồm thông tin chung, danh sách cột, thành viên và mảng thẻ đã làm phẳng;
- *          trả về `null` nếu không tìm thấy bảng trong cơ sở dữ liệu.
- */
-export const loadBoardSnapshot = async (boardId: string) => {
-  const board = await db.board.findUnique({
-    where: { id: boardId },
+type DetailedAssistantCard = AssistantCard & { checklist: { done: number; total: number } };
+const labelSelect = { select: { label: { select: { title: true } } } } as const;
+const activeLists = {
+  where: { archivedAt: null },
+  orderBy: { order: "asc" },
+} as const;
+const cardFields = {
+  id: true,
+  title: true,
+  startDate: true,
+  dueDate: true,
+  deadlineOn: true,
+  isCompleted: true,
+  courseId: true,
+  course: { select: { name: true, code: true } },
+} as const;
+
+/** Nạp dữ liệu gọn để xếp hạng, tìm kiếm hoặc thống kê toàn bộ thẻ đang hoạt động. */
+export const loadBoardCards = async (
+  boardId: string,
+  userId: string,
+  { searchLabels = false, incompleteOnly = false } = {},
+) => {
+  const read = <Selection extends Prisma.CardSelect>(select: Selection) => db.board.findUnique({
+    where: { id: boardId, userId },
     select: {
       id: true,
       title: true,
@@ -88,70 +94,108 @@ export const loadBoardSnapshot = async (boardId: string) => {
       },
       workspace: { select: { title: true } },
       lists: {
-        where: { archivedAt: null },
-        orderBy: { order: "asc" },
+        ...activeLists,
         select: {
           id: true,
           title: true,
           cards: {
-            where: { archivedAt: null },
+            where: { archivedAt: null, ...(incompleteOnly ? { isCompleted: false } : {}) },
             orderBy: { order: "asc" },
-            select: {
-              id: true,
-              title: true,
-              startDate: true,
-              dueDate: true,
-              deadlineOn: true,
-              isCompleted: true,
-              course: { select: { name: true, code: true } },
-              labels: { select: { label: { select: { title: true } } } },
-              checklists: {
-                select: { items: { select: { isCompleted: true } } },
-              },
-            },
+            select,
           },
         },
       },
     },
   });
+  const board = searchLabels ? await read({ ...cardFields, labels: labelSelect }) : await read(cardFields);
 
   if (!board) {
     return null;
   }
 
-  // Làm phẳng dữ liệu các thẻ từ tất cả các cột thành một danh sách duy nhất để Agent dễ duyệt
-  const cards: AssistantCard[] = board.lists.flatMap((list) =>
-    list.cards.map((card) => {
-      const items = card.checklists.flatMap((checklist) => checklist.items);
-
-      return {
-        id: card.id,
-        title: card.title,
-        listId: list.id,
-        listTitle: list.title,
-        course: card.course
-          ? card.course.code ? `${card.course.code} ${card.course.name}` : card.course.name
-          : null,
-        startDate: card.startDate,
-        // shortcut: hạn chỉ-ngày hiện ra như 23:59 VN cuối ngày hạn, đủ cho lọc/quá hạn; hiển thị giờ chỉ mang tính xấp xỉ
-        dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
-        isCompleted: card.isCompleted,
-        assignees: [],
-        labels: card.labels.map(({ label }) => label.title).filter(Boolean),
-        checklist: {
-          done: items.filter((item) => item.isCompleted).length,
-          total: items.length,
-        },
-      };
-    }),
-  );
-
+  const { lists, ...metadata } = board;
+  const cards: AssistantCard[] = lists.flatMap((list) => list.cards.map((card) => ({
+    id: card.id,
+    title: card.title,
+    listId: list.id,
+    listTitle: list.title,
+    course: card.course
+      ? card.course.code ? `${card.course.code} ${card.course.name}` : card.course.name
+      : null,
+    courseId: card.courseId,
+    startDate: card.startDate,
+    // shortcut: hạn chỉ-ngày hiện ra như 23:59 VN cuối ngày hạn, đủ cho lọc/quá hạn; hiển thị giờ chỉ mang tính xấp xỉ
+    dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
+    isCompleted: card.isCompleted,
+    assignees: [],
+    labels: "labels" in card ? card.labels.map(({ label }) => label.title).filter(Boolean) : [],
+  })));
   return {
-    board,
-    lists: board.lists.map((list) => ({ id: list.id, title: list.title, cardCount: list.cards.length })),
-    members: [] as { id: string; userId: string; userName: string; role: BoardMemberRole }[],
+    board: metadata,
+    lists: lists.map(({ id, title }) => ({ id, title })),
     cards,
   };
+};
+
+export const loadBoardLists = async (boardId: string, userId: string) => {
+  const board = await db.board.findUnique({
+    where: { id: boardId, userId },
+    select: { lists: { ...activeLists, select: { id: true, title: true } } },
+  });
+  return board?.lists ?? [];
+};
+
+export const loadCardDetails = async (
+  boardId: string,
+  userId: string,
+  cards: AssistantCard[],
+  includeLabels = false,
+): Promise<DetailedAssistantCard[]> => {
+  if (!cards.length) return [];
+
+  const query = {
+    where: {
+      id: { in: cards.map(({ id }) => id) },
+      archivedAt: null,
+      list: { boardId, archivedAt: null, board: { userId } },
+    },
+    select: {
+      id: true,
+      checklists: { select: { items: { select: { isCompleted: true } } } },
+    },
+  } as const;
+  type DetailRow = Prisma.CardGetPayload<typeof query> & { labels?: Prisma.CardLabelGetPayload<typeof labelSelect>[] };
+  const rows: DetailRow[] = includeLabels
+    ? await db.card.findMany({ ...query, select: { ...query.select, labels: labelSelect } })
+    : await db.card.findMany(query);
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return cards.flatMap(card => {
+    const row = byId.get(card.id);
+    if (!row) return [];
+    const items = row.checklists.flatMap(checklist => checklist.items);
+    return [{
+      ...card,
+      labels: row.labels?.map(({ label }) => label.title).filter(Boolean) ?? card.labels,
+      checklist: { done: items.filter(item => item.isCompleted).length, total: items.length },
+    }];
+  });
+};
+
+export const compareCardDeadlines = (a: AssistantCard, b: AssistantCard) => {
+  if (!a.dueDate) return b.dueDate ? 1 : 0;
+  if (!b.dueDate) return -1;
+  return a.dueDate.getTime() - b.dueDate.getTime();
+};
+
+export const loadBoardSnapshot = async (boardId: string, userId: string) => {
+  const snapshot = await loadBoardCards(boardId, userId);
+  if (!snapshot) return null;
+
+  const { cards, ...metadata } = snapshot;
+  const selected = cards.sort((a, b) =>
+    Number(a.isCompleted) - Number(b.isCompleted) || compareCardDeadlines(a, b),
+  ).slice(0, ASSISTANT_LIMITS.contextCards);
+  return { ...metadata, totalCards: cards.length, cards: await loadCardDetails(boardId, userId, selected) };
 };
 
 /**
@@ -168,7 +212,7 @@ export type BoardSnapshot = NonNullable<Awaited<ReturnType<typeof loadBoardSnaps
  * @param now - Thời điểm hiện tại làm mốc để xác định thẻ có bị quá hạn hay không (mặc định: `new Date()`).
  * @returns Đối tượng thẻ được serialize cho kết quả gọi công cụ (tool output) của Agent.
  */
-export const serializeCard = (card: AssistantCard, timeZone: string, now = new Date()) => ({
+export const serializeCard = (card: DetailedAssistantCard, timeZone: string, now = new Date()) => ({
   id: card.id,
   title: card.title,
   list: card.listTitle,
@@ -202,19 +246,8 @@ export const buildBoardContext = (
   session: AssistantSession,
   now: Date,
 ): string => {
-  const { board, lists, members, cards } = snapshot;
-  const me = members.find((member) => member.userId === session.userId);
-
-  // Sắp xếp: Ưu tiên thẻ chưa xong -> thẻ có hạn chót sớm hơn
-  const sortedCards = [...cards].sort((a, b) => {
-    if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return a.dueDate.getTime() - b.dueDate.getTime();
-  });
-
-  // Giới hạn số lượng thẻ trong context prompt để tối ưu token
-  const cardLines = sortedCards.slice(0, ASSISTANT_LIMITS.contextCards).map((card) => {
+  const { board, lists, cards, totalCards } = snapshot;
+  const cardLines = cards.map((card) => {
     const due = card.dueDate ? formatZonedDateTime(card.dueDate, session.timeZone) : "không có hạn";
     const overdue = card.dueDate && !card.isCompleted && card.dueDate < now ? " ⚠️QUÁ HẠN" : "";
     const status = card.isCompleted ? "✅ xong" : "⏳ chưa xong";
@@ -226,7 +259,7 @@ export const buildBoardContext = (
     return `- [${card.id}] "${card.title}" | môn: ${card.course ?? "cá nhân"} | cột: ${card.listTitle} | hạn: ${due}${overdue} | ${status} | giao cho: ${assignees}${checklist}`;
   });
 
-  const omitted = cards.length - cardLines.length;
+  const omitted = totalCards - cardLines.length;
 
   return [
     `Bảng: "${board.title}"`,
@@ -239,10 +272,10 @@ export const buildBoardContext = (
           )
           .join("; ")}`
       : null,
-    `Người đang chat: ${me?.userName ?? "Người dùng"}`,
+    "Người đang chat: Người dùng",
     `Các cột (theo thứ tự): ${lists.map((list) => `"${list.title}" [${list.id}]`).join(", ") || "chưa có cột nào"}`,
     "",
-    `Thẻ (${cards.length} thẻ, sắp xếp theo hạn chót):`,
+    `Thẻ (${totalCards} thẻ, sắp xếp theo hạn chót):`,
     ...(cardLines.length > 0 ? cardLines : ["(bảng chưa có thẻ nào)"]),
     omitted > 0 ? `... còn ${omitted} thẻ khác, dùng công cụ để tra cứu.` : null,
   ]

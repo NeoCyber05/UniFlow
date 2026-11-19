@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { getTodoTasks } from "@/lib/my-tasks/query";
 import { GET as getCard } from "./routes/cards/[cardId]/route";
 import { runWithAuth } from "./auth";
+import { loadBoardList } from "./views/board-list";
 
 const previousDb = globalThis.prisma;
 let database: Record<string, unknown>;
@@ -32,7 +33,7 @@ const requestCard = (userId: string | null = "u1") => runWithAuth(
   () => getCard(new Request("http://localhost/api/cards/c1"), { params: Promise.resolve({ cardId: "c1" }) }),
 );
 
-test("card detail keeps its checklist items but only loads names for the board copy menu", async () => {
+test("card detail keeps its checklist items without loading other cards' checklists", async () => {
   const items = [{ id: "i1", title: "Do this", isCompleted: false }];
   database.card = { findFirst: async (args: Prisma.CardFindFirstArgs) => {
     assert.deepEqual(args.where, { id: "c1", list: { board: { userId: "u1" } } });
@@ -41,17 +42,26 @@ test("card detail keeps its checklist items but only loads names for the board c
   } };
   database.board = { findFirst: async () => ({ id: "b1", userId: "u1", title: "Board" }) };
   database.label = { findMany: async () => [] };
-  database.checklist = { findMany: async (args: Prisma.ChecklistFindManyArgs) => {
-    assert.deepEqual(args.where, { card: { archivedAt: null, list: { archivedAt: null, boardId: "b1" } } });
-    assert.equal(args.include?.items, undefined, "Do not fetch every checklist item on the board");
-    assert.deepEqual(args.select, { id: true, title: true, card: { select: { title: true } } });
-    return [{ id: "cl1", title: "Checklist", card: { title: "Card" } }];
-  } };
+  let boardChecklistReads = 0;
+  database.checklist = { findMany: async () => { boardChecklistReads++; return []; } };
   const response = await requestCard();
   assert.equal(response.status, 200);
   const result = await response.json();
   assert.deepEqual(result.checklists[0].items, items);
-  assert.equal(result.boardChecklists[0].id, "cl1");
+  assert.equal(boardChecklistReads, 0);
+  assert.equal(Object.hasOwn(result, "boardChecklists"), false);
+});
+
+test("board list metadata leaves task loading to the agenda endpoint", async () => {
+  database.board = { findFirst: async () => ({ id: "b1", userId: "u1", boardType: "WORKSPACE", lists: [], labels: [] }) };
+  let agendaReads = 0;
+  database.card = { findMany: async () => { agendaReads++; return []; } };
+
+  const result = await loadBoardList({ boardId: "b1" }, "u1");
+
+  assert.equal(result.boardId, "b1");
+  assert.equal(agendaReads, 0);
+  assert.equal(Object.hasOwn(result, "initialAgendaData"), false);
 });
 
 test("unauthenticated and missing or unowned cards never load board data", async () => {

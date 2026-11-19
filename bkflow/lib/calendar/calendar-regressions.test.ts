@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { useCalendarRealtime } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-realtime";
 import { getMonthGridRange, getWeekGridRange, getDayKey, copyDateToDay, copyRangeEndToDay, parseGmt7DateTimeInput } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_lib/date-utils";
 import { getRanges, getOccurrences } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_lib/range-layout";
 import type { BoardCalendarCardItem } from "@/types";
@@ -19,6 +23,36 @@ test("completed and overdue tasks use consistent subdued colors in every calenda
   const completed = getOccurrenceTone({ id: "o1", kind: "single", date: new Date(), item });
   assert.match(completed, /text-stone-600/);
   assert.equal(getDayViewBlockTone({ item } as DayViewBlock), completed);
+});
+
+test("calendar refreshes a same-account update from another tab even if the tray already fetched it", () => {
+  const client = new QueryClient();
+  const updatedAt = "2026-11-19T10:00:00.000Z";
+  client.setQueryData(["board-calendar", "b1", "unscheduled"], [{ cardId: "c1", updatedAt }]);
+  client.setQueryData(["board-calendar", "b1", "range", "day"], { items: [{ type: "card", cardId: "c1", updatedAt: "old" }] });
+  const noop = () => {};
+  const lastLocalUpdate = { current: null as { boardId: string; cardId: string; updatedAt: string } | null };
+  let invalidations = 0;
+  let dispatch: ReturnType<typeof useCalendarRealtime>["handleCalendarRealtime"] = () => assert.fail("Missing handler");
+  const options = {
+    boardId: "b1", currentUserId: "u1", lastLocalUpdate,
+    router: { push: noop, replace: noop, back: noop, forward: noop, refresh: noop, prefetch: noop },
+    cardModal: { onClose: noop }, invalidateBoardCalendar: () => { invalidations++; },
+  };
+  function Harness() {
+    dispatch = useCalendarRealtime(options).handleCalendarRealtime;
+    return null;
+  }
+
+  renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(Harness)));
+  const payload = { eventId: "other-tab", boardId: "b1", actorUserId: "u1", cardId: "c1", updatedAt };
+  dispatch(payload);
+  assert.equal(invalidations, 1);
+
+  lastLocalUpdate.current = { boardId: "b1", cardId: "c1", updatedAt };
+  dispatch({ ...payload, eventId: "this-tab" });
+  assert.equal(invalidations, 1);
+  client.clear();
 });
 
 test("month/week cells and day movement use Vietnam dates in every browser timezone", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { tr } from "@/lib/i18n";
 import Link from "@/web/shims/next-link";
 import { ExternalLink, Maximize2, Minimize2, Star, X } from "lucide-react";
@@ -8,9 +8,8 @@ import { useMediaQuery } from "usehooks-ts";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getCardQueryOptions } from "@/components/modals/card-modal/card-cache-utils";
-import { CardDetailBody } from "@/components/modals/card-modal/card-detail-body";
+import { CardDetailFallback, LazyCardDetailBody, loadCardDetailBody } from "@/components/modals/card-modal/lazy-card-detail-body";
 import { CardRealtimeSync } from "@/components/modals/card-modal/card-realtime-sync";
 import { runBeforeClose, type BeforeCloseRef } from "@/components/modals/card-modal/close-guard";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
   const queryClient = useQueryClient();
   useEffect(() => {
     void queryClient.prefetchQuery(getCardQueryOptions(taskId));
+    void loadCardDetailBody().catch(() => {});
   }, [taskId, queryClient]);
   const { data: context, isError, error, refetch, isFetching } = useCardContext(taskId);
   const errorStatus = isError ? (error as Error & { status?: number }).status : undefined;
@@ -82,7 +82,9 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
       {isReady ? (
         <>
           <CardRealtimeSync cardId={taskId} isOpen />
-          <CardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} beforeCloseRef={beforeCloseRef} />
+          <Suspense fallback={<CardDetailFallback />}>
+            <LazyCardDetailBody key={taskId} cardId={taskId} layout="panel" onClose={onClose} beforeCloseRef={beforeCloseRef} />
+          </Suspense>
           <footer className="flex shrink-0 items-center justify-end gap-1.5 border-t border-border px-6 py-2 text-[10px] text-muted-foreground">
             <kbd className="rounded border border-border px-1">Esc</kbd>{tr("task.escToClose")}
           </footer>
@@ -108,11 +110,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
           </div>
         </div>
       ) : (
-        <div className="space-y-4 p-5">
-          <Skeleton className="h-7 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-24 w-full" />
-        </div>
+        <CardDetailFallback />
       )}
     </div>
   );

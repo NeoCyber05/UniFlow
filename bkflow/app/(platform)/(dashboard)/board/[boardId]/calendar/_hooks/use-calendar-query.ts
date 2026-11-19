@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { projectCalendarEntries, projectChecklistEntries } from "@/lib/calendar/calendar-entries";
 import { getCalendarRange, getTodayKey, readCalendarLocation } from "@/lib/calendar/calendar-navigation";
+import { calendarRangeQueryKey, calendarUnscheduledQueryKey } from "@/lib/calendar/calendar-query-keys";
 import { buildDayTimeline } from "@/lib/calendar/day-timeline";
 import { toCalendarDisplayItems } from "@/lib/calendar/schedule-adapter";
 import { fetcher } from "@/lib/fetcher";
@@ -19,6 +20,7 @@ import type {
   BoardCalendarCardItem,
   BoardCalendarChecklistItem,
   BoardCalendarResponse,
+  BoardCalendarUnscheduledCard,
 } from "@/types";
 
 import {
@@ -49,6 +51,8 @@ import type {
   ViewMode,
 } from "../_types";
 
+const EMPTY_UNSCHEDULED_CARDS: BoardCalendarUnscheduledCard[] = [];
+
 export const getBoardCalendarQueryOptions = (
   boardId: string,
   params?: {
@@ -77,10 +81,10 @@ export const getBoardCalendarQueryOptions = (
   const toIso = range.to;
 
   return {
-    queryKey: ["board-calendar", boardId, viewMode, fromIso, toIso] as const,
-    queryFn: () =>
+    queryKey: [...calendarRangeQueryKey(boardId), viewMode, fromIso, toIso] as const,
+    queryFn: (): Promise<BoardCalendarResponse> =>
       fetcher(
-        `/api/boards/${boardId}/calendar?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&includeUnscheduled=true`,
+        `/api/boards/${boardId}/calendar?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`,
       ),
     staleTime: 30_000,
   };
@@ -139,16 +143,18 @@ export const useCalendarQuery = ({
     ...queryOptions,
     initialData: matchingInitialData,
   });
+  // The toolbar uses the filtered tray count even when the panel is collapsed.
+  const unscheduledQuery = useQuery<BoardCalendarUnscheduledCard[]>({
+    queryKey: calendarUnscheduledQueryKey(boardId),
+    queryFn: () => fetcher(`/api/boards/${boardId}/calendar?unscheduledOnly=true`),
+  });
 
   const responseItems = query.data?.items;
   const unfilteredItems = useMemo(
     () => (responseItems ?? []).flatMap(toCalendarDisplayItems),
     [responseItems],
   );
-  const unscheduledCards = useMemo(
-    () => query.data?.unscheduledCards ?? [],
-    [query.data?.unscheduledCards],
-  );
+  const unscheduledCards = unscheduledQuery.data ?? EMPTY_UNSCHEDULED_CARDS;
   const filtersAreActive = useMemo(() => boardFiltersAreActive(filters), [filters]);
   const items = useMemo(
     () => unfilteredItems.filter((item) =>
@@ -263,6 +269,7 @@ export const useCalendarQuery = ({
     toIso,
     days,
     query,
+    unscheduledQuery,
     responseItems,
     unfilteredItems,
     unscheduledCards,

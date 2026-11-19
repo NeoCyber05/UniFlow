@@ -118,41 +118,12 @@ export async function GET(
       return new Response(permission.error, { status: 403 });
     }
 
-    const [boardLabels, boardChecklists] = await measureDev(
+    const boardLabels = await measureDev(
       `api:card:${cardId}:board-related`,
-      () => Promise.all([
-        db.label.findMany({
-          where: {
-            boardId: card.list.boardId,
-          },
-          orderBy: {
-            createdAt: "asc",
-          },
-        }),
-        db.checklist.findMany({
-          where: {
-            card: {
-              archivedAt: null,
-              list: {
-                archivedAt: null,
-                boardId: card.list.boardId,
-              },
-            },
-          },
-          select: {
-            id: true,
-            title: true,
-            card: {
-              select: {
-                title: true,
-              },
-            },
-          },
-          orderBy: {
-            order: "asc",
-          },
-        }),
-      ]),
+      () => db.label.findMany({
+        where: { boardId: card.list.boardId },
+        orderBy: { createdAt: "asc" },
+      }),
     );
 
     return Response.json({
@@ -161,7 +132,6 @@ export async function GET(
       assignees: [],
       boardMembers: [],
       boardLabels,
-      boardChecklists,
       currentMemberRole: "ADMIN",
     });
   } catch (error) {

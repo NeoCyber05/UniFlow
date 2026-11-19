@@ -52,7 +52,7 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
   const storageKey = `uniflow:recent:${identity}`;
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const cardId = searchParams.get("cardId");
+  const cardId = searchParams.get("task") ?? searchParams.get("cardId");
   const modalCardId = useCardModal(state => state.isOpen ? state.id : undefined);
   const courseId = searchParams.get("course");
   useEffect(() => {
@@ -138,14 +138,14 @@ const SearchPalette = ({ identity, enabled }: { identity: string; enabled: boole
   const renderItem = (entry: Extract<Entry, { kind: "item" }>) => {
     const Icon = KIND_ICONS[entry.item.type] ?? FileText;
     return (
-      <a key={entry.key} id={optionId(entry)} role="option" aria-selected={chosen === entry} href={entry.item.href} onClick={() => remember(entry.item)} className={optionClass(entry)}>
+      <Link key={entry.key} id={optionId(entry)} role="option" aria-selected={chosen === entry} href={entry.item.href} onClick={() => remember(entry.item)} className={optionClass(entry)}>
         <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"><Icon className="size-3.5" /></span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{entry.item.type === "board" ? formatWorkspaceTitle(entry.item.title) : entry.item.title}</span>
           {entry.item.subtitle ? <span className="block truncate text-xs text-muted-foreground">{entry.item.subtitle}</span> : null}
         </span>
         <span className="shrink-0 text-[11px] text-muted-foreground">{tr(labels[entry.item.type])}</span>
-      </a>
+      </Link>
     );
   };
   const itemEntries = entries.filter((entry): entry is Extract<Entry, { kind: "item" }> => entry.kind === "item");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { fetcher } from "@/lib/fetcher";
 import {
@@ -14,13 +14,14 @@ import {
   type TaskListResponse,
 } from "@/lib/my-tasks/types";
 
-export const useTodoTasks = (boardId: string, initialData?: TaskListResponse, enabled = true) =>
-  useQuery<TaskListResponse>({
+export const todoTasksQueryOptions = (boardId: string) =>
+  queryOptions<TaskListResponse>({
     queryKey: todoTasksQueryKey(boardId),
-    queryFn: () => fetcher(`/api/my-tasks?boardId=${boardId}`),
-    initialData,
-    enabled,
+    queryFn: () => fetcher(`/api/my-tasks?boardId=${encodeURIComponent(boardId)}`),
   });
+
+export const useTodoTasks = (boardId: string, initialData?: TaskListResponse, enabled = true) =>
+  useQuery({ ...todoTasksQueryOptions(boardId), initialData, enabled });
 
 export const useMyTaskCounts = () =>
   useQuery<MyTaskCounts>({

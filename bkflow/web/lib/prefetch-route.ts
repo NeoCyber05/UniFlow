@@ -2,14 +2,14 @@ import type { ComponentType } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
+import { todoTasksQueryOptions } from "@/hooks/use-my-tasks";
 
 import { MY_TASKS_CONTEXT_KEY } from "@/lib/my-tasks/types";
 
 import { viewQueryOptions } from "./use-view";
 
 // Single source of the list view URL: the route and the prefetch must build the same query key.
-export const boardListViewPath = (boardId: string, group: string | null) =>
-  `/board/${boardId}/list${group === "list" ? "?group=list" : ""}`;
+export const boardListViewPath = (boardId: string) => `/board/${boardId}/list`;
 
 export const myViewPath = (view: string, error: string | null | undefined) =>
   `/my/${view}${error ? `?error=${encodeURIComponent(error)}` : ""}`;
@@ -80,9 +80,11 @@ export const prefetchRouteViews = (queryClient: QueryClient, pathname: string, s
   prefetch(`/board/${boardId}/layout`);
 
   if (!view) prefetch(`/board/${boardId}`);
-  else if (view === "list") prefetch(boardListViewPath(boardId, new URLSearchParams(search).get("group")));
-  else if (view === "calendar") {
+  else if (view === "list") {
+    prefetch(boardListViewPath(boardId));
+    void queryClient.prefetchQuery(todoTasksQueryOptions(boardId));
+  } else if (view === "calendar") {
     prefetch(`/board/${boardId}/calendar`);
-    void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
+    void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId, { searchParams: new URLSearchParams(search) }));
   } else if (PLAIN_VIEWS.has(view)) prefetch(`/board/${boardId}/${view}`);
 };

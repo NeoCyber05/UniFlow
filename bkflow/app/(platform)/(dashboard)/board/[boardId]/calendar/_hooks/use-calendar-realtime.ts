@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef, type RefObject } from "react";
 import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { realtimeChannels } from "@/lib/realtime/channels";
 import { tr } from "@/lib/i18n";
 import { isRealtimeClientConfigured } from "@/lib/realtime/client";
-import type { BoardCalendarResponse } from "@/types";
 
 import type {
   BoardCalendarAccessPayload,
@@ -25,6 +23,7 @@ type UseCalendarRealtimeOptions = {
   router: AppRouterInstance;
   cardModal: CalendarCardModal;
   invalidateBoardCalendar: () => void;
+  lastLocalUpdate: RefObject<{ boardId: string; cardId: string; updatedAt: string } | null>;
 };
 
 export const useCalendarRealtime = ({
@@ -33,8 +32,8 @@ export const useCalendarRealtime = ({
   router,
   cardModal,
   invalidateBoardCalendar,
+  lastLocalUpdate,
 }: UseCalendarRealtimeOptions) => {
-  const queryClient = useQueryClient();
   const processedRealtimeEventIdsRef = useRef<Set<string>>(new Set());
   const realtimeChannelName = realtimeChannels.board(boardId);
   const realtimeEnabled = isRealtimeClientConfigured();
@@ -61,22 +60,20 @@ export const useCalendarRealtime = ({
       return;
     }
 
-    // Echo của chính thao tác vừa lưu ở tab này: cache đã ở đúng revision, khỏi tải lại lần nữa.
+    // Một cache có revision mới có thể đã tải trước cache còn lại, kể cả khi thao tác đến từ tab khác.
+    const local = lastLocalUpdate.current;
     if (
+      local &&
       payload.actorUserId === currentUserId &&
-      payload.cardId &&
-      payload.updatedAt &&
-      queryClient
-        .getQueriesData<BoardCalendarResponse>({ queryKey: ["board-calendar", boardId] })
-        .some(([, response]) => response?.items.some((item) =>
-          item.type === "card" && item.cardId === payload.cardId && item.updatedAt === payload.updatedAt
-        ))
+      payload.boardId === local.boardId &&
+      payload.cardId === local.cardId &&
+      payload.updatedAt === local.updatedAt
     ) {
       return;
     }
 
     invalidateBoardCalendar();
-  }, [boardId, currentUserId, invalidateBoardCalendar, processRealtimeEvent, queryClient]);
+  }, [currentUserId, invalidateBoardCalendar, lastLocalUpdate, processRealtimeEvent]);
 
   const handleCalendarRealtimeWithRefresh = useCallback((payload: BoardCalendarRealtimePayload) => {
     if (!processRealtimeEvent(payload, { skipOwnEcho: false })) {

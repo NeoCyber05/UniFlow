@@ -117,10 +117,16 @@ test("task picker search covers completed and other-workspace tasks within the o
     assert.equal(where.isCompleted, undefined);
     assert.equal(where.courseId, undefined);
     assert.ok(take <= 10);
-    return [{ id: "c1", title: "Done task", list: { title: "Xong", boardId: "b-old", board: { title: "Kỳ trước" } } }];
+    return [
+      { id: "c1", title: "Done task", list: { title: "Xong", boardId: "b-old", board: { title: "Kỳ trước", boardType: "WORKSPACE" } } },
+      { id: "c2", title: "Done project task", list: { title: "Xong", boardId: "project", board: { title: "Dự án", boardType: "TEAM_PROJECT" } } },
+    ];
   };
   const { items } = await searchWorkspace("u1", "Done");
-  assert.equal(items[0].id, "c1");
+  assert.deepEqual(items.map(({ id, href }) => [id, href]), [
+    ["c1", "/board/b-old/list?task=c1"],
+    ["c2", "/board/project?cardId=c2"],
+  ]);
 });
 
 test("linked task view hides stale data while re-checking and separates network errors from unavailable", () => {

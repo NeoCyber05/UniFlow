@@ -20,9 +20,7 @@ import { useMyTaskCounts, useMyTasksContext } from "@/hooks/use-my-tasks";
 import { getBoardNavigation } from "@/lib/boards/navigation";
 import { useBoardFilters } from "@/hooks/use-board-filters";
 import { cn } from "@/lib/utils";
-import { viewQueryOptions } from "@/web/lib/use-view";
-import { preloadRouteCode, preloadRouteCodeWhenIdle } from "@/web/lib/prefetch-route";
-import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board/[boardId]/calendar/_hooks/use-calendar-query";
+import { prefetchRouteViews, preloadRouteCodeWhenIdle } from "@/web/lib/prefetch-route";
 
 const EMPTY_COURSE_IDS: string[] = [];
 const NAV_ICONS = { tasks: ListTodo, calendar: CalendarDays, graph: Network };
@@ -96,15 +94,7 @@ export const MySidebarNav = ({ compact = false }: { compact?: boolean }) => {
     boardId ? state.filtersByBoardId[boardId]?.selectedCourseIds ?? EMPTY_COURSE_IDS : EMPTY_COURSE_IDS
   );
   const clearBoardFilters = () => { if (boardId) useBoardFilters.getState().clearFilters(boardId); };
-  const prefetchBoard = (href: string) => {
-    if (!boardId) return;
-    preloadRouteCode(href);
-    void queryClient.prefetchQuery(viewQueryOptions(`/board/${boardId}/layout`));
-    void queryClient.prefetchQuery(viewQueryOptions(href));
-    if (href.endsWith("/calendar")) {
-      void queryClient.prefetchQuery(getBoardCalendarQueryOptions(boardId));
-    }
-  };
+  const prefetchBoard = (href: string) => prefetchRouteViews(queryClient, href, "");
 
   // Tải sẵn code các tab khi trình duyệt rảnh, lần bấm đầu không phải chờ chunk
   useEffect(() => {

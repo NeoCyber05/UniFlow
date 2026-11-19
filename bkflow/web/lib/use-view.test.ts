@@ -2,10 +2,36 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 import superjson from "superjson";
+import { prefetchRouteViews } from "./prefetch-route";
 import { viewQueryOptions } from "./use-view";
 
 test("dashboard preferences from different accounts never share a fresh cache entry", () => {
   assert.notDeepEqual(viewQueryOptions("/dashboard", "a").queryKey, viewQueryOptions("/dashboard", "b").queryKey);
+});
+
+test("list navigation prefetches metadata and the canonical task query in parallel", () => {
+  const client = new QueryClient();
+  const keys: unknown[] = [];
+  client.prefetchQuery = async (options) => { keys.push(options.queryKey); };
+
+  prefetchRouteViews(client, "/board/demo/list", "?group=list");
+
+  assert.deepEqual(keys, [
+    ["view", "/board/demo/layout"],
+    ["view", "/board/demo/list"],
+    ["my-tasks", "todo", "demo"],
+  ]);
+});
+
+test("calendar prefetch uses the day from a direct link", () => {
+  const client = new QueryClient();
+  const keys: (readonly unknown[])[] = [];
+  client.prefetchQuery = async (options) => { keys.push(options.queryKey); };
+
+  prefetchRouteViews(client, "/board/demo/calendar", "?view=day&date=2026-06-01");
+
+  const range = keys.find((key) => key[0] === "board-calendar");
+  assert.deepEqual(range?.slice(-3), ["day", "2026-05-31T17:00:00.000Z", "2026-06-01T17:00:00.000Z"]);
 });
 
 test("board prefetch and mounted view share one request and fresh cache", async () => {

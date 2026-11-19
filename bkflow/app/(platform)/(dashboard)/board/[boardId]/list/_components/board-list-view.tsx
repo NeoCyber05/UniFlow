@@ -14,6 +14,7 @@ import { QuickAddBar, type QuickAddDefaults } from "@/components/my-tasks/quick-
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
 import { TaskGroupSection } from "@/components/my-tasks/task-group-section";
 import { TodoInsights } from "@/components/my-tasks/todo-insights";
+import { ViewSkeleton } from "@/components/view-skeleton";
 import { useBoardCourses } from "@/hooks/use-board-courses";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { useTodoTasks } from "@/hooks/use-my-tasks";
@@ -57,7 +58,6 @@ type BoardListViewProps = {
   /** Bảng workspace mới có lọc theo môn */
   showCourseFilter?: boolean;
   initialData?: TaskListResponse;
-  initialAgendaData?: TaskListResponse;
   error?: string;
 };
 
@@ -91,7 +91,6 @@ export const BoardListView = ({
   labels,
   showCourseFilter,
   initialData,
-  initialAgendaData,
   error,
 }: BoardListViewProps) => {
   const groupMode: ListGroupMode = isTeamBoard ? "list" : "agenda";
@@ -118,7 +117,8 @@ export const BoardListView = ({
   });
 
   // Dữ liệu theo thời hạn (Agenda + Việc nhóm) cho học kỳ
-  const { data: agendaData } = useTodoTasks(boardId, initialAgendaData, !isTeamBoard);
+  const agenda = useTodoTasks(boardId, undefined, !isTeamBoard);
+  const agendaData = agenda.data;
 
   // Lọc theo cột; nhóm Xong chỉ gom việc đã tích từ mọi cột, cột "Xong" trống thì ẩn
   const doneGroupLabel = tr("boardList.doneGroup");
@@ -159,6 +159,15 @@ export const BoardListView = ({
     isImportant: filters.importantOnly,
     courseId: selectedCourseId && selectedCourseId !== PERSONAL_COURSE_FILTER ? selectedCourseId : undefined,
   };
+
+  if (!isTeamBoard && !agendaData) {
+    if (agenda.isError) return (
+      <div role="alert" className="p-6 text-sm text-destructive">
+        {tr("route.boardLoadError")} <button type="button" className="underline" onClick={() => void agenda.refetch()}>{tr("common.retry")}</button>
+      </div>
+    );
+    return <ViewSkeleton variant="rows" />;
+  }
 
   return (
     <div className="personal-workspace flex h-full items-start overflow-hidden">

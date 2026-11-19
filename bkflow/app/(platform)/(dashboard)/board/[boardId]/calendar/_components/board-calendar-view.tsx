@@ -83,6 +83,7 @@ export const BoardCalendarView = ({
   const cardModal = useMemo(() => ({ onOpen: openTask, onClose: closeTask }), [openTask, closeTask]);
   const queryClient = useQueryClient();
   const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
+  const lastLocalUpdate = useRef<{ boardId: string; cardId: string; updatedAt: string } | null>(null);
   const {
     viewMode,
     anchorDate,
@@ -119,6 +120,7 @@ export const BoardCalendarView = ({
     toIso,
     days,
     query,
+    unscheduledQuery,
     unscheduledCards,
     filtersAreActive,
     items,
@@ -156,6 +158,7 @@ export const BoardCalendarView = ({
     router,
     cardModal,
     invalidateBoardCalendar,
+    lastLocalUpdate,
   });
   useEffect(() => {
     let cancelled = false;
@@ -239,7 +242,7 @@ export const BoardCalendarView = ({
   const [scheduleDialog, setScheduleDialog] = useState<ScheduleDialogState | null>(null);
   const cardTitleOf = (cardId: string) =>
     query.data?.items.find((item) => item.cardId === cardId)?.title ??
-    query.data?.unscheduledCards.find((card) => card.cardId === cardId)?.title ??
+    unscheduledCards.find((card) => card.cardId === cardId)?.title ??
     "";
   const openScheduleDialog = (cardId: string) => {
     const card = query.data?.items.find(
@@ -285,6 +288,7 @@ export const BoardCalendarView = ({
     setUpdateSuccessToast,
     setUpdatingChecklistItemCardId,
   } = useCalendarCardActions({
+    boardId,
     query,
     queryClient,
     router,
@@ -299,7 +303,10 @@ export const BoardCalendarView = ({
       handleOccurrenceDragEnd();
     },
     onNeedsEnd: openNeedsEndDialog,
-    onUpdateSuccess: () => setScheduleDialog(null),
+    onUpdateSuccess: (update) => {
+      lastLocalUpdate.current = { boardId, ...update };
+      setScheduleDialog(null);
+    },
   });
   const {
     resizingRange,
@@ -571,7 +578,7 @@ export const BoardCalendarView = ({
         completedItemsCount={completedItemsCount}
         overdueItemsCount={overdueItemsCount}
         isUnscheduledCollapsed={isUnscheduledCollapsed}
-        filteredUnscheduledCount={filteredUnscheduledCards.length}
+        filteredUnscheduledCount={unscheduledQuery.data ? filteredUnscheduledCards.length : undefined}
         viewMode={viewMode}
         previousLabel={previousLabel}
         nextLabel={nextLabel}
@@ -718,9 +725,10 @@ export const BoardCalendarView = ({
       selectedListIds={filters.selectedListIds}
       unscheduledCards={unscheduledCards}
       filteredUnscheduledCards={filteredUnscheduledCards}
-      isLoading={query.isLoading}
-      isError={query.isError}
-      isSuccess={query.isSuccess}
+      isLoading={unscheduledQuery.isLoading}
+      isError={unscheduledQuery.isError}
+      isSuccess={unscheduledQuery.isSuccess}
+      onRetry={() => void unscheduledQuery.refetch()}
       isUpdatingCardDate={isUpdatingCardDate}
       isUpdatingChecklistItemDueDate={isUpdatingChecklistItemDueDate}
       draggingUnscheduledCardId={draggingUnscheduledCardId}

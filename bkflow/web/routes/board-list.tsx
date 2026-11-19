@@ -14,8 +14,7 @@ export default function BoardListRoute() {
   const { boardId } = useParams<{ boardId: string }>();
   const searchParams = useSearchParams()[0];
   const error = searchParams.get("error") ?? undefined;
-  const group = searchParams.get("group");
-  const { data } = useView<View>(boardListViewPath(boardId ?? "", group));
+  const { data } = useView<View>(boardListViewPath(boardId ?? ""));
 
   if (!data) return <ViewSkeleton variant="rows" />;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
@@ -34,7 +33,6 @@ export default function BoardListRoute() {
         labels={data.labels}
         showCourseFilter={data.showCourseFilter}
         initialData={data.initialData}
-        initialAgendaData={data.initialAgendaData}
         error={error}
       />
     </Suspense>

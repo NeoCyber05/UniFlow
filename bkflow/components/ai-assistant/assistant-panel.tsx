@@ -1,0 +1,628 @@
+"use client";
+
+import { useChat } from "@ai-sdk/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAssistantTask } from "@/hooks/use-assistant-task";
+import type { AssistantContext } from "@/lib/ai/assistant/context";
+import type { AiOperation } from "@/lib/ai/assistant/policy";
+import { assistantContextKey, snapshotAssistantRequest } from "@/web/lib/assistant-context";
+import { DefaultChatTransport } from "ai";
+import {
+  ArrowUp,
+  GripHorizontal,
+  ImagePlus,
+  Maximize2,
+  Minimize2,
+  Minus,
+  Square,
+  SquareArrowOutUpRight,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useRouter } from "@/web/shims/next-navigation";
+import {
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
+
+import { useCardModal } from "@/hooks/use-card-modal";
+import type { BoardAssistantUIMessage } from "@/lib/ai/assistant/agent";
+import { tr, useLocale } from "@/lib/i18n";
+import type { CardMessageKey } from "@/lib/i18n/messages/vi-card";
+import { cn } from "@/lib/utils";
+import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
+
+import { compressImage } from "@/components/capture/image-import-dialog";
+
+import { AiLogo } from "./ai-logo";
+import { AssistantLauncher } from "./assistant-launcher";
+import { AssistantMessage } from "./assistant-message";
+import { ThinkingPanel } from "./thinking-panel";
+
+/**
+ * Danh sách key câu hỏi gợi ý nhanh hiển thị khi cuộc trò chuyện chưa có tin nhắn nào.
+ */
+const SUGGESTION_KEYS: readonly CardMessageKey[] = [
+  "aiAssistant.suggestion1",
+  "aiAssistant.suggestion2",
+  "aiAssistant.suggestion3",
+  "aiAssistant.suggestion4",
+];
+
+/**
+ * Danh sách định danh công cụ làm biến đổi dữ liệu (mutations) phía server.
+ * Dùng để phát hiện khi Agent thực thi xong công cụ nhằm tự động làm mới cache dữ liệu bảng.
+ */
+const MUTATION_TOOLS = new Set([
+  "tool-updateChecklistItem",
+  "tool-createDeadlineCard",
+  "tool-createRecurringSchedule",
+  "tool-batchCreateCards",
+  "tool-createCardChecklist",
+  "tool-moveCard",
+  "tool-updateCardDeadline",
+  "tool-updateCardDetails",
+  "tool-archiveCard",
+]);
+
+/** Khoảng cách đệm an toàn từ mép cửa sổ chat tới viền màn hình (px) */
+const EDGE_GAP = 16;
+
+/** Tọa độ độ lệch (Offset) tính từ góc dưới bên phải viewport */
+type Offset = { x: number; y: number };
+
+/**
+ * Giới hạn tọa độ di chuyển của cửa sổ chat để đảm bảo cửa sổ không bị kéo lệch ra ngoài màn hình.
+ *
+ * @param offset - Tọa độ dự kiến muốn đặt (tính từ góc dưới bên phải).
+ * @param width - Chiều rộng hiện thời của panel chat (px).
+ * @param height - Chiều cao hiện thời của panel chat (px).
+ * @returns Tọa độ đã được giới hạn an toàn trong viewport.
+ */
+const clampOffset = (offset: Offset, width: number, height: number): Offset => {
+  if (typeof window === "undefined") {
+    return offset;
+  }
+
+  const maxX = Math.max(0, window.innerWidth - width - EDGE_GAP * 2);
+  const maxY = Math.max(0, window.innerHeight - height - EDGE_GAP * 2);
+
+  return {
+    x: Math.min(Math.max(offset.x, 0), maxX),
+    y: Math.min(Math.max(offset.y, 0), maxY),
+  };
+};
+
+export type AssistantPanelProps = {
+  boardId?: string;
+  context: AssistantContext;
+  contextLabel: string;
+  initialChecklist: boolean;
+  onEditPage?: (text: string) => Promise<boolean | undefined>;
+};
+
+export default function AssistantPanel({ boardId, context, contextLabel, initialChecklist, onEditPage }: AssistantPanelProps) {
+  useLocale((state) => state.locale);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const openCardModal = useCardModal((state) => state.onOpen);
+
+  const [isOpen, setIsOpen] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [input, setInput] = useState(initialChecklist ? tr("aiAssistant.defaultChecklistPrompt") : "");
+  const [historyLoaded, setHistoryLoaded] = useState(!boardId || context.kind === "page");
+  const [enabled, setEnabled] = useState(true);
+  const [operation, setOperation] = useState<AiOperation>(initialChecklist ? "add_checklist" : "answer");
+  const activeTaskId = context.kind === "task" ? context.cardId : null;
+  useEffect(() => {
+    return useAssistantTask.subscribe((request, previous) => {
+      if (request.openSequence !== previous.openSequence && activeTaskId && request.openTaskId === activeTaskId) {
+        setIsOpen(true); setOperation("add_checklist"); setInput(tr("aiAssistant.defaultChecklistPrompt"));
+      }
+    });
+  }, [activeTaskId]);
+  // Offset measured from the bottom-right corner of the viewport.
+  const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ảnh đính kèm (data URL đã nén), gửi cùng câu hỏi
+  const [image, setImage] = useState<string | null>(null);
+  const [sentAt, setSentAt] = useState<number>();
+  const attachImage = (file: File) => {
+    void compressImage(file).then(setImage).catch(() => toast.error(tr("aiAssistant.imageReadError")));
+  };
+  const dragRef = useRef<{ startX: number; startY: number; origin: Offset } | null>(null);
+  const handledToolCalls = useRef(new Set<string>());
+
+  const timeZone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    [],
+  );
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport<BoardAssistantUIMessage>({
+        api: "/api/ai/chat",
+        // Server owns history: only send the newest message.
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: {
+            boardId,
+            ...snapshotAssistantRequest(context, operation),
+            timeZone,
+            message: messages[messages.length - 1],
+          },
+        }),
+      }),
+    [boardId, context, operation, timeZone],
+  );
+
+  const { messages, sendMessage, setMessages, status, stop, error, clearError } =
+    useChat<BoardAssistantUIMessage>({
+      id: `assistant-${assistantContextKey(context)}`,
+      transport,
+      onError: (chatError) => {
+        toast.error(chatError.message || tr("aiAssistant.chatError"));
+      },
+    });
+
+  const isBusy = status === "submitted" || status === "streaming";
+  const stopRef = useRef(stop);
+  useEffect(() => { stopRef.current = stop; }, [stop]);
+  useEffect(() => () => { void stopRef.current(); }, []);
+
+  // Load persisted history the first time the panel opens.
+  useEffect(() => {
+    if (!isOpen || historyLoaded) {
+      return;
+    }
+    if (!boardId || context.kind === "page") return;
+
+    let cancelled = false;
+
+    fetch(`/api/ai/chat?boardId=${encodeURIComponent(boardId)}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { messages?: BoardAssistantUIMessage[]; enabled?: boolean } | null) => {
+        if (cancelled || !payload) {
+          return;
+        }
+
+        setEnabled(payload.enabled !== false);
+
+        if (payload.messages && payload.messages.length > 0) {
+          payload.messages.forEach((message) =>
+            message.parts.forEach((part) => {
+              if ("toolCallId" in part) {
+                handledToolCalls.current.add(part.toolCallId);
+              }
+            }),
+          );
+          setMessages(payload.messages);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setHistoryLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, context.kind, historyLoaded, isOpen, setMessages]);
+
+  // Refresh board data once a mutation tool finishes successfully.
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage || lastMessage.role !== "assistant") {
+      return;
+    }
+
+    let shouldRefresh = false;
+
+    lastMessage.parts.forEach((part) => {
+      if (
+        MUTATION_TOOLS.has(part.type) &&
+        "toolCallId" in part &&
+        part.state === "output-available" &&
+        !handledToolCalls.current.has(part.toolCallId)
+      ) {
+        handledToolCalls.current.add(part.toolCallId);
+
+        const output = part.output as {
+          ok: boolean;
+          action?: string;
+          card?: { id: string };
+          cards?: { id: string }[];
+        };
+
+        // Đề xuất chưa ghi dữ liệu: không cần làm mới.
+        if (output && output.ok && output.action !== "proposal") {
+          shouldRefresh = true;
+          if (output.card) {
+            queryClient.invalidateQueries({ queryKey: ["card", output.card.id] });
+          }
+          if (output.cards) {
+            output.cards.forEach((c) => {
+              queryClient.invalidateQueries({ queryKey: ["card", c.id] });
+            });
+          }
+        }
+      }
+    });
+
+    if (shouldRefresh) {
+      queryClient.invalidateQueries({ queryKey: ["board-calendar", boardId] });
+      queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+      router.refresh();
+    }
+  }, [boardId, messages, queryClient, router]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, status]);
+
+  useEffect(() => {
+    if (isOpen) {
+      textareaRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  // Keep the panel on-screen when it resizes or the window shrinks.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const keepInView = () => {
+      const panel = panelRef.current;
+
+      if (panel) {
+        setOffset((current) => clampOffset(current, panel.offsetWidth, panel.offsetHeight));
+      }
+    };
+
+    keepInView();
+    window.addEventListener("resize", keepInView);
+
+    return () => window.removeEventListener("resize", keepInView);
+  }, [isExpanded, isOpen]);
+
+  const submit = useCallback(
+    (text: string) => {
+      const value = text.trim();
+
+      if ((!value && !image) || isBusy || !enabled) {
+        return;
+      }
+
+      clearError();
+      setInput(value);
+      if (operation === "edit_page" && onEditPage) {
+        if (!value) return;
+        void onEditPage(value).then(ok => { if (ok) setInput(current => current === value ? "" : current); });
+      } else {
+        setSentAt(Date.now());
+        void sendMessage({
+          text: value,
+          ...(image ? { files: [{ type: "file" as const, mediaType: "image/jpeg", url: image }] } : {}),
+        });
+        setImage(null);
+      }
+    },
+    [clearError, enabled, isBusy, sendMessage, operation, onEditPage, image],
+  );
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      submit(input);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!boardId || context.kind === "page") { void stop(); setMessages([]); return; }
+    if (isBusy) {
+      stop();
+    }
+
+    const response = await fetch(`/api/ai/chat?boardId=${encodeURIComponent(boardId)}`, {
+      method: "DELETE",
+    }).catch(() => null);
+
+    if (!response?.ok) {
+      toast.error(tr("aiAssistant.clearHistoryError"));
+      return;
+    }
+
+    handledToolCalls.current.clear();
+    setMessages([]);
+  };
+
+  const handleOpenCard = useCallback(
+    (cardId: string) => openCardModal(cardId),
+    [openCardModal],
+  );
+
+  const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("button")) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { startX: event.clientX, startY: event.clientY, origin: offset };
+  };
+
+  const handleDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const panel = panelRef.current;
+
+    if (!drag || !panel) {
+      return;
+    }
+
+    setOffset(
+      clampOffset(
+        {
+          x: drag.origin.x - (event.clientX - drag.startX),
+          y: drag.origin.y - (event.clientY - drag.startY),
+        },
+        panel.offsetWidth,
+        panel.offsetHeight,
+      ),
+    );
+  };
+
+  const handleDragEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    dragRef.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const lastMessage = messages[messages.length - 1];
+  const showThinking = isBusy && lastMessage?.role !== "assistant";
+  const lastUserText = [...messages].reverse().find((message) => message.role === "user")?.parts
+    .flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n").trim();
+  // Trang Trợ lý cá nhân có nhiều cuộc trò chuyện; chỉ mở được từ ngữ cảnh có bảng.
+  const fullPageHref = boardId && context.kind !== "page" ? `/assistant?board=${encodeURIComponent(boardId)}` : null;
+
+  if (!isOpen) {
+    return <AssistantLauncher onOpen={() => setIsOpen(true)} busy={isBusy} />;
+  }
+
+  return (
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-label={tr("aiAssistant.logoAria")}
+      style={{ right: EDGE_GAP + offset.x, bottom: EDGE_GAP + offset.y }}
+      className={cn(
+        "fixed z-[60] flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl",
+        isExpanded
+          ? "h-[min(780px,calc(100vh-32px))] w-[min(620px,calc(100vw-32px))]"
+          : "h-[min(560px,calc(100vh-32px))] w-[min(390px,calc(100vw-32px))]",
+      )}
+    >
+      <div
+        onPointerDown={handleDragStart}
+        onPointerMove={handleDragMove}
+        onPointerUp={handleDragEnd}
+        onPointerCancel={handleDragEnd}
+        className="flex cursor-grab touch-none select-none items-center gap-1 border-b bg-background px-3 py-2.5 text-foreground active:cursor-grabbing"
+      >
+        <AiLogo className="mr-1 size-7" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-tight">{tr("aiAssistant.panelTitle")}</p>
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
+            {contextLabel}{isBusy ? tr("aiAssistant.processingSuffix") : ""}
+          </p>
+        </div>
+        <GripHorizontal aria-hidden="true" className="size-4 text-muted-foreground/60" />
+        {fullPageHref ? (
+          <button
+            type="button"
+            onClick={() => router.push(fullPageHref)}
+            aria-label={tr("assistant.openFullPage")}
+            title={tr("assistant.openFullPage")}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <SquareArrowOutUpRight className="size-4" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={messages.length === 0}
+          aria-label={tr("aiAssistant.clearHistoryAria")}
+          title={tr("aiAssistant.clearHistoryAria")}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
+        >
+          <Trash2 className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((value) => !value)}
+          aria-label={isExpanded ? tr("aiAssistant.collapseChatAria") : tr("aiAssistant.expandChatAria")}
+          title={isExpanded ? tr("aiAssistant.collapseTitle") : tr("aiAssistant.expandTitle")}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {isExpanded ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          aria-label={tr("aiAssistant.minimizeAria")}
+          title={tr("aiAssistant.minimizeTitle")}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Minus className="size-4" />
+        </button>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        {messages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <AiLogo className="size-12 shadow-sm" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{tr("aiAssistant.welcomeHeading")}</p>
+              <p className="px-4 text-xs text-muted-foreground">
+                {tr("aiAssistant.welcomeBody")}
+              </p>
+            </div>
+            {!enabled ? (
+              <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                {tr("aiAssistant.missingApiKey")}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          messages.map((message, index) => {
+            const isLatest = index === messages.length - 1;
+            return (
+              <AssistantMessage
+                key={message.id}
+                message={message}
+                boardId={boardId}
+                onOpenCard={handleOpenCard}
+                onReply={submit}
+                onRetry={isLatest && message.role === "assistant" && lastUserText && !isBusy ? () => submit(lastUserText) : undefined}
+                isLatest={isLatest}
+                isStreaming={isBusy}
+                startedAt={isLatest ? sentAt : undefined}
+              />
+            );
+          })
+        )}
+
+        {showThinking ? <ThinkingPanel steps={[]} active startedAt={sentAt} className="pl-8" /> : null}
+
+        {error && !isBusy ? (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error.message || tr("aiAssistant.genericError")}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="border-t bg-background p-3">
+        {/* Trang cần chọn giữa hỏi và sửa; bảng/công việc mặc định hỏi, thay đổi đi qua đề xuất + "Đồng ý". */}
+        {onEditPage ? (
+          <label className="mb-2 flex flex-wrap items-center gap-2 text-xs">{tr("aiAssistant.requestTypeLabel")}
+            <select aria-label={tr("aiAssistant.requestTypeAria")} value={operation} disabled={isBusy} onChange={event => setOperation(event.target.value as AiOperation)} className="min-w-0 rounded border bg-background px-2 py-1 text-foreground">
+              <option value="answer">{tr("aiAssistant.requestAskPage")}</option>
+              <option value="edit_page">{tr("aiAssistant.requestEditPage")}</option>
+            </select>
+          </label>
+        ) : null}
+        {messages.length === 0 || (!isBusy && messages.length < 2) ? (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {SUGGESTION_KEYS.map((key) => {
+              const suggestion = tr(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => submit(suggestion)}
+                  disabled={isBusy || !enabled}
+                  className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground/80 transition hover:border-violet-400 hover:bg-violet-500/10 disabled:opacity-50"
+                >
+                  {suggestion}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit(input);
+          }}
+          className="flex flex-wrap items-end gap-2 rounded-xl border bg-background px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20"
+        >
+          {image && (
+            <div className="relative basis-full pt-1">
+              <img src={image} alt={tr("aiAssistant.attachedImageAlt")} className="h-16 rounded-lg border object-cover" />
+              <button
+                type="button"
+                onClick={() => setImage(null)}
+                aria-label={tr("aiAssistant.removeImageAria")}
+                className="absolute left-1 top-2 rounded-full bg-background/90 p-0.5 text-muted-foreground shadow hover:text-rose-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!enabled || isBusy}
+            aria-label={tr("aiAssistant.attachImageAria")}
+            title={tr("aiAssistant.attachImageTitle")}
+            className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-violet-600 disabled:opacity-40"
+          >
+            <ImagePlus className="size-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) attachImage(file);
+              event.target.value = "";
+            }}
+          />
+          <textarea
+            ref={textareaRef}
+            data-assistant-composer
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onPaste={(event) => {
+              const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith("image/"));
+              if (!file) return;
+              event.preventDefault();
+              attachImage(file);
+            }}
+            rows={1}
+            maxLength={2000}
+            disabled={!enabled}
+            placeholder={enabled ? tr("aiAssistant.inputPlaceholder") : tr("aiAssistant.disabledPlaceholder")}
+            className="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground [field-sizing:content]"
+          />
+          {isBusy ? (
+            <button
+              type="button"
+              onClick={() => stop()}
+              aria-label={tr("aiAssistant.stopAria")}
+              className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-foreground text-background"
+            >
+              <Square className="size-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={(!input.trim() && !image) || !enabled}
+              aria-label={tr("aiAssistant.sendAria")}
+              className="mb-1 flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40"
+            >
+              <ArrowUp className="size-4" />
+            </button>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}

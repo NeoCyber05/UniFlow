@@ -2,11 +2,10 @@ import { BoardType } from "@prisma/client";
 import type { BoardMember } from "@/types";
 
 import { db } from "@/lib/db";
-import { getTodoTasks } from "@/lib/my-tasks/query";
 import { requireBoardMemberForUser } from "@/lib/permissions";
 
 // Data of app/(platform)/(dashboard)/board/[boardId]/list/page.tsx.
-export const loadBoardList = async ({ boardId }: { boardId: string; group?: string }, userId: string) => {
+export const loadBoardList = async ({ boardId }: { boardId: string }, userId: string) => {
   const [permission, board] = await Promise.all([
     requireBoardMemberForUser({ boardId, userId }),
     db.board.findFirst({
@@ -36,9 +35,6 @@ export const loadBoardList = async ({ boardId }: { boardId: string; group?: stri
     return { redirect: "/my/today" } as const;
   }
 
-  // Hàng luôn nhóm theo hạn (xem theo cột là layout Kanban), nên chỉ preload agenda.
-  const initialAgendaData = await getTodoTasks({ userId, boardId });
-
   return {
     boardId,
     boardOrgId: board.userId,
@@ -52,6 +48,5 @@ export const loadBoardList = async ({ boardId }: { boardId: string; group?: stri
     labels: board.labels,
     showCourseFilter: board.boardType === BoardType.WORKSPACE,
     initialData: undefined,
-    initialAgendaData,
   } as const;
 };
