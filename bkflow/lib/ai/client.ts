@@ -1,6 +1,7 @@
 import "server-only";
 
-import { generateText } from "ai";
+import { generateText, parseJsonEventStream, streamText } from "ai";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 
@@ -35,6 +36,30 @@ const getOpenAiApiKey = () => {
   return apiKey;
 };
 
+const requestOpenAiText = (
+  { system, user, temperature, maxTokens }: Required<GenerateAiTextInput>,
+  signal: AbortSignal,
+  stream = false,
+) => fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${getOpenAiApiKey()}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: AI_MODEL,
+    messages: [{ role: "developer", content: system }, { role: "user", content: user }],
+    temperature,
+    max_tokens: maxTokens,
+    ...(stream && { stream }),
+  }),
+  signal,
+});
+
+const geminiProviderOptions = {
+  google: { thinkingConfig: /^gemini-2\./.test(ASSISTANT_MODEL_ID) ? { thinkingBudget: 0 } : { thinkingLevel: "low" as const } },
+};
+
 type AiImage = { data: string; mediaType: string };
 
 /** Gemini (same model as the assistant), used when no OpenAI key is configured. */
@@ -57,9 +82,7 @@ const generateGeminiText = async ({
       maxOutputTokens: maxTokens,
       // Thinking tokens count against maxOutputTokens; these calls are short structured answers.
       // Gemini 2.x tắt bằng budget 0; 3.8 flash không nhận budget 0 hay "minimal" → "low"
-      providerOptions: {
-        google: { thinkingConfig: /^gemini-2\./.test(ASSISTANT_MODEL_ID) ? { thinkingBudget: 0 } : { thinkingLevel: "low" as const } },
-      },
+      providerOptions: geminiProviderOptions,
       abortSignal: AbortSignal.timeout(timeoutMs),
     });
     const content = text.trim();
@@ -107,29 +130,7 @@ export const generateAiText = async ({
   const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getOpenAiApiKey()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        messages: [
-          {
-            role: "developer",
-            content: system,
-          },
-          {
-            role: "user",
-            content: user,
-          },
-        ],
-        temperature,
-        max_tokens: maxTokens,
-      }),
-      signal: controller.signal,
-    });
+    const response = await requestOpenAiText({ system, user, temperature, maxTokens }, controller.signal);
 
     const payload = (await response.json().catch(() => null)) as ChatCompletionResponse | null;
 
@@ -175,3 +176,42 @@ export const generateAiText = async ({
     clearTimeout(timeout);
   }
 };
+
+const OpenAiTextEvent = z.object({
+  choices: z.array(z.object({ delta: z.object({ content: z.string().nullish() }).optional() })).optional(),
+  error: z.object({ message: z.string() }).optional(),
+});
+
+export async function* streamAiText(
+  { system, user, temperature = 0.3, maxTokens = 700 }: GenerateAiTextInput,
+  abortSignal: AbortSignal,
+): AsyncGenerator<string> {
+  const signal = AbortSignal.any([abortSignal, AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS)]);
+  if (!process.env.OPENAI_API_KEY && getAssistantApiKey()) {
+    const result = streamText({
+      model: getAssistantModel(),
+      system,
+      prompt: user,
+      temperature,
+      maxOutputTokens: maxTokens,
+      providerOptions: geminiProviderOptions,
+      abortSignal: signal,
+    });
+    yield* result.textStream;
+    return;
+  }
+
+  const response = await requestOpenAiText({ system, user, temperature, maxTokens }, signal, true);
+  if (!response.ok || !response.body) throw new Error(`OpenAI stream HTTP ${response.status}`);
+  const reader = parseJsonEventStream({ stream: response.body, schema: OpenAiTextEvent }).getReader();
+  try {
+    for (let event = await reader.read(); !event.done; event = await reader.read()) {
+      if (!event.value.success) throw new Error("Invalid OpenAI stream event");
+      if (event.value.value.error) throw new Error("OpenAI returned a stream error");
+      const text = event.value.value.choices?.[0]?.delta?.content;
+      if (text) yield text;
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}

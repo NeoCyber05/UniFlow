@@ -72,6 +72,7 @@ export const jaExtra: Record<ExtraMessageKey, string> = {
   "route.graphLoadError": "グラフを読み込めませんでした。再試行してください。",
   "route.dashboardLoadError": "データを読み込めませんでした（{message}）。再ログインするか、ページを再読み込みしてください。",
   "route.retry": "再試行",
+  "route.viewLoadError": "データを読み込めませんでした。",
 
   // Reminder delivery route
   "reminderPage.unavailable": "この通知は現在利用できません。",

@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils";
 
 export type ViewSkeletonVariant = "columns" | "rows" | "grid" | "panels" | "canvas" | "doc";
 
+export const ViewLoadError = ({ retry, className }: { retry: () => unknown; className?: string }) => (
+  <div role="alert" className={cn("flex items-center gap-3 p-4 text-sm", className)}>
+    <p>{tr("route.viewLoadError")}</p>
+    <button type="button" className="underline" onClick={() => void retry()}>{tr("route.retry")}</button>
+  </div>
+);
+
 const Block = ({ className }: { className?: string }) => <div className={cn("rounded-md bg-muted", className)} />;
 
 const repeat = (count: number, className: string) =>

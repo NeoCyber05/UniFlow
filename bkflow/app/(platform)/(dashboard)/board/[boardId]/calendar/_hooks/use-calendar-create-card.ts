@@ -1,15 +1,14 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import type { QueryClient, UseQueryResult } from "@tanstack/react-query";
-import type { AppRouterInstance } from "@/web/shims/next-navigation";
+import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { createCard } from "@/actions/cards/create-card";
 import { runCalendarAction } from "@/lib/calendar/calendar-action";
 import { useAction } from "@/hooks/use-action";
 import { tr } from "@/lib/i18n";
-import type { BoardCalendarResponse } from "@/types";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 
 import {
   formatGmt7DateTimeInput,
@@ -29,9 +28,7 @@ type BooleanRef = {
 type UseCalendarCreateCardOptions = {
   boardId: string;
   lists: BoardCalendarList[];
-  query: UseQueryResult<BoardCalendarResponse>;
   queryClient: QueryClient;
-  router: AppRouterInstance;
   cardModal: CalendarCreateCardModal;
   invalidateBoardCalendar: () => void;
   canOpenCreateDialog: boolean;
@@ -53,9 +50,7 @@ type UseCalendarCreateCardOptions = {
 export const useCalendarCreateCard = ({
   boardId,
   lists,
-  query,
   queryClient,
-  router,
   cardModal,
   invalidateBoardCalendar,
   canOpenCreateDialog,
@@ -83,17 +78,15 @@ export const useCalendarCreateCard = ({
   };
 
   const { execute: executeCreateCard, fieldErrors: createFieldErrors, isLoading: isCreatingCard } = useAction((input: Parameters<typeof createCard>[0]) => runCalendarAction(() => createCard(input)), {
+    invalidateOnSuccess: false,
     onSuccess: (data) => {
       resetCreateDialogState();
-      invalidateBoardCalendar();
-      queryClient.invalidateQueries({ queryKey: ["card", data.id] });
-      router.refresh();
+      void invalidateTaskWrite(queryClient, boardId, { cardId: data.id, counts: true, positions: true });
       cardModal.onOpen(data.id);
     },
     onError: (error) => {
       toast.error(error);
       invalidateBoardCalendar();
-      void query.refetch();
     },
   });
 

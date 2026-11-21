@@ -80,9 +80,8 @@ export const useCalendarRealtime = ({
       return;
     }
 
-    invalidateBoardCalendar();
     router.refresh();
-  }, [invalidateBoardCalendar, processRealtimeEvent, router]);
+  }, [processRealtimeEvent, router]);
 
   const handleBoardDeletedRealtime = useCallback((payload: BoardCalendarAccessPayload) => {
     if (!processRealtimeEvent(payload, { skipOwnEcho: false })) {
@@ -110,9 +109,8 @@ export const useCalendarRealtime = ({
       return;
     }
 
-    invalidateBoardCalendar();
     router.refresh();
-  }, [cardModal, currentUserId, invalidateBoardCalendar, processRealtimeEvent, router]);
+  }, [cardModal, currentUserId, processRealtimeEvent, router]);
 
   return {
     realtimeChannelName,

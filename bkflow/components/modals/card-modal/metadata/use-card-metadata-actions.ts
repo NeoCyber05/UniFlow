@@ -9,6 +9,7 @@ import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
 import type { InputType as UpdateCardInput } from "@/actions/cards/update-card/types";
 import { taskDatesToForm, type TaskDatesPatch } from "@/lib/cards/task-dates-form";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 
 import {
   getCardRevision,
@@ -20,7 +21,6 @@ interface UseCardMetadataActionsProps {
   data: CardWithList;
   boardId: string;
   queryClient: QueryClient;
-  invalidateBoardCalendar: () => void;
   setIsDateOpen: (open: boolean) => void;
 }
 
@@ -28,12 +28,12 @@ export const useCardMetadataActions = ({
   data,
   boardId,
   queryClient,
-  invalidateBoardCalendar,
   setIsDateOpen,
 }: UseCardMetadataActionsProps) => {
   const dateRequestRef = useRef<Partial<CardWithList> | null>(null);
 
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
+    invalidateOnSuccess: false,
     onSuccess: (updatedCard) => {
       dateRequestRef.current = null;
       patchCardQueryData(queryClient, updatedCard.id, {
@@ -60,7 +60,7 @@ export const useCardMetadataActions = ({
         reminderSetAt: updatedCard.reminderSetAt,
         updatedAt: updatedCard.updatedAt,
       });
-      invalidateBoardCalendar();
+      void invalidateTaskWrite(queryClient, boardId, { cardId: updatedCard.id, counts: true });
 
       if (updatedCard.isCompleted !== data.isCompleted) {
         const relatedDependencyCardIds = [

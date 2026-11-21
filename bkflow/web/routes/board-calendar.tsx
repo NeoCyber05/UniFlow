@@ -10,6 +10,7 @@ import { getBoardCalendarQueryOptions } from "@/app/(platform)/(dashboard)/board
 import { tr } from "@/lib/i18n";
 
 import { useView } from "../lib/use-view";
+import { isUnavailableViewError } from "@/lib/fetcher";
 
 type View = Awaited<ReturnType<typeof loadBoardCalendar>>;
 
@@ -25,10 +26,10 @@ export default function BoardCalendarRoute() {
     }
   }, [boardId, searchParams, queryClient]);
 
-  const { data, isError, refetch } = useView<View>(`/board/${boardId}/calendar`);
+  const { data, isError, error, refetch } = useView<View>(`/board/${boardId}/calendar`);
 
   // Lỗi (kể cả 403/404) hiển thị lỗi, không để skeleton vô hạn và không giả thành lịch trống.
-  if (isError) {
+  if (isError && (!data || isUnavailableViewError(error))) {
     return (
       <div className="h-full p-4">
         <CalendarErrorState />

@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { skeletonForPath, ViewSkeleton } from "@/components/view-skeleton";
+import { skeletonForPath, ViewLoadError, ViewSkeleton } from "@/components/view-skeleton";
 
 import type { loadBoardLayout } from "@/server/views/board-layout";
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
@@ -16,6 +16,7 @@ import { tr } from "@/lib/i18n";
 import { useTitle } from "../lib/use-title";
 import { prefetchRouteViews } from "../lib/prefetch-route";
 import { useView } from "../lib/use-view";
+import { isUnavailableViewError } from "@/lib/fetcher";
 import NotFoundRoute from "./not-found";
 
 type View = Awaited<ReturnType<typeof loadBoardLayout>>;
@@ -39,7 +40,7 @@ export default function BoardLayoutRoute() {
   }, [pathname, search, queryClient]);
   useTitle(data?.isWorkspaceBoard ? tr("route.titlePersonalSpace") : data?.title || tr("route.titleBoard"));
 
-  if (!data && error) return <div role="alert" className="px-6 pt-20 text-sm">{tr("route.boardLoadError")} <button type="button" className="underline" onClick={() => void refetch()}>{tr("route.retry")}</button></div>;
+  if (error && (!data || isUnavailableViewError(error))) return <ViewLoadError retry={refetch} className="pt-20" />;
   if (!data) return <div className="h-screen pt-14"><ViewSkeleton variant={skeletonForPath(pathname)} label={tr("route.boardLoading")} /></div>;
   if (data.redirect) return <Navigate to={data.redirect} replace />;
   if (data.notFound) return <NotFoundRoute />;

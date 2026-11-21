@@ -11,7 +11,7 @@ import { updateCard } from "@/actions/cards/update-card";
 import { TaskRepeatEditor, formatRepeatLabel } from "@/components/task-repeat-editor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAction } from "@/hooks/use-action";
-import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 import { buildTaskDatesPatch, taskDatesToForm } from "@/lib/cards/task-dates-form";
 import { readCardRepeat } from "@/lib/cards/task-repeat";
 import { tr } from "@/lib/i18n";
@@ -33,8 +33,7 @@ export function PanelMetadata({ data, canEdit }: { data: CardWithList; canEdit: 
   const queryClient = useQueryClient();
   const [dateOpen, setDateOpen] = useState(false);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
-  const invalidateBoardCalendar = useBoardCalendarInvalidation(data.list.boardId);
-  const actions = useCardMetadataActions({ data, boardId: data.list.boardId, queryClient, invalidateBoardCalendar, setIsDateOpen: setDateOpen });
+  const actions = useCardMetadataActions({ data, boardId: data.list.boardId, queryClient, setIsDateOpen: setDateOpen });
   const form = taskDatesToForm(data);
   const today = getVNDay(new Date());
   const weekday = getVNWeekday(today);
@@ -83,13 +82,13 @@ export function PanelMetadata({ data, canEdit }: { data: CardWithList; canEdit: 
 
 export function CardRepeatControl({ data, canEdit }: { data: CardWithList; canEdit: boolean }) {
   const queryClient = useQueryClient();
-  const invalidate = useBoardCalendarInvalidation(data.list.boardId);
   const { execute, isLoading } = useAction(updateCard, {
+    invalidateOnSuccess: false,
     onSuccess: card => {
       const patch = { repeatUnit: card.repeatUnit, repeatEvery: card.repeatEvery, updatedAt: card.updatedAt };
       patchCardQueryData(queryClient, card.id, patch);
       patchBoardCardPreview(data.list.boardId, card.id, patch);
-      invalidate();
+      void invalidateTaskWrite(queryClient, data.list.boardId, { cardId: card.id });
     },
     onError: (error, code) => {
       toast.error(error);

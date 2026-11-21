@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { buildBoardContext, loadBoardSnapshot, type AssistantSession } from "./board-data";
 import { createAssistantTools } from "./tools";
@@ -72,19 +72,41 @@ afterEach(() => {
   globalThis.prisma = previousDb;
 });
 
-test("the prompt reads checklist details for only the first 120 ranked cards", async () => {
+test("the prompt reads bounded card candidates without checklist details and ranks date-only deadlines correctly", async () => {
   const { fullBoardReads, detailsRead } = mockBoard();
+  const list = { id: "l1", title: "Việc" };
+  const candidateReads: Prisma.CardFindManyArgs[] = [];
+  const { findUnique } = globalThis.prisma!.board;
+  const { findMany } = globalThis.prisma!.card;
+  Object.assign(globalThis.prisma!.board, {
+    findUnique: async (query: Prisma.BoardFindUniqueArgs) =>
+      typeof query.select?.lists === "object" && query.select.lists.select?.cards
+        ? findUnique(query)
+        : { id: "b1", title: "Bảng", boardType: "PERSONAL", courses: [course], workspace: null, lists: [list] },
+  });
+  Object.assign(globalThis.prisma!.card, {
+    findMany: async (query: Prisma.CardFindManyArgs) => {
+      if (query.take === undefined) return findMany(query);
+      candidateReads.push(query);
+      return cards.filter((card) => query.where?.dueDate === null ? card.dueDate === null : card.dueDate !== null)
+        .slice(0, query.take).map((card) => ({ ...card, list }));
+    },
+  });
   const snapshot = await loadBoardSnapshot(session.boardId, session.userId);
   assert.ok(snapshot);
   const context = buildBoardContext(snapshot, session, now);
   const lines = context.split("\n").filter(line => line.startsWith("- ["));
-  assert.equal(lines.length, 120);
-  assert.match(lines[0], /\[date-only\].*checklist 1\/2/);
-  assert.match(context, /còn 2 thẻ khác/);
-  assert.deepEqual(fullBoardReads, [{ checklists: false, labels: false }]);
-  assert.equal(detailsRead[0].length, 120);
-  assert.ok(detailsRead[0].includes("date-only"));
-  assert.ok(!detailsRead[0].includes("card-120"));
+  assert.equal(lines.length, 20);
+  assert.match(lines[0], /\[date-only\].*20\/11\/2026/);
+  assert.match(context, /findCards/);
+  assert.deepEqual(fullBoardReads, []);
+  assert.deepEqual(detailsRead, []);
+  assert.equal(candidateReads.length, 2);
+  for (const query of candidateReads) {
+    assert.equal(query.take, 21);
+    assert.deepEqual(query.where?.list, { boardId: "b1", archivedAt: null, board: { userId: "u1" } });
+    assert.equal(query.select?.checklists, undefined);
+  }
 });
 
 test("deadline results retain total, date-only ordering and checklist details within the result limit", async () => {

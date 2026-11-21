@@ -9,11 +9,12 @@ import type { loadMy } from "@/server/views/my";
 import { PersonalBoardError } from "@/components/my-tasks/personal-board-error";
 import { MyTasksView } from "@/components/my-tasks/my-tasks-view";
 import { SidebarShell } from "@/app/(platform)/(dashboard)/_components/sidebar-shell";
-import { ViewSkeleton } from "@/components/view-skeleton";
+import { ViewLoadError, ViewSkeleton } from "@/components/view-skeleton";
 
 import { myViewPath } from "../lib/prefetch-route";
 import { useTitle } from "../lib/use-title";
 import { useView } from "../lib/use-view";
+import { isUnavailableViewError } from "@/lib/fetcher";
 import NotFoundRoute from "./not-found";
 
 type View = Awaited<ReturnType<typeof loadMy>>;
@@ -25,11 +26,11 @@ export default function MyRoute() {
   // Board views only redirect; skip the server round-trip when the sidebar already knows the board.
   const cachedBoardId = useQueryClient().getQueryData<MyTasksContext>(MY_TASKS_CONTEXT_KEY)?.board?.id;
   const fastRedirect = !error && cachedBoardId ? getPersonalBoardDestination(view, cachedBoardId) : null;
-  const { data } = useView<View>(myViewPath(view, error), { enabled: !fastRedirect });
+  const { data, isError, error: queryError, refetch } = useView<View>(myViewPath(view, error), { enabled: !fastRedirect });
   useTitle(tr("route.titlePersonalSpace"));
 
   if (fastRedirect) return <Navigate to={fastRedirect} replace />;
-  return <SidebarShell>{render(data)}</SidebarShell>;
+  return <SidebarShell>{isError && (!data || isUnavailableViewError(queryError)) ? <ViewLoadError retry={refetch} /> : render(data)}</SidebarShell>;
 }
 
 const render = (data: View | undefined) => {

@@ -10,6 +10,7 @@ interface UseActionOptions<TOutput> {
   onSuccess?: (data: TOutput) => void;
   onError?: (error: string, errorCode?: string) => void;
   onComplete?: () => void;
+  invalidateOnSuccess?: boolean;
 };
 
 export const useAction = <TInput, TOutput> (
@@ -46,7 +47,7 @@ export const useAction = <TInput, TOutput> (
           setData(result.data);
           options.onSuccess?.(result.data);
           // shortcut: refetches active data queries except unrelated/lazy roots; scope per action when a caller needs finer control.
-          invalidateAfterWrite(queryClient);
+          if (options.invalidateOnSuccess !== false) invalidateAfterWrite(queryClient);
         }
       } finally {
         setIsLoading(false);

@@ -40,7 +40,7 @@ type UnscheduledPanelProps = {
   filteredUnscheduledCards: BoardCalendarUnscheduledCard[];
   isLoading: boolean;
   isError: boolean;
-  isSuccess: boolean;
+  hasData: boolean;
   onRetry: () => void;
   isUpdatingCardDate: boolean;
   isUpdatingChecklistItemDueDate: boolean;
@@ -189,7 +189,7 @@ export const UnscheduledPanel = ({
   filteredUnscheduledCards,
   isLoading,
   isError,
-  isSuccess,
+  hasData,
   onRetry,
   isUpdatingCardDate,
   isUpdatingChecklistItemDueDate,
@@ -223,7 +223,7 @@ export const UnscheduledPanel = ({
             <h2 className="truncate text-sm font-semibold text-neutral-900">
               {tr("calendar.unscheduled.title")}
             </h2>
-            {isSuccess && (
+            {hasData && (
               <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
                 {countLabel}
               </span>
@@ -249,7 +249,7 @@ export const UnscheduledPanel = ({
       {!isCollapsed && (
         <>
           <div className="grid shrink-0 gap-2 border-b border-neutral-100 p-3">
-            <AiScheduleDialog boardId={boardId} cards={filteredUnscheduledCards} disabled={!isSuccess || isUpdatingCardDate || isUpdatingChecklistItemDueDate} />
+            <AiScheduleDialog boardId={boardId} cards={filteredUnscheduledCards} disabled={!hasData || isUpdatingCardDate || isUpdatingChecklistItemDueDate} />
             <select
               value={selectedListIds[0] ?? "all"}
               onChange={(event) =>
@@ -290,7 +290,7 @@ export const UnscheduledPanel = ({
               </div>
             )}
 
-            {isSuccess && filteredUnscheduledCards.length > 0 && (
+            {hasData && filteredUnscheduledCards.length > 0 && (
               <div className="space-y-2">
                 {filteredUnscheduledCards.map((card) => (
                   <UnscheduledCard
@@ -308,7 +308,7 @@ export const UnscheduledPanel = ({
               </div>
             )}
 
-            {isSuccess && filteredUnscheduledCards.length === 0 && (
+            {hasData && filteredUnscheduledCards.length === 0 && (
               <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-3 text-center">
                 <CalendarX2 className="mb-2 h-5 w-5 text-neutral-400" />
                 <p className="text-xs font-semibold text-neutral-700">

@@ -70,6 +70,7 @@ export const viExtra = {
   "route.graphLoadError": "Không tải được sơ đồ. Vui lòng thử lại.",
   "route.dashboardLoadError": "Không tải được dữ liệu ({message}). Thử đăng nhập lại hoặc tải lại trang.",
   "route.retry": "Thử lại",
+  "route.viewLoadError": "Không tải được dữ liệu.",
 
   // Reminder delivery route
   "reminderPage.unavailable": "Thông báo này không còn khả dụng.",

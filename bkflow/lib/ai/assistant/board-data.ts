@@ -75,6 +75,35 @@ const cardFields = {
   courseId: true,
   course: { select: { name: true, code: true } },
 } as const;
+const boardFields = {
+  id: true,
+  title: true,
+  boardType: true,
+  courses: {
+    select: { id: true, name: true, code: true, credits: true },
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+  },
+  workspace: { select: { title: true } },
+} satisfies Prisma.BoardSelect;
+const listFields = { id: true, title: true } as const;
+type CardRow = Prisma.CardGetPayload<{ select: typeof cardFields }>;
+
+const toAssistantCard = (card: CardRow & { labels?: Prisma.CardLabelGetPayload<typeof labelSelect>[] }, list: { id: string; title: string }): AssistantCard => ({
+  id: card.id,
+  title: card.title,
+  listId: list.id,
+  listTitle: list.title,
+  course: card.course
+    ? card.course.code ? `${card.course.code} ${card.course.name}` : card.course.name
+    : null,
+  courseId: card.courseId,
+  startDate: card.startDate,
+  // shortcut: hạn chỉ-ngày hiện ra như 23:59 VN cuối ngày hạn, đủ cho lọc/quá hạn; hiển thị giờ chỉ mang tính xấp xỉ
+  dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
+  isCompleted: card.isCompleted,
+  assignees: [],
+  labels: card.labels?.map(({ label }) => label.title).filter(Boolean) ?? [],
+});
 
 /** Nạp dữ liệu gọn để xếp hạng, tìm kiếm hoặc thống kê toàn bộ thẻ đang hoạt động. */
 export const loadBoardCards = async (
@@ -85,19 +114,11 @@ export const loadBoardCards = async (
   const read = <Selection extends Prisma.CardSelect>(select: Selection) => db.board.findUnique({
     where: { id: boardId, userId },
     select: {
-      id: true,
-      title: true,
-      boardType: true,
-      courses: {
-        select: { id: true, name: true, code: true, credits: true },
-        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-      },
-      workspace: { select: { title: true } },
+      ...boardFields,
       lists: {
         ...activeLists,
         select: {
-          id: true,
-          title: true,
+          ...listFields,
           cards: {
             where: { archivedAt: null, ...(incompleteOnly ? { isCompleted: false } : {}) },
             orderBy: { order: "asc" },
@@ -114,22 +135,7 @@ export const loadBoardCards = async (
   }
 
   const { lists, ...metadata } = board;
-  const cards: AssistantCard[] = lists.flatMap((list) => list.cards.map((card) => ({
-    id: card.id,
-    title: card.title,
-    listId: list.id,
-    listTitle: list.title,
-    course: card.course
-      ? card.course.code ? `${card.course.code} ${card.course.name}` : card.course.name
-      : null,
-    courseId: card.courseId,
-    startDate: card.startDate,
-    // shortcut: hạn chỉ-ngày hiện ra như 23:59 VN cuối ngày hạn, đủ cho lọc/quá hạn; hiển thị giờ chỉ mang tính xấp xỉ
-    dueDate: getTaskDeadlineAt({ dueDate: card.dueDate, deadlineOn: card.deadlineOn?.toISOString().slice(0, 10) ?? null }),
-    isCompleted: card.isCompleted,
-    assignees: [],
-    labels: "labels" in card ? card.labels.map(({ label }) => label.title).filter(Boolean) : [],
-  })));
+  const cards = lists.flatMap((list) => list.cards.map((card) => toAssistantCard(card, list)));
   return {
     board: metadata,
     lists: lists.map(({ id, title }) => ({ id, title })),
@@ -188,14 +194,35 @@ export const compareCardDeadlines = (a: AssistantCard, b: AssistantCard) => {
 };
 
 export const loadBoardSnapshot = async (boardId: string, userId: string) => {
-  const snapshot = await loadBoardCards(boardId, userId);
-  if (!snapshot) return null;
+  const limit = ASSISTANT_LIMITS.contextCards;
+  const select = { ...cardFields, list: { select: listFields } } as const;
+  const where = { archivedAt: null, list: { boardId, archivedAt: null, board: { userId } } } as const;
+  // Read the top candidates from each deadline representation, then rank their effective deadlines together.
+  const [board, timed, remaining] = await Promise.all([
+    db.board.findUnique({ where: { id: boardId, userId }, select: {
+      ...boardFields, lists: { ...activeLists, select: listFields },
+    } }),
+    db.card.findMany({
+      where: { ...where, dueDate: { not: null } },
+      orderBy: [{ isCompleted: "asc" }, { dueDate: "asc" }, { id: "asc" }],
+      take: limit + 1,
+      select,
+    }),
+    db.card.findMany({
+      where: { ...where, dueDate: null },
+      orderBy: [{ isCompleted: "asc" }, { deadlineOn: { sort: "asc", nulls: "last" } }, { id: "asc" }],
+      take: limit + 1,
+      select,
+    }),
+  ]);
+  if (!board) return null;
 
-  const { cards, ...metadata } = snapshot;
-  const selected = cards.sort((a, b) =>
+  const { lists, ...metadata } = board;
+  const candidates = [...timed, ...remaining].map((card) => toAssistantCard(card, card.list));
+  const cards = candidates.sort((a, b) =>
     Number(a.isCompleted) - Number(b.isCompleted) || compareCardDeadlines(a, b),
-  ).slice(0, ASSISTANT_LIMITS.contextCards);
-  return { ...metadata, totalCards: cards.length, cards: await loadCardDetails(boardId, userId, selected) };
+  ).slice(0, limit);
+  return { board: metadata, lists, cards, hasMoreCards: candidates.length > limit };
 };
 
 /**
@@ -232,9 +259,7 @@ export const serializeCard = (card: DetailedAssistantCard, timeZone: string, now
  *
  * @remarks
  * - Các thẻ được sắp xếp ưu tiên: Thẻ chưa xong lên trước; Thẻ có hạn chót gần nhất xếp trên;
- * - Số lượng thẻ nhúng trực tiếp vào prompt bị chặn bởi ngưỡng `ASSISTANT_LIMITS.contextCards`
- *   nhằm tiết kiệm token ngữ cảnh. Nếu số thẻ vượt quá ngưỡng, hệ thống sẽ chèn dòng lưu ý
- *   hướng dẫn Agent sử dụng công cụ tra cứu (`findCards` hoặc `getDeadlines`).
+ * - Đưa vào một mẫu nhỏ gồm tiêu đề, hạn và trạng thái. Công cụ tra cứu cung cấp kết quả đầy đủ và chi tiết.
  *
  * @param snapshot - Dữ liệu ảnh chụp bảng từ `loadBoardSnapshot`.
  * @param session - Phiên làm việc của người dùng hiện tại (chứa thông tin vai trò, múi giờ).
@@ -246,20 +271,13 @@ export const buildBoardContext = (
   session: AssistantSession,
   now: Date,
 ): string => {
-  const { board, lists, cards, totalCards } = snapshot;
+  const { board, lists, cards, hasMoreCards } = snapshot;
   const cardLines = cards.map((card) => {
     const due = card.dueDate ? formatZonedDateTime(card.dueDate, session.timeZone) : "không có hạn";
     const overdue = card.dueDate && !card.isCompleted && card.dueDate < now ? " ⚠️QUÁ HẠN" : "";
     const status = card.isCompleted ? "✅ xong" : "⏳ chưa xong";
-    const assignees = card.assignees.length > 0
-      ? card.assignees.map((assignee) => assignee.name).join(", ")
-      : "chưa giao";
-    const checklist = card.checklist.total > 0 ? ` | checklist ${card.checklist.done}/${card.checklist.total}` : "";
-
-    return `- [${card.id}] "${card.title}" | môn: ${card.course ?? "cá nhân"} | cột: ${card.listTitle} | hạn: ${due}${overdue} | ${status} | giao cho: ${assignees}${checklist}`;
+    return `- [${card.id}] "${card.title}" | môn: ${card.course ?? "cá nhân"} | cột: ${card.listTitle} | hạn: ${due}${overdue} | ${status}`;
   });
-
-  const omitted = totalCards - cardLines.length;
 
   return [
     `Bảng: "${board.title}"`,
@@ -275,9 +293,9 @@ export const buildBoardContext = (
     "Người đang chat: Người dùng",
     `Các cột (theo thứ tự): ${lists.map((list) => `"${list.title}" [${list.id}]`).join(", ") || "chưa có cột nào"}`,
     "",
-    `Thẻ (${totalCards} thẻ, sắp xếp theo hạn chót):`,
+    `Thẻ tham chiếu (${cardLines.length} thẻ, ưu tiên chưa xong và hạn gần):`,
     ...(cardLines.length > 0 ? cardLines : ["(bảng chưa có thẻ nào)"]),
-    omitted > 0 ? `... còn ${omitted} thẻ khác, dùng công cụ để tra cứu.` : null,
+    hasMoreCards ? "... còn thẻ khác. Dùng findCards, getDeadlines hoặc getBoardProgress để tra cứu toàn bảng." : null,
   ]
     .filter((line) => line !== null)
     .join("\n");

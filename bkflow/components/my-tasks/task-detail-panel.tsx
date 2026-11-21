@@ -41,7 +41,7 @@ const PanelContent = ({ taskId, onClose, beforeCloseRef, expanded, onExpand }: P
   const requestClose = () => {
     void runBeforeClose(beforeCloseRef).then((ok) => ok && onClose());
   };
-  const { setImportant } = useMyTaskMutations();
+  const { setImportant } = useMyTaskMutations(context?.boardId);
   const isReady = Boolean(context) && !isGone;
 
   return (

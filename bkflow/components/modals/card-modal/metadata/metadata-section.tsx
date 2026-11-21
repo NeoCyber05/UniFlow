@@ -7,7 +7,6 @@ import { CardWithList } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { taskDatesToForm } from "@/lib/cards/task-dates-form";
 import { getTaskDeadlineStatus } from "@/lib/cards/task-deadline";
-import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
 
 import { CardCourseSelect } from "./card-course-select";
 import { CardDateStatusColumn } from "./card-date-status-column";
@@ -27,7 +26,6 @@ export const MetadataSection = ({
 }: MetadataProps) => {
   const boardId = data.list.boardId;
   const queryClient = useQueryClient();
-  const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
 
   const [isDateOpen, setIsDateOpen] = useState(false);
 
@@ -40,7 +38,6 @@ export const MetadataSection = ({
     data,
     boardId,
     queryClient,
-    invalidateBoardCalendar,
     setIsDateOpen,
   });
 

@@ -20,6 +20,7 @@ import { useRouter } from "@/web/shims/next-navigation";
 import { TaskDetailPanel } from "@/components/my-tasks/task-detail-panel";
 import { useTaskPanelParam } from "@/hooks/use-task-panel-param";
 import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { isUnavailableViewError } from "@/lib/fetcher";
 import { emptyBoardFilters, useBoardFilters } from "@/hooks/use-board-filters";
 import { getTodayKey } from "@/lib/calendar/calendar-navigation";
 import { tr } from "@/lib/i18n";
@@ -291,7 +292,6 @@ export const BoardCalendarView = ({
     boardId,
     query,
     queryClient,
-    router,
     invalidateBoardCalendar,
     setExpandedDayKey,
     onUpdateComplete: () => {
@@ -399,9 +399,7 @@ export const BoardCalendarView = ({
   } = useCalendarCreateCard({
     boardId,
     lists,
-    query,
     queryClient,
-    router,
     cardModal,
     invalidateBoardCalendar,
     canOpenCreateDialog,
@@ -558,6 +556,13 @@ export const BoardCalendarView = ({
 
 
 
+  const unavailableQuery = isUnavailableViewError(query.error)
+    ? query
+    : isUnavailableViewError(unscheduledQuery.error) ? unscheduledQuery : null;
+  if (unavailableQuery) {
+    return <CalendarErrorState onRetry={() => void unavailableQuery.refetch()} />;
+  }
+
   return (
     <>
     <BoardCalendarRealtimeSubscriptions
@@ -628,9 +633,9 @@ export const BoardCalendarView = ({
           />
         )}
 
-        {query.isError && <CalendarErrorState />}
+        {!query.data && query.isError && <CalendarErrorState onRetry={() => void query.refetch()} />}
 
-        {query.isSuccess && (
+        {query.data && (
           <>
             {viewMode === "month" ? (
               <CalendarMonthView
@@ -727,7 +732,7 @@ export const BoardCalendarView = ({
       filteredUnscheduledCards={filteredUnscheduledCards}
       isLoading={unscheduledQuery.isLoading}
       isError={unscheduledQuery.isError}
-      isSuccess={unscheduledQuery.isSuccess}
+      hasData={unscheduledQuery.data !== undefined}
       onRetry={() => void unscheduledQuery.refetch()}
       isUpdatingCardDate={isUpdatingCardDate}
       isUpdatingChecklistItemDueDate={isUpdatingChecklistItemDueDate}

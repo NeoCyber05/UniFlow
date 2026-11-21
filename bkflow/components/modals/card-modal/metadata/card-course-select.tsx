@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "@/web/shims/next-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
@@ -10,7 +9,7 @@ import { setCardCourse } from "@/actions/cards/set-card-course";
 import { CoursePicker } from "@/components/courses/course-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAction } from "@/hooks/use-action";
-import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 import { boardCoursesQueryKey, useBoardCourses } from "@/hooks/use-board-courses";
 import { getCourseColor } from "@/lib/courses/course-colors";
 import { tr } from "@/lib/i18n";
@@ -27,21 +26,18 @@ type CardCourseSelectProps = {
 };
 
 export const CardCourseSelect = ({ cardId, boardId, courseId, canEdit, compact = false }: CardCourseSelectProps) => {
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
   const { courseOptions, courseById, isWorkspaceBoard } = useBoardCourses(boardId);
   const [open, setOpen] = useState(false);
 
   const { execute, isLoading } = useAction(setCardCourse, {
+    invalidateOnSuccess: false,
     onSuccess: (card) => {
       // Môn danh mục/tự đặt vừa được tạo: nạp lại để courseById có môn mới
       if (card.courseId && !courseById.has(card.courseId)) void queryClient.invalidateQueries({ queryKey: boardCoursesQueryKey(boardId) });
       patchCardQueryData(queryClient, card.id, { courseId: card.courseId });
       patchBoardCardPreview(boardId, card.id, { courseId: card.courseId });
-      invalidateBoardCalendar();
-      // Timeline render ở server → làm mới để thanh đổi màu/lọc đúng
-      router.refresh();
+      void invalidateTaskWrite(queryClient, boardId, { cardId: card.id, counts: true });
     },
     onError: (error) => toast.error(error),
   });

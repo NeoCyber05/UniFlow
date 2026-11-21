@@ -7,13 +7,13 @@ import { AppearanceProvider } from "@/components/providers/appearance-provider";
 import { Navbar } from "@/app/(platform)/(dashboard)/_components/navbar";
 import { OnboardingTour } from "@/components/onboarding/onboarding-tour";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
-import { skeletonForPath, ViewSkeleton } from "@/components/view-skeleton";
-import { tr } from "@/lib/i18n";
+import { skeletonForPath, ViewLoadError, ViewSkeleton } from "@/components/view-skeleton";
 
 import { useAuth } from "../lib/auth";
 import { prefetchRouteViews } from "../lib/prefetch-route";
 
 import { useView } from "../lib/use-view";
+import { isUnavailableViewError } from "@/lib/fetcher";
 
 export type DashboardView = Awaited<ReturnType<typeof loadDashboard>>;
 
@@ -32,11 +32,11 @@ const PrefetchRouteViews = ({ userId }: { userId: string | null }) => {
 
 export default function DashboardLayoutRoute() {
   const { userId } = useAuth();
-  const { data, error } = useView<DashboardView>("/dashboard", { userId, enabled: Boolean(userId) });
+  const { data, isError, error, refetch } = useView<DashboardView>("/dashboard", { userId, enabled: Boolean(userId) });
   const { pathname } = useLocation();
 
-  const content = error ? (
-    <p className="p-6 text-sm text-red-600">{tr("route.dashboardLoadError", { message: error.message })}</p>
+  const content = isError && (!data || isUnavailableViewError(error)) ? (
+    <ViewLoadError retry={refetch} />
   ) : data ? (
     <AppearanceProvider key={userId} initialAppearance={data.appearance}>
       <Navbar />

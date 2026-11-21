@@ -36,6 +36,8 @@ import type { TaskDeadline } from "@/lib/cards/task-schedule";
 import { formatRepeat } from "@/lib/cards/task-repeat";
 import { getZonedDayKey, zonedTimeToIso, type CaptureIssue } from "@/lib/capture/analysis";
 import { imageItemToCaptureFields } from "@/lib/capture/image-import";
+import { splitCaptureKeywords } from "@/lib/capture/text-keywords";
+import { CaptureKeywordInput } from "./keyword-input";
 import { intlDateFormat, tr } from "@/lib/i18n";
 import type { ExtraMessageKey } from "@/lib/i18n/messages/vi-extra";
 import { isStudyPlanRequest } from "@/lib/study-plan/validate";
@@ -54,7 +56,8 @@ import {
 } from "@/lib/capture/draft";
 import { CAPTURE_TIME_ZONE, type CaptureSource } from "@/lib/capture/source";
 import { isCourseRef } from "@/lib/courses/hust-catalog";
-import { MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
+import { MY_TASKS_CONTEXT_KEY, MY_TASKS_ROOT_KEY } from "@/lib/my-tasks/types";
 import { parseQuickAdd, toSearchKey, type QuickAddCourse, type QuickAddMember } from "@/lib/my-tasks/parse-quick-add";
 import { cn } from "@/lib/utils";
 import type { CardWithAssignees } from "@/types";
@@ -194,6 +197,7 @@ export const CaptureComposer = ({
     () => parseQuickAdd(rawText, { courses, members }).assigneeUserIds,
     [rawText, courses, members],
   );
+  const keywords = useMemo(() => splitCaptureKeywords(rawText, courses), [rawText, courses]);
 
   // Cú pháp #môn @ngày ! là suy luận tức thì cho revision mới; lựa chọn tay luôn thắng.
   const onTextChange = (next: string, { refresh = false, fields }: { refresh?: boolean; fields?: Partial<CaptureFields> } = {}) => {
@@ -293,9 +297,19 @@ export const CaptureComposer = ({
         dispatch({ type: "submit/success", creationId, nextDraftId: newId() });
         if (request.imageScan === scanSeq.current) attachImage(null);
         if (plan.retry) toast.success(tr("quickAdd.savedPreviousRetry"));
-        await queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+        const targetBoardId = request.input.boardId;
+        if (targetBoardId) {
+          await invalidateTaskWrite(queryClient, targetBoardId, { cardId: result.data.id, counts: true, positions: true });
+          if (!request.input.listId || isCourseRef(request.input.courseId)) {
+            void queryClient.invalidateQueries({ queryKey: MY_TASKS_CONTEXT_KEY });
+          }
+        } else {
+          await queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY });
+        }
         // Môn danh mục/tự đặt vừa thành Course thật → nạp lại danh sách môn
-        if (isCourseRef(request.input.courseId)) void queryClient.invalidateQueries({ queryKey: ["courses"] });
+        if (isCourseRef(request.input.courseId)) {
+          void queryClient.invalidateQueries({ queryKey: targetBoardId ? ["courses", targetBoardId] : ["courses"] });
+        }
         onCreated?.(result.data);
         return;
       }
@@ -510,8 +524,9 @@ export const CaptureComposer = ({
           className="space-y-2 px-3.5 pt-3"
         >
           {attachedPreviewBlock}
-          <input
+          <CaptureKeywordInput
             ref={inputRef}
+            parts={keywords}
             autoFocus
             value={rawText}
             onChange={(event) => onTextChange(event.target.value)}
@@ -524,7 +539,8 @@ export const CaptureComposer = ({
             disabled={disabled}
             maxLength={4_000}
             aria-label={tr("quickAdd.taskNameAria")}
-            className="w-full bg-transparent text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-400"
+            textClassName="text-base font-medium leading-6"
+            className="w-full text-neutral-900"
           />
           <textarea
             value={note}
@@ -647,8 +663,9 @@ export const CaptureComposer = ({
         {busy
           ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" aria-hidden="true" />
           : <Plus className="h-4 w-4 shrink-0 text-violet-500" aria-hidden="true" />}
-        <input
+        <CaptureKeywordInput
           ref={inputRef}
+          parts={keywords}
           value={rawText}
           onChange={(event) => onTextChange(event.target.value)}
           onPaste={onPaste}
@@ -658,7 +675,8 @@ export const CaptureComposer = ({
           maxLength={4_000}
           aria-label={tr("quickAdd.quickAddAria")}
           aria-describedby={notice ? `${detailsId}-notice` : undefined}
-          className="min-w-0 flex-1 bg-transparent text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
+          textClassName="text-sm leading-5"
+          className="flex-1 text-neutral-800"
         />
         {analyzing && (
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-violet-500" role="status">

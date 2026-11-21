@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Database doubles exercise context resolution without a live database. */
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "node:test";
+import { afterEach, beforeEach, test, type TestContext } from "node:test";
 import type { PrismaClient } from "@prisma/client";
 
 import { runWithAuth } from "@/server/auth";
@@ -10,6 +10,23 @@ import { AiOperationSchema } from "./policy";
 
 const REV = "2026-10-18T00:00:00.000Z";
 const previousDb = globalThis.prisma;
+
+const postChat = (context: AssistantContext) => runWithAuth({ userId: "u1", user: null }, () =>
+  chatRoute(new Request("http://local/api/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({ context, message: { role: "user", parts: [{ type: "text", text: "Question" }] } }),
+  })),
+);
+const noteContext = { kind: "page", pageId: "p1", expectedUpdatedAt: REV } as const;
+
+const setTestKey = (t: TestContext, name: string) => {
+  const previous = process.env[name];
+  process.env[name] = "test";
+  t.after(() => {
+    if (previous === undefined) delete process.env[name];
+    else process.env[name] = previous;
+  });
+};
 
 test("page questions do not require an unrelated board", async () => {
   const saved = [process.env.GEMINI_API_KEY, process.env.GOOGLE_GENERATIVE_AI_API_KEY];
@@ -41,6 +58,63 @@ beforeEach(() => {
   } as unknown as PrismaClient;
 });
 afterEach(() => { globalThis.prisma = previousDb; });
+
+test("board chat reuses the ownership check made during context resolution", async (t) => {
+  setTestKey(t, "GEMINI_API_KEY");
+  const findFirst = t.mock.method(globalThis.prisma!.board, "findFirst");
+  Object.assign(globalThis.prisma!.board, { findUnique: async () => null });
+  Object.assign(globalThis.prisma!.card, { findMany: async () => [] });
+  const response = await postChat({ kind: "board", boardId: "b1" });
+  assert.equal(response.status, 404);
+  assert.equal(findFirst.mock.callCount(), 1);
+});
+
+test("note chat reads a single owned revision", async (t) => {
+  setTestKey(t, "GEMINI_API_KEY");
+  setTestKey(t, "OPENAI_API_KEY");
+  const findFirst = t.mock.method(globalThis.prisma!.notePage, "findFirst");
+  t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) =>
+    JSON.parse(String(init.body)).stream
+      ? new Response('data: {"choices":[{"delta":{"content":"Answer"}}]}\n\ndata: [DONE]\n\n', { headers: { "Content-Type": "text/event-stream" } })
+      : Response.json({ choices: [{ message: { content: "Answer" } }] }),
+  );
+  const response = await postChat(noteContext);
+  assert.match(await response.text(), /Answer/);
+  assert.equal(findFirst.mock.callCount(), 1);
+});
+
+test("note chat forwards provider text before the provider stream closes", { timeout: 5_000 }, async (t) => {
+  setTestKey(t, "GEMINI_API_KEY");
+  setTestKey(t, "OPENAI_API_KEY");
+  const encoder = new TextEncoder();
+  const upstream = new TransformStream<Uint8Array>();
+  const writer = upstream.writable.getWriter();
+  let providerStreams = false;
+  t.mock.method(globalThis, "fetch", async (...[, init]: Parameters<typeof globalThis.fetch>) => {
+    providerStreams = JSON.parse(String(init?.body)).stream === true;
+    return new Response(upstream.readable, { headers: { "Content-Type": "text/event-stream" } });
+  });
+  try {
+    const response = await postChat(noteContext);
+    assert.equal(response.status, 200);
+    assert.equal(providerStreams, true);
+    const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
+    await writer.write(encoder.encode('data: {"choices":[{"delta":{"content":"First part"}}]}\n\n'));
+    let sse = "";
+    while (!sse.includes('"type":"text-delta"')) {
+      const { done, value } = await reader.read();
+      assert.equal(done, false);
+      sse += value;
+    }
+    assert.match(sse, /"delta":"First part"/);
+    void writer.write(encoder.encode('data: {"choices":[{"delta":{"content":" more"}}]}\n\ndata: [DONE]\n\n'));
+    void writer.close();
+    for (let part = await reader.read(); !part.done; part = await reader.read()) sse += part.value;
+    assert.match(sse, /"delta":" more"/);
+  } finally {
+    void writer.abort().catch(() => {});
+  }
+});
 
 const resolve = (context: unknown, userId = "u1") => resolveAssistantContext(AssistantContextSchema.parse(context), userId);
 

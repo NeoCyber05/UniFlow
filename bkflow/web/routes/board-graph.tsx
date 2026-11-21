@@ -9,13 +9,14 @@ import type { GraphPlan } from "@/lib/boards/graph-plan";
 import { tr } from "@/lib/i18n";
 
 import { useView, viewQueryOptions } from "../lib/use-view";
+import { isUnavailableViewError } from "@/lib/fetcher";
 
 type View = Awaited<ReturnType<typeof loadBoardGraph>>;
 
 export default function BoardGraphRoute() {
   const { boardId } = useParams<{ boardId: string }>();
   const queryClient = useQueryClient();
-  const { data, isError, refetch } = useView<View>(`/board/${boardId}/graph`);
+  const { data, isError, error, refetch } = useView<View>(`/board/${boardId}/graph`);
   const updatePlan = (plan: GraphPlan) => {
     const { queryKey } = viewQueryOptions<View>(`/board/${boardId}/graph`);
     // Giữ kế hoạch mới khi quay lại tab, kể cả lúc request lưu chưa hoàn tất.
@@ -25,7 +26,7 @@ export default function BoardGraphRoute() {
     );
   };
 
-  if (isError) {
+  if (isError && (!data || isUnavailableViewError(error))) {
     return (
       <div role="alert" className="p-4">
         <p className="text-sm text-neutral-700">{tr("route.graphLoadError")}</p>

@@ -56,7 +56,7 @@ export const TaskRow = memo(function TaskRow({
   showAssignees = false,
   showBoardChip = true,
 }: TaskRowProps) {
-  const { setCompleted, setImportant, setMyDay } = useMyTaskMutations();
+  const { setCompleted, setImportant, setMyDay } = useMyTaskMutations(task.boardId);
   const now = new Date();
   const due = getTaskDeadlineAt(task);
   const isOverdue = !task.isCompleted && due !== null && due < now;

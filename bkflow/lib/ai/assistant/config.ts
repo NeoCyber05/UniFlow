@@ -20,7 +20,7 @@ export const ASSISTANT_LIMITS = {
   maxSteps: 12,
   historyMessages: 30,
   messageMaxLength: 2_000,
-  contextCards: 120,
+  contextCards: 20,
   toolResultCards: 25,
 };
 

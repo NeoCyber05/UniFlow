@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QueryClient, UseQueryResult } from "@tanstack/react-query";
-import type { AppRouterInstance } from "@/web/shims/next-navigation";
 import { toast } from "sonner";
 
 import { setChecklistItemDueDate } from "@/actions/checklists/set-checklist-item-due-date";
@@ -14,6 +13,7 @@ import { runCalendarAction } from "@/lib/calendar/calendar-action";
 import { calendarRangeQueryKey, calendarUnscheduledQueryKey } from "@/lib/calendar/calendar-query-keys";
 import { applyCalendarPatchToCache } from "@/lib/calendar/optimistic-card-patch";
 import { tr } from "@/lib/i18n";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 import { buildSchedulePatch, type ScheduleIntent } from "@/lib/calendar/schedule-command";
 import { getCardRevision } from "@/components/modals/card-modal/card-cache-utils";
 import type { BoardCalendarCardItem, BoardCalendarResponse, BoardCalendarUnscheduledCard } from "@/types";
@@ -22,7 +22,6 @@ type UseCalendarCardActionsOptions = {
   boardId: string;
   query: UseQueryResult<BoardCalendarResponse>;
   queryClient: QueryClient;
-  router: AppRouterInstance;
   invalidateBoardCalendar: () => void;
   setExpandedDayKey: (dayKey: string | null) => void;
   onUpdateComplete: () => void;
@@ -41,7 +40,6 @@ export const useCalendarCardActions = ({
   boardId,
   query,
   queryClient,
-  router,
   invalidateBoardCalendar,
   setExpandedDayKey,
   onUpdateComplete,
@@ -91,6 +89,7 @@ export const useCalendarCardActions = ({
   const dispatchNextRef = useRef<() => void>(() => undefined);
 
   const { execute: executeUpdateCard, isLoading: isUpdatingCardDate } = useAction((input: UpdateCardInput) => runCalendarAction(() => updateCard(input)), {
+    invalidateOnSuccess: false,
     onSuccess: (data) => {
       if (updateSuccessToastRef.current) toast.success(updateSuccessToastRef.current);
       updateSuccessToastRef.current = null;
@@ -105,7 +104,9 @@ export const useCalendarCardActions = ({
         isCompleted: data.isCompleted,
         updatedAt,
       });
-      // useAction gọi invalidateAfterWrite ngay sau onSuccess, đã gồm lịch, Công việc và thẻ này.
+      const input = inFlightRef.current?.input;
+      const counts = input?.isCompleted !== undefined || input?.dueDate !== undefined || input?.deadlineOn !== undefined;
+      void invalidateTaskWrite(queryClient, boardId, { cardId: data.id, counts, positions: input?.isCompleted === true });
       setExpandedDayKey(null);
     },
     onError: (error) => {
@@ -143,17 +144,12 @@ export const useCalendarCardActions = ({
     execute: executeSetChecklistItemDueDate,
     isLoading: isUpdatingChecklistItemDueDate,
   } = useAction(setChecklistItemDueDate, {
+    invalidateOnSuccess: false,
     onSuccess: () => {
       const cardId = updatingChecklistItemCardIdRef.current;
 
       setExpandedDayKey(null);
-      invalidateBoardCalendar();
-
-      if (cardId) {
-        queryClient.invalidateQueries({ queryKey: ["card", cardId] });
-      }
-
-      router.refresh();
+      void invalidateTaskWrite(queryClient, boardId, { cardId, change: "checklist-date" });
     },
     onError: (error) => {
       toast.error(error);

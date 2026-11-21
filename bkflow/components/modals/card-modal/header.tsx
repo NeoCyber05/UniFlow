@@ -9,7 +9,7 @@ import { CardWithList } from "@/types";
 import { useAction } from "@/hooks/use-action";
 import { updateCard } from "@/actions/cards/update-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBoardCalendarInvalidation } from "@/hooks/use-board-calendar-invalidation";
+import { invalidateTaskWrite } from "@/lib/invalidate-after-write";
 import { tr } from "@/lib/i18n";
 import { BlockedCompletionDialog } from "./metadata/blocked-completion-dialog";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,6 @@ export const Header = ({
 }: HeaderProps) => {
   const queryClient = useQueryClient();
   const boardId = data.list.boardId;
-  const invalidateBoardCalendar = useBoardCalendarInvalidation(boardId);
 
   const unresolvedBlockers = data.blockedByDependencies.filter(
     (dependency) => !dependency.blockerCard.isCompleted
@@ -49,6 +48,7 @@ export const Header = ({
   } | null>(null);
 
   const { execute: executeUpdateCard, isLoading: isLoadingUpdate } = useAction(updateCard, {
+    invalidateOnSuccess: false,
     onSuccess: (updatedCard) => {
       patchCardQueryData(queryClient, updatedCard.id, {
         isCompleted: updatedCard.isCompleted,
@@ -62,7 +62,11 @@ export const Header = ({
         repeatEvery: updatedCard.repeatEvery,
         updatedAt: updatedCard.updatedAt,
       });
-      invalidateBoardCalendar();
+      void invalidateTaskWrite(queryClient, boardId, {
+        cardId: updatedCard.id,
+        counts: true,
+        positions: updatedCard.isCompleted,
+      });
 
       if (updatedCard.isCompleted !== data.isCompleted) {
         const relatedDependencyCardIds = [
@@ -152,9 +156,11 @@ export const Header = ({
   };
 
   const { execute, isLoading: isLoadingTitle } = useAction(updateCard, {
+    invalidateOnSuccess: false,
     onSuccess: (updatedCard) => {
       const request = titleRequestRef.current;
       if (!request || updatedCard.title !== request.optimistic) {
+        void invalidateTaskWrite(queryClient, boardId, { cardId: updatedCard.id });
         return;
       }
 
@@ -168,7 +174,7 @@ export const Header = ({
       });
 
 
-      invalidateBoardCalendar();
+      void invalidateTaskWrite(queryClient, boardId, { cardId: updatedCard.id });
       setTitle(updatedCard.title);
       titleRequestRef.current = null;
     },

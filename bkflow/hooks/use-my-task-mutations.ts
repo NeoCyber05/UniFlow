@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryFilters } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { setCardCompleted } from "@/actions/cards/set-card-completed";
 import { toggleCardImportant } from "@/actions/cards/toggle-card-important";
 import { toggleCardMyDay } from "@/actions/cards/toggle-card-my-day";
+import { invalidateTaskWrite, isBoardTaskListQuery } from "@/lib/invalidate-after-write";
 import {
   cardContextQueryKey,
-  MY_TASKS_ROOT_KEY,
   type CardContext,
   type MyTask,
   type TaskListResponse,
@@ -45,7 +45,7 @@ export const patchTaskListData = (data: unknown, cardId: string, patch: TaskPatc
  * Tick / sao / ghim với cập nhật lạc quan trên mọi smart list đang cache.
  * Lỗi → hoàn tác + toast. Xong → refetch để nhóm lại.
  */
-export const useMyTaskMutations = () => {
+export const useMyTaskMutations = (boardId?: string) => {
   const queryClient = useQueryClient();
 
   const run = useCallback(
@@ -54,14 +54,16 @@ export const useMyTaskMutations = () => {
       patch: TaskPatch,
       action: () => Promise<{ error?: string | null }>,
     ) => {
-      await queryClient.cancelQueries({ queryKey: MY_TASKS_ROOT_KEY });
+      if (!boardId) return;
+      const lists: QueryFilters = { predicate: ({ queryKey }) => isBoardTaskListQuery(queryKey, boardId) };
+      await queryClient.cancelQueries(lists);
 
-      const listSnapshot = queryClient.getQueriesData({ queryKey: MY_TASKS_ROOT_KEY });
+      const listSnapshot = queryClient.getQueriesData(lists);
       const contextKey = cardContextQueryKey(cardId);
       const contextSnapshot = queryClient.getQueryData<CardContext>(contextKey);
 
       queryClient.setQueriesData(
-        { queryKey: MY_TASKS_ROOT_KEY },
+        lists,
         (data: unknown) => patchTaskListData(data, cardId, patch),
       );
 
@@ -81,12 +83,15 @@ export const useMyTaskMutations = () => {
         toast.error(result.error);
       }
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: MY_TASKS_ROOT_KEY }),
-        queryClient.invalidateQueries({ queryKey: ["card", cardId] }),
-      ]);
+      const change = patch.isImportant !== undefined ? "important" : patch.myDayAt !== undefined ? "my-day" : "card";
+      await invalidateTaskWrite(queryClient, boardId, {
+        cardId,
+        change,
+        counts: change !== "important",
+        positions: patch.isCompleted === true,
+      });
     },
-    [queryClient],
+    [boardId, queryClient],
   );
 
   const setCompleted = useCallback(

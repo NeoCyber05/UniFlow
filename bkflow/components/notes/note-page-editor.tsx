@@ -2,7 +2,7 @@
 import { BoardAssistant } from "@/components/ai-assistant/board-assistant";
 import { getIntlLocale, tr } from "@/lib/i18n";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "@/web/shims/next-link";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, LoaderCircle, PencilLine, Smile, Sparkles, Star, Type, Undo2 } from "lucide-react";
@@ -14,17 +14,21 @@ import { PageStyleControls } from "@/components/notes/page-style-controls";
 import { isUnsupportedNoteDocument, parseNoteBlocks, type NoteBlock } from "@/lib/notes/blocks";
 import { getLinkedTaskIds, resolveLinkedTaskView } from "@/lib/notes/contract";
 import { linkedTasksQueryState, LINKED_TASKS_KEY, useLinkedTasks, type PickedTask } from "@/components/notes/linked-task-block";
-import { hasCustomPaper, pageStyleCss, type PageStyle } from "@/lib/notes/page-style";
+import { hasCustomPaper, pageStyleCss, readPageStyle, type PageStyle } from "@/lib/notes/page-style";
 import { cn } from "@/lib/utils";
 import { NoteReadingView } from "@/components/notes/note-reading-view";
 import { useAppearance } from "@/components/providers/appearance-provider";
-import { buildNoteSave, shouldResaveNote } from "@/lib/notes/save-state";
+import { buildNoteSave, saveBeforeNoteNavigation, shouldResaveNote } from "@/lib/notes/save-state";
 import { NOTE_PAGES_KEY, useNotePages } from "@/components/notes/note-pages-list";
 import { getPagePath } from "@/lib/notes/page-tree";
 import { IconPicker, PageActionsMenu, rememberRecentPage, usePageActions } from "@/components/notes/page-actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { loadPage } from "@/server/views/pages";
+import { viewQueryOptions } from "@/web/lib/use-view";
 
 type Page = { id: string; title: string; content: string; style: PageStyle | null; updatedAt: string; icon?: string | null; isFavorite?: boolean; parentId?: string | null; deletedAt?: Date | string | null };
+type NoteView = Awaited<ReturnType<typeof loadPage>>;
+type SavedNote = Pick<Page, "title" | "content" | "updatedAt"> & { style: unknown };
 type UndoEntry = { id: string; createdAt: string; undoneAt: string | null };
 const initialDraft = (page: Page) => ({ title: page.title, blocks: parseNoteBlocks(page.content), style: page.style });
 const signature = (draft: { title: string; blocks: NoteBlock[]; style: PageStyle | null }) => JSON.stringify(draft);
@@ -58,7 +62,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   const versionRef = useRef(page.updatedAt);
   const draftRef = useRef({ title, blocks, style });
   const savedSignatureRef = useRef(signature(initial));
-  const saveRunningRef = useRef(false);
+  const saveInFlight = useRef<Promise<boolean> | null>(null);
   const aiRequestRef = useRef(false);
   const aiAttemptRef = useRef<{ key: string; requestId: string; confirmed?: object } | null>(null);
   const resaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,8 +81,16 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
     savedTaskIdsRef.current = ids;
     void queryClient.invalidateQueries({ queryKey: LINKED_TASKS_KEY });
   }, [queryClient]);
+  const cacheSavedPage = useCallback(async ({ title, content, style, updatedAt }: SavedNote) => {
+    const { queryKey } = viewQueryOptions(`/pages/${page.id}`);
+    await queryClient.cancelQueries({ queryKey, exact: true });
+    queryClient.setQueryData<NoteView>(queryKey, view => {
+      if (!view?.initialPage || view.initialPage.updatedAt > updatedAt) return undefined;
+      return { initialPage: { ...view.initialPage, title, content, style: style ? readPageStyle(style) : null, updatedAt } };
+    });
+  }, [page.id, queryClient]);
 
-  useEffect(() => { draftRef.current = { title, blocks, style }; }, [title, blocks, style]);
+  useLayoutEffect(() => { draftRef.current = { title, blocks, style }; }, [title, blocks, style]);
   useEffect(() => {
     fetch(`/api/pages/${page.id}/history`).then(response => response.ok ? response.json() : null).then(data => {
       if (data?.changes) setHistory(current => Array.from(new Map([...current, ...data.changes].map(change => [change.id, change])).values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
@@ -86,43 +98,49 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   }, [page.id]);
   useEffect(() => () => { if (resaveRef.current) clearTimeout(resaveRef.current); }, []);
 
-  const saveChanges = useCallback(async (): Promise<boolean> => {
-    if (saveRunningRef.current) return false;
+  const saveChanges = useCallback(function saveNoteChanges(): Promise<boolean> {
+    if (saveInFlight.current) return Promise.resolve(false);
     const draft = draftRef.current;
     const currentSignature = signature(draft);
-    if (currentSignature === savedSignatureRef.current) return true;
-    saveRunningRef.current = true;
+    if (currentSignature === savedSignatureRef.current) return Promise.resolve(true);
+    if (resaveRef.current) clearTimeout(resaveRef.current);
     setSaving(true);
     setError("");
-    try {
-      const body = buildNoteSave(draft, versionRef.current, preservedRef.current);
-      if (!body) return true;
-      const response = await fetch(`/api/pages/${page.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error ?? tr("notes.page.saveError"));
-      versionRef.current = result.page.updatedAt;
-      if (JSON.parse(savedSignatureRef.current).title !== draft.title) void queryClient.invalidateQueries({ queryKey: NOTE_PAGES_KEY });
-      savedSignatureRef.current = currentSignature;
-      setUpdatedAt(result.page.updatedAt);
-      setSaved(signature(draftRef.current) === currentSignature);
-      syncLinkedTasks(body.content);
-      return true;
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : tr("notes.page.saveError"));
-      setSaved(false);
-      return false;
-    } finally {
-      saveRunningRef.current = false;
+    const save = async () => {
+      try {
+        const body = buildNoteSave(draft, versionRef.current, preservedRef.current);
+        if (!body) return true;
+        const response = await fetch(`/api/pages/${page.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error ?? tr("notes.page.saveError"));
+        const { updatedAt } = result.page;
+        versionRef.current = updatedAt;
+        if (JSON.parse(savedSignatureRef.current).title !== draft.title) void queryClient.invalidateQueries({ queryKey: NOTE_PAGES_KEY });
+        savedSignatureRef.current = currentSignature;
+        setUpdatedAt(updatedAt);
+        setSaved(signature(draftRef.current) === currentSignature);
+        syncLinkedTasks(body.content);
+        await cacheSavedPage(result.page);
+        return true;
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : tr("notes.page.saveError"));
+        setSaved(false);
+        return false;
+      }
+    };
+    saveInFlight.current = save().finally(() => {
+      saveInFlight.current = null;
       setSaving(false);
       if (shouldResaveNote(currentSignature, savedSignatureRef.current, signature(draftRef.current))) {
         if (resaveRef.current) clearTimeout(resaveRef.current);
-        resaveRef.current = setTimeout(() => { void saveChanges(); }, 250);
+        resaveRef.current = setTimeout(() => { void saveNoteChanges(); }, 250);
       }
-    }
-  }, [page.id, queryClient, syncLinkedTasks]);
+    });
+    return saveInFlight.current;
+  }, [cacheSavedPage, page.id, queryClient, syncLinkedTasks]);
 
   useEffect(() => {
     const timer = setTimeout(() => { void saveChanges(); }, 900);
@@ -130,20 +148,43 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
   }, [title, blocks, style, saveChanges]);
 
   useEffect(() => {
+    let leaving = false;
+    let disposed = false;
+    let replaying: HTMLAnchorElement | null = null;
+    const hasUnsavedChanges = () => Boolean(saveInFlight.current) || signature(draftRef.current) !== savedSignatureRef.current;
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (signature(draftRef.current) !== savedSignatureRef.current) { event.preventDefault(); event.returnValue = ""; }
+      if (hasUnsavedChanges()) { event.preventDefault(); event.returnValue = ""; }
     };
     const beforeLink = (event: MouseEvent) => {
-      if (!(event.target instanceof Element) || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
-      const link = event.target.closest("a[href]") as HTMLAnchorElement | null;
-      if (!link || link.target === "_blank" || link.getAttribute("href")?.startsWith("#") || signature(draftRef.current) === savedSignatureRef.current) return;
+      if (event.defaultPrevented || !(event.target instanceof Element) || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      const link = event.target.closest("a[href]");
+      if (!(link instanceof HTMLAnchorElement) || link === replaying || (link.target && link.target.toLowerCase() !== "_self") || link.hasAttribute("download") || link.getAttribute("href")?.startsWith("#") || !hasUnsavedChanges()) return;
+      const href = link.href;
+      const isInternal = link.origin === window.location.origin && link.protocol === window.location.protocol;
       event.preventDefault(); event.stopPropagation();
-      if (saveRunningRef.current) { setError(tr("notes.page.savingBlocked")); return; }
-      void saveChanges().then(success => { if (success) window.location.assign(link.href); });
+      if (leaving) return;
+      if (!isInternal && saveInFlight.current) { setError(tr("notes.page.savingBlocked")); return; }
+      leaving = true;
+      const save = isInternal ? saveBeforeNoteNavigation(
+        () => saveInFlight.current ?? saveChanges(),
+        () => !disposed && !preservedRef.current && hasUnsavedChanges(),
+      ) : saveChanges();
+      void save.then(success => {
+        leaving = false;
+        if (!success || disposed || !link.isConnected || link.href !== href) return;
+        // Let the original link handle SPA navigation, click callbacks, or native behavior.
+        replaying = link;
+        try { link.click(); } finally { replaying = null; }
+      });
     };
     window.addEventListener("beforeunload", beforeUnload);
     document.addEventListener("click", beforeLink, true);
-    return () => { window.removeEventListener("beforeunload", beforeUnload); document.removeEventListener("click", beforeLink, true); void saveChanges(); };
+    return () => {
+      disposed = true;
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("click", beforeLink, true);
+      void saveChanges();
+    };
   }, [saveChanges]);
 
   const runAiEdit = async (requestPrompt = prompt) => {
@@ -182,6 +223,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       draftRef.current = nextDraft; savedSignatureRef.current = signature(nextDraft); setSaved(true);
       setHistory(current => [result.change, ...current.filter(change => change.id !== result.change.id)]); setPrompt("");
       syncLinkedTasks(result.page.content);
+      await cacheSavedPage(result.page);
       return true;
     } catch (cause) { setError(cause instanceof Error ? cause.message : tr("notes.ai.editError")); return false; }
     finally { aiRequestRef.current = false; setAiBusy(false); }
@@ -203,6 +245,7 @@ export const NotePageEditor = ({ initialPage }: { initialPage: Page }) => {
       draftRef.current = draft; savedSignatureRef.current = signature(draft); setSaved(true);
       setHistory(current => current.map(change => change.id === changeId ? { ...change, undoneAt: new Date().toISOString() } : change));
       syncLinkedTasks(result.page.content);
+      await cacheSavedPage(result.page);
     } catch (cause) { setError(cause instanceof Error ? cause.message : tr("notes.undo.failed")); }
     finally { aiRequestRef.current = false; setAiBusy(false); }
   };

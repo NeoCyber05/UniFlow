@@ -4,6 +4,7 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { useAuth } from "@/web/lib/auth";
+import { isUnavailableViewError } from "@/lib/fetcher";
 
 export const QueryProvider = ({
   children
@@ -24,15 +25,7 @@ const AccountQueries = ({
       queries: {
         staleTime: 30_000,
         refetchOnWindowFocus: false,
-        retry: (failureCount, error) => {
-          const status = (error as Error & { status?: number })?.status;
-
-          if (status === 401 || status === 403 || status === 404) {
-            return false;
-          }
-
-          return failureCount < 1;
-        },
+        retry: (failureCount, error) => !isUnavailableViewError(error) && failureCount < 1,
       },
     },
   }));
